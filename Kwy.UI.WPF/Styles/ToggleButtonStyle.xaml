@@ -1,0 +1,254 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/BaseStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/TextBlockStyle.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <Style BasedOn="{StaticResource ControlBaseStyle}" TargetType="ToggleButton">
+        <Setter Property="helpers:RippleEffectHelper.IsEnabled" Value="True" />
+        <Setter Property="helpers:RippleEffectHelper.RippleBrush" Value="{DynamicResource RippleBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border
+                        x:Name="PART_ToggleButtonBorder"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="0">
+                        <Grid ClipToBounds="True">
+                            <Canvas x:Name="PART_RippleCanvas" IsHitTestVisible="False" />
+                            <ContentPresenter
+                                x:Name="PART_ContentHost"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_ToggleButtonBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="10"
+                                        Direction="315"
+                                        Opacity="0.7"
+                                        ShadowDepth="5"
+                                        Color="{DynamicResource DropShadowColor}" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="False">
+                            <Setter TargetName="PART_ToggleButtonBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="5"
+                                        Direction="315"
+                                        Opacity="0.5"
+                                        ShadowDepth="2"
+                                        Color="{DynamicResource DropShadowColor}" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="PART_ToggleButtonBorder" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ToggleButtonSwitchNoContentStyle" TargetType="ToggleButton">
+        <Setter Property="Width" Value="52" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid>
+                        <Border
+                            x:Name="PART_SwitchTrack"
+                            Background="{DynamicResource SWSlotBrush}"
+                            CornerRadius="13"
+                            SnapsToDevicePixels="True">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="4"
+                                    Opacity="0.2"
+                                    ShadowDepth="1"
+                                    Color="{DynamicResource DropShadowColor}" />
+                            </Border.Effect>
+                        </Border>
+
+                        <Ellipse
+                            x:Name="PART_SwitchThumb"
+                            Width="20"
+                            Height="20"
+                            Margin="3"
+                            HorizontalAlignment="Left"
+                            Fill="White">
+                            <Ellipse.Effect>
+                                <DropShadowEffect
+                                    BlurRadius="8"
+                                    Opacity="0.25"
+                                    ShadowDepth="1"
+                                    Color="{DynamicResource DropShadowColor}" />
+                            </Ellipse.Effect>
+                        </Ellipse>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="False">
+                            <Setter TargetName="PART_SwitchTrack" Property="Background" Value="{DynamicResource SWSlotBrush}" />
+                            <Setter TargetName="PART_SwitchThumb" Property="Margin" Value="3" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="PART_SwitchTrack" Property="Background" Value="{DynamicResource PrimaryGradualBrush}" />
+                            <Setter TargetName="PART_SwitchThumb" Property="Margin" Value="29,3,3,3" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_SwitchTrack" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="PART_SwitchTrack" Property="BorderThickness" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="PART_SwitchTrack" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter TargetName="PART_SwitchThumb" Property="Opacity" Value="0.65" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ToggleButtonSwitchBottomContentStyle" TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <StackPanel HorizontalAlignment="Center" Orientation="Vertical">
+                        <Grid Width="64" Height="32">
+                            <Border
+                                x:Name="PART_SwitchTrack"
+                                Background="{DynamicResource SWSlotBrush}"
+                                CornerRadius="16">
+                                <Border.Effect>
+                                    <DropShadowEffect
+                                        BlurRadius="4"
+                                        Opacity="0.2"
+                                        ShadowDepth="1"
+                                        Color="{DynamicResource DropShadowColor}" />
+                                </Border.Effect>
+                            </Border>
+
+                            <Ellipse
+                                x:Name="PART_SwitchThumb"
+                                Width="24"
+                                Height="24"
+                                Margin="4"
+                                HorizontalAlignment="Left"
+                                Fill="White">
+                                <Ellipse.Effect>
+                                    <DropShadowEffect
+                                        BlurRadius="8"
+                                        Opacity="0.3"
+                                        ShadowDepth="2"
+                                        Color="{DynamicResource DropShadowColor}" />
+                                </Ellipse.Effect>
+                            </Ellipse>
+                        </Grid>
+
+                        <ContentPresenter Margin="0,6,0,0" HorizontalAlignment="Center" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="False">
+                            <Setter TargetName="PART_SwitchTrack" Property="Background" Value="{DynamicResource SWSlotBrush}" />
+                            <Setter TargetName="PART_SwitchThumb" Property="Margin" Value="4" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="PART_SwitchTrack" Property="Background" Value="{DynamicResource PrimaryGradualBrush}" />
+                            <Setter TargetName="PART_SwitchThumb" Property="Margin" Value="36,4,4,4" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_SwitchTrack" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="PART_SwitchTrack" Property="BorderThickness" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="PART_SwitchTrack" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter TargetName="PART_SwitchThumb" Property="Opacity" Value="0.65" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style
+        x:Key="ToggleButtonStyle"
+        BasedOn="{StaticResource ControlBaseStyle}"
+        TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Height" Value="35" />
+        <Setter Property="MinWidth" Value="100" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border
+                        x:Name="PART_ToggleButtonBorder"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="0,1,0,0">
+                        <Grid
+                            x:Name="PART_CheckMark"
+                            Margin="20,0,20,0"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource ControlTextBlockStyle}" Text="{TemplateBinding Content}" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="PART_ToggleButtonBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="PART_ToggleButtonBorder" Property="BorderThickness" Value="0,2,0,0" />
+                            <Setter TargetName="PART_CheckMark" Property="Opacity" Value="0.5" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="False">
+                            <Setter TargetName="PART_CheckMark" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_ToggleButtonBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="10"
+                                        Direction="315"
+                                        Opacity="0.7"
+                                        ShadowDepth="5"
+                                        Color="{DynamicResource DropShadowColor}" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="False">
+                            <Setter TargetName="PART_ToggleButtonBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="5"
+                                        Direction="315"
+                                        Opacity="0.5"
+                                        ShadowDepth="2"
+                                        Color="{DynamicResource DropShadowColor}" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="PART_ToggleButtonBorder" Property="Opacity" Value="0.7" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

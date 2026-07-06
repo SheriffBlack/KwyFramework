@@ -1,0 +1,44 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/SegoeFluentStyle.xaml" />
+
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/BaseStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/StoryboardStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/IconStyle.xaml" />
+
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ButtonStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/CheckBoxStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ComboBoxStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/DataGridStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/DatePickerStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/EllipseStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/GroupBoxStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/LabelStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ListBoxStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/MenuStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/PasswordBoxStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ProgressBarStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/RadioButtonStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ScrollViewerStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/SeparatorStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/StatusBarStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/TabControlStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/TextBlockStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/TextBoxStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ToggleButtonStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ToolTipStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/WindowButtonStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/WindowStyle.xaml" />
+
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyFormItemStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyRadioButtonGroupStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyKeyboardStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyLegendStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyNumberBoxStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyPercentStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyTrayStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyToastStyle.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+</ResourceDictionary>
+
+

@@ -1,0 +1,153 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/BaseStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ScrollViewerStyle.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!--
+        DataGrid 全局隐式样式。
+        - ScrollBar：在 DataGrid 内部注入默认滚动条样式。
+        - DataGridCell：去掉 WPF 默认选中高亮，颜色统一交给 DataGridRow 管理。
+        Style.Resources 中的隐式样式会作用于 DataGrid 内部 visual tree 的同类型元素。
+    -->
+    <Style TargetType="DataGrid">
+        <!--  强制隐藏原生 RowHeader，避免选中时左侧出现系统蓝色行头区域。  -->
+        <Setter Property="RowHeaderWidth" Value="0" />
+        <Style.Resources>
+            <Style BasedOn="{StaticResource DefaultScrollBarStyle}" TargetType="ScrollBar" />
+
+            <!--  隐式 DataGridCell：去除单元格自己的选中高亮，行状态由 DataGridRow 统一管理。  -->
+            <Style TargetType="DataGridCell">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Focusable" Value="False" />
+                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DataGridCell">
+                            <Border
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                SnapsToDevicePixels="True">
+                                <ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </Style.Resources>
+    </Style>
+
+    <!--  DataGrid 单元格文本样式。  -->
+    <Style x:Key="DataGridCellTextBlockStyle" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <!--  选中时保持 DataGrid 的前景色，避免被系统高亮色改写。  -->
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="True">
+                <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--  DataGrid 列头样式。  -->
+    <Style
+        x:Key="ModernDataGridColumnHeaderStyle"
+        BasedOn="{StaticResource ControlBaseStyle}"
+        TargetType="DataGridColumnHeader">
+        <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Padding" Value="15,12" />
+        <Setter Property="Height" Value="45" />
+        <Setter Property="BorderThickness" Value="0,0,0.4,0" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--  DataGrid 行样式。  -->
+    <Style x:Key="ModernDataGridRowStyle" TargetType="DataGridRow">
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="28" />
+        <!--  默认背景：偶数行使用控件背景色。  -->
+        <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+        <!--  左侧 3px 状态条：默认透明，选中时显示 PrimaryBrush。  -->
+        <Setter Property="BorderThickness" Value="3,0,0,0" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Style.Triggers>
+            <!--  奇数行使用页面背景色，形成轻微隔行效果。  -->
+            <Trigger Property="AlternationIndex" Value="1">
+                <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
+            </Trigger>
+
+            <!--  鼠标悬停效果；可通过 DataGridRowHelper.IsHoverSuppressed 抑制。  -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
+                    <Condition Binding="{Binding Path=(helpers:DataGridRowHelper.IsHoverSuppressed), RelativeSource={RelativeSource Self}}" Value="False" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
+            </MultiDataTrigger>
+
+            <!--  选中偶数行：保留原背景，并显示左侧 PrimaryBrush 状态条。  -->
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsSelected" Value="True" />
+                    <Condition Property="AlternationIndex" Value="0" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+            </MultiTrigger>
+
+            <!--  选中奇数行：保留原背景，并显示左侧 PrimaryBrush 状态条。  -->
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsSelected" Value="True" />
+                    <Condition Property="AlternationIndex" Value="1" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+            </MultiTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--
+        DataGrid 单元格样式。
+        自定义 ControlTemplate 用于去掉 WPF 默认模板里 IsSelected 触发的
+        SystemColors.HighlightBrushKey 浅蓝色高亮。选中和悬停颜色统一由 DataGridRow 管理。
+    -->
+    <Style
+        x:Key="ModernDataGridCellStyle"
+        BasedOn="{StaticResource ControlBaseStyle}"
+        TargetType="DataGridCell">
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0,0,0.4,0" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Padding" Value="10" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <!--  保留默认结构，只移除系统高亮 Trigger。  -->
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border
+                        Padding="{TemplateBinding Padding}"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        SnapsToDevicePixels="True">
+                        <ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

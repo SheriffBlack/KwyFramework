@@ -1,0 +1,94 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <!--  复用同一套 ScrollBar 样式资源  -->
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ScrollViewerStyle.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!--  ListBox：注入定制 ScrollBar（同 DataGrid 方案）  -->
+    <Style TargetType="ListBox">
+        <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        <Style.Resources>
+            <!--  将定制 ScrollBar 注入到 ListBox 的内部作用域（穿透 ControlTemplate 边界）  -->
+            <Style BasedOn="{StaticResource DefaultScrollBarStyle}" TargetType="ScrollBar" />
+        </Style.Resources>
+    </Style>
+
+    <!--
+        ListBoxItem 样式：与 ModernDataGridRowStyle 保持一致
+        · 交替行（AlternationIndex）
+        · Hover 高亮
+        · 选中时保留原行色 + 左侧 3px PrimaryBrush 条状指示器（比 DataGrid 多一层视觉反馈）
+        · 使用时在 ListBox 上指定：
+        ItemContainerStyle="{StaticResource ListBoxItemStyle}"
+        AlternationCount="2"
+    -->
+    <Style x:Key="ListBoxItemStyle" TargetType="ListBoxItem">
+
+        <!--  基础  -->
+        <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="Padding" Value="15,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Arrow" />
+
+        <!--
+            自定义模板：
+            · 左侧 3px BorderThickness 用于选中后呈现 PrimaryBrush 条
+            · Background / BorderBrush 全部 TemplateBinding，由 Style.Triggers 驱动
+        -->
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="3,0,0,0">
+                        <ContentPresenter
+                            Margin="{TemplateBinding Padding}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+
+        <Style.Triggers>
+            <!--  AlternationIndex=1：深色背景行（同 DataGridRow）  -->
+            <DataTrigger Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource Self}}" Value="1">
+                <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
+            </DataTrigger>
+
+            <!--  Hover：覆盖所有背景（同 DataGridRow）  -->
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
+            </Trigger>
+
+            <!--  选中 + 偶数行：恢复原偶数行背景 + 显示左侧条  -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True" />
+                    <Condition Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource Self}}" Value="0" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+            </MultiDataTrigger>
+
+            <!--  选中 + 奇数行：恢复原奇数行背景 + 显示左侧条  -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True" />
+                    <Condition Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource Self}}" Value="1" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+            </MultiDataTrigger>
+        </Style.Triggers>
+    </Style>
+</ResourceDictionary>

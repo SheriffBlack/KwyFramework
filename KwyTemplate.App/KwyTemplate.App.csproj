@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
+    <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF.Components\Kwy.UI.WPF.Components.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Device\KwyTemplate.Device.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\JdlLogo.png" />
+  </ItemGroup>
+
+</Project>

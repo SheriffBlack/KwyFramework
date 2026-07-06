@@ -1,0 +1,59 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Themes/Colors.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!--  Window semantic colors  -->
+    <Color x:Key="WindowBackgroundColor">#F3F5F7</Color>
+    <Color x:Key="WindowBorderColor">#C8D0D9</Color>
+    <Color x:Key="WindowTitleBarBackgroundColor">#FFFFFF</Color>
+    <Color x:Key="WindowTitleBarForegroundColor">#17202A</Color>
+    <Color x:Key="WindowSecondaryForegroundColor">#52606D</Color>
+    <Color x:Key="WindowInactiveTitleBarColor">#E8ECF0</Color>
+    <Color x:Key="WindowStatusBarColor">#E8ECF0</Color>
+    <Color x:Key="WindowButtonHoverColor">#E9EEF3</Color>
+    <Color x:Key="WindowButtonPressedColor">#D8E0E8</Color>
+
+    <!--  Control semantic colors  -->
+    <Color x:Key="WatermarkColor">#80000000</Color>
+    <Color x:Key="ControlSelectedBackgroundColor">#DCEBFF</Color>
+    <Color x:Key="ControlSelectedForegroundColor">#0F2742</Color>
+    <Color x:Key="SegmentColor">#696969</Color>
+    <Color x:Key="SWSlotColor">#334455</Color>
+    <Color x:Key="ControlBackgroundColor">#FFFFFF</Color>
+    <Color x:Key="ControlBorderColor">#B8C2CC</Color>
+    <Color x:Key="ControlForegroundColor">#17202A</Color>
+    <Color x:Key="ControlFocusedBorderColor">#1976D2</Color>
+    <Color x:Key="ControlFocusedBorderSecondColor">#99C9EF</Color>
+    <Color x:Key="ControlHoverBackgroundColor">#F4F7FA</Color>
+    <Color x:Key="ControlPressedBackgroundColor">#E3F2FD</Color>
+    <Color x:Key="ControlDisabledBackgroundColor">#F1F3F5</Color>
+    <Color x:Key="ControlDisabledForegroundColor">#929DA8</Color>
+    <Color x:Key="ControlReadOnlyForegroundColor">#F7F7F7</Color>
+    <Color x:Key="CalendarButtonHoverBackgroundColor">#EEEEEE</Color>
+    <Color x:Key="DropTargetBackgroundColor">#DCEEFF</Color>
+    <Color x:Key="DropTargetBorderColor">#1976D2</Color>
+    <Color x:Key="SelectionBorderColor">#1976D2</Color>
+    <Color x:Key="SelectionBackgroundColor">#241976D2</Color>
+
+    <SolidColorBrush x:Key="WatermarkBrush" Color="{DynamicResource WatermarkColor}" />
+    <SolidColorBrush x:Key="ControlSelectedBackgroundBrush" Color="{DynamicResource ControlSelectedBackgroundColor}" />
+    <SolidColorBrush x:Key="ControlSelectedForegroundBrush" Color="{DynamicResource ControlSelectedForegroundColor}" />
+    <SolidColorBrush x:Key="SegmentBrush" Color="{DynamicResource SegmentColor}" />
+    <SolidColorBrush x:Key="SWSlotBrush" Color="{DynamicResource SWSlotColor}" />
+    <SolidColorBrush x:Key="ControlBackgroundBrush" Color="{DynamicResource ControlBackgroundColor}" />
+    <SolidColorBrush x:Key="ControlBorderBrush" Color="{DynamicResource ControlBorderColor}" />
+    <SolidColorBrush x:Key="ControlForegroundBrush" Color="{DynamicResource ControlForegroundColor}" />
+    <SolidColorBrush x:Key="ControlFocusedBorderBrush" Color="{DynamicResource ControlFocusedBorderColor}" />
+    <SolidColorBrush x:Key="ControlFocusedBorderSecondBrush" Color="{DynamicResource ControlFocusedBorderSecondColor}" />
+    <SolidColorBrush x:Key="ControlHoverBackgroundBrush" Color="{DynamicResource ControlHoverBackgroundColor}" />
+    <SolidColorBrush x:Key="ControlPressedBackgroundBrush" Color="{DynamicResource ControlPressedBackgroundColor}" />
+    <SolidColorBrush x:Key="ControlDisabledBackgroundBrush" Color="{DynamicResource ControlDisabledBackgroundColor}" />
+    <SolidColorBrush x:Key="ControlDisabledForegroundBrush" Color="{DynamicResource ControlDisabledForegroundColor}" />
+    <SolidColorBrush x:Key="ControlReadOnlyForegroundBrush" Color="{DynamicResource ControlReadOnlyForegroundColor}" />
+    <SolidColorBrush x:Key="BackgroundBrush" Color="{DynamicResource WindowBackgroundColor}" />
+    <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource ControlBorderColor}" />
+    <SolidColorBrush x:Key="ForegroundBrush" Color="{DynamicResource ControlForegroundColor}" />
+
+</ResourceDictionary>

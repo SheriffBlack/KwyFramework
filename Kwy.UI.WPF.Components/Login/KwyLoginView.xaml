@@ -1,0 +1,73 @@
+<UserControl
+    x:Class="Kwy.UI.WPF.Components.Login.KwyLoginView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:kwyui="http://schemas.kwy.com/ui"
+    x:Name="Root">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/IconStyle.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/TextBlockStyle.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ButtonStyle.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ComboBoxStyle.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/PasswordBoxStyle.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Border
+        Width="{Binding FormWidth, ElementName=Root}"
+        MinHeight="{Binding FormMinHeight, ElementName=Root}"
+        Padding="{Binding FormPadding, ElementName=Root}">
+        <StackPanel VerticalAlignment="Center">
+            <TextBlock
+                Margin="0,0,0,26"
+                HorizontalAlignment="Center"
+                FontSize="26"
+                FontWeight="SemiBold"
+                Style="{StaticResource ControlTextBlockStyle}"
+                Text="{Binding TitleText, ElementName=Root}" />
+
+            <ComboBox
+                Width="{Binding InputWidth, ElementName=Root}"
+                Height="{Binding InputHeight, ElementName=Root}"
+                Margin="0,0,0,14"
+                kwyui:IconHelper.Icon="{StaticResource IconContact}"
+                IsEditable="True"
+                IsTextSearchEnabled="True"
+                ItemsSource="{Binding UserNameItemsSource, ElementName=Root}"
+                SelectedItem="{Binding UserName, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                Style="{StaticResource IconComboBoxStyle}"
+                Text="{Binding UserName, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+            <PasswordBox
+                Width="{Binding InputWidth, ElementName=Root}"
+                Height="{Binding InputHeight, ElementName=Root}"
+                Margin="0,0,0,18"
+                kwyui:IconHelper.Icon="{StaticResource IconLock}"
+                kwyui:PasswordBoxHelper.Password="{Binding Password, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                FontSize="20"
+                Style="{StaticResource IconPasswordBoxStyle}" />
+
+            <Button
+                Width="{Binding InputWidth, ElementName=Root}"
+                Height="{Binding ButtonHeight, ElementName=Root}"
+                Margin="0,0,0,12"
+                Command="{Binding LoginCommand, ElementName=Root}"
+                CommandParameter="{Binding LoginCommandParameter, ElementName=Root}"
+                Content="{Binding LoginButtonText, ElementName=Root}"
+                Cursor="Hand"
+                IsDefault="True"
+                Style="{StaticResource DefaultButtonStyle}" />
+
+            <TextBlock
+                MinHeight="24"
+                HorizontalAlignment="Center"
+                FontSize="16"
+                Style="{StaticResource ControlTextBlockStyle}"
+                Text="{Binding Message, ElementName=Root}"
+                TextWrapping="Wrap" />
+        </StackPanel>
+    </Border>
+</UserControl>

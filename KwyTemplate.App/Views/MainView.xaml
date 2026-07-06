@@ -1,0 +1,68 @@
+﻿<UserControl
+    x:Class="KwyTemplate.App.Views.MainView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:navigation="clr-namespace:KwyTemplate.Contracts.Navigation;assembly=KwyTemplate.Contracts"
+    kwymvvm:ViewModelLocator.AutoWireViewModel="True">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <Border
+            Grid.Row="0"
+            Background="{DynamicResource ControlBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,0,0,1">
+            <Grid Height="60">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!--  动态生成导航按钮，无需手动修改XAML  -->
+                <ItemsControl
+                    Grid.Column="0"
+                    HorizontalContentAlignment="Stretch"
+                    ItemsSource="{Binding NavigationItems}"
+                    Visibility="Visible">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <RadioButton
+                                kwymvvm:Permission.Code="{Binding PermissionCode}"
+                                kwymvvm:Permission.Mode="Prompt"
+                                Style="{StaticResource NavigationButtonStyle}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" />
+
+                <Border
+                    Grid.Column="1"
+                    Height="60"
+                    HorizontalAlignment="Right"
+                    BorderThickness="0">
+                    <Image
+                        RenderOptions.BitmapScalingMode="HighQuality"
+                        Source="{StaticResource ImgLogoJDL}"
+                        Visibility="Collapsed" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <ContentControl
+            Grid.Row="1"
+            Margin="0"
+            kwymvvm:RegionManager.RegionName="{x:Static navigation:RegionNames.MainRegion}" />
+    </Grid>
+</UserControl>

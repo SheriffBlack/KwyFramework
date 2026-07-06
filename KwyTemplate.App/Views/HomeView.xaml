@@ -1,0 +1,423 @@
+<UserControl
+    x:Class="KwyTemplate.App.Views.HomeView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="720"
+    d:DesignWidth="1280"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="PanelBorderStyle" TargetType="Border">
+            <Setter Property="Margin" Value="12" />
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,0,0,14" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+        </Style>
+
+        <Style x:Key="PointNameStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+        </Style>
+
+        <Style x:Key="ReadonlyAddressTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="IsReadOnly" Value="True" />
+        </Style>
+
+        <Style
+            x:Key="CenterAlignedTextBlock"
+            BasedOn="{StaticResource DataGridCellTextBlockStyle}"
+            TargetType="TextBlock">
+            <Setter Property="Margin" Value="10,0,0,0" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource WindowBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <Border
+            Grid.Row="0"
+            Margin="12,12,12,0"
+            Padding="14"
+            Background="{DynamicResource ControlBackgroundBrush}"
+            BorderBrush="{DynamicResource ControlBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontSize="16"
+                        Text="PLC：" />
+                    <Ellipse
+                        Width="12"
+                        Height="12"
+                        Margin="6,0,8,0">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPlcConnected}" Value="True">
+                                        <Setter Property="Fill" Value="{DynamicResource ConnectBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+
+
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontSize="14"
+                        Foreground="{DynamicResource ControlSecondaryForegroundBrush}"
+                        Text="开启写 1，关闭写 0。该操作需要工程师权限。" />
+                </StackPanel>
+
+                <Button
+                    Grid.Column="1"
+                    Width="120"
+                    Height="36"
+                    Command="{Binding ConnectDevicesCommand}"
+                    Content="连接设备" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="0" />
+                <ColumnDefinition Width="0" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource PanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="料盒手动开关" />
+
+                    <TextBlock
+                        Grid.Row="1"
+                        Margin="0,0,0,14"
+                        Foreground="{DynamicResource ControlSecondaryForegroundBrush}"
+                        Text="按下写 1，松开写 0。该操作需要工程师权限。" />
+
+                    <DataGrid
+                        Grid.Row="2"
+                        AlternationCount="2"
+                        AutoGenerateColumns="False"
+                        Background="{DynamicResource TransparentBrush}"
+                        CanUserAddRows="False"
+                        CanUserDeleteRows="False"
+                        ColumnHeaderStyle="{StaticResource ModernDataGridColumnHeaderStyle}"
+                        GridLinesVisibility="None"
+                        HeadersVisibility="Column"
+                        IsReadOnly="True"
+                        ItemsSource="{Binding CassetteSwitches}"
+                        RowStyle="{StaticResource ModernDataGridRowStyle}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="82"
+                                Binding="{Binding Address}"
+                                ElementStyle="{StaticResource CenterAlignedTextBlock}"
+                                Header="地址" />
+                            <DataGridTextColumn
+                                Width="*"
+                                Binding="{Binding Name}"
+                                ElementStyle="{StaticResource CenterAlignedTextBlock}"
+                                Header="点位名称" />
+                            <DataGridTemplateColumn Width="112" Header="操作">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ToggleButton
+                                            Command="{Binding DataContext.ToggleCassetteSwitchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            Style="{StaticResource ToggleButtonSwitchNoContentStyle}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Style="{StaticResource PanelBorderStyle}" Visibility="Collapsed">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="IO 报警监控" />
+
+                    <TextBlock
+                        Grid.Row="1"
+                        Margin="0,0,0,12"
+                        Foreground="{DynamicResource ControlSecondaryForegroundBrush}"
+                        Text="1 为真，0 为假，自动刷新，后续可接入报警系统。" />
+
+                    <DataGrid
+                        Grid.Row="2"
+                        AlternationCount="2"
+                        AutoGenerateColumns="False"
+                        Background="{DynamicResource TransparentBrush}"
+                        CanUserAddRows="False"
+                        CanUserDeleteRows="False"
+                        ColumnHeaderStyle="{StaticResource ModernDataGridColumnHeaderStyle}"
+                        GridLinesVisibility="None"
+                        HeadersVisibility="Column"
+                        IsReadOnly="True"
+                        ItemsSource="{Binding AlarmMonitorPoints}"
+                        RowStyle="{StaticResource ModernDataGridRowStyle}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="74"
+                                Binding="{Binding Address}"
+                                ElementStyle="{StaticResource CenterAlignedTextBlock}"
+                                Header="地址" />
+                            <DataGridTextColumn
+                                Width="*"
+                                Binding="{Binding Name}"
+                                ElementStyle="{StaticResource CenterAlignedTextBlock}"
+                                Header="点位名称" />
+                            <DataGridTemplateColumn Width="64" Header="值">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border
+                                            Height="28"
+                                            Margin="2"
+                                            BorderBrush="{DynamicResource ControlBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="14">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{DynamicResource ControlPressedBackgroundBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Value}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource WarningBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                FontWeight="SemiBold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource ControlSecondaryForegroundBrush}" />
+                                                        <Setter Property="Text" Value="0" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Value}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource ControlSelectedForegroundBrush}" />
+                                                                <Setter Property="Text" Value="1" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource PanelBorderStyle}" Visibility="Collapsed">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="视觉数据交互" />
+
+                    <Grid Grid.Row="1" Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+
+                        <Button
+                            Grid.Column="0"
+                            Height="36"
+                            Command="{Binding StartVisionReceiveCommand}"
+                            Content="启动接收" />
+                        <Button
+                            Grid.Column="2"
+                            Height="36"
+                            Command="{Binding StopVisionReceiveCommand}"
+                            Content="停止接收" />
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="92" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="100" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            Style="{StaticResource PointNameStyle}"
+                            Text="当前数量" />
+                        <TextBox
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Height="36"
+                            Text="{Binding VisionNgCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox
+                            Grid.Row="0"
+                            Grid.Column="2"
+                            Margin="8,0,0,0"
+                            Style="{StaticResource ReadonlyAddressTextBoxStyle}"
+                            Text="{Binding CurrentCountAddress}" />
+
+                        <Button
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Height="34"
+                            Margin="0,8,0,14"
+                            Command="{Binding WriteVisionNgToPlcCommand}"
+                            Content="写入当前数量" />
+
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            Style="{StaticResource PointNameStyle}"
+                            Text="设定数量" />
+                        <TextBox
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Height="36"
+                            Text="{Binding SetQuantity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox
+                            Grid.Row="2"
+                            Grid.Column="2"
+                            Margin="8,0,0,0"
+                            Style="{StaticResource ReadonlyAddressTextBoxStyle}"
+                            Text="{Binding SetQuantityAddress}" />
+
+                        <Button
+                            Grid.Row="3"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Height="34"
+                            Margin="0,8,0,14"
+                            Command="{Binding WriteSetQuantityToPlcCommand}"
+                            Content="写入设定数量" />
+
+                        <Button
+                            Grid.Row="4"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Height="34"
+                            Margin="0,0,0,14"
+                            Command="{Binding RefreshRegisterCommand}"
+                            Content="刷新数据寄存器" />
+
+                        <DataGrid
+                            Grid.Row="5"
+                            Grid.Column="0"
+                            Grid.ColumnSpan="3"
+                            MinHeight="120"
+                            Margin="0,0,0,14"
+                            AlternationCount="2"
+                            AutoGenerateColumns="False"
+                            Background="{DynamicResource TransparentBrush}"
+                            CanUserAddRows="False"
+                            CanUserDeleteRows="False"
+                            ColumnHeaderStyle="{StaticResource ModernDataGridColumnHeaderStyle}"
+                            GridLinesVisibility="None"
+                            HeadersVisibility="Column"
+                            IsReadOnly="True"
+                            ItemsSource="{Binding RegisterMonitorPoints}"
+                            RowStyle="{StaticResource ModernDataGridRowStyle}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn
+                                    Width="80"
+                                    Binding="{Binding Address}"
+                                    ElementStyle="{StaticResource CenterAlignedTextBlock}"
+                                    Header="地址" />
+                                <DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding Name}"
+                                    ElementStyle="{StaticResource CenterAlignedTextBlock}"
+                                    Header="名称" />
+                                <DataGridTextColumn
+                                    Width="80"
+                                    Binding="{Binding Value}"
+                                    ElementStyle="{StaticResource CenterAlignedTextBlock}"
+                                    Header="当前值" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <TextBlock
+                            Grid.Row="6"
+                            Grid.Column="0"
+                            VerticalAlignment="Top"
+                            Style="{StaticResource PointNameStyle}"
+                            Text="视觉报文" />
+                        <TextBox
+                            Grid.Row="6"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            MinHeight="88"
+                            AcceptsReturn="True"
+                            IsReadOnly="True"
+                            Text="{Binding VisionLastPayload, Mode=OneWay}"
+                            TextWrapping="Wrap" />
+                    </Grid>
+
+                    <TextBlock
+                        Grid.Row="3"
+                        Margin="0,14,0,0"
+                        Foreground="{DynamicResource ControlSecondaryForegroundBrush}"
+                        Text="视觉 TCP 收到报文后，会提取第一个 Int32 数值作为 NG 数量，并写入当前数量地址。"
+                        TextWrapping="Wrap" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
+    <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF.Components\Kwy.UI.WPF.Components.csproj" />
+    <ProjectReference Include="..\KwyTemplate.App\KwyTemplate.App.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Device\KwyTemplate.Device.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Flow\KwyTemplate.Flow.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Security\KwyTemplate.Security.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Vision\KwyTemplate.Vision.csproj" />
+  </ItemGroup>
+
+</Project>

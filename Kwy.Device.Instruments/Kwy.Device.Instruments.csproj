@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Keysight\" />
+    <Folder Include="Adex\" />
+  </ItemGroup>
+
+</Project>

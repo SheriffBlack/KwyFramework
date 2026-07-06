@@ -1,0 +1,65 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Kwy.UI.WPF.Controls">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/BaseStyle.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <Style BasedOn="{StaticResource ControlBaseStyle}" TargetType="{x:Type controls:KwyPercent}">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="ToolTip" Value="{Binding ComputedTooltipText, RelativeSource={RelativeSource Self}}" />
+        <Setter Property="BarBrush">
+            <Setter.Value>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Offset="1" Color="{DynamicResource PrimaryGradualColor}" />
+                    <GradientStop Offset="0.5" Color="{DynamicResource PrimaryGradualColor}" />
+                    <GradientStop Offset="0" Color="{DynamicResource PrimaryColor}" />
+                </LinearGradientBrush>
+            </Setter.Value>
+        </Setter>
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type controls:KwyPercent}">
+                    <Border
+                        x:Name="ProgressContainer"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        SnapsToDevicePixels="True">
+
+                        <Grid Margin="0">
+                            <Rectangle Fill="{DynamicResource ControlBackgroundBrush}" />
+
+                            <Rectangle
+                                x:Name="PART_Indicator"
+                                VerticalAlignment="Bottom"
+                                Fill="{TemplateBinding BarBrush}" />
+
+                            <StackPanel
+                                Margin="1"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom">
+
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontSize="14"
+                                    FontWeight="Bold"
+                                    Foreground="{DynamicResource ForegroundBrush}"
+                                    Text="{Binding PercentageText, RelativeSource={RelativeSource TemplatedParent}}" />
+
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    FontSize="14"
+                                    Foreground="{DynamicResource ForegroundBrush}"
+                                    Text="{Binding CurrentCountText, RelativeSource={RelativeSource TemplatedParent}}"
+                                    TextAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>
