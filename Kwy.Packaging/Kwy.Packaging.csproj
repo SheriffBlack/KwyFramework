@@ -7,8 +7,10 @@
     <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
 
-  <Target Name="PackChangedKwyNuGets" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and '$(RunKwyPackaging)' != 'false'">
+  <Target Name="PackChangedKwyNuGets" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and '$(RunKwyPackaging)' == 'true'">
     <Message Importance="high" Text="Packing changed Kwy NuGet packages..." />
-    <Exec WorkingDirectory="$(MSBuildThisFileDirectory)..\" Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\scripts\Pack-KwyNuGet.ps1&quot; -ChangedOnly -Configuration &quot;$(Configuration)&quot;" />
+    <Exec WorkingDirectory="$(MSBuildThisFileDirectory)..\" Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\scripts\Pack-KwyNuGet.ps1&quot; -ChangedOnly -Configuration &quot;$(Configuration)&quot; -VsOutputEncoding" />
   </Target>
 </Project>
+
+

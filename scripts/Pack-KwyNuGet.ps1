@@ -9,15 +9,31 @@ param(
     [string]$NuGetSource,
     [string]$ApiKey,
     [switch]$SkipDuplicate = $true,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$VsOutputEncoding,
+    [string]$DotNetVerbosity = 'quiet'
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
+
+if ($VsOutputEncoding) {
+    $encoding = [System.Text.Encoding]::Default
+    [Console]::OutputEncoding = $encoding
+    $OutputEncoding = $encoding
+}
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
 $slnPath = Join-Path $repoRoot "Kwy.slnx"
 $outputFullPath = Join-Path $repoRoot $OutputPath
+
+$debugPackageProperties = @(
+    '-p:DebugType=portable',
+    '-p:IncludeSymbols=true',
+    '-p:SymbolPackageFormat=snupkg',
+    '-p:PublishRepositoryUrl=true',
+    '-p:EmbedUntrackedSources=true'
+)
 
 function Write-Step([string]$message) {
     Write-Host "`n==> $message" -ForegroundColor Cyan
@@ -165,7 +181,7 @@ if ($ChangedOnly) {
         $changedProjects = New-Object System.Collections.Generic.HashSet[string]([StringComparer]::OrdinalIgnoreCase)
 
         foreach ($file in $changedFiles) {
-            if ($file -match '^(Directory\..*\.props|Directory\..*\.targets|NuGet\.config|global\.json|Kwy\.slnx|scripts/)') {
+            if ($file -match '^(Directory\..*\.props|Directory\..*\.targets|NuGet\.config|global\.json|Kwy\.slnx)') {
                 $repoWideChanged = $true
                 continue
             }
@@ -226,14 +242,14 @@ New-Item -ItemType Directory -Force -Path $outputFullPath | Out-Null
 
 if (-not $NoBuild) {
     Write-Step "Building solution ($Configuration)"
-    dotnet build $slnPath -c $Configuration -m:1 -p:RunKwyPackaging=false -p:GeneratePackageOnBuild=false -v minimal
+    dotnet build $slnPath -c $Configuration -m:1 -p:RunKwyPackaging=false -p:GeneratePackageOnBuild=false -p:NuGetAudit=false "-p:NoWarn=NU1900;NU5128" @debugPackageProperties -v $DotNetVerbosity
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 Write-Step "Packing NuGet packages"
 foreach ($projectPath in $orderedProjects) {
     Write-Host "Packing $(Get-RelativePath $projectPath)..." -ForegroundColor Cyan
-    dotnet pack $projectPath -c $Configuration --no-build -o $outputFullPath -p:Authors=Kwy -p:GeneratePackageOnBuild=false -v minimal
+    dotnet pack $projectPath -c $Configuration --no-build -o $outputFullPath -p:Authors=Kwy -p:GeneratePackageOnBuild=false -p:NuGetAudit=false "-p:NoWarn=NU1900;NU5128" @debugPackageProperties -v $DotNetVerbosity
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
@@ -252,6 +268,8 @@ if ($Push) {
 
 Write-Step "Done"
 Write-Host "NuGet output: $outputFullPath" -ForegroundColor Green
+
+
 
 
 

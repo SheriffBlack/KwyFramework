@@ -1,0 +1,20 @@
+﻿<Project>
+  <PropertyGroup>
+    <Authors>Kwy</Authors>
+    <Company>Kwy</Company>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <NuGetAudit>false</NuGetAudit>
+    <NoWarn>$(NoWarn);NU1900;NU5128</NoWarn>
+
+    <!-- NuGet debug support: generate portable PDB and .snupkg symbol packages. -->
+    <DebugType>portable</DebugType>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)README.md')">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="" Link="README.md" />
+  </ItemGroup>
+</Project>

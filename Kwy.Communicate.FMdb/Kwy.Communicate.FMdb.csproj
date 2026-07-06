@@ -7,23 +7,11 @@
     <IsPackable>true</IsPackable>
     <PackageId>Kwy.Communicate.FMdb</PackageId>
     <Version>1.0.0</Version>
-    <Authors>Kwy</Authors>
-    <Company>Kwy</Company>
     <Product>Kwy Communicate</Product>
     <Description>FluentModbus 5.3.2 client wrapper for Modbus TCP and Modbus RTU.</Description>
     <PackageTags>Kwy;Communication;Modbus;FluentModbus;ModbusTcp;ModbusRtu</PackageTags>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryType>git</RepositoryType>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <DebugType>portable</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-    <EmbedAllSources>true</EmbedAllSources>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,8 +23,6 @@
     <ProjectReference Include="..\Kwy.Communicate.Core\Kwy.Communicate.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="\" />
-  </ItemGroup>
 
 </Project>
+

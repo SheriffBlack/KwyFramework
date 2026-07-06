@@ -1,96 +1,103 @@
 ﻿# Kwy
 
-Kwy is a modular .NET industrial application framework for building equipment software, automation systems, machine vision tools, and WPF-based engineering applications.
+Kwy 是一套面向工业设备软件的模块化 .NET 框架，主要用于构建设备控制软件、自动化系统、机器视觉工具以及基于 WPF 的工程应用。
 
-Kwy focuses on the reusable foundations that are repeatedly needed in industrial software projects: communication, device abstraction, MVVM, WPF UI, logging, files, licensing, vision algorithms, and ready-to-use project templates.
+它关注工业软件项目中会反复遇到的基础能力：通信、设备抽象、MVVM、WPF UI、日志、文件处理、授权、视觉算法以及可直接复用的项目模板。
 
-## Overview
+## 项目概览
 
-Industrial equipment software usually contains much more than protocol read/write logic. A maintainable project also needs device lifecycle management, runtime state synchronization, safety checks, permissions, configuration editing, UI consistency, logging, file processing and deployment-friendly packaging.
+工业设备软件通常不只是协议读写。一个可维护的项目还需要设备生命周期管理、运行状态同步、安全联锁、权限控制、配置编辑、统一 UI 风格、日志、文件处理以及便于交付的打包方式。
 
-Kwy provides these capabilities as separated, NuGet-friendly modules.
+Kwy 将这些能力拆分为多个职责清晰、便于 NuGet 发布和按需引用的模块。
 
 ```text
-Kwy.Communicate.*     Communication protocols and transport clients
-Kwy.Device.*          Industrial device abstraction and runtime management
-Kwy.UI.WPF.*          WPF themes, controls and reusable UI components
-Kwy.MVVM.*            MVVM, modularity, region navigation and permissions
-Kwy.Files.*           File, JSON, INI and Excel abstractions
-Kwy.Logging.*         Logging abstractions and Serilog integration
-Kwy.Licensing.*       License and dongle abstractions
-Kwy.Vision.*          Vision abstractions, geometry models and algorithms
-KwyTemplate.*         Application template for equipment software
+Kwy.Communicate.*     通信协议与传输客户端
+Kwy.Device.*          工业设备抽象、状态同步与运行时管理
+Kwy.UI.WPF.*          WPF 主题、控件样式和可复用组件
+Kwy.MVVM.*            MVVM、模块化、区域导航、权限和消息总线
+Kwy.Files.*           JSON、INI、Excel 等文件处理能力
+Kwy.Logging.*         日志抽象与 Serilog 集成
+Kwy.Licensing.*       授权、商业库激活和密码狗抽象
+Kwy.Vision.*          视觉抽象、几何模型和算法封装
+KwyTemplate.*         面向设备软件的应用模板
 ```
 
-## Features
+## 核心能力
 
-- Communication modules
-  - TCP / Serial
-  - MQTT
-  - OPC UA
-  - Modbus based on FluentModbus
-  - NI GPIB
-  - SECS / GEM / GEM300 abstractions
+### 通信模块
 
-- Device modules
-  - PLC
-  - IO card
-  - Motion card
-  - Camera
-  - Instrument
-  - Device registry by `DeviceId`
-  - State synchronization, safety guard and recovery strategy foundations
+- TCP / Serial
+- MQTT
+- OPC UA
+- 基于 FluentModbus 的 Modbus 通信
+- NI GPIB
+- SECS / GEM / GEM300 抽象
 
-- WPF UI modules
-  - Light / Dark themes
-  - Common control styles
-  - Dialog service
-  - Toast message service
-  - Property grid generated from metadata
-  - Flow designer foundation
+### 设备模块
 
-- MVVM modules
-  - Bindable base classes
-  - Region navigation
-  - Modular application structure
-  - Dialog abstractions
-  - Permission system
-  - Message bus based on CommunityToolkit.Mvvm
+- PLC
+- IO 卡
+- 运动控制卡
+- 相机
+- 仪表
+- 基于 `DeviceId` 的设备注册与查找
+- 状态同步、安全联锁和恢复策略基础设施
 
-- File modules
-  - JSON helper
-  - INI support
-  - Excel abstractions
-  - EPPlus / NPOI / Interop implementations
+### WPF UI 模块
 
-- Vision modules
-  - Vision abstractions
-  - Geometry models
-  - HALCON integration
-  - OpenCV extension direction
-  - Measurement, calibration, code reading and preprocessing foundations
+- Light / Dark 主题
+- 常用控件默认样式
+- Dialog 消息弹窗服务
+- Toast 轻提示服务
+- 基于元数据生成的属性编辑器
+- FlowDesigner 流程节点编辑基础能力
 
-- Template projects
-  - Shell
-  - App
-  - Device
-  - Flow
-  - Security
-  - Vision
+### MVVM 模块
 
-## Architecture
+- BindableBase 基类
+- 区域导航
+- 模块化应用结构
+- Dialog 抽象
+- 权限系统
+- 基于 CommunityToolkit.Mvvm 的消息总线封装
 
-Kwy is designed around high cohesion and low coupling. Each module owns a clear responsibility and can be referenced independently.
+### 文件模块
+
+- JSON 辅助能力
+- INI 文件支持
+- Excel 抽象接口
+- EPPlus / NPOI / Interop 实现
+
+### 视觉模块
+
+- 视觉基础抽象
+- 几何模型
+- HALCON 集成
+- OpenCV 扩展方向
+- 测量、标定、扫码、预处理等通用算法基础
+
+### 模板项目
+
+- Shell
+- App
+- Device
+- Flow
+- Security
+- Vision
+
+## 架构分层
+
+Kwy 以高内聚、低耦合为主要设计原则。每个模块只负责自己的边界，业务项目可以按需引用。
 
 ```text
-Application
+应用模板层
   KwyTemplate.Shell
   KwyTemplate.App
   KwyTemplate.Flow
   KwyTemplate.Device
   KwyTemplate.Security
 
-Framework
+框架基础层
   Kwy.MVVM
   Kwy.MVVM.WPF
   Kwy.UI.WPF
@@ -100,7 +107,7 @@ Framework
   Kwy.Communicate.Abstractions
   Kwy.Communicate.Core
 
-Extensions
+设备与协议扩展层
   Kwy.Device.PLCs.Hsl
   Kwy.Device.MotionCards.Googol
   Kwy.Device.MotionCards.Leadshine
@@ -111,9 +118,9 @@ Extensions
   Kwy.Vision.Halcon
 ```
 
-## Device Connection Model
+## 设备连接模型
 
-Template device connections are collection based. The main configuration model does not grow every time a new device type is added.
+模板中的设备连接配置采用集合模型。主配置模型不会因为新增一个设备类型就不断增加属性。
 
 ```json
 {
@@ -121,7 +128,7 @@ Template device connections are collection based. The main configuration model d
     {
       "deviceId": "PLC.Main",
       "deviceType": "HslPlc",
-      "displayName": "Main PLC",
+      "displayName": "主 PLC",
       "enabled": true,
       "connectOnStartup": true,
       "config": {}
@@ -130,91 +137,91 @@ Template device connections are collection based. The main configuration model d
 }
 ```
 
-Each device type provides an `IDeviceConnectionFactory`.
+每一种设备类型通过 `IDeviceConnectionFactory` 提供连接能力。
 
 ```text
 DeviceConnectionEntry
   -> DeviceType
   -> IDeviceConnectionFactory
-  -> Strongly typed connection options
-  -> Runtime device instance
+  -> 强类型连接配置
+  -> 运行时设备实例
   -> IDeviceRegistry
 ```
 
-This keeps the template stable while allowing customer projects to add different PLCs, cameras, motion cards or custom devices.
+这样可以保持模板层稳定。后续客户项目需要增加不同品牌的 PLC、相机、运动控制卡或自定义设备时，只需要新增配置条目和对应工厂，不需要频繁修改主配置模型。
 
-## Project Template
+## KwyTemplate 模板
 
-`KwyTemplate` is a practical starting point for industrial equipment software.
+`KwyTemplate` 是一个面向工业设备软件的起始模板，可作为新项目的工程骨架。
 
 ```text
 KwyTemplate.Shell
-  Main window, title bar, status bar and module hosting.
+  主窗口、标题栏、状态栏和模块承载。
 
 KwyTemplate.App
-  Main business UI, navigation and system configuration views.
+  主业务 UI、导航和系统配置界面。
 
 KwyTemplate.Device
-  Device connection configuration, persistence, factories and startup connection.
+  设备连接配置、持久化、连接工厂和启动连接。
 
 KwyTemplate.Flow
-  Machine flow, device roles and business process orchestration.
+  机台流程、设备角色和业务流程编排。
 
 KwyTemplate.Security
-  Local user, role and permission management.
+  本地用户、角色和权限管理。
 
 KwyTemplate.Vision
-  Vision flow editor and image inspection UI foundation.
+  视觉流程编辑器和图像检测 UI 基础。
 ```
 
-## Typical Use Cases
+## 典型使用场景
 
-- Non-standard automation equipment
-- Semiconductor equipment software
-- PLC-based machine control software
-- Vision inspection applications
-- Industrial data acquisition tools
-- WPF engineering software
-- Equipment demo and project templates
+- 非标自动化设备软件
+- 半导体设备软件
+- PLC 设备控制软件
+- 视觉检测应用
+- 工业数据采集工具
+- WPF 工程软件
+- 设备 Demo 与项目模板
 
-## Getting Started
+## 快速开始
 
-Clone the repository and build the solution:
+克隆仓库后构建解决方案：
 
 ```powershell
 dotnet build Kwy.slnx
 ```
 
-Run the template shell project:
+运行模板 Shell 项目：
 
 ```powershell
 dotnet run --project KwyTemplate.Shell/KwyTemplate.Shell.csproj -f net8.0-windows
 ```
 
-Pack NuGet packages locally:
+本地生成 NuGet 包：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Pack-KwyNuGet.ps1
 ```
 
-Generated packages are placed under:
+生成的包会输出到：
 
 ```text
 artifacts/nuget
 ```
 
-## NuGet Packaging Strategy
+## NuGet 发布策略
 
-Kwy is intended to be consumed as modular NuGet packages.
+Kwy 推荐以模块化 NuGet 包的方式使用。
 
-Recommended usage:
+推荐用法：
 
 ```text
-Install feature packages directly.
-Foundation packages are usually resolved as dependencies.
+业务项目优先安装功能包。
+基础包通常由 NuGet 自动作为依赖解析。
 ```
 
-Examples:
+例如：
 
 ```text
 Kwy.Communicate.FMdb
@@ -223,58 +230,57 @@ Kwy.UI.WPF.Components
 Kwy.Vision.Halcon
 ```
 
-Reference foundation packages directly only when developing custom drivers, protocols, authorization components or framework extensions.
+只有在开发自定义驱动、通信协议、授权器或框架扩展组件时，才建议直接引用基础包。
 
+## 在 Visual Studio 中打包
 
-## Packaging from Visual Studio
+仓库中提供了一个辅助项目：`Kwy.Packaging`。
 
-The repository includes a helper project named `Kwy.Packaging`.
+普通的 `Release` 解决方案生成不会创建 NuGet 包。打包动作是显式触发的，因此在 Visual Studio 中点击 `生成解决方案` 只会编译项目，不会自动跑完整打包流程。
 
-Build this project in `Release` configuration to run the NuGet packaging script from Visual Studio:
+如需打包发生变化的 Kwy 项目，执行：
 
-```text
-Right click Kwy.Packaging
-  -> Build
-  -> Configuration: Release
+```powershell
+dotnet build .\Kwy.Packaging\Kwy.Packaging.csproj -c Release -p:RunKwyPackaging=true
 ```
 
-The packaging project calls:
+`Kwy.Packaging` 内部会调用：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Pack-KwyNuGet.ps1 -ChangedOnly -Configuration Release
 ```
 
-The script detects changed projects from git, includes dependent packages, builds the solution once, and writes generated packages to:
+脚本会根据 Git 变更识别需要打包的项目，同时包含依赖它们的上层包；构建解决方案一次后，再逐个执行 `dotnet pack --no-build`，最终输出到：
 
 ```text
 artifacts/nuget
 ```
 
-By default, this local workflow only creates NuGet packages. It does not push packages to a remote NuGet source.
+默认情况下，本地流程只生成 NuGet 包，不会推送到远程 NuGet 源。
 
-To preview affected packages without building or packing:
+如果只想预览哪些项目会被打包，可以执行：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Pack-KwyNuGet.ps1 -ChangedOnly -DryRun
 ```
-## Design Principles
 
-- Keep abstractions small and stable.
-- Keep vendor-specific configuration inside vendor modules.
-- Use strongly typed options instead of weak dictionaries where possible.
-- Use `DeviceId` to distinguish runtime devices.
-- Keep business flow outside the device connection layer.
-- Prefer composition over inheritance for device capabilities.
-- Keep UI theme resources replaceable.
-- Make modules independently packageable.
+## 设计原则
 
-## Status
+- 抽象层保持小而稳定。
+- 厂商特有配置留在各自厂商模块中。
+- 优先使用强类型配置，避免弱类型字典泛滥。
+- 使用 `DeviceId` 区分运行时设备实例。
+- 设备连接层只负责连接和注册，不承载业务流程。
+- 设备能力优先组合，不强行继承成大基类。
+- UI 主题资源可替换，方便后续切换主题。
+- 每个模块尽量可以独立发布、独立升级。
 
-Kwy is under active development.
+## 当前状态
 
-The framework is currently focused on practical .NET / WPF industrial application development, with emphasis on maintainability, modularity and real equipment integration.
+Kwy 正在持续开发中。
 
-## License
+当前阶段重点是 .NET / WPF 工业应用的工程化落地，尤其关注可维护性、模块化和真实设备接入。
 
-License information will be added later.
+## 许可证
 
+许可证信息后续补充。
