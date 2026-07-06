@@ -225,6 +225,38 @@ Kwy.Vision.Halcon
 
 Reference foundation packages directly only when developing custom drivers, protocols, authorization components or framework extensions.
 
+
+## Packaging from Visual Studio
+
+The repository includes a helper project named `Kwy.Packaging`.
+
+Build this project in `Release` configuration to run the NuGet packaging script from Visual Studio:
+
+```text
+Right click Kwy.Packaging
+  -> Build
+  -> Configuration: Release
+```
+
+The packaging project calls:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Pack-KwyNuGet.ps1 -ChangedOnly -Configuration Release
+```
+
+The script detects changed projects from git, includes dependent packages, builds the solution once, and writes generated packages to:
+
+```text
+artifacts/nuget
+```
+
+By default, this local workflow only creates NuGet packages. It does not push packages to a remote NuGet source.
+
+To preview affected packages without building or packing:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Pack-KwyNuGet.ps1 -ChangedOnly -DryRun
+```
 ## Design Principles
 
 - Keep abstractions small and stable.
@@ -245,3 +277,4 @@ The framework is currently focused on practical .NET / WPF industrial applicatio
 ## License
 
 License information will be added later.
+

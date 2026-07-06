@@ -1,4 +1,4 @@
-<Solution>
+﻿<Solution>
   <Folder Name="/KwyTemplate/">
     <Project Path="KwyTemplate.App/KwyTemplate.App.csproj" Id="6c2128f6-47c3-4ea3-8957-f7279c5a8179" />
     <Project Path="KwyTemplate.Contracts/KwyTemplate.Contracts.csproj" Id="11dc8409-0ef1-4531-9cd9-8275cd01b217" />
@@ -8,7 +8,9 @@
     <Project Path="KwyTemplate.Shell/KwyTemplate.Shell.csproj" />
     <Project Path="KwyTemplate.Vision/KwyTemplate.Vision.csproj" />
   </Folder>
-  <Project Path="Kwy.Analytics/Kwy.Analytics.csproj" Id="0d928a03-6434-4813-8d65-381336a2f8c4" />
+  <Folder Name="/Tools/">
+    <Project Path="Kwy.Packaging/Kwy.Packaging.csproj" />
+  </Folder>  <Project Path="Kwy.Analytics/Kwy.Analytics.csproj" Id="0d928a03-6434-4813-8d65-381336a2f8c4" />
   <Project Path="Kwy.Communicate.Abstractions/Kwy.Communicate.Abstractions.csproj" />
   <Project Path="Kwy.Communicate.Core/Kwy.Communicate.Core.csproj" Id="4eb51155-2c16-43f9-b153-9c7387f422b6" />
   <Project Path="Kwy.Communicate.FMdb/Kwy.Communicate.FMdb.csproj" Id="95926aed-0f23-4270-b873-111680c46484" />
@@ -90,3 +92,4 @@
   <Project Path="Kwy.Vision.WPF/Kwy.Vision.WPF.csproj" />
   <Project Path="KwyAppDemo/KwyAppDemo.csproj" />
 </Solution>
+
