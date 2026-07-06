@@ -35,6 +35,18 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style
+            x:Key="PaletteFilterCheckBoxStyle"
+            BasedOn="{StaticResource {x:Type CheckBox}}"
+            TargetType="CheckBox">
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="10,0,8,6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource PaletteFg}" />
+            <Setter Property="Background" Value="{DynamicResource TransparentBrush}" />
+        </Style>
     </UserControl.Resources>
 
     <Grid Background="{DynamicResource VisionPanelBrush}">
@@ -103,12 +115,9 @@
 
         <CheckBox
             Grid.Row="1"
-            Margin="10,0,8,6"
-            VerticalAlignment="Center"
             Content="只看收藏"
-            FontSize="11"
-            Foreground="{DynamicResource PaletteFg}"
-            IsChecked="{Binding ShowFavoritesOnly}" />
+            IsChecked="{Binding ShowFavoritesOnly}"
+            Style="{StaticResource PaletteFilterCheckBoxStyle}" />
 
         <!--  分类列表  -->
         <ScrollViewer
@@ -195,3 +204,4 @@
         </ScrollViewer>
     </Grid>
 </UserControl>
+
