@@ -14,7 +14,6 @@
 
   <ItemGroup>
     <Folder Include="Keysight\" />
-    <Folder Include="Adex\" />
   </ItemGroup>
 
 </Project>

@@ -143,8 +143,7 @@ public class MainWindowViewModel : BindableBase
 
     private void ExcuteInitCommand()
     {
-        //regionManager.RequestNavigate(RegionNames.WindowRegion, ViewNames.MainView);
-        regionManager.RequestNavigate(RegionNames.WindowRegion, ViewNames.FlowEditorView);
+        regionManager.RequestNavigate(RegionNames.WindowRegion, ViewNames.MainView);
     }
 
     #endregion Initialize Navigation Command
