@@ -31,10 +31,16 @@ public sealed class DeviceModule : IModule
         });
         services.TryAddSingleton<DeviceConfigProvider>();
         services.TryAddSingleton<IDeviceConfigProvider>(provider => provider.GetRequiredService<DeviceConfigProvider>());
-        services.TryAddSingleton(new DeviceCatalogSelectionOptions { ActiveCatalogKey = nameof(Machine_4_HAHH_DeviceCatalog) });
+        services.TryAddSingleton<IMachineRuntimeOptionsProvider, MachineRuntimeOptionsProvider>();
+        services.TryAddSingleton<IMachineProfileProvider, MachineProfileProvider>();
+        services.TryAddSingleton<DeviceCatalogSelectionOptions>(provider => new DeviceCatalogSelectionOptions
+        {
+            ActiveCatalogKey = ResolveActiveCatalogKey(provider.GetRequiredService<IMachineRuntimeOptionsProvider>().Get())
+        });
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDeviceCatalog, Machine_Default_DeviceCatalog>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDeviceCatalog, Machine_2_A_DeviceCatalog>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDeviceCatalog, Machine_4_HAHH_DeviceCatalog>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDeviceCatalog, ConfigurableDeviceCatalog>());
 
         services.TryAddSingleton<IMachineDeviceContext, MachineDeviceContext>();
         services.TryAddSingleton<IDeviceRegistryInitializer, DeviceRegistryInitializer>();
@@ -48,5 +54,15 @@ public sealed class DeviceModule : IModule
         provider.GetRequiredService<IDeviceRegistryInitializer>().Initialize();
         _ = provider.GetRequiredService<IDeviceStartupConnector>().ConnectAsync();
     }
+
+    private static string ResolveActiveCatalogKey(MachineRuntimeOptions options)
+        => string.Equals(options.ActiveMachineKey, MachineRuntimeOptions.ConfigurableMachineKey, StringComparison.OrdinalIgnoreCase)
+            ? MachineRuntimeOptions.ConfigurableMachineKey
+            : options.ActiveMachineKey switch
+            {
+                "Machine_2_A" => nameof(Machine_2_A_DeviceCatalog),
+                "Machine_4_HAHH" => nameof(Machine_4_HAHH_DeviceCatalog),
+                _ => nameof(Machine_Default_DeviceCatalog)
+            };
 }
 

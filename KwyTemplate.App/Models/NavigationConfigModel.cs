@@ -97,6 +97,21 @@ public sealed class NavigationConfigModel
             },
             new NavigationItemModel
             {
+                DisplayText = "机种配置",
+                Parameter = "MachineProfile.Basic"
+            },
+            new NavigationItemModel
+            {
+                DisplayText = "IO 点位设定",
+                Parameter = "MachineProfile.IoPoints"
+            },
+            new NavigationItemModel
+            {
+                DisplayText = "PLC 点位设定",
+                Parameter = "MachineProfile.PlcPoints"
+            },
+            new NavigationItemModel
+            {
                 DisplayText = "程序设定",
                 LocalizationKey = "Nav.ProgramSettings",
                 Parameter = "ProgramSettings"

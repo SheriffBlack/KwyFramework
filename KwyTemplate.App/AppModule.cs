@@ -33,6 +33,7 @@ public class AppModule : IModule
         containerRegistry.AddSingleton<CompensateOptionsStore>();
         containerRegistry.AddSingleton<BraidOptionsStore>();
         containerRegistry.AddSingleton<MarkPrintOptionsStore>();
+        containerRegistry.AddSingleton<MachineProfileEditorStore>();
         containerRegistry.AddSingleton<RawInputBarcodeOptions>();
         containerRegistry.AddSingleton<IRawInputBarcodeReceiver, RawInputBarcodeReceiver>();
         containerRegistry.AddSingleton<IProductionContext, ProductionContext>();
