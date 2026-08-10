@@ -1,10 +1,11 @@
-using Kwy.MVVM.Core;
+﻿using Kwy.MVVM.Core;
 
 namespace KwyTemplate.App.Models;
 
 public sealed class PlcBoolPointModel : BindableBase
 {
     private string address = string.Empty;
+    private string communicationAddress = string.Empty;
     private string name = string.Empty;
     private bool value;
     private bool isMaster;
@@ -16,6 +17,12 @@ public sealed class PlcBoolPointModel : BindableBase
         set => SetProperty(ref address, value);
     }
 
+    public string CommunicationAddress
+    {
+        get => communicationAddress;
+        set => SetProperty(ref communicationAddress, value);
+    }
+
     public string Name
     {
         get => name;
@@ -24,8 +31,18 @@ public sealed class PlcBoolPointModel : BindableBase
 
     public bool Value
     {
-        get => value;
-        set => SetProperty(ref this.value, value);
+        get
+        {
+            return value;
+        }
+
+        set
+        {
+            if (SetProperty(ref this.value, value))
+            {
+                RaisePropertyChanged(nameof(StatusText));
+            }
+        }
     }
 
     public bool IsMaster
@@ -38,5 +55,18 @@ public sealed class PlcBoolPointModel : BindableBase
     {
         get => lastUpdatedAt;
         set => SetProperty(ref lastUpdatedAt, value);
+    }
+
+    public string StatusText
+    {
+        get
+        {
+            if (IsMaster)
+            {
+                return Value ? "全部锁定" : "全部释放";
+            }
+
+            return Value ? "已锁定" : "已释放";
+        }
     }
 }

@@ -16,6 +16,10 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     private byte[] diPortBuffer = Array.Empty<byte>();
     private byte[] doPortBuffer = Array.Empty<byte>();
     private volatile bool connected;
+    private volatile bool shuttingDown;
+    private static readonly TimeSpan NativeReleaseWaitTimeout = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan IoOperationWaitTimeout = TimeSpan.FromMilliseconds(100);
+    private int nativeResourcesReleased;
 
     public AdvantechIoCardDevice(AdvantechIoCardConfig config)
         : this(config.DeviceDescription, config.Model, config)
@@ -41,35 +45,47 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var deviceInformation = new DeviceInformation(config.DeviceDescription);
-        instantDiCtrl.SelectedDevice = deviceInformation;
-        instantDoCtrl.SelectedDevice = deviceInformation;
-
-        if (config.EnableInterrupt)
+        try
         {
-            ConfigureInterrupt();
-            instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
-            instantDiCtrl.Interrupt += OnInstantDiInterrupt;
+            
+            shuttingDown = false;
+            var deviceInformation = new DeviceInformation(config.DeviceDescription);
+            instantDiCtrl.SelectedDevice = deviceInformation;
+            instantDoCtrl.SelectedDevice = deviceInformation;
 
-            var error = instantDiCtrl.SnapStart();
-            try
+            if (config.EnableInterrupt)
             {
-                ThrowIfFailed(error, "Start Advantech DI interrupt listener failed");
-            }
-            catch
-            {
+                ConfigureInterrupt();
                 instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
-                throw;
-            }
-        }
+                instantDiCtrl.Interrupt += OnInstantDiInterrupt;
 
-        connected = true;
-        return Task.CompletedTask;
+                var error = instantDiCtrl.SnapStart();
+                try
+                {
+                    ThrowIfFailed(error, "Start Advantech DI interrupt listener failed");
+                }
+                catch
+                {
+                    instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
+                    throw;
+                }
+            }
+
+            connected = true;
+            return Task.CompletedTask;
+        }
+        catch (DaqException ex)
+        {
+            throw CreateDaqException("Connect Advantech IO card failed", ex);
+        }
     }
 
     protected override Task DisconnectCoreAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        shuttingDown = true;
+        connected = false;
 
         if (config.EnableInterrupt)
         {
@@ -84,7 +100,6 @@ public sealed class AdvantechIoCardDevice : IoCardBase
             instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
         }
 
-        connected = false;
         return Task.CompletedTask;
     }
 
@@ -154,16 +169,127 @@ public sealed class AdvantechIoCardDevice : IoCardBase
 
     public override async ValueTask DisposeAsync()
     {
-        if (disposed)
+        if (disposed && Volatile.Read(ref nativeResourcesReleased) != 0)
         {
             return;
         }
 
-        await base.DisposeAsync();
-        instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
-        instantDiCtrl.Dispose();
-        instantDoCtrl.Dispose();
-        ioSemaphore.Dispose();
+        shuttingDown = true;
+        connected = false;
+        ReleaseNativeResources();
+
+        try
+        {
+            await base.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            GC.SuppressFinalize(this);
+        }
+    }
+    public override void Dispose()
+        => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    ~AdvantechIoCardDevice()
+    {
+        ReleaseNativeResources();
+    }
+
+    private void ReleaseNativeResources()
+    {
+        if (Interlocked.Exchange(ref nativeResourcesReleased, 1) != 0)
+        {
+            return;
+        }
+
+        connected = false;
+        shuttingDown = true;
+
+        bool lockTaken = false;
+        try
+        {
+            lockTaken = ioSemaphore.Wait(NativeReleaseWaitTimeout);
+            ReleaseNativeResourcesCore();
+        }
+        catch (ObjectDisposedException)
+        {
+            ReleaseNativeResourcesCore();
+        }
+        finally
+        {
+            if (lockTaken)
+            {
+                try
+                {
+                    ioSemaphore.Release();
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    ioSemaphore.Dispose();
+                }
+                catch
+                {
+                }
+            }
+        }
+    }
+
+    private void ReleaseNativeResourcesCore()
+    {
+        try
+        {
+            instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
+        }
+        catch
+        {
+        }
+
+        if (config.EnableInterrupt)
+        {
+            try
+            {
+                instantDiCtrl.SnapStop();
+            }
+            catch
+            {
+            }
+        }
+
+        try
+        {
+            instantDiCtrl.Cleanup();
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            instantDoCtrl.Cleanup();
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            instantDiCtrl.Dispose();
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            instantDoCtrl.Dispose();
+        }
+        catch
+        {
+        }
     }
 
     private ulong ReadDiPortMaskCore()
@@ -286,30 +412,58 @@ public sealed class AdvantechIoCardDevice : IoCardBase
 
     private T ExecuteIo<T>(Func<T> operation)
     {
-        ioSemaphore.Wait();
+        ThrowIfUnavailable();
+        bool lockTaken = false;
         try
         {
+            lockTaken = ioSemaphore.Wait(IoOperationWaitTimeout);
+            if (!lockTaken)
+            {
+                throw new TimeoutException("Timed out waiting for Advantech IO operation lock.");
+            }
+
+            ThrowIfUnavailable();
             return operation();
         }
+        catch (DaqException ex)
+        {
+            throw CreateDaqException("Execute Advantech IO operation failed", ex);
+        }
         finally
         {
-            ioSemaphore.Release();
+            if (lockTaken)
+            {
+                ioSemaphore.Release();
+            }
         }
     }
-
     private void ExecuteIo(Action operation)
     {
-        ioSemaphore.Wait();
+        ThrowIfUnavailable();
+        bool lockTaken = false;
         try
         {
+            lockTaken = ioSemaphore.Wait(IoOperationWaitTimeout);
+            if (!lockTaken)
+            {
+                throw new TimeoutException("Timed out waiting for Advantech IO operation lock.");
+            }
+
+            ThrowIfUnavailable();
             operation();
+        }
+        catch (DaqException ex)
+        {
+            throw CreateDaqException("Execute Advantech IO operation failed", ex);
         }
         finally
         {
-            ioSemaphore.Release();
+            if (lockTaken)
+            {
+                ioSemaphore.Release();
+            }
         }
     }
-
     private void OnInstantDiInterrupt(object? sender, DiSnapEventArgs e)
     {
         if (e.SrcNum == config.InterruptChannel / 8)
@@ -326,7 +480,10 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         }
         catch (Exception ex)
         {
-            RaiseErrorOccurred($"Read Advantech DI snapshot after interrupt failed: {ex.Message}", ex);
+            if (!shuttingDown)
+            {
+                RaiseErrorOccurred($"Read Advantech DI snapshot after interrupt failed: {ex.Message}", ex);
+            }
         }
     }
 
@@ -363,7 +520,12 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     private void EnsureReady()
     {
         ThrowIfDisposed();
-        if (!IsConnected)
+        ThrowIfUnavailable();
+    }
+
+    private void ThrowIfUnavailable()
+    {
+        if (shuttingDown || !IsConnected)
         {
             throw new InvalidOperationException("Advantech IO card is not connected.");
         }
@@ -373,9 +535,16 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     {
         if (errorCode != ErrorCode.Success)
         {
-            var fullMessage = $"[{DeviceName}/{DeviceId}] {message}. ErrorCode={errorCode}.";
+            var fullMessage = $"[{DeviceName}/{DeviceId}] {message}. DeviceDescription={config.DeviceDescription}, Model={config.Model}, ErrorCode={errorCode}.";
             RaiseErrorOccurred(fullMessage);
             throw new InvalidOperationException(fullMessage);
         }
+    }
+
+    private InvalidOperationException CreateDaqException(string operation, DaqException exception)
+    {
+        var fullMessage = $"[{DeviceName}/{DeviceId}] {operation}. DeviceDescription={config.DeviceDescription}, Model={config.Model}. {exception.Message}";
+        RaiseErrorOccurred(fullMessage, exception);
+        return new InvalidOperationException(fullMessage, exception);
     }
 }

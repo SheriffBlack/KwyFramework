@@ -7,31 +7,5 @@
         <Setter Property="Fill" Value="{DynamicResource ControlBorderBrush}" />
     </Style>
 
-    <Style
-        x:Key="BreathingEllipseStyle"
-        BasedOn="{StaticResource DefaultEllipseStyle}"
-        TargetType="Ellipse">
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect
-                    BlurRadius="8"
-                    Opacity="0.45"
-                    ShadowDepth="0"
-                    Color="{Binding Fill.Color, RelativeSource={RelativeSource AncestorType={x:Type Ellipse}}}" />
-            </Setter.Value>
-        </Setter>
-        <Style.Triggers>
-            <EventTrigger RoutedEvent="Loaded">
-                <BeginStoryboard>
-                    <Storyboard AutoReverse="True" RepeatBehavior="Forever">
-                        <DoubleAnimation
-                            Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
-                            From="0.35"
-                            To="1"
-                            Duration="0:0:1.2" />
-                    </Storyboard>
-                </BeginStoryboard>
-            </EventTrigger>
-        </Style.Triggers>
-    </Style>
+
 </ResourceDictionary>

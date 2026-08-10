@@ -19,6 +19,12 @@ public class DialogService : IDialogService
 
     public void Show(string name, IDialogParameters? parameters = null, Action<IDialogResult>? callback = null)
     {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.BeginInvoke(() => Show(name, parameters, callback));
+            return;
+        }
         // 1. 【极致性能】：O(1) 极速拉取 View (抛弃反射扫包)
         var view = _serviceProvider.GetRequiredKeyedService<FrameworkElement>(name);
 
@@ -122,6 +128,11 @@ public class DialogService : IDialogService
 
     public Task<IDialogResult> ShowDialogAsync(string name, IDialogParameters? parameters = null)
     {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+        {
+            return dispatcher.InvokeAsync(() => ShowDialogAsync(name, parameters)).Task.Unwrap();
+        }
         var tcs = new TaskCompletionSource<IDialogResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         var ownerWindow = Application.Current?.MainWindow;
 

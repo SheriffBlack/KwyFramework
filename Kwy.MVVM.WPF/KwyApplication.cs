@@ -1,4 +1,4 @@
-﻿using Kwy.MVVM.Core;
+using Kwy.MVVM.Core;
 using Kwy.MVVM.WPF.Mvvm;
 using Kwy.MVVM.WPF.Permissions;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +13,7 @@ namespace Kwy.MVVM.WPF;
 /// </summary>
 public abstract class KwyApplication : Application
 {
+    private static readonly TimeSpan ServiceProviderDisposeTimeout = TimeSpan.FromSeconds(4);
     /// <summary>
     /// 获取全局的依赖注入服务提供者 (IServiceProvider)。
     /// </summary>
@@ -75,6 +76,9 @@ public abstract class KwyApplication : Application
 
         // 确保 RegionManager 在 Shell 的 Region 控件加载前完成初始化。
         _ = CurrentServiceProvider.GetRequiredService<MVVM.Regions.IRegionManager>();
+
+        // 容器已经可用，但模块还没有开始初始化。启动页等早期 UI 可以在这里显示。
+        OnServiceProviderCreated(CurrentServiceProvider);
 
         // 7. 初始化非按需模块。按需模块由 IModuleManager.LoadModule 显式激活。
         var moduleManager = CurrentServiceProvider.GetRequiredService<Modularity.IModuleManager>();
@@ -235,6 +239,12 @@ public abstract class KwyApplication : Application
     protected abstract void RegisterTypes(IServiceCollection services);
 
     /// <summary>
+    /// ServiceProvider 创建完成后的回调。此时模块尚未初始化，适合显示启动页或读取启动期共享状态。
+    /// </summary>
+    protected virtual void OnServiceProviderCreated(IServiceProvider serviceProvider)
+    { }
+
+    /// <summary>
     /// 派生类必须实现此方法以创建应用程序的主窗体 (Shell)。
     /// </summary>
     protected abstract Window CreateShell();
@@ -257,15 +267,43 @@ public abstract class KwyApplication : Application
         Core.KwyContainer.Current = null;
         Permission.DefaultPermissionService = null;
 
-        if (CurrentServiceProvider is IDisposable disposable)
+        IServiceProvider? provider = CurrentServiceProvider;
+        CurrentServiceProvider = null;
+        DisposeServiceProviderWithTimeout(provider);
+        base.OnExit(e);
+    }
+
+    private static void DisposeServiceProviderWithTimeout(IServiceProvider? provider)
+    {
+        if (provider == null)
         {
-            disposable.Dispose();
+            return;
         }
 
-        CurrentServiceProvider = null;
-        base.OnExit(e);
+        try
+        {
+            Task disposeTask = Task.Run(async () =>
+            {
+                if (provider is IAsyncDisposable asyncDisposable)
+                {
+                    await asyncDisposable.DisposeAsync().AsTask().ConfigureAwait(false);
+                    return;
+                }
+
+                if (provider is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            });
+
+            _ = disposeTask.Wait(ServiceProviderDisposeTimeout);
+        }
+        catch
+        {
+        }
     }
 
     private static IPermissionService? ResolvePermissionService(IServiceProvider serviceProvider)
         => serviceProvider.GetService<IPermissionService>();
 }
+

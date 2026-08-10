@@ -95,8 +95,8 @@
                                 Height="{TemplateBinding IconSize}"
                                 Margin="0,0,8,0"
                                 VerticalAlignment="Center"
-                                Foreground="{TemplateBinding Foreground}"
-                                Content="{TemplateBinding Icon}">
+                                Content="{TemplateBinding Icon}"
+                                Foreground="{TemplateBinding Foreground}">
                                 <ContentControl.Resources>
                                     <DataTemplate DataType="{x:Type system:String}">
                                         <TextBlock
@@ -107,9 +107,7 @@
                                     </DataTemplate>
                                     <DataTemplate DataType="{x:Type Geometry}">
                                         <Viewbox>
-                                            <Path
-                                                Data="{Binding}"
-                                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type ContentControl}}}" />
+                                            <Path Data="{Binding}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type ContentControl}}}" />
                                         </Viewbox>
                                     </DataTemplate>
                                 </ContentControl.Resources>

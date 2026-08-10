@@ -45,13 +45,25 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="PART_ButtonBorder" Property="Background" Value="{DynamicResource ControlHoverBackgroundBrush}" />
+                            <Setter TargetName="PART_ButtonBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="5"
+                                        Direction="315"
+                                        Opacity="0.14"
+                                        ShadowDepth="1"
+                                        Color="{DynamicResource DropShadowColor}" />
+                                </Setter.Value>
+                            </Setter>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="PART_ButtonBorder" Property="Background" Value="{DynamicResource ControlPressedBackgroundBrush}" />
                             <Setter TargetName="PART_ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlFocusedBorderBrush}" />
+                            <Setter TargetName="PART_ButtonBorder" Property="Effect" Value="{x:Null}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="PART_ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlFocusedBorderBrush}" />
+                            <Setter TargetName="PART_ButtonBorder" Property="Effect" Value="{x:Null}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="PART_ButtonBorder" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
@@ -99,7 +111,7 @@
         x:Key="ButtonContentVerticalStyle"
         BasedOn="{StaticResource DefaultButtonStyle}"
         TargetType="Button">
-        <Setter Property="Width" Value="80" />
+        <Setter Property="MinWidth" Value="80" />
         <Setter Property="ContentTemplate">
             <Setter.Value>
                 <DataTemplate>
@@ -139,7 +151,7 @@
         BasedOn="{StaticResource DefaultButtonStyle}"
         TargetType="Button">
         <Setter Property="Height" Value="40" />
-        <Setter Property="Width" Value="120" />
+        <Setter Property="MinWidth" Value="120" />
         <Setter Property="ContentTemplate">
             <Setter.Value>
                 <DataTemplate>
@@ -147,7 +159,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="8" />
-                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <ContentPresenter
                             Grid.Column="0"

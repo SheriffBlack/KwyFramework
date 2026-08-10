@@ -5,9 +5,10 @@ using Kwy.MVVM.Messaging;
 using Kwy.MVVM.Regions;
 using Kwy.UI;
 using Kwy.UI.WPF.Components.Dialogs;
+using KwyTemplate.App.Models;
+using KwyTemplate.App.Services;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Navigation;
-using KwyTemplate.Device;
 using KwyTemplate.Security.Authentication;
 using KwyTemplate.Security.Identity;
 using KwyTemplate.Shell.Models;
@@ -24,6 +25,9 @@ public class MainWindowViewModel : BindableBase
     private readonly ICurrentUserService currentUserService;
     private readonly IDeviceRegistry deviceRegistry;
     private readonly IMessageDispatcher messageDispatcher;
+    private readonly ProgramSettingsStore programSettingsStore;
+    private readonly ILocalizationService localizationService;
+    private bool isInitializingLanguage;
     private IPlcDevice? subscribedMainPlc;
 
     private TimeSpan lastTotalProcessorTime;
@@ -37,7 +41,9 @@ public class MainWindowViewModel : BindableBase
         IAuthenticationDialogService authenticationDialogService,
         ICurrentUserService currentUserService,
         IDeviceRegistry deviceRegistry,
-        IMessageDispatcher messageDispatcher)
+        IMessageDispatcher messageDispatcher,
+        ProgramSettingsStore programSettingsStore,
+        ILocalizationService localizationService)
     {
         this.regionManager = regionManager;
         this.dialogMessageService = dialogMessageService;
@@ -45,15 +51,16 @@ public class MainWindowViewModel : BindableBase
         this.currentUserService = currentUserService;
         this.deviceRegistry = deviceRegistry ?? throw new ArgumentNullException(nameof(deviceRegistry));
         this.messageDispatcher = messageDispatcher ?? throw new ArgumentNullException(nameof(messageDispatcher));
+        this.programSettingsStore = programSettingsStore ?? throw new ArgumentNullException(nameof(programSettingsStore));
+        this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
         this.currentUserService.CurrentUserChanged += OnCurrentUserChanged;
-
+        this.localizationService.LanguageChanged += OnLanguageChanged;
 
         UpdateCurrentTime();
         UpdateCurrentUserDisplayName();
         UpdateMainPlcConnectionState();
 
-        // 默认简体中文
-        SelectedLanguage = Languages.FirstOrDefault();
+        InitializeSelectedLanguage();
 
         using (var process = Process.GetCurrentProcess())
         {
@@ -66,6 +73,10 @@ public class MainWindowViewModel : BindableBase
     }
 
     #region Properties
+
+    public string AppTitle => programSettingsStore.Current.Title;
+
+    public string CopyrightText => programSettingsStore.Current.Copyright;
 
     private float occupyMemory;
 
@@ -99,6 +110,13 @@ public class MainWindowViewModel : BindableBase
         private set { SetProperty(ref currentUserDisplayName, value); }
     }
 
+    private bool isCurrentUserOperator = true;
+
+    public bool IsCurrentUserOperator
+    {
+        get { return isCurrentUserOperator; }
+        private set { SetProperty(ref isCurrentUserOperator, value); }
+    }
     private bool isMainPlcConnected;
 
     public bool IsMainPlcConnected
@@ -157,7 +175,9 @@ public class MainWindowViewModel : BindableBase
         CurrentUser? user = await authenticationDialogService.ShowLoginAsync(DestroyToken);
         if (user != null)
         {
-            await dialogMessageService.ShowInfoAsync($"当前用户：{user.DisplayName}", "登录成功");
+            await dialogMessageService.ShowInfoAsync(
+                TF("Security.Login.CurrentUserMessage", "当前用户：{0}", GetCurrentUserDisplayName(user)),
+                T("Security.Login.SuccessTitle", "登录成功"));
         }
     }
 
@@ -271,9 +291,60 @@ public class MainWindowViewModel : BindableBase
     private void UpdateCurrentUserDisplayName(CurrentUser? user = null)
     {
         user ??= currentUserService.CurrentUser;
-        CurrentUserDisplayName = user == null
-            ? "操作员 (Operator)"
-            : $"{user.DisplayName} ({user.Level})";
+        CurrentUserDisplayName = GetCurrentUserDisplayName(user);
+        IsCurrentUserOperator = user?.Level <= SecurityUserLevel.Operator;
+    }
+
+    private string GetCurrentUserDisplayName(CurrentUser? user)
+    {
+        if (user == null)
+        {
+            return GetRoleDisplayName(SecurityUserLevel.Operator);
+        }
+
+        return GetRoleDisplayName(user.Level);
+    }
+
+    private string GetRoleDisplayName(SecurityUserLevel level)
+        => level switch
+        {
+            SecurityUserLevel.Operator => T("Security.Role.Operator", "操作员"),
+            SecurityUserLevel.Engineer => T("Security.Role.Engineer", "工程师"),
+            SecurityUserLevel.Admin => T("Security.Role.Admin", "管理员"),
+            _ => level.ToString()
+        };
+
+    private void OnLanguageChanged(object? sender, LanguageType languageType)
+    {
+        RunOnUi(() => UpdateCurrentUserDisplayName());
+    }
+
+    private string T(string key, string fallback)
+    {
+        string text = localizationService.GetString(key);
+        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
+    }
+
+    private string TF(string key, string fallback, params object[] args)
+        => string.Format(System.Globalization.CultureInfo.CurrentCulture, T(key, fallback), args);
+
+    private void InitializeSelectedLanguage()
+    {
+        isInitializingLanguage = true;
+        try
+        {
+            LanguageType language = programSettingsStore.Current.Language;
+            SelectedLanguage = Languages.FirstOrDefault(item => item.LanguageType == language)
+                ?? Languages.FirstOrDefault(item => item.LanguageType == LanguageType.ZH_CN);
+            if (SelectedLanguage != null)
+            {
+                localizationService.Apply(SelectedLanguage.LanguageType);
+            }
+        }
+        finally
+        {
+            isInitializingLanguage = false;
+        }
     }
 
     private async void OnSelectedLanguageChanged()
@@ -283,18 +354,16 @@ public class MainWindowViewModel : BindableBase
             return;
         }
 
-        if (SelectedLanguage.LanguageType == LanguageType.ZH_CN)
+        localizationService.Apply(SelectedLanguage.LanguageType);
+
+        if (isInitializingLanguage || programSettingsStore.Current.Language == SelectedLanguage.LanguageType)
         {
             return;
         }
 
-        LanguageModel unsupportedLanguage = SelectedLanguage;
-        await dialogMessageService.ShowInfoAsync("当前阶段仅支持简体中文，其他语言将在后续版本接入。", "语言切换");
-
-        if (SelectedLanguage == unsupportedLanguage)
-        {
-            SelectedLanguage = Languages.FirstOrDefault(x => x.LanguageType == LanguageType.ZH_CN);
-        }
+        ProgramSettingsModel settings = programSettingsStore.Current;
+        settings.Language = SelectedLanguage.LanguageType;
+        await programSettingsStore.SaveAsync(settings).ConfigureAwait(false);
     }
 
     private void OnMainPlcStateChanged(object? sender, EventArgs e)
@@ -307,7 +376,7 @@ public class MainWindowViewModel : BindableBase
         IPlcDevice? mainPlc;
         try
         {
-            if (!deviceRegistry.TryGetDevice<IPlcDevice>(DeviceIds.MainPlc, out mainPlc))
+            if (!deviceRegistry.TryGetDevice<IPlcDevice>("PLC.Main", out mainPlc))
             {
                 ClearMainPlcSubscription();
                 IsMainPlcConnected = false;
@@ -334,10 +403,11 @@ public class MainWindowViewModel : BindableBase
             subscribedMainPlc.StateChanged += OnMainPlcStateChanged;
         }
 
-        IsMainPlcConnected = mainPlc.IsConnected;
-        MainPlcConnectionState = mainPlc.State.ToString();
+        bool isConnected = mainPlc.IsConnected;
+        string stateText = mainPlc.State.ToString();
+        IsMainPlcConnected = isConnected;
+        MainPlcConnectionState = stateText;
     }
-
     private void ClearMainPlcSubscription()
     {
         if (subscribedMainPlc == null)
@@ -365,6 +435,7 @@ public class MainWindowViewModel : BindableBase
         if (disposing)
         {
             currentUserService.CurrentUserChanged -= OnCurrentUserChanged;
+            localizationService.LanguageChanged -= OnLanguageChanged;
             CompositionTarget.Rendering -= OnRendering;
             ClearMainPlcSubscription();
         }
@@ -374,4 +445,9 @@ public class MainWindowViewModel : BindableBase
 
     private sealed record StatusSnapshot(float MemoryMB, float CpuPercent);
 }
+
+
+
+
+
 

@@ -48,6 +48,8 @@ public static class KwyParameterMetadataReader
             InputType = metadata.InputType,
             ItemsSource = metadata.ItemsSource,
             GroupWidth = metadata.GroupWidth,
+            InlineGroup = metadata.InlineGroup,
+            EditorWidth = metadata.EditorWidth,
             IsReadOnly = metadata.IsReadOnly,
             IsBrowsable = metadata.IsBrowsable,
             Minimum = metadata.Minimum,

@@ -1,4 +1,4 @@
-namespace Kwy.Device.Abstractions.PLC;
+﻿namespace Kwy.Device.Abstractions.PLC;
 
 public interface IPlcReader
 {
@@ -9,6 +9,12 @@ public interface IPlcReader
     Task<short[]> ReadInt16ArrayAsync(string address, ushort count, CancellationToken cancellationToken = default);
     Task<int[]> ReadInt32ArrayAsync(string address, ushort count, CancellationToken cancellationToken = default);
     Task<float[]> ReadFloatArrayAsync(string address, ushort count, CancellationToken cancellationToken = default);
+}
+
+public interface IModbusPlcReader
+{
+    Task<bool> ReadCoilAsync(string address, CancellationToken cancellationToken = default);
+    Task<bool> ReadDiscreteAsync(string address, CancellationToken cancellationToken = default);
 }
 
 public interface IPlcWriter

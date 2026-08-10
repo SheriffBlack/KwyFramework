@@ -24,16 +24,16 @@
     <Color x:Key="SwitchCheckedColor">#00BFFF</Color>
 
     <!--  OK、NG、无料颜色  -->
-    <Color x:Key="OKColor">#90ee90</Color>
-    <Color x:Key="NGColor">#f09090</Color>
+    <Color x:Key="OKColor">#D7F4E3</Color>
+    <Color x:Key="NGColor">#FAD6D6</Color>
     <Color x:Key="NoMaterialColor">#D3D3D3</Color>
 
     <Color x:Key="EditColor">#1976D2</Color>
     <Color x:Key="DeleteColor">#DC3545</Color>
 
     <!--  连接、未连接  -->
-    <Color x:Key="ConnectColor">#4CAF50</Color>
-    <Color x:Key="DisconnectColor">#FF5252</Color>
+    <Color x:Key="ConnectColor">#2E7D55</Color>
+    <Color x:Key="DisconnectColor">#C2413B</Color>
 
     <!--  黑底字体颜色  -->
     <Color x:Key="ForegroundBlackBaseColor">#E2E8F0</Color>
@@ -47,10 +47,14 @@
 
     <!--  高亮或状态提示色  -->
     <Color x:Key="DisabledTextColor">#A0A0A0</Color>
-    <Color x:Key="SuccessColor">#098309</Color>
-    <Color x:Key="WarningColor">#FFC107</Color>
-    <Color x:Key="ErrorColor">#AA0000</Color>
-    <Color x:Key="InfoColor">#2196F3</Color>
+    <Color x:Key="SuccessColor">#2E7D55</Color>
+    <Color x:Key="WarningColor">#B7791F</Color>
+    <Color x:Key="ErrorColor">#C2413B</Color>
+    <Color x:Key="InfoColor">#2563EB</Color>
+    <Color x:Key="StatusSuccessBackgroundColor">#D7F4E3</Color>
+    <Color x:Key="StatusWarningBackgroundColor">#FFF1C2</Color>
+    <Color x:Key="StatusErrorBackgroundColor">#FAD6D6</Color>
+    <Color x:Key="StatusInfoBackgroundColor">#DCEBFF</Color>
     <Color x:Key="HighlightColor">#FFEB3B</Color>
     <Color x:Key="FallbackBrushColor">#D3D3D3</Color>
     <Color x:Key="DropTargetBackgroundColor">#ADD8E6</Color>
@@ -59,6 +63,9 @@
     <Color x:Key="SelectionBackgroundColor">#1E1E90FF</Color>
     <Color x:Key="ControlSelectedBackgroundColor">#DCEBFF</Color>
     <Color x:Key="ControlSelectedForegroundColor">#0F2742</Color>
+
+    <!--  导航区域背景色  -->
+    <Color x:Key="MainNavigationBackgroundColor">#EEF4FA</Color>
 
     <!--  基础颜色画笔  -->
     <SolidColorBrush x:Key="TransparentBrush" Color="{DynamicResource TransparentColor}" />
@@ -99,6 +106,10 @@
     <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource WarningColor}" />
     <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ErrorColor}" />
     <SolidColorBrush x:Key="InfoBrush" Color="{DynamicResource InfoColor}" />
+    <SolidColorBrush x:Key="StatusSuccessBackgroundBrush" Color="{DynamicResource StatusSuccessBackgroundColor}" />
+    <SolidColorBrush x:Key="StatusWarningBackgroundBrush" Color="{DynamicResource StatusWarningBackgroundColor}" />
+    <SolidColorBrush x:Key="StatusErrorBackgroundBrush" Color="{DynamicResource StatusErrorBackgroundColor}" />
+    <SolidColorBrush x:Key="StatusInfoBackgroundBrush" Color="{DynamicResource StatusInfoBackgroundColor}" />
     <SolidColorBrush x:Key="HighlightBrush" Color="{DynamicResource HighlightColor}" />
     <SolidColorBrush x:Key="FallbackBrush" Color="{DynamicResource FallbackBrushColor}" />
     <SolidColorBrush x:Key="DropTargetBackgroundBrush" Color="{DynamicResource DropTargetBackgroundColor}" />
@@ -107,6 +118,7 @@
     <SolidColorBrush x:Key="SelectionBackgroundBrush" Color="{DynamicResource SelectionBackgroundColor}" />
     <SolidColorBrush x:Key="ControlSelectedBackgroundBrush" Color="{DynamicResource ControlSelectedBackgroundColor}" />
     <SolidColorBrush x:Key="ControlSelectedForegroundBrush" Color="{DynamicResource ControlSelectedForegroundColor}" />
+    <SolidColorBrush x:Key="MainNavigationBackgroundBrush" Color="{DynamicResource MainNavigationBackgroundColor}" />
 
     <!--  窗口特定颜色  -->
     <Color x:Key="WindowBackgroundColor">#F0F0F0</Color>
@@ -145,3 +157,5 @@
         - SystemXXX: 系统级别颜色
     -->
 </ResourceDictionary>
+
+

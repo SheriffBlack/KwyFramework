@@ -1,23 +1,43 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\HsyLogo.png" />
+    <None Remove="Resources\ImgLoad.jpg" />
+    <None Remove="Resources\InfoHsy.png" />
+    <None Remove="Resources\LogoHsy.png" />
+    <None Remove="Resources\LogoJdl.png" />
+  </ItemGroup>
+
+
+  <ItemGroup>
     <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
+    <ProjectReference Include="..\Kwy.Files\Kwy.Files.csproj" />
     <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF.Charts.OxyPlot\Kwy.UI.WPF.Charts.OxyPlot.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF.Components\Kwy.UI.WPF.Components.csproj" />
     <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
     <ProjectReference Include="..\KwyTemplate.Device\KwyTemplate.Device.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Flow\KwyTemplate.Flow.csproj" />
+    <ProjectReference Include="..\KwyTemplate.MES.Abstract\KwyTemplate.MES.Abstract.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Security\KwyTemplate.Security.csproj" />
   </ItemGroup>
 
+
   <ItemGroup>
-    <Resource Include="Resources\JdlLogo.png" />
+    <Resource Include="Resources\ImgLoad.jpg" />
+    <Resource Include="Resources\InfoHsy.png" />
+    <Resource Include="Resources\LogoHsy.png" />
+    <Resource Include="Resources\LogoJdl.png" />
   </ItemGroup>
 
 </Project>
+
+

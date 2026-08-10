@@ -1,4 +1,5 @@
-﻿using System.Windows;
+using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -20,14 +21,15 @@ public class KwyWindow : Window
     private const string PartRestoreButton = "PART_RestoreButton";
     private const string PartCloseButton = "PART_CloseButton";
 
+    private const int WmGetMinMaxInfo = 0x0024;
+    private const int MonitorDefaultToNearest = 0x00000002;
+
     private UIElement? titleBar;
     private Button? minimizeButton;
     private Button? maximizeButton;
     private Button? restoreButton;
     private Button? closeButton;
-
-    // 保存窗口恢复时的位置和大小
-    private Rect restoreBounds = Rect.Empty;
+    private HwndSource? hwndSource;
 
     static KwyWindow()
     {
@@ -50,9 +52,7 @@ public class KwyWindow : Window
 
     /// <summary>
     /// 获取或设置最大化时是否覆盖任务栏。
-    /// 如果为 true，窗口最大化时会覆盖任务栏（占据整个屏幕）。
-    /// 如果为 false，窗口最大化时会排除任务栏（使用工作区域）。
-    /// 默认值为 false。
+    /// false 使用当前屏幕工作区，true 使用当前屏幕完整区域。
     /// </summary>
     public bool MaximizeOverTaskbar
     {
@@ -68,8 +68,7 @@ public class KwyWindow : Window
             new FrameworkPropertyMetadata(false));
 
     /// <summary>
-    /// 获取或设置窗口是否已最大化到工作区域。
-    /// 这是一个只读的依赖属性，用于样式绑定。
+    /// 获取窗口是否处于系统最大化状态，用于模板切换最大化/还原按钮。
     /// </summary>
     public bool IsMaximizedToWorkArea
     {
@@ -87,10 +86,6 @@ public class KwyWindow : Window
     public static readonly DependencyProperty IsMaximizedToWorkAreaProperty =
         IsMaximizedToWorkAreaPropertyKey.DependencyProperty;
 
-    /// <summary>
-    /// 获取或设置是否显示最小化按钮。
-    /// 默认值为 true。
-    /// </summary>
     public bool ShowMinimizeButton
     {
         get => (bool)GetValue(ShowMinimizeButtonProperty);
@@ -104,10 +99,6 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(true));
 
-    /// <summary>
-    /// 获取或设置是否显示最大化按钮。
-    /// 默认值为 true。
-    /// </summary>
     public bool ShowMaximizeButton
     {
         get => (bool)GetValue(ShowMaximizeButtonProperty);
@@ -121,10 +112,6 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(true));
 
-    /// <summary>
-    /// 获取或设置是否显示关闭按钮。
-    /// 默认值为 true。
-    /// </summary>
     public bool ShowCloseButton
     {
         get => (bool)GetValue(ShowCloseButtonProperty);
@@ -138,10 +125,6 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(true));
 
-    /// <summary>
-    /// 获取或设置是否显示用户切换按钮。
-    /// 默认值为 false，避免窗口样式影响不需要用户入口的应用。
-    /// </summary>
     public bool ShowUserButton
     {
         get => (bool)GetValue(ShowUserButtonProperty);
@@ -155,9 +138,6 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(false));
 
-    /// <summary>
-    /// 获取或设置用户切换按钮命令。
-    /// </summary>
     public ICommand? UserCommand
     {
         get => (ICommand?)GetValue(UserCommandProperty);
@@ -171,9 +151,6 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(null));
 
-    /// <summary>
-    /// 获取或设置用户切换按钮命令参数。
-    /// </summary>
     public object? UserCommandParameter
     {
         get => GetValue(UserCommandParameterProperty);
@@ -187,10 +164,6 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(null));
 
-    /// <summary>
-    /// 获取或设置标题栏高度。
-    /// 默认值为 40。
-    /// </summary>
     public double TitleBarHeight
     {
         get => (double)GetValue(TitleBarHeightProperty);
@@ -217,10 +190,6 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(null));
 
-    /// <summary>
-    /// 获取或设置窗口图标。
-    /// 支持字符串类型（字体图标）、Geometry 类型（路径图标）和 ImageSource 类型（图片）。
-    /// </summary>
     public new object? Icon
     {
         get => GetValue(IconProperty);
@@ -234,13 +203,48 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(null));
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        hwndSource?.AddHook(WndProc);
+        SyncMaximizedState();
+    }
+
+    protected override void OnStateChanged(EventArgs e)
+    {
+        base.OnStateChanged(e);
+        SyncMaximizedState();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        hwndSource?.RemoveHook(WndProc);
+        hwndSource = null;
+        base.OnClosed(e);
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WmGetMinMaxInfo)
+        {
+            ApplyMinMaxInfo(hwnd, lParam);
+            handled = true;
+        }
+
+        return IntPtr.Zero;
+    }
+
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
-
         AttachDragMove();
         AttachWindowButtons();
+        SyncMaximizedState();
     }
+
+    private void SyncMaximizedState()
+        => IsMaximizedToWorkArea = WindowState == WindowState.Maximized;
 
     private void AttachDragMove()
     {
@@ -259,60 +263,53 @@ public class KwyWindow : Window
 
     private void TitleBarOnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // 检查是否点击在交互元素上（优化：快速返回）
         if (IsClickOnInteractiveElement(e.OriginalSource))
         {
             return;
         }
 
-        // 双击切换窗口状态
         if (e.ClickCount == 2)
         {
             ToggleWindowState();
             return;
         }
 
-        // DragMove() 必须在 MouseDown 事件中调用才能正常工作
-        // 优化：使用 try-catch 避免异常，但不捕获鼠标（让 DragMove 内部处理）
         try
         {
             DragMove();
         }
         catch
         {
-            // 忽略拖动异常（例如窗口未激活等情况）
+            // 忽略拖动异常，例如鼠标状态被系统抢占。
         }
     }
 
     private void ToggleWindowState()
     {
-        if (IsMaximizedToWorkArea)
+        if (WindowState == WindowState.Maximized)
         {
-            RestoreFromWorkArea();
+            SystemCommands.RestoreWindow(this);
         }
         else
         {
-            MaximizeToWorkArea();
+            SystemCommands.MaximizeWindow(this);
         }
     }
 
     private static bool IsClickOnInteractiveElement(object source)
     {
-        // 快速检查：如果源本身就是交互元素，直接返回
         if (source is Button or ToggleButton or TextBox or ComboBox or ComboBoxItem)
         {
             return true;
         }
 
-        // 遍历视觉树查找交互元素（限制深度以提高性能）
         if (source is DependencyObject dependencyObject)
         {
             var current = dependencyObject;
-            var maxDepth = 5; // 减少遍历深度，提高性能
+            var maxDepth = 5;
 
             while (current != null && maxDepth-- > 0)
             {
-                // 使用 switch 表达式提高性能
                 switch (current)
                 {
                     case Button:
@@ -320,13 +317,12 @@ public class KwyWindow : Window
                     case ComboBoxItem:
                     case Slider:
                     case ScrollBar:
-                    case ToggleButton: // 包括 CheckBox、RadioButton
+                    case ToggleButton:
                     case TextBox:
                     case Viewbox:
                         return true;
                 }
 
-                // 检查是否有输入绑定（通常表示可交互）
                 if (current is FrameworkElement element && element.InputBindings.Count > 0)
                 {
                     return true;
@@ -349,106 +345,41 @@ public class KwyWindow : Window
 
     private void OnMinimizeClick(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
 
-    private void OnMaximizeClick(object sender, RoutedEventArgs e) => MaximizeToWorkArea();
+    private void OnMaximizeClick(object sender, RoutedEventArgs e) => SystemCommands.MaximizeWindow(this);
 
-    private void OnRestoreClick(object sender, RoutedEventArgs e) => RestoreFromWorkArea();
+    private void OnRestoreClick(object sender, RoutedEventArgs e) => SystemCommands.RestoreWindow(this);
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => SystemCommands.CloseWindow(this);
 
-    private void MaximizeToWorkArea()
+    private void ApplyMinMaxInfo(IntPtr hwnd, IntPtr lParam)
     {
-        // 如果已经最大化，直接返回
-        if (IsMaximizedToWorkArea)
+        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        if (monitor == IntPtr.Zero)
         {
             return;
         }
 
-        // 保存当前窗口位置和大小
-        if (restoreBounds == Rect.Empty)
+        var monitorInfo = new MONITORINFO
         {
-            restoreBounds = new Rect(Left, Top, Width, Height);
-        }
+            cbSize = Marshal.SizeOf<MONITORINFO>()
+        };
 
-        // 保持 WindowState = Normal，但手动设置窗口位置和大小
-        // 这样可以避免 WPF 窗口管理系统覆盖我们的设置
-        WindowState = WindowState.Normal;
-
-        ApplyWindowBounds(GetMaximizedBounds());
-
-        IsMaximizedToWorkArea = true;
-    }
-
-    private void RestoreFromWorkArea()
-    {
-        // 如果已经恢复，直接返回
-        if (!IsMaximizedToWorkArea)
+        if (!GetMonitorInfo(monitor, ref monitorInfo))
         {
             return;
         }
 
-        // 恢复窗口位置和大小
-        if (restoreBounds != Rect.Empty)
-        {
-            WindowState = WindowState.Normal;
-            ApplyWindowBounds(restoreBounds);
-        }
+        RECT target = MaximizeOverTaskbar ? monitorInfo.rcMonitor : monitorInfo.rcWork;
+        RECT monitorRect = monitorInfo.rcMonitor;
+        var minMaxInfo = Marshal.PtrToStructure<MINMAXINFO>(lParam);
 
-        IsMaximizedToWorkArea = false;
+        minMaxInfo.ptMaxPosition.x = target.Left - monitorRect.Left;
+        minMaxInfo.ptMaxPosition.y = target.Top - monitorRect.Top;
+        minMaxInfo.ptMaxSize.x = target.Right - target.Left;
+        minMaxInfo.ptMaxSize.y = target.Bottom - target.Top;
+
+        Marshal.StructureToPtr(minMaxInfo, lParam, true);
     }
-
-    private Rect GetMaximizedBounds()
-    {
-        if (MaximizeOverTaskbar)
-        {
-            return new Rect(
-                SystemParameters.VirtualScreenLeft,
-                SystemParameters.VirtualScreenTop,
-                SystemParameters.VirtualScreenWidth,
-                SystemParameters.VirtualScreenHeight);
-        }
-
-        return SystemParameters.WorkArea;
-    }
-
-    private void ApplyWindowBounds(Rect bounds)
-    {
-        var hwnd = new WindowInteropHelper(this).Handle;
-        if (hwnd == IntPtr.Zero)
-        {
-            Left = bounds.Left;
-            Top = bounds.Top;
-            Width = bounds.Width;
-            Height = bounds.Height;
-            return;
-        }
-
-        var source = PresentationSource.FromVisual(this);
-        var transformToDevice = source?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
-        var topLeft = transformToDevice.Transform(new Point(bounds.Left, bounds.Top));
-        var bottomRight = transformToDevice.Transform(new Point(bounds.Right, bounds.Bottom));
-
-        SetWindowPos(
-            hwnd,
-            IntPtr.Zero,
-            (int)Math.Round(topLeft.X),
-            (int)Math.Round(topLeft.Y),
-            (int)Math.Round(bottomRight.X - topLeft.X),
-            (int)Math.Round(bottomRight.Y - topLeft.Y),
-            SwpNoZOrder | SwpNoActivate);
-    }
-
-    private const uint SwpNoZOrder = 0x0004;
-    private const uint SwpNoActivate = 0x0010;
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
-    private static extern bool SetWindowPos(
-        IntPtr hWnd,
-        IntPtr hWndInsertAfter,
-        int x,
-        int y,
-        int cx,
-        int cy,
-        uint flags);
 
     private void AttachButton(ref Button? buttonField, string partName, RoutedEventHandler handler, bool attach)
     {
@@ -466,5 +397,46 @@ public class KwyWindow : Window
                 button.Click += handler;
             }
         }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, int dwFlags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int x;
+        public int y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MINMAXINFO
+    {
+        public POINT ptReserved;
+        public POINT ptMaxSize;
+        public POINT ptMaxPosition;
+        public POINT ptMinTrackSize;
+        public POINT ptMaxTrackSize;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public int dwFlags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
     }
 }

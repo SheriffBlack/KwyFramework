@@ -1,4 +1,4 @@
-﻿using Kwy.Communicate.Abstractions.Enums;
+using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 
 namespace Kwy.Device.Abstractions;
@@ -37,6 +37,11 @@ public interface IDevice : IDisposable, IAsyncDisposable
     /// 错误发生事件
     /// </summary>
     event EventHandler<ErrorOccurredEventArgs> ErrorOccurred;
+
+    /// <summary>
+    /// 设备操作事件，用于记录读写、参数下发、触发等非生命周期动作。
+    /// </summary>
+    event EventHandler<DeviceOperationEventArgs> OperationOccurred;
 
     /// <summary>
     /// 异步连接设备

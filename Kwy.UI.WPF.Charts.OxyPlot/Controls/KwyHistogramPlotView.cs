@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Media;
 using Kwy.UI.WPF.Charts.Abstractions;
 
@@ -14,6 +14,18 @@ public class KwyHistogramPlotView : global::OxyPlot.Wpf.PlotView
 
     public static readonly DependencyProperty FrequencyAxisTitleProperty =
         DependencyProperty.Register(nameof(FrequencyAxisTitle), typeof(string), typeof(KwyHistogramPlotView), new PropertyMetadata("Frequency", OnOptionChanged));
+
+    public static readonly DependencyProperty UpperLimitLabelProperty =
+        DependencyProperty.Register(nameof(UpperLimitLabel), typeof(string), typeof(KwyHistogramPlotView), new PropertyMetadata("上限", OnOptionChanged));
+
+    public static readonly DependencyProperty LowerLimitLabelProperty =
+        DependencyProperty.Register(nameof(LowerLimitLabel), typeof(string), typeof(KwyHistogramPlotView), new PropertyMetadata("下限", OnOptionChanged));
+
+    public static readonly DependencyProperty TargetValueLabelProperty =
+        DependencyProperty.Register(nameof(TargetValueLabel), typeof(string), typeof(KwyHistogramPlotView), new PropertyMetadata("标准值", OnOptionChanged));
+
+    public static readonly DependencyProperty MinBinWidthProperty =
+        DependencyProperty.Register(nameof(MinBinWidth), typeof(double), typeof(KwyHistogramPlotView), new PropertyMetadata(0.01, OnOptionChanged));
 
     public static readonly DependencyProperty OrientationProperty =
         DependencyProperty.Register(nameof(Orientation), typeof(PlotOrientation), typeof(KwyHistogramPlotView), new PropertyMetadata(PlotOrientation.Vertical, OnRecreateRequired));
@@ -46,10 +58,22 @@ public class KwyHistogramPlotView : global::OxyPlot.Wpf.PlotView
         set => SetValue(FrequencyAxisTitleProperty, value);
     }
 
+    public string UpperLimitLabel { get => (string)GetValue(UpperLimitLabelProperty); set => SetValue(UpperLimitLabelProperty, value); }
+
+    public string LowerLimitLabel { get => (string)GetValue(LowerLimitLabelProperty); set => SetValue(LowerLimitLabelProperty, value); }
+
+    public string TargetValueLabel { get => (string)GetValue(TargetValueLabelProperty); set => SetValue(TargetValueLabelProperty, value); }
+
     public PlotOrientation Orientation
     {
         get => (PlotOrientation)GetValue(OrientationProperty);
         set => SetValue(OrientationProperty, value);
+    }
+
+    public double MinBinWidth
+    {
+        get => (double)GetValue(MinBinWidthProperty);
+        set => SetValue(MinBinWidthProperty, value);
     }
 
     public void AddChannel(string name, Color? color = null) => Chart.AddChannel(name, color);
@@ -69,6 +93,11 @@ public class KwyHistogramPlotView : global::OxyPlot.Wpf.PlotView
             view.Chart.Title = view.Title;
             view.Chart.ValueAxisTitle = view.ValueAxisTitle;
             view.Chart.FrequencyAxisTitle = view.FrequencyAxisTitle;
+            view.Chart.UpperLimitLabel = view.UpperLimitLabel;
+            view.Chart.LowerLimitLabel = view.LowerLimitLabel;
+            view.Chart.TargetValueLabel = view.TargetValueLabel;
+            view.Chart.MinBinWidth = view.MinBinWidth;
+            view.Chart.RefreshLimitLabels();
         }
     }
 
@@ -88,8 +117,13 @@ public class KwyHistogramPlotView : global::OxyPlot.Wpf.PlotView
             Title = Title,
             Orientation = Orientation,
             ValueAxisTitle = ValueAxisTitle,
-            FrequencyAxisTitle = FrequencyAxisTitle
+            FrequencyAxisTitle = FrequencyAxisTitle,
+            MinBinWidth = MinBinWidth
         });
+        Chart.AddChannel(GetDefaultChannelName(Title));
+        Chart.UpperLimitLabel = UpperLimitLabel;
+        Chart.LowerLimitLabel = LowerLimitLabel;
+        Chart.TargetValueLabel = TargetValueLabel;
         Model = Chart.Model;
         Controller = Chart.Controller;
         Chart.IsActive = IsLoaded && IsVisible;
@@ -99,4 +133,9 @@ public class KwyHistogramPlotView : global::OxyPlot.Wpf.PlotView
     {
         Chart.IsActive = IsLoaded && IsVisible;
     }
+
+    private static string GetDefaultChannelName(string? title)
+        => string.IsNullOrWhiteSpace(title) ? "Default" : title;
 }
+
+

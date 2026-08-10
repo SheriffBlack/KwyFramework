@@ -1,62 +1,38 @@
-# Kwy.Licensing.Abstractions
+﻿# Kwy.Licensing.Abstractions
 
-`Kwy.Licensing.Abstractions` 定义 Kwy 框架的授权公共抽象。它不引用任何商业 SDK，也不绑定具体密码狗厂商。
+`Kwy.Licensing.Abstractions` 是 Kwy 框架的极薄授权契约包。
 
-授权分为两类：
+它只解决一件事：在应用启动阶段统一激活第三方商业 SDK，例如 HslCommunication、HALCON、Cimetrix、相机 SDK 等。
 
-- 第三方 SDK 激活：例如 HslCommunication、HALCON、Cimetrix。
-- 软件/功能授权：例如整机软件需要密码狗才能运行，或某些功能需要授权后才能使用。
+## 设计边界
 
-## SDK 激活
+本项目不做完整授权平台，不包含密码狗策略、功能授权、授权缓存、试用期、机器码、授权文件解析或 UI 弹窗。
 
-用于启动时激活第三方商业库。
+如果某个业务项目需要密码狗或功能授权，建议在业务项目或独立扩展包中实现，不要把复杂策略放回基础抽象层。
 
-- `ILicenseActivator`：单个 SDK 的激活器。
-- `ILicenseActivationService`：统一执行所有 SDK 激活器。
-- `LicenseActivationResult`：激活结果。
+## 保留类型
 
-例如 `Kwy.Device.PLCs.Hsl` 中的 `HslCommunicationLicenseActivator` 会调用 HSL 的授权入口。
+- `ILicenseActivator`：单个 SDK 或商业库的激活器。
+- `LicenseActivationResult`：单次激活结果。
+- `ILicenseActivationService`：统一执行所有激活器。
+- `LicenseActivationService`：按顺序执行所有 `ILicenseActivator` 的默认实现。
 
-## 软件与功能授权
-
-用于密码狗、本地授权文件、云授权等场景。
-
-- `ILicenseProvider`：授权来源，例如密码狗、授权文件、云服务。
-- `IFeatureLicenseService`：功能授权检查服务。
-- `LicenseCheckContext`：授权检查上下文，包含应用、客户、机器和功能码。
-- `LicenseCheckResult`：授权检查结果，包含功能列表和到期时间。
-- `LicenseLostPolicy`：运行中授权丢失后的建议策略。
-
-功能码建议使用稳定字符串：
+## 使用示例
 
 ```csharp
-KwyLicenseFeatures.VisionEditor
-KwyLicenseFeatures.SecsGem
-KwyLicenseFeatures.MotionAdvanced
+services.TryAddSingleton<ILicenseActivationService, LicenseActivationService>();
+services.TryAddEnumerable(ServiceDescriptor.Singleton<ILicenseActivator, MySdkLicenseActivator>());
+
+var activationService = serviceProvider.GetRequiredService<ILicenseActivationService>();
+IReadOnlyList<LicenseActivationResult> results = await activationService.ActivateAllAsync();
 ```
 
-业务项目也可以定义自己的功能码，例如：
+## 分层建议
 
-```csharp
-public static class MyLicenseFeatures
-{
-    public const string RecipeAdvancedEdit = "Recipe.AdvancedEdit";
-    public const string CameraStation4 = "Camera.Station4";
-}
-```
+具体 SDK 激活逻辑放在对应功能包里，例如：
 
-## 推荐分层
+- `Kwy.Device.PLCs.Hsl` 中实现 `HslCommunicationLicenseActivator`。
+- 未来 `Kwy.Vision.Halcon` 可以实现 `HalconLicenseActivator`。
+- 未来 Cimetrix 扩展包可以实现自己的激活器。
 
-公共抽象放在本项目。
-
-默认组合、缓存和功能检查实现放在 `Kwy.Licensing.Core`。
-
-具体厂商实现放在独立模块：
-
-- `Kwy.Licensing.Dongle.SenseLock`
-- `Kwy.Licensing.Dongle.Rockey`
-- `Kwy.Licensing.Dongle.SafeNet`
-- `Kwy.Vision.Halcon`
-- `Kwy.Communicate.Secs.Cimetrix`
-
-这样设备层、通信层、视觉层和 UI 层都可以共享授权能力，但不会互相耦合。
+这样用户安装功能包时，NuGet 会自动带上本契约包；只有开发自定义授权器时，才需要直接引用 `Kwy.Licensing.Abstractions`。

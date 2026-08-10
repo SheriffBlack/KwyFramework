@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
+using Kwy.ComponentModel;
 
 namespace Kwy.UI.WPF.Components.PropertyGrid;
 
@@ -35,12 +36,47 @@ public partial class KwyPropertyGrid : UserControl
         }
     }
 
+    private void OnLoaded(object sender, RoutedEventArgs e)
+        => PropertyMetadataLocalization.Changed += OnPropertyMetadataLocalizationChanged;
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+        => PropertyMetadataLocalization.Changed -= OnPropertyMetadataLocalizationChanged;
+
+    private void OnPropertyMetadataLocalizationChanged(object? sender, EventArgs e)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(() => OnPropertyMetadataLocalizationChanged(sender, e));
+            return;
+        }
+
+        foreach (PropertyGroupModel group in PropertyGroups)
+        {
+            group.RefreshLocalization();
+        }
+    }
+
     private void Reload(object? source)
     {
         PropertyGroups.Clear();
         foreach (var group in PropertyGridMetadataReader.CreateGroups(source))
         {
+            foreach (DynamicPropertyItem property in group.Properties)
+            {
+                property.ValueChanged += OnPropertyValueChanged;
+            }
+
             PropertyGroups.Add(group);
         }
+    }
+
+    private void OnPropertyValueChanged(object? sender, EventArgs e)
+    {
+        if (sender is not DynamicPropertyItem { RefreshesPropertyGrid: true })
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(() => Reload(Source));
     }
 }

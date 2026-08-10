@@ -20,9 +20,6 @@
         </Grid>
     </ControlTemplate>
 
-    <Geometry x:Key="DownArrowGeometry">M 0 0 L 4 4 L 8 0 Z</Geometry>
-    <Geometry x:Key="UpArrowGeometry">M 0 4 L 4 0 L 8 4 Z</Geometry>
-
     <Style x:Key="IconTextStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource SegoeFluent}" />
         <Setter Property="FontSize" Value="30" />
@@ -36,3 +33,4 @@
     </Style>
 
 </ResourceDictionary>
+

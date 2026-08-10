@@ -1,10 +1,13 @@
 using HslCommunication;
 using HslCommunication.Core;
+using HslCommunication.ModBus;
+using Kwy.Device.Abstractions;
+using Kwy.Device.Abstractions.PLC;
 using Kwy.Device.Core.PLC;
 
 namespace Kwy.Device.PLCs.Hsl;
 
-public class HslPlcDevice : PlcDeviceBase
+public class HslPlcDevice : PlcDeviceBase, IModbusPlcReader
 {
     private readonly HslPlcClientSession session;
     private readonly HslPlcConfig config;
@@ -27,7 +30,7 @@ public class HslPlcDevice : PlcDeviceBase
         var result = await ExecuteIoAsync(session.Connect, cancellationToken);
         if (!result.IsSuccess)
         {
-            throw new InvalidOperationException($"[HslPlc] Connection failed ({session.Description}): {result.Message}");
+            throw new InvalidOperationException($"[HslPlc] Connection failed ({session.Description}, {config.IpAddress}:{config.Port}, Timeout={config.ConnectTimeoutMilliseconds}/{config.ReceiveTimeoutMilliseconds}ms): {result.Message}");
         }
 
         connected = true;
@@ -44,7 +47,9 @@ public class HslPlcDevice : PlcDeviceBase
         RotateIoSemaphore();
         try
         {
-            await Task.Run(() => session.Disconnect(), CancellationToken.None).ConfigureAwait(false);
+            await Task.Run(() => session.Disconnect(), CancellationToken.None)
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
         }
         catch
         {
@@ -56,6 +61,12 @@ public class HslPlcDevice : PlcDeviceBase
 
     public override Task<bool> ReadBoolAsync(string address, CancellationToken cancellationToken = default)
         => ReadAsync(() => session.Client.ReadBool(address), $"Bool address {address}", cancellationToken);
+
+    public Task<bool> ReadCoilAsync(string address, CancellationToken cancellationToken = default)
+        => ReadAsync(() => ReadModbusCoil(address), $"Modbus coil address {address}", cancellationToken);
+
+    public Task<bool> ReadDiscreteAsync(string address, CancellationToken cancellationToken = default)
+        => ReadAsync(() => ReadModbusDiscrete(address), $"Modbus discrete input address {address}", cancellationToken);
 
     public override Task WriteBoolAsync(string address, bool value, CancellationToken cancellationToken = default)
         => WriteAsync(() => session.Client.Write(address, value), $"Bool address {address}", cancellationToken);
@@ -106,32 +117,93 @@ public class HslPlcDevice : PlcDeviceBase
         ioSemaphore.Dispose();
     }
 
+    private OperateResult<bool> ReadModbusCoil(string address)
+    {
+        return session.Client switch
+        {
+            ModbusRtu rtu => rtu.ReadCoil(address),
+            ModbusTcpNet tcp => tcp.ReadCoil(address),
+            _ => new OperateResult<bool>($"Current PLC client does not support Modbus coil read: {session.Client.GetType().Name}.")
+        };
+    }
+
+    private OperateResult<bool> ReadModbusDiscrete(string address)
+    {
+        return session.Client switch
+        {
+            ModbusRtu rtu => rtu.ReadDiscrete(address),
+            ModbusTcpNet tcp => tcp.ReadDiscrete(address),
+            _ => new OperateResult<bool>($"Current PLC client does not support Modbus discrete input read: {session.Client.GetType().Name}.")
+        };
+    }
     private async Task<T> ReadAsync<T>(Func<OperateResult<T>> operation, string description, CancellationToken cancellationToken)
     {
-        EnsureConnected();
-        var result = await ExecuteIoAsync(operation, cancellationToken);
-        if (!result.IsSuccess)
+        bool reported = false;
+        try
         {
-            var exception = new InvalidOperationException($"[HslPlc] Read {description} failed: {result.Message}");
-            await HandleDeviceFailureAsync(exception.Message, exception, CancellationToken.None);
-            throw exception;
-        }
+            EnsureConnected();
+            var result = await ExecuteIoAsync(operation, cancellationToken);
+            if (!result.IsSuccess)
+            {
+                string message = $"[HslPlc] Read {description} failed: {result.Message}";
+                var exception = new InvalidOperationException(message);
+                RaisePlcOperationFailed(DeviceOperationKind.Read, description, message, exception);
+                reported = true;
+                throw exception;
+            }
 
-        return result.Content;
+            return result.Content;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            if (!reported)
+            {
+                RaisePlcOperationFailed(DeviceOperationKind.Read, description, $"[HslPlc] Read {description} failed: {ex.Message}", ex);
+            }
+
+            throw;
+        }
     }
 
     private async Task WriteAsync(Func<OperateResult> operation, string description, CancellationToken cancellationToken)
     {
-        EnsureConnected();
-        var result = await ExecuteIoAsync(operation, cancellationToken);
-        if (!result.IsSuccess)
+        bool reported = false;
+        try
         {
-            var exception = new InvalidOperationException($"[HslPlc] Write {description} failed: {result.Message}");
-            await HandleDeviceFailureAsync(exception.Message, exception, CancellationToken.None);
-            throw exception;
+            EnsureConnected();
+            var result = await ExecuteIoAsync(operation, cancellationToken);
+            if (!result.IsSuccess)
+            {
+                string message = $"[HslPlc] Write {description} failed: {result.Message}";
+                var exception = new InvalidOperationException(message);
+                RaisePlcOperationFailed(DeviceOperationKind.Write, description, message, exception);
+                reported = true;
+                throw exception;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            if (!reported)
+            {
+                RaisePlcOperationFailed(DeviceOperationKind.Write, description, $"[HslPlc] Write {description} failed: {ex.Message}", ex);
+            }
+
+            throw;
         }
     }
 
+    private void RaisePlcOperationFailed(DeviceOperationKind kind, string description, string message, Exception exception)
+        => RaiseOperationOccurred(
+            kind,
+            description,
+            false,
+            message,
+            exception,
+            new Dictionary<string, string>
+            {
+                ["Protocol"] = session.Description,
+                ["Endpoint"] = $"{config.IpAddress}:{config.Port}"
+            });
     private async Task<T> ExecuteIoAsync<T>(Func<T> operation, CancellationToken cancellationToken)
     {
         SemaphoreSlim semaphore = ioSemaphore;
@@ -164,3 +236,7 @@ public class HslPlcDevice : PlcDeviceBase
     }
 
 }
+
+
+
+

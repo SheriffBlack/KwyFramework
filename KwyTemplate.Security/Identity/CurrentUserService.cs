@@ -5,7 +5,7 @@ namespace KwyTemplate.Security.Identity;
 internal sealed class CurrentUserService : ICurrentUserService, IDisposable
 {
     private static readonly CurrentUser OperatorUser =
-        new(0, "operator", "操作员", SecurityUserLevel.Operator);
+        new(0, "operator", "\u64CD\u4F5C\u5458", SecurityUserLevel.Operator);
 
     private readonly object syncRoot = new();
     private readonly SecuritySessionOptions sessionOptions;

@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -164,14 +164,50 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
 
         ViewDestroyed?.Invoke(item);
 
-        if (view != null)
+        if (view == null)
         {
-            if (view is IDisposable viewDisposable) viewDisposable.Dispose();
-
-            if (view.DataContext is IDisposable vmDisposable) vmDisposable.Dispose();
-
-            view.DataContext = null;
+            return;
         }
+
+        var dispatcher = view.Dispatcher;
+        if (dispatcher.CheckAccess())
+        {
+            DestroyViewOnUiThread(view);
+            return;
+        }
+
+        if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        try
+        {
+            _ = dispatcher.BeginInvoke(() => DestroyViewOnUiThread(view), DispatcherPriority.Background);
+        }
+        catch (InvalidOperationException)
+        {
+            // 应用关闭阶段 Dispatcher 可能已经不可访问，缓存释放不能阻塞进程退出。
+        }
+        catch (TaskCanceledException)
+        {
+            // Dispatcher 正在关闭时会取消排队任务，视图缓存销毁直接跳过剩余 UI 清理。
+        }
+    }
+
+    private static void DestroyViewOnUiThread(FrameworkElement view)
+    {
+        if (view is IDisposable viewDisposable)
+        {
+            viewDisposable.Dispose();
+        }
+
+        if (view.DataContext is IDisposable vmDisposable)
+        {
+            vmDisposable.Dispose();
+        }
+
+        view.DataContext = null;
     }
 
     private void OnCleanupTimerTick(object? sender, EventArgs e) => CleanupExpiredViews();

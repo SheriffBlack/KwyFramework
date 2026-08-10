@@ -15,6 +15,21 @@ public class KwyScatterTrendPlotView : global::OxyPlot.Wpf.PlotView
     public static readonly DependencyProperty ValueAxisTitleProperty =
         DependencyProperty.Register(nameof(ValueAxisTitle), typeof(string), typeof(KwyScatterTrendPlotView), new PropertyMetadata("Value", OnOptionChanged));
 
+    public static readonly DependencyProperty UpperLimitLabelProperty =
+        DependencyProperty.Register(nameof(UpperLimitLabel), typeof(string), typeof(KwyScatterTrendPlotView), new PropertyMetadata("上限", OnOptionChanged));
+
+    public static readonly DependencyProperty LowerLimitLabelProperty =
+        DependencyProperty.Register(nameof(LowerLimitLabel), typeof(string), typeof(KwyScatterTrendPlotView), new PropertyMetadata("下限", OnOptionChanged));
+
+    public static readonly DependencyProperty TargetValueLabelProperty =
+        DependencyProperty.Register(nameof(TargetValueLabel), typeof(string), typeof(KwyScatterTrendPlotView), new PropertyMetadata("标准值", OnOptionChanged));
+
+    public static readonly DependencyProperty SampleAxisMajorStepProperty =
+        DependencyProperty.Register(nameof(SampleAxisMajorStep), typeof(double), typeof(KwyScatterTrendPlotView), new PropertyMetadata(double.NaN, OnOptionChanged));
+
+    public static readonly DependencyProperty SampleAxisViewWindowProperty =
+        DependencyProperty.Register(nameof(SampleAxisViewWindow), typeof(int), typeof(KwyScatterTrendPlotView), new PropertyMetadata(1000, OnOptionChanged));
+
     public static readonly DependencyProperty OrientationProperty =
         DependencyProperty.Register(nameof(Orientation), typeof(PlotOrientation), typeof(KwyScatterTrendPlotView), new PropertyMetadata(PlotOrientation.Horizontal, OnRecreateRequired));
 
@@ -46,6 +61,24 @@ public class KwyScatterTrendPlotView : global::OxyPlot.Wpf.PlotView
         set => SetValue(ValueAxisTitleProperty, value);
     }
 
+    public string UpperLimitLabel { get => (string)GetValue(UpperLimitLabelProperty); set => SetValue(UpperLimitLabelProperty, value); }
+
+    public string LowerLimitLabel { get => (string)GetValue(LowerLimitLabelProperty); set => SetValue(LowerLimitLabelProperty, value); }
+
+    public string TargetValueLabel { get => (string)GetValue(TargetValueLabelProperty); set => SetValue(TargetValueLabelProperty, value); }
+
+    public double SampleAxisMajorStep
+    {
+        get => (double)GetValue(SampleAxisMajorStepProperty);
+        set => SetValue(SampleAxisMajorStepProperty, value);
+    }
+
+    public int SampleAxisViewWindow
+    {
+        get => (int)GetValue(SampleAxisViewWindowProperty);
+        set => SetValue(SampleAxisViewWindowProperty, value);
+    }
+
     public PlotOrientation Orientation
     {
         get => (PlotOrientation)GetValue(OrientationProperty);
@@ -55,6 +88,8 @@ public class KwyScatterTrendPlotView : global::OxyPlot.Wpf.PlotView
     public void AddChannel(string name, Color? color = null) => Chart.AddChannel(name, color);
 
     public void AddValue(double value) => Chart.AddValue(value);
+
+    public void AddValue(double value, bool? isPass) => Chart.AddValue(value, isPass);
 
     public void SetLimits(double? lower, double? upper, double? target) => Chart.SetLimits(lower, upper, target);
 
@@ -67,6 +102,12 @@ public class KwyScatterTrendPlotView : global::OxyPlot.Wpf.PlotView
             view.Chart.Title = view.Title;
             view.Chart.SampleAxisTitle = view.SampleAxisTitle;
             view.Chart.ValueAxisTitle = view.ValueAxisTitle;
+            view.Chart.UpperLimitLabel = view.UpperLimitLabel;
+            view.Chart.LowerLimitLabel = view.LowerLimitLabel;
+            view.Chart.TargetValueLabel = view.TargetValueLabel;
+            view.Chart.SampleAxisMajorStep = view.SampleAxisMajorStep;
+            view.Chart.ViewWindow = view.SampleAxisViewWindow;
+            view.Chart.RefreshLimitLabels();
         }
     }
 
@@ -86,8 +127,14 @@ public class KwyScatterTrendPlotView : global::OxyPlot.Wpf.PlotView
             Title = Title,
             Orientation = Orientation,
             SampleAxisTitle = SampleAxisTitle,
+            SampleAxisMajorStep = SampleAxisMajorStep,
+            ViewWindow = SampleAxisViewWindow,
             ValueAxisTitle = ValueAxisTitle
         });
+        Chart.AddChannel(GetDefaultChannelName(Title));
+        Chart.UpperLimitLabel = UpperLimitLabel;
+        Chart.LowerLimitLabel = LowerLimitLabel;
+        Chart.TargetValueLabel = TargetValueLabel;
         Model = Chart.Model;
         Controller = Chart.Controller;
         Chart.IsActive = IsLoaded && IsVisible;
@@ -97,4 +144,8 @@ public class KwyScatterTrendPlotView : global::OxyPlot.Wpf.PlotView
     {
         Chart.IsActive = IsLoaded && IsVisible;
     }
+
+    private static string GetDefaultChannelName(string? title)
+        => string.IsNullOrWhiteSpace(title) ? "Default" : title;
 }
+

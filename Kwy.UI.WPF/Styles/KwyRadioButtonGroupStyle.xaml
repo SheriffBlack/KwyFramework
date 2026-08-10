@@ -1,4 +1,4 @@
-﻿<ResourceDictionary
+<ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Kwy.UI.WPF.Controls"
@@ -10,17 +10,16 @@
 
     <!--  ── 矩阵模式中的列容器模板 (ColumnGroup -> StackPanel of RadioButtons) ──  -->
     <DataTemplate x:Key="ColumnGroupTemplate">
-        <ItemsControl ItemsSource="{Binding Items}">
+        <ItemsControl ItemsSource="{Binding Items}" Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <RadioButton
-                        Width="{Binding ItemWidth, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}"
                         Margin="0,4,25,4"
                         VerticalAlignment="Center"
-                        helpers:RadioButtonHelper.BindTo="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}"
+                        helpers:RadioButtonHelper.BindTo="{Binding Tag.Value, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                         Content="{Binding}"
                         FontSize="18"
-                        GroupName="{Binding RadioButtonGroupName, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}"
+                        GroupName="{Binding Tag.RadioButtonGroupName, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                         Style="{StaticResource DefaultRadioButtonStyle}" />
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -35,13 +34,12 @@
     <!--  ── 普通模式：单项 RadioButton 模板 ──────────────────────────────  -->
     <DataTemplate x:Key="SingleItemTemplate">
         <RadioButton
-            Width="{Binding ItemWidth, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}"
             Margin="0,4,25,4"
             VerticalAlignment="Center"
-            helpers:RadioButtonHelper.BindTo="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}"
+            helpers:RadioButtonHelper.BindTo="{Binding Tag.Value, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
             Content="{Binding}"
             FontSize="18"
-            GroupName="{Binding RadioButtonGroupName, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}"
+            GroupName="{Binding Tag.RadioButtonGroupName, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
             Style="{StaticResource DefaultRadioButtonStyle}" />
     </DataTemplate>
 
@@ -58,19 +56,23 @@
                         直接在这里绑定到 EffectiveItemsSource。
                         这会绕过外部对 ItemsSource 赋值的优先级问题，确保内部渲染始终使用解析后的数据。
                     -->
-                    <ItemsControl x:Name="PART_InternalItemsControl" ItemsSource="{Binding EffectiveItemsSource, RelativeSource={RelativeSource TemplatedParent}}">
+                    <ItemsControl
+                        x:Name="PART_InternalItemsControl"
+                        DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                        ItemsSource="{Binding EffectiveItemsSource}"
+                        Tag="{Binding}">
                         <ItemsControl.Style>
                             <Style TargetType="ItemsControl">
                                 <Setter Property="ItemTemplate" Value="{StaticResource SingleItemTemplate}" />
                                 <Setter Property="ItemsPanel">
                                     <Setter.Value>
                                         <ItemsPanelTemplate>
-                                            <WrapPanel Orientation="{Binding Orientation, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}" />
+                                            <WrapPanel Orientation="{Binding DataContext.Orientation, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
                                         </ItemsPanelTemplate>
                                     </Setter.Value>
                                 </Setter>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding HasColumns, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}" Value="True">
+                                    <DataTrigger Binding="{Binding HasColumns}" Value="True">
                                         <Setter Property="ItemTemplate" Value="{StaticResource ColumnGroupTemplate}" />
                                         <Setter Property="ItemsPanel">
                                             <Setter.Value>

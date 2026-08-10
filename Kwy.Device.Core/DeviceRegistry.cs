@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
@@ -8,6 +8,7 @@ namespace Kwy.Device.Core;
 
 public sealed class DeviceRegistry : IDeviceRegistry
 {
+    private static readonly TimeSpan DeviceDisposeTimeout = TimeSpan.FromSeconds(3);
     private readonly ConcurrentDictionary<string, IDevice> devices = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, DeviceSubscription> subscriptions = new(StringComparer.OrdinalIgnoreCase);
     private readonly IEquipmentEventSink? eventSink;
@@ -133,10 +134,22 @@ public sealed class DeviceRegistry : IDeviceRegistry
         }
 
         disposed = true;
-        foreach (var device in devices.Values)
+        IDevice[] snapshot = devices.Values.ToArray();
+        foreach (var device in snapshot)
         {
             DetachDeviceEvents(device);
-            device.Dispose();
+        }
+
+        Task[] disposeTasks = snapshot
+            .Select(static device => DisposeDeviceSafelyAsync(device).AsTask())
+            .ToArray();
+
+        try
+        {
+            Task.WaitAll(disposeTasks, DeviceDisposeTimeout);
+        }
+        catch
+        {
         }
 
         devices.Clear();
@@ -150,13 +163,36 @@ public sealed class DeviceRegistry : IDeviceRegistry
         }
 
         disposed = true;
-        foreach (var device in devices.Values)
+        IDevice[] snapshot = devices.Values.ToArray();
+        foreach (var device in snapshot)
         {
             DetachDeviceEvents(device);
-            await device.DisposeAsync();
+        }
+
+        Task[] disposeTasks = snapshot
+            .Select(static device => DisposeDeviceSafelyAsync(device).AsTask())
+            .ToArray();
+
+        try
+        {
+            await Task.WhenAll(disposeTasks).WaitAsync(DeviceDisposeTimeout).ConfigureAwait(false);
+        }
+        catch
+        {
         }
 
         devices.Clear();
+    }
+
+    private static async ValueTask DisposeDeviceSafelyAsync(IDevice device)
+    {
+        try
+        {
+            await device.DisposeAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+        }
     }
 
     private void ThrowIfDisposed()
@@ -180,10 +216,13 @@ public sealed class DeviceRegistry : IDeviceRegistry
             PublishStateChangedAsync(device, args).Forget();
         EventHandler<ErrorOccurredEventArgs> errorHandler = (_, args) =>
             PublishDeviceErrorAsync(device, args).Forget();
+        EventHandler<DeviceOperationEventArgs> operationHandler = (_, args) =>
+            PublishDeviceOperationAsync(device, args).Forget();
 
         device.StateChanged += stateHandler;
         device.ErrorOccurred += errorHandler;
-        subscriptions[device.DeviceId] = new DeviceSubscription(stateHandler, errorHandler);
+        device.OperationOccurred += operationHandler;
+        subscriptions[device.DeviceId] = new DeviceSubscription(stateHandler, errorHandler, operationHandler);
     }
 
     private void DetachDeviceEvents(IDevice device)
@@ -195,6 +234,7 @@ public sealed class DeviceRegistry : IDeviceRegistry
 
         device.StateChanged -= subscription.StateChanged;
         device.ErrorOccurred -= subscription.ErrorOccurred;
+        device.OperationOccurred -= subscription.OperationOccurred;
     }
 
     private async Task PublishStateChangedAsync(IDevice device, ConnectionStateChangedEventArgs args)
@@ -249,7 +289,8 @@ public sealed class DeviceRegistry : IDeviceRegistry
                 Properties: new Dictionary<string, string>
                 {
                     ["DeviceName"] = device.DeviceName,
-                    ["ExceptionType"] = args.Exception.GetType().FullName ?? args.Exception.GetType().Name
+                    ["ExceptionType"] = args.Exception.GetType().FullName ?? args.Exception.GetType().Name,
+                    ["Exception"] = args.Exception.ToString()
                 })).ConfigureAwait(false);
         }
 
@@ -262,6 +303,44 @@ public sealed class DeviceRegistry : IDeviceRegistry
                 Source: device.DeviceId)).ConfigureAwait(false);
         }
     }
+    private async Task PublishDeviceOperationAsync(IDevice device, DeviceOperationEventArgs args)
+    {
+        if (eventSink is null)
+        {
+            return;
+        }
+
+        var properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["DeviceName"] = device.DeviceName,
+            ["DeviceType"] = device.GetType().FullName ?? device.GetType().Name,
+            ["OperationKind"] = args.Kind.ToString(),
+            ["OperationName"] = args.OperationName,
+            ["IsSuccess"] = args.IsSuccess.ToString()
+        };
+
+        if (args.Properties != null)
+        {
+            foreach (var pair in args.Properties)
+            {
+                properties[pair.Key] = pair.Value;
+            }
+        }
+
+        if (args.Exception != null)
+        {
+            properties["ExceptionType"] = args.Exception.GetType().FullName ?? args.Exception.GetType().Name;
+            properties["Exception"] = args.Exception.ToString();
+        }
+
+        await eventSink.PublishAsync(new EquipmentEvent(
+            "DeviceOperation",
+            args.Message,
+            args.IsSuccess ? EquipmentEventSeverity.Information : EquipmentEventSeverity.Error,
+            EquipmentEventKind.Operation,
+            device.DeviceId,
+            Properties: properties)).ConfigureAwait(false);
+    }
 
     private static string GetConnectionAlarmCode(string deviceId)
         => $"DEVICE.{deviceId}.CONNECTION";
@@ -271,7 +350,8 @@ public sealed class DeviceRegistry : IDeviceRegistry
 
     private sealed record DeviceSubscription(
         EventHandler<ConnectionStateChangedEventArgs> StateChanged,
-        EventHandler<ErrorOccurredEventArgs> ErrorOccurred);
+        EventHandler<ErrorOccurredEventArgs> ErrorOccurred,
+        EventHandler<DeviceOperationEventArgs> OperationOccurred);
 }
 
 internal static class DeviceRegistryTaskExtensions
@@ -285,3 +365,7 @@ internal static class DeviceRegistryTaskExtensions
             TaskScheduler.Default);
     }
 }
+
+
+
+

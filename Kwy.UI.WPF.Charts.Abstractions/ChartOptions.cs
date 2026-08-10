@@ -53,6 +53,8 @@ public sealed class ScatterTrendChartOptions : ChartOptions
 
     public string SampleAxisTitle { get; set; } = "Sample";
 
+    public double SampleAxisMajorStep { get; set; } = double.NaN;
+
     public string ValueAxisTitle { get; set; } = "Value";
 }
 

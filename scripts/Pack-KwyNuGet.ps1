@@ -242,14 +242,14 @@ New-Item -ItemType Directory -Force -Path $outputFullPath | Out-Null
 
 if (-not $NoBuild) {
     Write-Step "Building solution ($Configuration)"
-    dotnet build $slnPath -c $Configuration -m:1 -p:RunKwyPackaging=false -p:GeneratePackageOnBuild=false -p:NuGetAudit=false "-p:NoWarn=NU1900;NU5128" @debugPackageProperties -v $DotNetVerbosity
+    dotnet build $slnPath -c $Configuration -m:1 -p:RunKwyPackaging=false -p:GeneratePackageOnBuild=false -p:NuGetAudit=false "-p:NoWarn=NU1900%3BNU5128" @debugPackageProperties -v $DotNetVerbosity
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 Write-Step "Packing NuGet packages"
 foreach ($projectPath in $orderedProjects) {
     Write-Host "Packing $(Get-RelativePath $projectPath)..." -ForegroundColor Cyan
-    dotnet pack $projectPath -c $Configuration --no-build -o $outputFullPath -p:Authors=Kwy -p:GeneratePackageOnBuild=false -p:NuGetAudit=false "-p:NoWarn=NU1900;NU5128" @debugPackageProperties -v $DotNetVerbosity
+    dotnet pack $projectPath -c $Configuration --no-build -o $outputFullPath -p:Authors=Kwy -p:GeneratePackageOnBuild=false -p:NuGetAudit=false "-p:NoWarn=NU1900%3BNU5128" @debugPackageProperties -v $DotNetVerbosity
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
@@ -268,6 +268,7 @@ if ($Push) {
 
 Write-Step "Done"
 Write-Host "NuGet output: $outputFullPath" -ForegroundColor Green
+
 
 
 

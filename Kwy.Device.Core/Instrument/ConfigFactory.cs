@@ -5,40 +5,88 @@ namespace Kwy.Device.Core.Instrument;
 
 public class ConfigFactory
 {
-    // 建立一张高速缓存映射表：<"GOM804", typeof(GOM804ResistorConfig)>
-    private static readonly Dictionary<string, Type> _modelRegistry = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, Type> modelRegistry = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly object syncRoot = new();
+    private static bool loadedAssembliesScanned;
 
-    // 静态构造函数：程序第一次用到这个类时自动执行，只执行一次
-    static ConfigFactory()
+    public static void RegisterConfig<TConfig>(string supportedModel)
+        where TConfig : IDeviceConfig, new()
     {
-        var configTypes = Assembly.GetExecutingAssembly().GetTypes()
-            .Where(t => typeof(IDeviceConfig).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface);
-
-        foreach (var type in configTypes)
+        ArgumentException.ThrowIfNullOrWhiteSpace(supportedModel);
+        lock (syncRoot)
         {
-            // 因为这些 Config 都是轻量级的数据壳子，实例化一次几乎不耗性能
-            var instance = (IDeviceConfig)Activator.CreateInstance(type)!;
-
-            // 通用：只要这个 Config 类有 SupportedModel 属性（无论继承自哪个基类）就注册
-            var modelProp = type.GetProperty("SupportedModel");
-            if (modelProp != null)
-            {
-                var modelName = modelProp.GetValue(instance) as string;
-                if (!string.IsNullOrEmpty(modelName))
-                {
-                    _modelRegistry[modelName] = type;
-                }
-            }
+            modelRegistry[supportedModel] = typeof(TConfig);
         }
     }
 
-    // 以后每次要工厂造东西，直接去字典里拿图纸，速度起飞！
     public static IDeviceConfig CreateConfigFor(string deviceModelName)
     {
-        if (_modelRegistry.TryGetValue(deviceModelName, out var type))
+        ArgumentException.ThrowIfNullOrWhiteSpace(deviceModelName);
+        EnsureLoadedAssembliesScanned();
+
+        lock (syncRoot)
         {
-            return (IDeviceConfig)Activator.CreateInstance(type)!;
+            if (modelRegistry.TryGetValue(deviceModelName, out var type))
+            {
+                return (IDeviceConfig)Activator.CreateInstance(type)!;
+            }
         }
-        throw new Exception($"未找到型号 {deviceModelName} 的配置类！");
+
+        throw new InvalidOperationException($"未找到型号 {deviceModelName} 的配置类。");
+    }
+
+    private static void EnsureLoadedAssembliesScanned()
+    {
+        lock (syncRoot)
+        {
+            if (loadedAssembliesScanned)
+            {
+                return;
+            }
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                RegisterConfigsFromAssemblyCore(assembly);
+            }
+
+            loadedAssembliesScanned = true;
+        }
+    }
+
+    private static void RegisterConfigsFromAssemblyCore(Assembly assembly)
+    {
+        Type[] types;
+        try
+        {
+            types = assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            types = ex.Types.Where(type => type != null).Cast<Type>().ToArray();
+        }
+
+        foreach (var type in types)
+        {
+            if (!typeof(IDeviceConfig).IsAssignableFrom(type) || type.IsAbstract || type.IsInterface)
+            {
+                continue;
+            }
+
+            if (type.GetConstructor(Type.EmptyTypes) is null)
+            {
+                continue;
+            }
+
+            if (Activator.CreateInstance(type) is not IDeviceConfig instance)
+            {
+                continue;
+            }
+
+            var modelProp = type.GetProperty("SupportedModel", BindingFlags.Public | BindingFlags.Instance);
+            if (modelProp?.GetValue(instance) is string modelName && !string.IsNullOrWhiteSpace(modelName))
+            {
+                modelRegistry[modelName] = type;
+            }
+        }
     }
 }

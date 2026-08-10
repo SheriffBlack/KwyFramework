@@ -1,4 +1,4 @@
-using Kwy.Data.EFCore;
+﻿using Kwy.Data.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -6,6 +6,8 @@ namespace Kwy.Data.EFCore.Sqlite;
 
 public static class ServiceCollectionExtensions
 {
+    private static int sqliteInitialized;
+
     public static IServiceCollection AddKwyEfCoreSqlite<TContext>(
         this IServiceCollection services,
         string connectionString,
@@ -15,6 +17,8 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
+        EnsureSqliteInitialized();
+
         services.AddKwyEfCore<TContext>();
         services.AddDbContextFactory<TContext>(builder =>
         {
@@ -23,5 +27,15 @@ public static class ServiceCollectionExtensions
         });
 
         return services;
+    }
+
+    private static void EnsureSqliteInitialized()
+    {
+        if (Interlocked.Exchange(ref sqliteInitialized, 1) == 1)
+        {
+            return;
+        }
+
+        SQLitePCL.Batteries_V2.Init();
     }
 }

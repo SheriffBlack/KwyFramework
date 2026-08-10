@@ -9,13 +9,12 @@
     xmlns:kwyui="http://schemas.kwy.com/ui"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:navigation="clr-namespace:KwyTemplate.Contracts.Navigation;assembly=KwyTemplate.Contracts"
-    Title="MainWindow"
-    MinWidth="960"
-    MinHeight="640"
+    Title="{Binding AppTitle}"
     kwymvvm:ViewModelLocator.AutoWireViewModel="True"
-    Icon="{StaticResource IconHome}"
+    Icon="{StaticResource ImgLogoHsy}"
     ShowUserButton="True"
     UserCommand="{Binding SwitchUserCommand}"
+    WindowState="Maximized"
     mc:Ignorable="d">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -39,8 +38,8 @@
                 FontSize="18"
                 ItemsSource="{Binding Languages}"
                 SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"
-                TextSearch.TextPath="Language"
-                Style="{StaticResource IconComboBoxStyle}">
+                Style="{StaticResource IconComboBoxStyle}"
+                TextSearch.TextPath="Language">
                 <ComboBox.ItemContainerStyle>
                     <Style BasedOn="{StaticResource IconComboBoxItemStyle}" TargetType="ComboBoxItem">
                         <Setter Property="kwyui:IconHelper.Icon" Value="{Binding Icon, Converter={kwyui:IconKeyToResourceConverter}}" />
@@ -52,7 +51,12 @@
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
-            <Rectangle Style="{StaticResource DefaultSeparatorStyle}" />
+            <Viewbox
+                Width="20"
+                Height="20"
+                Margin="15,0,5,0">
+                <Path Data="{StaticResource IconClock}" Fill="{DynamicResource ForegroundBrush}" />
+            </Viewbox>
             <TextBlock Text="{Binding CurrentTime}" />
             <Rectangle Style="{StaticResource DefaultSeparatorStyle}" />
 
@@ -73,7 +77,10 @@
 
         <ContentControl kwymvvm:RegionManager.RegionName="{x:Static navigation:RegionNames.WindowRegion}" />
 
-        <StatusBar Grid.Row="1">
+        <StatusBar
+            Grid.Row="1"
+            SnapsToDevicePixels="True"
+            UseLayoutRounding="True">
             <StatusBar.Resources>
                 <Style BasedOn="{StaticResource DefaultTextBlockStyle}" TargetType="TextBlock">
                     <Setter Property="FontSize" Value="12" />
@@ -83,11 +90,11 @@
             <StatusBar.ItemsPanel>
                 <ItemsPanelTemplate>
                     <DockPanel LastChildFill="False" />
-                    <!--  关闭LastChildFill，避免自动填充  -->
+                    <!--  关闭 LastChildFill，避免自动填充  -->
                 </ItemsPanelTemplate>
             </StatusBar.ItemsPanel>
 
-            <!--  PCL 连接状态  -->
+            <!--  PLC 连接状态  -->
             <StatusBarItem>
                 <StackPanel Orientation="Horizontal">
                     <Viewbox
@@ -96,10 +103,10 @@
                         Margin="5,0,5,0">
                         <Path Data="{StaticResource IconPLC}" Fill="{DynamicResource ForegroundBrush}" />
                     </Viewbox>
-                    <TextBlock Text="PLC连接状态：" />
+                    <TextBlock Text="{DynamicResource Text.PlcConnectionStatus}" />
                     <Ellipse Margin="5,0,0,0" ToolTip="{Binding MainPlcConnectionState}">
                         <Ellipse.Style>
-                            <Style BasedOn="{StaticResource BreathingEllipseStyle}" TargetType="Ellipse">
+                            <Style BasedOn="{StaticResource DefaultEllipseStyle}" TargetType="Ellipse">
                                 <!--  默认断开状态：浅红色  -->
                                 <Setter Property="Fill" Value="{StaticResource DisconnectBrush}" />
                                 <Style.Triggers>
@@ -124,7 +131,7 @@
                         Margin="5,0,5,0">
                         <Path Data="{StaticResource IconCPU}" Fill="{DynamicResource ForegroundBrush}" />
                     </Viewbox>
-                    <TextBlock Background="{StaticResource TransparentBrush}" Text="CPU占用：" />
+                    <TextBlock Background="{StaticResource TransparentBrush}" Text="{DynamicResource Text.CpuUsage}" />
                     <TextBlock
                         Width="35"
                         VerticalAlignment="Center"
@@ -154,7 +161,7 @@
                         VerticalAlignment="Center"
                         FontSize="12"
                         Foreground="{DynamicResource ForegroundBrush}"
-                        Text="运行内存：" />
+                        Text="{DynamicResource Text.MemoryUsage}" />
                     <TextBlock
                         Width="45"
                         VerticalAlignment="Center"
@@ -172,72 +179,37 @@
             </StatusBarItem>
             <Separator />
 
-            <!--  版权信息  -->
             <StatusBarItem DockPanel.Dock="Right">
                 <Viewbox Width="15" Height="15">
                     <Path Data="{StaticResource IconDrag}" Fill="{DynamicResource ForegroundBrush}" />
                 </Viewbox>
             </StatusBarItem>
-            <StatusBarItem DockPanel.Dock="Right">
-                <TextBlock>
-                    <Run>
-                        ©2026
-                    </Run>
-                    <Run>
-                        金动力智能科技（深圳）有限公司
-                    </Run>
-                </TextBlock>
+
+            <!--  版权信息  -->
+            <StatusBarItem DockPanel.Dock="Right" Visibility="Collapsed">
+                <TextBlock Text="{Binding CopyrightText}" />
             </StatusBarItem>
 
             <!--  当前登录用户  -->
             <StatusBarItem Margin="0,0,50,0" DockPanel.Dock="Right">
-                <TextBlock HorizontalAlignment="Center" Text="{Binding CurrentUserDisplayName}" />
-            </StatusBarItem>
-
-            <!--  进度条  -->
-            <StatusBarItem
-                Margin="0,0,50,0"
-                DockPanel.Dock="Right"
-                Visibility="Collapsed">
-                <!--  仅当有耗时任务 (IsBusy) 时才显示此区域  -->
-                <StackPanel Orientation="Horizontal" Visibility="{Binding TaskProgressService.IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <!--  任务描述文本  -->
-                    <TextBlock
-                        Margin="0,0,10,0"
-                        VerticalAlignment="Center"
-                        FontSize="11"
-                        FontStyle="Italic"
-                        Foreground="{DynamicResource ForegroundBrush}"
-                        Text="{Binding TaskProgressService.Message}" />
-
-                    <!--  矩形扁平化进度条  -->
-                    <Grid
-                        Width="150"
-                        Height="14"
-                        VerticalAlignment="Center">
-                        <!--  进度条背景  -->
-                        <Border
-                            Background="{DynamicResource ControlBackgroundBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="2" />
-                        <!--  实际进度条容器  -->
-                        <ProgressBar
-                            Maximum="100"
-                            Minimum="0"
-                            Value="{Binding TaskProgressService.ProgressValue}" />
-
-                        <!--  居中显示的百分比文字  -->
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="10"
-                            FontWeight="Bold"
-                            Foreground="{DynamicResource ForegroundBrush}"
-                            Text="{Binding TaskProgressService.ProgressValue, StringFormat={}{0:0}%}" />
-                    </Grid>
-                </StackPanel>
-
+                <Border
+                    Padding="10,2"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0.3"
+                    CornerRadius="4"
+                    ToolTip="{Binding CurrentUserDisplayName}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource StatusErrorBackgroundBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCurrentUserOperator}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource StatusSuccessBackgroundBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock HorizontalAlignment="Center" Text="{Binding CurrentUserDisplayName}" />
+                </Border>
             </StatusBarItem>
 
         </StatusBar>
@@ -250,3 +222,6 @@
             Token="RootToast" />
     </Grid>
 </kwyui:KwyWindow>
+
+
+

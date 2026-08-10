@@ -68,8 +68,8 @@
             </Setter.Value>
         </Setter>
     </Style>
-    
-    
+
+
     <Style
         x:Key="CheckBoxCircleStyle"
         BasedOn="{StaticResource ControlBaseStyle}"
@@ -134,7 +134,7 @@
                         x:Name="PART_CheckBoxButtonBorder"
                         Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="0,1,0,0">
+                        BorderThickness="0,0,0,1">
                         <Grid
                             x:Name="PART_CheckMark"
                             Margin="20,0,20,0"
@@ -145,38 +145,14 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource ControlSelectedForegroundBrush}" />
+                            <Setter TargetName="PART_CheckBoxButtonBorder" Property="Background" Value="{DynamicResource ControlSelectedBackgroundBrush}" />
                             <Setter TargetName="PART_CheckBoxButtonBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
-                            <Setter TargetName="PART_CheckBoxButtonBorder" Property="BorderThickness" Value="0,2,0,0" />
-                            <Setter TargetName="PART_CheckMark" Property="Opacity" Value="0.5" />
+                            <Setter TargetName="PART_CheckBoxButtonBorder" Property="BorderThickness" Value="0,0,0,2" />
+                            <Setter TargetName="PART_CheckMark" Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="False">
                             <Setter TargetName="PART_CheckMark" Property="Opacity" Value="1" />
-                        </Trigger>
-
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="PART_CheckBoxButtonBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect
-                                        BlurRadius="10"
-                                        Direction="315"
-                                        Opacity="0.7"
-                                        ShadowDepth="5"
-                                        Color="{DynamicResource DropShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-
-                        <Trigger Property="IsMouseOver" Value="False">
-                            <Setter TargetName="PART_CheckBoxButtonBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect
-                                        BlurRadius="5"
-                                        Direction="315"
-                                        Opacity="0.5"
-                                        ShadowDepth="2"
-                                        Color="{DynamicResource DropShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="PART_CheckBoxButtonBorder" Property="Opacity" Value="0.7" />

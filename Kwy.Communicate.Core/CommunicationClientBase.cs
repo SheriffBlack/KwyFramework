@@ -1,4 +1,4 @@
-using Kwy.Communicate.Abstractions;
+﻿using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 
@@ -9,6 +9,7 @@ namespace Kwy.Communicate.Core;
 /// </summary>
 public abstract class CommunicationClientBase : ICommunicationClient
 {
+    private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(3);
     protected readonly IProtocolConfig config;
     protected bool disposed;
 
@@ -311,17 +312,38 @@ public abstract class CommunicationClientBase : ICommunicationClient
         if (disposed)
             return;
 
-        await DisconnectAsync();
-        disposed = true;
-        CancelReconnect();
-        CancelKeepAlive();
-        reconnectCancellation?.Dispose();
-        keepAliveCancellation?.Dispose();
-        lifetimeCancellation.Dispose();
-        lifecycleSemaphore.Dispose();
-        GC.SuppressFinalize(this);
+        bool shutdownTimedOut = false;
+        try
+        {
+            using var shutdownCts = new CancellationTokenSource(ShutdownTimeout);
+            await DisconnectAsync(shutdownCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            shutdownTimedOut = true;
+            OnErrorOccurred(new TimeoutException($"Communication dispose timed out after {ShutdownTimeout.TotalSeconds:0}s."), "Communication dispose timed out.");
+        }
+        finally
+        {
+            disposed = true;
+            CancelReconnect();
+            CancelKeepAlive();
+
+            if (!shutdownTimedOut)
+            {
+                reconnectCancellation?.Dispose();
+                keepAliveCancellation?.Dispose();
+                lifetimeCancellation.Dispose();
+                lifecycleSemaphore.Dispose();
+            }
+
+            GC.SuppressFinalize(this);
+        }
     }
 
     public virtual void Dispose()
         => DisposeAsync().AsTask().GetAwaiter().GetResult();
 }
+
+
+

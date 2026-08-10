@@ -10,6 +10,8 @@ using HslCommunication.Profinet.Panasonic;
 using HslCommunication.Profinet.Siemens;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Device.Abstractions.PLC;
+using Kwy.Device.PLCs.Hsl.Licensing;
+using Kwy.Licensing.Abstractions;
 
 namespace Kwy.Device.PLCs.Hsl;
 
@@ -18,6 +20,12 @@ internal static class HslPlcClientFactory
     public static HslPlcClientSession Create(HslPlcConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
+
+        LicenseActivationResult activationResult = HslCommunicationLicenseActivator.ActivateDefault();
+        if (!activationResult.Success)
+        {
+            throw new InvalidOperationException(activationResult.Message, activationResult.Exception);
+        }
 
         HslPlcClientSession session = config.Transport switch
         {
@@ -47,7 +55,8 @@ internal static class HslPlcClientFactory
             HslPlcBrandType.Mitsubishi_MC => CreateMelsecMcClient(config, UsePort(config.Port, 6000), "Mitsubishi MC TCP"),
             HslPlcBrandType.Mitsubishi_Fx3U => CreateMelsecA1EClient(config, UsePort(config.Port, 5000), "Mitsubishi FX3U TCP"),
             HslPlcBrandType.Mitsubishi_Fx5U => CreateMelsecMcClient(config, UsePort(config.Port, 5000), "Mitsubishi FX5U TCP"),
-            HslPlcBrandType.Keyence_KV => CreateKeyenceClient(config, UsePort(config.Port, 8501)),
+            HslPlcBrandType.Keyence_MC => CreateKeyenceMcClient(config, UsePort(config.Port, 8501)),
+            HslPlcBrandType.Keyence_NanoSerialOverTcp => CreateKeyenceNanoSerialOverTcpClient(config, UsePort(config.Port, 8501)),
             HslPlcBrandType.Panasonic_MC => CreatePanasonicClient(config, UsePort(config.Port, 5002)),
             HslPlcBrandType.Omron_Fins => CreateOmronFinsClient(config, UsePort(config.Port, 9600)),
             HslPlcBrandType.Modbus_Tcp => CreateModbusTcpClient(config, UsePort(config.Port, 502)),
@@ -107,10 +116,16 @@ internal static class HslPlcClientFactory
         return WrapClient(client, client.ConnectServer, client.ConnectClose, description);
     }
 
-    private static HslPlcClientSession CreateKeyenceClient(HslPlcConfig config, int port)
+    private static HslPlcClientSession CreateKeyenceMcClient(HslPlcConfig config, int port)
     {
         var client = new HslCommunication.Profinet.Keyence.KeyenceMcNet(config.IpAddress, port);
-        return WrapClient(client, client.ConnectServer, client.ConnectClose, "Keyence KV TCP");
+        return WrapClient(client, client.ConnectServer, client.ConnectClose, "Keyence MC TCP");
+    }
+
+    private static HslPlcClientSession CreateKeyenceNanoSerialOverTcpClient(HslPlcConfig config, int port)
+    {
+        var client = new HslCommunication.Profinet.Keyence.KeyenceNanoSerialOverTcp(config.IpAddress, port);
+        return WrapClient(client, client.ConnectServer, client.ConnectClose, "Keyence NanoSerialOverTcp");
     }
 
     private static HslPlcClientSession CreatePanasonicClient(HslPlcConfig config, int port)

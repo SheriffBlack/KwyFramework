@@ -137,6 +137,8 @@ public static class PropertyMetadataReader
         var browsableAttribute = property.GetCustomAttribute<BrowsableAttribute>();
         var readOnlyAttribute = property.GetCustomAttribute<ReadOnlyAttribute>();
         var groupWidthAttribute = property.GetCustomAttribute<GroupWidthAttribute>();
+        var inlineGroupAttribute = property.GetCustomAttribute<InlineGroupAttribute>();
+        var editorWidthAttribute = property.GetCustomAttribute<EditorWidthAttribute>();
         var numberRangeAttribute = property.GetCustomAttribute<NumberRangeAttribute>();
 
         bool isReadableProperty = property.CanRead && property.GetIndexParameters().Length == 0;
@@ -146,10 +148,15 @@ public static class PropertyMetadataReader
         return new PropertyMetadataItem(
             property,
             categoryAttribute?.Category ?? DefaultCategory,
+            property.GetCustomAttribute<CategoryKeyAttribute>()?.Key,
             property.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? property.Name,
+            property.GetCustomAttribute<DisplayNameKeyAttribute>()?.Key,
             ResolveInputType(property, isReadOnly),
             ResolveItemsSource(property),
+            ResolveItemsSourceProviderName(property),
             groupWidthAttribute?.WidthRatio > 0 ? groupWidthAttribute.WidthRatio : null,
+            string.IsNullOrWhiteSpace(inlineGroupAttribute?.GroupName) ? null : inlineGroupAttribute.GroupName,
+            editorWidthAttribute?.Width > 0 ? editorWidthAttribute.Width : null,
             isBrowsable,
             isReadOnly,
             categoryAttribute != null,
@@ -209,6 +216,9 @@ public static class PropertyMetadataReader
             || type == typeof(double)
             || type == typeof(decimal);
 
+    private static string? ResolveItemsSourceProviderName(PropertyInfo property)
+        => property.GetCustomAttribute<ItemsSourceProviderAttribute>()?.ProviderName;
+
     private static object? ResolveItemsSource(PropertyInfo property)
     {
         var itemsSource = property.GetCustomAttribute<ItemsSourceAttribute>();
@@ -218,6 +228,9 @@ public static class PropertyMetadataReader
         }
 
         Type propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-        return propertyType.IsEnum ? GetEnumNames(propertyType) : null;
+        return propertyType.IsEnum ? Enum.GetValues(propertyType).Cast<object>().ToArray() : null;
     }
 }
+
+
+

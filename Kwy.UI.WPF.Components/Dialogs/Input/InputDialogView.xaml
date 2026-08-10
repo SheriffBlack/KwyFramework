@@ -1,0 +1,98 @@
+﻿<UserControl
+    x:Class="Kwy.UI.WPF.Components.Dialogs.InputDialogView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
+    xmlns:kwyui="http://schemas.kwy.com/ui"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="255"
+    d:DesignWidth="460"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
+    <kwymvvm:Dialog.WindowStyle>
+        <Style BasedOn="{StaticResource {x:Type kwyui:KwyWindow}}" TargetType="kwyui:KwyWindow">
+            <Setter Property="SizeToContent" Value="WidthAndHeight" />
+            <Setter Property="WindowStyle" Value="None" />
+            <Setter Property="ResizeMode" Value="NoResize" />
+            <Setter Property="Title" Value="{Binding Title}" />
+            <Setter Property="kwymvvm:Dialog.WindowStartupLocation" Value="CenterScreen" />
+        </Style>
+    </kwymvvm:Dialog.WindowStyle>
+    <Grid Width="460" MinHeight="255">
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="40,28,40,18">
+            <TextBlock
+                Margin="0,0,0,18"
+                FontSize="18"
+                FontWeight="SemiBold"
+                Text="{Binding Title}"
+                TextWrapping="Wrap"
+                Visibility="{Binding IsTitleVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <TextBlock
+                Margin="0,0,0,18"
+                Foreground="{DynamicResource ControlSecondaryForegroundBrush}"
+                Text="{Binding Message}"
+                TextWrapping="Wrap"
+                Visibility="{Binding IsMessageVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <kwyui:KwyFormItem Label="{Binding Label}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox
+                        Height="36"
+                        VerticalContentAlignment="Center"
+                        Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock
+                        Grid.Column="1"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource ControlSecondaryForegroundBrush}"
+                        Text="{Binding Unit}"
+                        Visibility="{Binding IsUnitVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </Grid>
+            </kwyui:KwyFormItem>
+
+            <TextBlock
+                Margin="0,8,0,0"
+                Foreground="{DynamicResource ErrorBrush}"
+                Text="{Binding ValidationMessage}"
+                TextWrapping="Wrap"
+                Visibility="{Binding IsValidationVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
+
+        <StackPanel
+            Grid.Row="1"
+            Margin="0,0,40,26"
+            HorizontalAlignment="Right"
+            Orientation="Horizontal">
+            <Button
+                Width="120"
+                Height="40"
+                Margin="0,0,12,0"
+                Command="{Binding ConfirmCommand}"
+                Content="{Binding ConfirmButtonText}"
+                IsDefault="True" />
+            <Button
+                Width="120"
+                Height="40"
+                Command="{Binding CancelCommand}"
+                Content="{Binding CancelButtonText}"
+                Visibility="{Binding ShowCancelButton, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+        </StackPanel>
+    </Grid>
+</UserControl>
+
+
+
+

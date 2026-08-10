@@ -1,6 +1,5 @@
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Dialogs;
-using Kwy.UI;
 
 namespace Kwy.UI.WPF.Components.Dialogs;
 

@@ -1,4 +1,4 @@
-<ResourceDictionary
+﻿<ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers">
@@ -30,30 +30,6 @@
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="PART_ToggleButtonBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect
-                                        BlurRadius="10"
-                                        Direction="315"
-                                        Opacity="0.7"
-                                        ShadowDepth="5"
-                                        Color="{DynamicResource DropShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsMouseOver" Value="False">
-                            <Setter TargetName="PART_ToggleButtonBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect
-                                        BlurRadius="5"
-                                        Direction="315"
-                                        Opacity="0.5"
-                                        ShadowDepth="2"
-                                        Color="{DynamicResource DropShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="PART_ToggleButtonBorder" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
                             <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
@@ -79,9 +55,9 @@
                             SnapsToDevicePixels="True">
                             <Border.Effect>
                                 <DropShadowEffect
-                                    BlurRadius="4"
-                                    Opacity="0.2"
-                                    ShadowDepth="1"
+                                    BlurRadius="2"
+                                    Opacity="0.08"
+                                    ShadowDepth="0"
                                     Color="{DynamicResource DropShadowColor}" />
                             </Border.Effect>
                         </Border>
@@ -95,8 +71,8 @@
                             Fill="White">
                             <Ellipse.Effect>
                                 <DropShadowEffect
-                                    BlurRadius="8"
-                                    Opacity="0.25"
+                                    BlurRadius="4"
+                                    Opacity="0.14"
                                     ShadowDepth="1"
                                     Color="{DynamicResource DropShadowColor}" />
                             </Ellipse.Effect>
@@ -138,9 +114,9 @@
                                 CornerRadius="16">
                                 <Border.Effect>
                                     <DropShadowEffect
-                                        BlurRadius="4"
-                                        Opacity="0.2"
-                                        ShadowDepth="1"
+                                        BlurRadius="2"
+                                        Opacity="0.08"
+                                        ShadowDepth="0"
                                         Color="{DynamicResource DropShadowColor}" />
                                 </Border.Effect>
                             </Border>
@@ -154,9 +130,9 @@
                                 Fill="White">
                                 <Ellipse.Effect>
                                     <DropShadowEffect
-                                        BlurRadius="8"
-                                        Opacity="0.3"
-                                        ShadowDepth="2"
+                                        BlurRadius="4"
+                                        Opacity="0.14"
+                                        ShadowDepth="1"
                                         Color="{DynamicResource DropShadowColor}" />
                                 </Ellipse.Effect>
                             </Ellipse>
@@ -218,30 +194,6 @@
                         </Trigger>
                         <Trigger Property="IsChecked" Value="False">
                             <Setter TargetName="PART_CheckMark" Property="Opacity" Value="1" />
-                        </Trigger>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="PART_ToggleButtonBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect
-                                        BlurRadius="10"
-                                        Direction="315"
-                                        Opacity="0.7"
-                                        ShadowDepth="5"
-                                        Color="{DynamicResource DropShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsMouseOver" Value="False">
-                            <Setter TargetName="PART_ToggleButtonBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect
-                                        BlurRadius="5"
-                                        Direction="315"
-                                        Opacity="0.5"
-                                        ShadowDepth="2"
-                                        Color="{DynamicResource DropShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="PART_ToggleButtonBorder" Property="Opacity" Value="0.7" />

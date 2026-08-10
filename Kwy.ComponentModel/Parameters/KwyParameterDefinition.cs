@@ -23,6 +23,10 @@ public sealed class KwyParameterDefinition
 
     public double? GroupWidth { get; init; }
 
+    public string? InlineGroup { get; init; }
+
+    public double? EditorWidth { get; init; }
+
     public bool IsRequired { get; init; }
 
     public bool IsReadOnly { get; init; }
@@ -46,6 +50,8 @@ public sealed class KwyParameterDefinition
         InputType? inputType = null,
         object? itemsSource = null,
         double? groupWidth = null,
+        string? inlineGroup = null,
+        double? editorWidth = null,
         bool isRequired = false,
         bool isReadOnly = false,
         bool isBrowsable = true,
@@ -64,6 +70,8 @@ public sealed class KwyParameterDefinition
             InputType = inputType ?? ResolveDefaultInputType(typeof(T), isReadOnly),
             ItemsSource = itemsSource,
             GroupWidth = groupWidth,
+            InlineGroup = inlineGroup,
+            EditorWidth = editorWidth,
             IsRequired = isRequired,
             IsReadOnly = isReadOnly,
             IsBrowsable = isBrowsable,

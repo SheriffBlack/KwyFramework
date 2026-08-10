@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
+using Application = System.Windows.Application;
 using Kwy.ComponentModel;
 using Kwy.MVVM.Core;
 
@@ -19,6 +20,14 @@ public sealed class DynamicPropertyItem : BindableBase
     private readonly Action<object, object?>? setter;
     private readonly Action<object, object?>? unitSetter;
     private readonly Func<object, object?>? unitGetter;
+    private readonly object? staticItemsSource;
+    private readonly Func<object, object?>? itemsSourceProviderGetter;
+    private readonly string displayNameFallback;
+    private readonly string? displayNameKey;
+    private readonly string groupNameFallback;
+    private readonly string? groupNameKey;
+
+    internal event EventHandler? ValueChanged;
 
     public DynamicPropertyItem(object source, PropertyMetadataItem metadata)
     {
@@ -35,18 +44,23 @@ public sealed class DynamicPropertyItem : BindableBase
             unitGetter = BuildGetter(unitPropertyInfo);
             unitSetter = unitPropertyInfo.CanWrite ? BuildSetter(unitPropertyInfo) : null;
         }
-
-        DisplayName = metadata.DisplayName;
-        GroupName = metadata.Category;
+        displayNameFallback = metadata.DisplayName;
+        displayNameKey = metadata.DisplayNameKey;
+        groupNameFallback = metadata.Category;
+        groupNameKey = metadata.CategoryKey;
         InputType = metadata.InputType;
-        ItemsSource = metadata.ItemsSource;
+        staticItemsSource = metadata.ItemsSource;
+        itemsSourceProviderGetter = BuildItemsSourceProviderGetter(source, metadata.ItemsSourceProviderName);
         GroupWidth = metadata.GroupWidth;
+        InlineGroup = metadata.InlineGroup;
+        EditorWidth = metadata.EditorWidth is > 0 ? metadata.EditorWidth.Value : 180.0;
         IsReadOnly = setter == null;
         IsInteger = IsIntegerType(propertyInfo.PropertyType);
         Minimum = metadata.Minimum;
         Maximum = metadata.Maximum;
         SmallChange = metadata.SmallChange ?? (IsInteger ? 1.0 : 0.1);
         DecimalPlaces = metadata.DecimalPlaces ?? (IsInteger ? 0 : 3);
+        RefreshesPropertyGrid = propertyInfo.GetCustomAttribute<RefreshPropertyGridAttribute>() != null;
     }
 
     public DynamicPropertyItem(object source, PropertyInfo propertyInfo)
@@ -54,17 +68,21 @@ public sealed class DynamicPropertyItem : BindableBase
     {
     }
 
-    public string GroupName { get; }
+    public string GroupName => ResolveResource(groupNameKey, groupNameFallback);
 
-    public string DisplayName { get; }
+    public string DisplayName => ResolveResource(displayNameKey, displayNameFallback);
 
     public InputType InputType { get; }
 
-    public object? ItemsSource { get; }
+    public object? ItemsSource => itemsSourceProviderGetter?.Invoke(source) ?? staticItemsSource;
 
     public bool IsReadOnly { get; }
 
     public double? GroupWidth { get; }
+
+    public string? InlineGroup { get; }
+
+    public double EditorWidth { get; }
 
     public bool IsInteger { get; }
 
@@ -75,6 +93,8 @@ public sealed class DynamicPropertyItem : BindableBase
     public double SmallChange { get; }
 
     public int DecimalPlaces { get; }
+
+    internal bool RefreshesPropertyGrid { get; }
 
     public object? Value
     {
@@ -88,6 +108,7 @@ public sealed class DynamicPropertyItem : BindableBase
 
             setter(source, ConvertValue(value, propertyInfo.PropertyType));
             RaisePropertyChanged();
+            ValueChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -103,9 +124,108 @@ public sealed class DynamicPropertyItem : BindableBase
 
             unitSetter(source, ConvertValue(value, unitPropertyInfo.PropertyType));
             RaisePropertyChanged();
+            ValueChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
+    internal void RefreshLocalization()
+    {
+        RaisePropertyChanged(nameof(GroupName));
+        RaisePropertyChanged(nameof(DisplayName));
+    }
+
+    internal void RefreshDynamicItemsSource()
+    {
+        if (itemsSourceProviderGetter == null)
+        {
+            return;
+        }
+
+        CoerceUnitValueToItemsSource();
+        RaisePropertyChanged(nameof(ItemsSource));
+    }
+
+    private void CoerceUnitValueToItemsSource()
+    {
+        if (unitPropertyInfo == null || unitSetter == null)
+        {
+            return;
+        }
+
+        List<object?> items = EnumerateItemsSource(ItemsSource).ToList();
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        object? current = UnitValue;
+        if (items.Any(item => string.Equals(item?.ToString(), current?.ToString(), StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        UnitValue = items[0];
+    }
+
+    private static string ResolveResource(string? key, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return fallback;
+        }
+
+        object? value = Application.Current?.TryFindResource(key);
+        string? text = value?.ToString();
+        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
+    }
+
+    private static IEnumerable<object?> EnumerateItemsSource(object? itemsSource)
+    {
+        if (itemsSource is null)
+        {
+            yield break;
+        }
+
+        if (itemsSource is string text)
+        {
+            yield return text;
+            yield break;
+        }
+
+        if (itemsSource is System.Collections.IEnumerable enumerable)
+        {
+            foreach (object? item in enumerable)
+            {
+                yield return item;
+            }
+        }
+    }
+
+    private static Func<object, object?>? BuildItemsSourceProviderGetter(object source, string? providerName)
+    {
+        if (string.IsNullOrWhiteSpace(providerName))
+        {
+            return null;
+        }
+
+        Type sourceType = source.GetType();
+        PropertyInfo? providerProperty = sourceType.GetProperty(providerName, BindingFlags.Instance | BindingFlags.Public);
+        if (providerProperty is { CanRead: true } && providerProperty.GetIndexParameters().Length == 0)
+        {
+            Func<object, object?> getter = BuildGetter(providerProperty);
+            return instance => getter(instance);
+        }
+
+        MethodInfo? providerMethod = sourceType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .FirstOrDefault(method => string.Equals(method.Name, providerName, StringComparison.Ordinal)
+                && method.GetParameters().Length == 0);
+        if (providerMethod != null)
+        {
+            return instance => providerMethod.Invoke(instance, null);
+        }
+
+        throw new InvalidOperationException($"Cannot find items source provider '{providerName}' on {sourceType.FullName}.");
+    }
     private static object? ConvertValue(object? value, Type targetType)
     {
         Type effectiveType = Nullable.GetUnderlyingType(targetType) ?? targetType;

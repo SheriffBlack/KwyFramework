@@ -3,10 +3,118 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="clr-namespace:KwyTemplate.App.Views"
+    xmlns:kwyc="http://schemas.kwy.com/ui/components"
+    xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
+    xmlns:kwyui="http://schemas.kwy.com/ui"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:navigation="clr-namespace:KwyTemplate.Contracts.Navigation;assembly=KwyTemplate.Contracts"
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
-    <Grid />
+    <UserControl.Resources>
+        <kwyui:StringEqualityConverter x:Key="StringEqualityConverter" />
+
+        <Style
+            x:Key="SecondaryNavigationButtonStyle"
+            BasedOn="{StaticResource RadioButtonItemStyle}"
+            TargetType="{x:Type RadioButton}">
+            <Setter Property="MinWidth" Value="112" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+            <Setter Property="Content" Value="{Binding DisplayText}" />
+            <Setter Property="GroupName" Value="SetNavigationGroup" />
+            <Setter Property="Command" Value="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+            <Setter Property="CommandParameter" Value="{Binding}" />
+            <Setter Property="IsChecked">
+                <Setter.Value>
+                    <MultiBinding Converter="{StaticResource StringEqualityConverter}" Mode="OneWay">
+                        <Binding Path="DataContext.SelectedNavigationKey" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                        <Binding Path="NavigationKey" />
+                    </MultiBinding>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <Border
+            Grid.Row="0"
+            Padding="12,5"
+            BorderBrush="{DynamicResource ControlBorderBrush}">
+            <DockPanel LastChildFill="True">
+                <Button
+                    Width="120"
+                    Height="35"
+                    Margin="12,0,12,0"
+                    HorizontalAlignment="Right"
+                    Command="{Binding ApplyCommand}"
+                    Content="{DynamicResource Text.Apply}"
+                    DockPanel.Dock="Right" />
+
+                <ItemsControl HorizontalContentAlignment="Stretch" ItemsSource="{Binding NavigationItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <RadioButton Style="{StaticResource SecondaryNavigationButtonStyle}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <GroupBox Header="{Binding SelectedParameterHeader}">
+                <GroupBox.Style>
+                    <Style BasedOn="{StaticResource {x:Type GroupBox}}" TargetType="GroupBox">
+                        <Setter Property="Margin" Value="12" />
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsParameterEditorVisible}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </GroupBox.Style>
+                <DockPanel LastChildFill="True">
+                    <TextBlock
+                        Margin="6,10,6,0"
+                        DockPanel.Dock="Bottom"
+                        Foreground="{DynamicResource ControlSecondaryForegroundBrush}"
+                        Text="{Binding StatusMessage}"
+                        TextWrapping="Wrap" />
+                    <ScrollViewer Background="{DynamicResource TransparentBrush}" VerticalScrollBarVisibility="Auto">
+                        <kwyc:KwyPropertyGrid
+                            Padding="0"
+                            IsEnabled="{Binding CanEditParameters}"
+                            Source="{Binding SelectedParameterSource}" />
+                    </ScrollViewer>
+                </DockPanel>
+            </GroupBox>
+
+            <ContentControl Margin="0" kwymvvm:RegionManager.RegionName="{x:Static navigation:RegionNames.SetRegion}">
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsParameterEditorVisible}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+            </ContentControl>
+        </Grid>
+    </Grid>
 </UserControl>
+

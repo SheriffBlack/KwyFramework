@@ -1,8 +1,41 @@
-# HslCommunication 授权
+# HslCommunication 授权说明
 
-HslCommunication 如果使用商业授权版本，授权激活属于进程级 SDK 能力，不属于某一台 PLC 的连接配置。因此激活码不要放进 `HslPlcConfig`，而是通过独立授权入口配置。
+`Kwy.Device.PLCs.Hsl` 当前内置 HslCommunication 授权码：
 
-## 注册
+```csharp
+Authorization.SetAuthorizationCode("e0397905-7455-4533-8c7a-3ec89b68b2a7");
+```
+
+授权属于进程级 SDK 能力，不属于某一个 PLC 连接参数，因此不放在 `HslPlcConfig` 中。
+
+## 默认行为
+
+创建 HSL PLC 客户端前，模块会自动执行一次默认授权。业务项目只需要正常注册和连接 PLC：
+
+```csharp
+services.AddKwyHslPlc(
+    deviceId: "PLC.Main",
+    deviceName: "主 PLC",
+    configure: options =>
+    {
+        options.Brand = HslPlcBrandType.Modbus_Rtu;
+        options.Transport = PlcConnectionTransport.Serial;
+        options.PortName = "COM6";
+        options.BaudRate = 9600;
+        options.DataBits = 8;
+        options.Station = 238;
+    });
+```
+
+## 统一授权入口
+
+如果应用启动阶段希望统一激活所有商业 SDK，也可以继续注册 HSL 激活器：
+
+```csharp
+services.AddHslCommunicationLicense();
+```
+
+或者覆盖默认授权码：
 
 ```csharp
 services.AddHslCommunicationLicense(options =>
@@ -12,24 +45,16 @@ services.AddHslCommunicationLicense(options =>
 });
 ```
 
-## 启动时激活
+然后在启动阶段统一执行：
 
 ```csharp
-var licenseService = serviceProvider.GetRequiredService<ILicenseActivationService>();
-var results = await licenseService.ActivateAllAsync();
-
-if (results.Any(result => !result.Success))
-{
-    throw new InvalidOperationException(results.First(result => !result.Success).Message);
-}
+var activationService = serviceProvider.GetRequiredService<ILicenseActivationService>();
+IReadOnlyList<LicenseActivationResult> results = await activationService.ActivateAllAsync();
 ```
 
-## 实现说明
+## 设计约定
 
-`HslCommunicationLicenseActivator` 会直接调用 HslCommunication 的授权入口：
-
-```csharp
-Authorization.SetAuthorizationCode(options.LicenseKey);
-```
-
-`ILicenseActivationService` 来自 `Kwy.Licensing.Abstractions`。未来 HALCON、Cimetrix、相机 SDK 等需要授权时，也可以注册各自的 `ILicenseActivator`，统一在应用启动阶段激活。
+- `HslPlcConfig` 只描述 PLC 连接、协议、站号、超时等设备参数。
+- HSL 授权逻辑集中在 `Licensing` 文件夹，不散落到 PLC 读写逻辑里。
+- 默认授权保证 HSL PLC 模块开箱可用。
+- 如果未来授权码更换，只需要调整 `HslCommunicationLicenseOptions.DefaultLicenseKey` 或在应用层覆盖 `LicenseKey`。

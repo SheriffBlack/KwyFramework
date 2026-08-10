@@ -1,11 +1,12 @@
-# Kwy.UI.WPF.Components
+﻿# Kwy.UI.WPF.Components
 
-`Kwy.UI.WPF.Components` 提供基于 `Kwy.UI.WPF` 和 `Kwy.MVVM.WPF` 的可直接使用组件。
+`Kwy.UI.WPF.Components` 提供基于 `Kwy.UI.WPF` 和 `Kwy.MVVM.WPF` 的可直接复用 WPF 组合组件。
 
 业务项目通常只需要引用根命名空间：
 
 ```csharp
 using Kwy.UI.WPF.Components;
+using Kwy.UI.WPF.Components.Dialogs;
 ```
 
 注册组件：
@@ -20,9 +21,13 @@ XAML 命名空间：
 xmlns:kwyc="http://schemas.kwy.com/ui/components"
 ```
 
+`AddKwyWpfComponents()` 会注册统一的 `IDialogWindow -> KwyDialogWindow`，因此消息弹窗、输入弹窗、登录弹窗和后续组件弹窗都会共用同一个窗口承载样式。
+
 ## 消息弹窗
 
-注入并使用消息对话框：
+消息弹窗用于确认、警告、错误、提示等标准交互。
+
+注入并使用：
 
 ```csharp
 public class ExampleViewModel
@@ -41,8 +46,20 @@ public class ExampleViewModel
         {
             return;
         }
+
+        // 执行删除
     }
 }
+```
+
+常用方法：
+
+```csharp
+await dialogMessageService.ShowInfoAsync("连接成功", "提示");
+await dialogMessageService.ShowWarningAsync("PLC 未连接", "警告");
+await dialogMessageService.ShowErrorAsync("写入失败", "错误");
+
+bool confirmed = await dialogMessageService.ShowConfirmAsync("确认执行该操作吗？", "确认操作");
 ```
 
 需要完整按钮结果或更多显示选项时：
@@ -57,6 +74,108 @@ ButtonResult result = await dialogMessageService.ShowAsync(
         ShowCancelButton = true
     });
 ```
+
+## 输入弹窗
+
+输入弹窗用于向用户收集一个简单输入值，例如 PLC 写入值、参数临时修改值、目标数量、延时时间等。
+
+它位于 `Kwy.UI.WPF.Components.Dialogs` 命名空间下：
+
+```csharp
+using Kwy.UI.WPF.Components.Dialogs;
+```
+
+注入并使用：
+
+```csharp
+public class ExampleViewModel
+{
+    private readonly IInputDialogService inputDialogService;
+
+    public ExampleViewModel(IInputDialogService inputDialogService)
+    {
+        this.inputDialogService = inputDialogService;
+    }
+
+    public async Task WritePlcAsync()
+    {
+        InputDialogResult result = await inputDialogService.ShowNumberAsync(
+            message: "请输入 PLC 写入值",
+            title: "PLC 写入",
+            defaultValue: 0,
+            minimum: 0,
+            maximum: 1000,
+            unit: "int32");
+
+        if (!result.IsConfirmed)
+        {
+            return;
+        }
+
+        int value = result.GetInt32();
+        // await plc.WriteInt32Async(address, value);
+    }
+}
+```
+
+文本输入：
+
+```csharp
+InputDialogResult result = await inputDialogService.ShowTextAsync(
+    message: "请输入配方名称",
+    title: "新建配方",
+    defaultValue: "Recipe001");
+
+if (result.IsConfirmed)
+{
+    string recipeName = result.Value;
+}
+```
+
+完整参数方式：
+
+```csharp
+InputDialogResult result = await inputDialogService.ShowAsync(new InputDialogOptions
+{
+    Title = "设置目标数量",
+    Message = "请输入本批次目标数量。",
+    Label = "目标数量",
+    DefaultValue = "100",
+    InputType = InputDialogType.Number,
+    Minimum = 1,
+    Maximum = 999999,
+    Unit = "pcs",
+    ConfirmButtonText = "保存",
+    CancelButtonText = "取消",
+    ShowCancelButton = true
+});
+```
+
+### 设计说明
+
+`InputDialogView` 只负责 WPF 显示；`InputDialogViewModel` 负责弹窗状态、输入值、按钮命令和基础校验；业务项目通过 `IInputDialogService` 调用，不直接创建窗口。
+
+`InputDialogOptions` 是调用方传入的配置：
+
+- `Title`：窗口标题和弹窗内标题。
+- `Message`：说明文字。
+- `Label`：输入项标签，例如“写入值”“目标数量”“配方名称”。
+- `DefaultValue`：默认输入值。
+- `InputType`：输入类型，目前支持 `Text` 和 `Number`。
+- `Minimum` / `Maximum`：数值输入范围。
+- `Unit`：单位显示，例如 `ms`、`pcs`、`Ω`、`int32`。
+- `ConfirmButtonText` / `CancelButtonText`：按钮文案。
+- `ShowCancelButton`：是否显示取消按钮。
+
+`Unit` 不是水印，而是显示在输入框右侧的单位文本，例如：
+
+```text
+数值    [ 500 ] ms
+数量    [ 100 ] pcs
+电阻    [ 10  ] Ω
+```
+
+固定视觉样式放在 XAML 中，例如宽度、高度、间距、字体和布局；可变业务文案放在 `InputDialogOptions` / ViewModel 中，例如标题、标签、按钮文字、默认值、单位和范围。这样同一个输入弹窗可以复用于 PLC 写入、参数修改、数量设定等场景。
 
 ## KwyPropertyGrid
 
@@ -159,7 +278,7 @@ public class LoginViewModel : BindableBase
         LoginCommand = new DelegateCommand(LoginAsync);
     }
 
-    public IReadOnlyList<string> UserNames { get; } = ["操作员", "技术员", "工程师"];
+    public IReadOnlyList<string> UserNames { get; } = ["操作员", "工程师", "管理员"];
 
     public string UserName
     {
@@ -200,7 +319,7 @@ public class LoginViewModel : BindableBase
         var user = await loginService.LoginAsync(UserName, Password);
         if (user == null)
         {
-            LoginTip = "用户名/密码错误或账号禁用";
+            LoginTip = "用户名、密码错误或账号禁用";
             return;
         }
 
@@ -227,5 +346,3 @@ public class LoginViewModel : BindableBase
         Message="{Binding LoginTip}" />
 </UserControl>
 ```
-
-`AddKwyWpfComponents()` 会注册统一的 `IDialogWindow -> KwyDialogWindow`，因此消息弹窗、登录弹窗和后续组件弹窗都会共用同一个窗口承载样式。组件库不内置具体登录流程。

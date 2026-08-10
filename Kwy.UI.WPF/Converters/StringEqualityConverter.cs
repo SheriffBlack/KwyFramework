@@ -24,11 +24,11 @@ public class StringEqualityConverter : IMultiValueConverter
         if (v1 == null || v2 == null) return false;
 
         // 🌟 性能优化 3：仅对字符串或需要转换的对象进行 Equals 比较
-        // OrdinalIgnoreCase 在处理工业级简短标识符时性能极佳且稳定
+        // Ordinal 在处理工业级简短标识符时性能极佳且稳定
         return string.Equals(
             v1.ToString(),
             v2.ToString(),
-            StringComparison.OrdinalIgnoreCase);
+            StringComparison.Ordinal);
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)

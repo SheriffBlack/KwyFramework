@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Input;
 using System.ComponentModel;
 
 namespace Kwy.MVVM.Core;
@@ -11,20 +11,32 @@ namespace Kwy.MVVM.Core;
 public class AsyncDelegateCommand : IAsyncRelayCommand
 {
     private readonly AsyncRelayCommand _internalCommand;
+    private readonly SynchronizationContext? synchronizationContext;
 
     public AsyncDelegateCommand(Func<Task> execute)
     {
+        synchronizationContext = SynchronizationContext.Current;
         _internalCommand = new AsyncRelayCommand(execute);
     }
 
     public AsyncDelegateCommand(Func<Task> execute, Func<bool> canExecute)
     {
+        synchronizationContext = SynchronizationContext.Current;
         _internalCommand = new AsyncRelayCommand(execute, canExecute);
     }
 
-    public void RaiseCanExecuteChanged() => _internalCommand.NotifyCanExecuteChanged();
+    public void RaiseCanExecuteChanged() => NotifyCanExecuteChanged();
 
-    public void NotifyCanExecuteChanged() => _internalCommand.NotifyCanExecuteChanged();
+    public void NotifyCanExecuteChanged()
+    {
+        if (synchronizationContext == null || SynchronizationContext.Current == synchronizationContext)
+        {
+            _internalCommand.NotifyCanExecuteChanged();
+            return;
+        }
+
+        synchronizationContext.Post(static state => ((AsyncRelayCommand)state!).NotifyCanExecuteChanged(), _internalCommand);
+    }
 
     public bool CanExecute(object? parameter) => _internalCommand.CanExecute(parameter);
 
@@ -62,20 +74,32 @@ public class AsyncDelegateCommand : IAsyncRelayCommand
 public class AsyncDelegateCommand<T> : IAsyncRelayCommand<T>
 {
     private readonly AsyncRelayCommand<T> _internalCommand;
+    private readonly SynchronizationContext? synchronizationContext;
 
     public AsyncDelegateCommand(Func<T?, Task> execute)
     {
+        synchronizationContext = SynchronizationContext.Current;
         _internalCommand = new AsyncRelayCommand<T>(execute);
     }
 
     public AsyncDelegateCommand(Func<T?, Task> execute, Predicate<T?> canExecute)
     {
+        synchronizationContext = SynchronizationContext.Current;
         _internalCommand = new AsyncRelayCommand<T>(execute, canExecute);
     }
 
-    public void RaiseCanExecuteChanged() => _internalCommand.NotifyCanExecuteChanged();
+    public void RaiseCanExecuteChanged() => NotifyCanExecuteChanged();
 
-    public void NotifyCanExecuteChanged() => _internalCommand.NotifyCanExecuteChanged();
+    public void NotifyCanExecuteChanged()
+    {
+        if (synchronizationContext == null || SynchronizationContext.Current == synchronizationContext)
+        {
+            _internalCommand.NotifyCanExecuteChanged();
+            return;
+        }
+
+        synchronizationContext.Post(static state => ((AsyncRelayCommand<T>)state!).NotifyCanExecuteChanged(), _internalCommand);
+    }
 
     public bool CanExecute(T? parameter) => _internalCommand.CanExecute(parameter);
 

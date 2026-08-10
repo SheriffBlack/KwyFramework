@@ -7,8 +7,6 @@
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/StoryboardStyle.xaml" />
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/BaseStyle.xaml" />
     </ResourceDictionary.MergedDictionaries>
-
-    <!--  DatePickerTextBox 鏍峰紡锛氬幓鎺夐粯璁よ竟妗?  -->
     <Style x:Key="DefaultDatePickerTextBoxStyle" TargetType="{x:Type DatePickerTextBox}">
         <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DatePicker}}}" />
         <Setter Property="Background" Value="Transparent" />
@@ -28,7 +26,6 @@
                             Background="{TemplateBinding Background}"
                             HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
                             VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}" />
-                        <!--  缁戝畾鍒?DatePicker 涓婄殑 WatermarkHelper.Watermark 闄勫姞灞炴€?  -->
                         <ContentControl
                             x:Name="PART_Watermark"
                             VerticalAlignment="Center"
@@ -58,8 +55,7 @@
             </Setter.Value>
         </Setter>
     </Style>
-
-    <!--  鏃ユ湡閫夋嫨鎸夐挳鏍峰紡  -->
+    <!--  日期选择按钮样式  -->
     <Style x:Key="DefaultDatePickerButtonStyle" TargetType="Button">
         <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
         <Setter Property="Cursor" Value="Hand" />
@@ -88,8 +84,6 @@
             </Setter.Value>
         </Setter>
     </Style>
-
-    <!--  鏃ュ巻涓?鏈堜唤/骞翠唤 妯″紡涓嬬殑鎸夐挳鏍峰紡  -->
     <Style x:Key="CalendarButtonStyle" TargetType="CalendarButton">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
@@ -110,8 +104,6 @@
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="4">
                         <Grid>
-                            <!--  1. 搴曞眰鑳屾櫙锛氶€変腑鐘舵€?(钃濊壊)  -->
-                            <!--  鐢?SelectionStates 鎺у埗 Opacity  -->
                             <Rectangle
                                 x:Name="SelectedBackground"
                                 Fill="{DynamicResource ControlFocusedBorderBrush}"
@@ -119,9 +111,6 @@
                                 Opacity="0"
                                 RadiusX="4"
                                 RadiusY="4" />
-
-                            <!--  2. 椤跺眰鑳屾櫙锛氭偓娴姸鎬?(鐏拌壊)  -->
-                            <!--  鐢?CommonStates 鎺у埗 Opacity/Color (鎮诞鏃跺彉涓嶉€忔槑鐏拌壊閬尅搴曞眰)  -->
                             <Rectangle
                                 x:Name="BackgroundRectangle"
                                 RadiusX="4"
@@ -130,9 +119,6 @@
                                     <SolidColorBrush Color="Transparent" />
                                 </Rectangle.Fill>
                             </Rectangle>
-
-                            <!--  3. 搴曞眰鏂囨湰锛氬唴瀹规樉绀?  -->
-                            <!--  鐢?SelectionStates 鎺у埗棰滆壊 (鐧?榛?锛岃礋璐ｆ樉绀洪€変腑鐘舵€?  -->
                             <TextBlock
                                 x:Name="ContentText"
                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -142,9 +128,7 @@
                                     <SolidColorBrush x:Name="ContentForeground" Color="{DynamicResource ControlForegroundColor}" />
                                 </TextBlock.Foreground>
                             </TextBlock>
-
-                            <!--  4. 椤跺眰鏂囨湰锛氭偓娴鐩栧眰  -->
-                            <!--  鐢?CommonStates 鎺у埗 Opacity銆傛偓娴椂鏄剧ず榛戣壊鏂囨湰瑕嗙洊搴曞眰锛屽疄鐜?鎮诞鍙樿壊"  -->
+                            <!--  4. 顶层文本：悬浮覆盖层  -->
                             <TextBlock
                                 x:Name="HoverText"
                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -162,13 +146,12 @@
                                 <VisualState x:Name="Normal" />
                                 <VisualState x:Name="MouseOver">
                                     <Storyboard>
-                                        <!--  鑳屾櫙锛氭樉绀虹伆鑹查伄缃?  -->
                                         <ColorAnimation
                                             Storyboard.TargetName="BackgroundRectangle"
                                             Storyboard.TargetProperty="(Rectangle.Fill).(SolidColorBrush.Color)"
                                             To="{DynamicResource CalendarButtonHoverBackgroundColor}"
                                             Duration="0" />
-                                        <!--  鏂囨湰锛氭樉绀洪粦鑹茶鐩栧眰  -->
+                                        <!--  文本：显示黑色覆盖层  -->
                                         <DoubleAnimation
                                             Storyboard.TargetName="HoverText"
                                             Storyboard.TargetProperty="Opacity"
@@ -203,7 +186,7 @@
                             <VisualStateGroup x:Name="SelectionStates">
                                 <VisualState x:Name="Unselected">
                                     <Storyboard>
-                                        <!--  鏈€変腑锛氶殣钘忚摑鑹茶儗鏅紝鏂囧瓧鍙橀粦  -->
+                                        <!--  未选中：隐藏蓝色背景，文字变黑  -->
                                         <DoubleAnimation
                                             Storyboard.TargetName="SelectedBackground"
                                             Storyboard.TargetProperty="Opacity"
@@ -218,7 +201,7 @@
                                 </VisualState>
                                 <VisualState x:Name="Selected">
                                     <Storyboard>
-                                        <!--  閫変腑锛氭樉绀鸿摑鑹茶儗鏅紝鏂囧瓧鍙樼櫧  -->
+                                        <!--  选中：显示蓝色背景，文字变白  -->
                                         <DoubleAnimation
                                             Storyboard.TargetName="SelectedBackground"
                                             Storyboard.TargetProperty="Opacity"
@@ -269,8 +252,6 @@
             </Setter.Value>
         </Setter>
     </Style>
-
-    <!--  鏃ュ巻涓?澶?妯″紡涓嬬殑鎸夐挳鏍峰紡  -->
     <Style x:Key="CalendarDayButtonStyle" TargetType="CalendarDayButton">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
@@ -429,8 +410,7 @@
             </Setter.Value>
         </Setter>
     </Style>
-
-    <!--  鏃ュ巻澶撮儴瀵艰埅鎸夐挳鏍峰紡  -->
+    <!--  日历头部导航按钮样式  -->
     <Style x:Key="CalendarHeaderButtonStyle" TargetType="Button">
         <Setter Property="Template">
             <Setter.Value>
@@ -451,8 +431,6 @@
             </Trigger>
         </Style.Triggers>
     </Style>
-
-    <!--  CalendarItem 鏍峰紡锛堝畾涔夋棩鍘嗙殑鏁翠綋缁撴瀯锛?  -->
     <Style x:Key="CalendarItemStyle" TargetType="{x:Type CalendarItem}">
         <Setter Property="Margin" Value="0,3,0,3" />
         <Setter Property="Template">
@@ -476,8 +454,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
-
-                        <!--  澶撮儴鍖哄煙  -->
+                        <!--  头部区域  -->
                         <Border
                             Grid.Row="0"
                             Padding="10,5"
@@ -488,8 +465,6 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-
-                                <!--  涓婁竴涓湀/骞?  -->
                                 <Button
                                     x:Name="PART_PreviousButton"
                                     Grid.Column="0"
@@ -503,16 +478,13 @@
                                         Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                         Stretch="Fill" />
                                 </Button>
-
-                                <!--  鏍囬锛堢偣鍑诲垏鎹㈣鍥撅級  -->
+                                <!--  标题（点击切换视图）  -->
                                 <Button
                                     x:Name="PART_HeaderButton"
                                     Grid.Column="1"
                                     HorizontalAlignment="Center"
                                     FontWeight="Bold"
                                     Style="{StaticResource CalendarHeaderButtonStyle}" />
-
-                                <!--  涓嬩竴涓湀/骞?  -->
                                 <Button
                                     x:Name="PART_NextButton"
                                     Grid.Column="2"
@@ -528,8 +500,6 @@
                                 </Button>
                             </Grid>
                         </Border>
-
-                        <!--  鏃ュ巻鍐呭鍖哄煙锛堟棩/鏈?骞?鍒楄〃锛?  -->
                         <Grid
                             x:Name="PART_MonthView"
                             Grid.Row="1"
@@ -556,7 +526,6 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                         </Grid>
-
                         <Grid
                             x:Name="PART_YearView"
                             Grid.Row="1"
@@ -576,7 +545,6 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                         </Grid>
-
                         <Rectangle
                             x:Name="PART_DisabledVisual"
                             Grid.RowSpan="2"
@@ -588,7 +556,6 @@
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.5" />
                         </Trigger>
-                        <!--  鏍规嵁 Calendar 鐨?DisplayMode 鍒囨崲瑙嗗浘  -->
                         <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Calendar}}}" Value="Year">
                             <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden" />
                             <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible" />
@@ -606,7 +573,6 @@
             </Setter.Value>
         </Setter>
     </Style>
-
     <Style x:Key="DefaultCalendarStyle" TargetType="{x:Type Calendar}">
         <Setter Property="CalendarButtonStyle" Value="{StaticResource CalendarButtonStyle}" />
         <Setter Property="CalendarDayButtonStyle" Value="{StaticResource CalendarDayButtonStyle}" />
@@ -619,7 +585,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Calendar}">
-                    <!--  澧炲姞 Margin="10,0,10,10" 闃叉澶ч槾褰辫瑁佸壀  -->
+                    <!--  保留外边距，避免日历弹层阴影被裁剪。  -->
                     <Border
                         x:Name="PART_Root"
                         Margin="20,0,20,20"
@@ -627,13 +593,13 @@
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}">
                         <Border.Effect>
-                            <!--  澧炲己闃村奖鍙傛暟锛氭ā鎷熺獥鍙ｆ偓娴劅  -->
+                            <!--  轻量阴影：模拟日历弹层的悬浮感。  -->
                             <DropShadowEffect
-                                BlurRadius="20"
+                                BlurRadius="12"
                                 Direction="270"
-                                Opacity="0.4"
-                                ShadowDepth="5"
-                                Color="Black" />
+                                Opacity="0.22"
+                                ShadowDepth="2"
+                                Color="{DynamicResource DropShadowColor}" />
                         </Border.Effect>
                         <CalendarItem x:Name="PART_CalendarItem" Style="{TemplateBinding CalendarItemStyle}" />
                     </Border>
@@ -641,8 +607,7 @@
             </Setter.Value>
         </Setter>
     </Style>
-
-    <!--  DatePicker 涓绘牱寮?  -->
+    <!--  DatePicker 主样式  -->
     <Style BasedOn="{StaticResource ControlBaseStyle}" TargetType="{x:Type DatePicker}">
         <Setter Property="CalendarStyle" Value="{StaticResource DefaultCalendarStyle}" />
         <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
@@ -667,8 +632,6 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-
-                            <!--  杈撳叆妗?  -->
                             <DatePickerTextBox
                                 x:Name="PART_TextBox"
                                 Grid.Column="0"
@@ -678,24 +641,20 @@
                                 Background="Transparent"
                                 Focusable="{TemplateBinding Focusable}"
                                 Style="{StaticResource DefaultDatePickerTextBoxStyle}" />
-
-                            <!--  鏃ュ巻鎸夐挳  -->
+                            <!--  日历按钮  -->
                             <Button
                                 x:Name="PART_Button"
                                 Grid.Column="1"
                                 Width="24"
                                 Margin="0,0,8,0"
                                 Style="{StaticResource DefaultDatePickerButtonStyle}" />
-
-                            <!--  寮瑰嚭鏃ュ巻 Popup  -->
+                            <!--  弹出日历 Popup  -->
                             <Popup
                                 x:Name="PART_Popup"
                                 AllowsTransparency="True"
                                 Placement="Bottom"
                                 PlacementTarget="{Binding ElementName=PART_Root}"
                                 StaysOpen="False" />
-
-                            <!--  搴曢儴涓嬪垝绾?  -->
                             <Border
                                 x:Name="PART_BottomBorder"
                                 Grid.ColumnSpan="2"
@@ -705,7 +664,7 @@
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
-                        <!--  瑙﹀彂 PopUp  -->
+                        <!--  触发 PopUp  -->
                         <Trigger Property="IsDropDownOpen" Value="True">
                             <Setter TargetName="PART_Popup" Property="IsOpen" Value="True" />
                             <Setter TargetName="PART_Button" Property="Foreground" Value="{DynamicResource ControlFocusedBorderBrush}" />
@@ -715,7 +674,7 @@
                                 <BeginStoryboard Storyboard="{StaticResource FocusAnimationStoryboard}" />
                             </Trigger.EnterActions>
                         </Trigger>
-                        <!--  鑱氱劍鏁堟灉  -->
+                        <!--  聚焦效果  -->
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
                             <Setter TargetName="PART_BottomBorder" Property="Background" Value="{DynamicResource ControlFocusedBorderBrush}" />
                             <Setter TargetName="PART_BottomBorder" Property="Height" Value="2" />

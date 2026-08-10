@@ -324,7 +324,7 @@ public sealed class SerilogLogService : ILogService, IDisposable
             configuration.WriteTo.Logger(lc => lc
                 .Filter.ByExcluding(evt => HasLogFormat(evt, LogFormat.JsonOnly))
                 .WriteTo.File(
-                    path: Path.Combine(logFolder, $"{options.FileNamePrefix}-.txt"),
+                    path: GetRollingFilePath(logFolder, options.FileNamePrefix, ".txt"),
                     outputTemplate: options.TextOutputTemplate,
                     shared: options.SharedFile,
                     rollingInterval: RollingInterval.Day,
@@ -336,7 +336,7 @@ public sealed class SerilogLogService : ILogService, IDisposable
             configuration.WriteTo.Logger(lc => lc
                 .Filter.ByExcluding(evt => HasLogFormat(evt, LogFormat.TextOnly))
                 .WriteTo.File(
-                    path: Path.Combine(logFolder, $"{options.FileNamePrefix}-.json"),
+                    path: GetRollingFilePath(logFolder, options.FileNamePrefix, ".json"),
                     formatter: new global::Serilog.Formatting.Json.JsonFormatter(renderMessage: true),
                     shared: options.SharedFile,
                     rollingInterval: RollingInterval.Day,
@@ -344,6 +344,15 @@ public sealed class SerilogLogService : ILogService, IDisposable
         }
 
         return configuration.CreateLogger();
+    }
+
+
+    private static string GetRollingFilePath(string logFolder, string? fileNamePrefix, string extension)
+    {
+        string fileName = string.IsNullOrWhiteSpace(fileNamePrefix)
+            ? extension
+            : $"{fileNamePrefix}-{extension}";
+        return Path.Combine(logFolder, fileName);
     }
 
     private ILogger GetLoggerByFormat(LogFormat format)

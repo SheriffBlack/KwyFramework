@@ -34,9 +34,5 @@ public static class KwySerilogServiceCollectionExtensions
             throw new ArgumentException("Log directory cannot be empty.", nameof(options));
         }
 
-        if (string.IsNullOrWhiteSpace(options.FileNamePrefix))
-        {
-            throw new ArgumentException("File name prefix cannot be empty.", nameof(options));
-        }
     }
 }

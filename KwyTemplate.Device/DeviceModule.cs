@@ -1,8 +1,14 @@
+﻿using Kwy.Communicate.Abstractions;
+using Kwy.Communicate.Core;
+using Kwy.Communicate.NI;
+using Kwy.Communicate.TcpSerial;
 using Kwy.Device.Core;
+using Kwy.Device.Abstractions;
 using Kwy.MVVM.Modularity;
 using KwyTemplate.Contracts.Modularity;
-using KwyTemplate.Device.Connections;
-using KwyTemplate.Device.Options;
+using KwyTemplate.Contracts.Services;
+using KwyTemplate.Device.Devices;
+using KwyTemplate.Device.Profiles;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -11,24 +17,36 @@ namespace KwyTemplate.Device;
 [Module(ModuleName = ModuleNames.DeviceModule)]
 public sealed class DeviceModule : IModule
 {
-    public void OnInitialized(IServiceProvider provider)
-    {
-        ArgumentNullException.ThrowIfNull(provider);
-
-        var startupService = provider.GetRequiredService<IDeviceStartupService>();
-        _ = Task.Run(async () => await startupService.StartAsync().ConfigureAwait(false));
-    }
-
     public void RegisterTypes(IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddKwyDeviceCore();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDeviceConnectionFactory, HslPlcConnectionFactory>());
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDeviceConnectionFactory, ExternalTcpDeviceConnectionFactory>());
-        services.TryAddSingleton<IDeviceConnectionOptionsStore, JsonDeviceConnectionOptionsStore>();
-        services.TryAddSingleton<IDeviceConnectionService, DeviceConnectionService>();
-        services.TryAddSingleton<IDeviceStartupService, DeviceStartupService>();
+        services.TryAddSingleton<ICommunicationFactory>(_ =>
+        {
+            var factory = new CommunicationFactory();
+            factory.RegisterTcpSerialClients();
+            factory.RegisterGpib();
+            return factory;
+        });
+        services.TryAddSingleton<DeviceConfigProvider>();
+        services.TryAddSingleton<IDeviceConfigProvider>(provider => provider.GetRequiredService<DeviceConfigProvider>());
+        services.TryAddSingleton(new DeviceCatalogSelectionOptions { ActiveCatalogKey = nameof(Machine_4_HAHH_DeviceCatalog) });
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDeviceCatalog, Machine_Default_DeviceCatalog>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDeviceCatalog, Machine_2_A_DeviceCatalog>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDeviceCatalog, Machine_4_HAHH_DeviceCatalog>());
+
+        services.TryAddSingleton<IMachineDeviceContext, MachineDeviceContext>();
+        services.TryAddSingleton<IDeviceRegistryInitializer, DeviceRegistryInitializer>();
+        services.TryAddSingleton<IDeviceStartupConnector, DeviceStartupConnector>();
     }
 
+    public void OnInitialized(IServiceProvider provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        provider.GetRequiredService<StartupProgressService>().Report("正在加载设备配置...", 10);
+        provider.GetRequiredService<IDeviceRegistryInitializer>().Initialize();
+        _ = provider.GetRequiredService<IDeviceStartupConnector>().ConnectAsync();
+    }
 }
+

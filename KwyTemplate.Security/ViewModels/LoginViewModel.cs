@@ -1,8 +1,10 @@
+﻿using System.Collections.ObjectModel;
+using System.Globalization;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Dialogs;
+using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Security.Authentication;
 using KwyTemplate.Security.Data;
-using System.Collections.ObjectModel;
 
 namespace KwyTemplate.Security.ViewModels;
 
@@ -10,22 +12,30 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
 {
     private readonly ILoginService loginService;
     private readonly LocalUserStore userStore;
+    private readonly ILocalizationService localizationService;
+    private string userName = "operator";
+    private string password = string.Empty;
+    private string message;
+    private bool isDefaultMessageVisible = true;
+    private AsyncDelegateCommand? loginCommand;
 
     public LoginViewModel(
         ILoginService loginService,
-        LocalUserStore userStore)
+        LocalUserStore userStore,
+        ILocalizationService localizationService)
     {
         this.loginService = loginService ?? throw new ArgumentNullException(nameof(loginService));
         this.userStore = userStore ?? throw new ArgumentNullException(nameof(userStore));
+        this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
+        this.localizationService.LanguageChanged += OnLanguageChanged;
+        message = T("Security.Login.DefaultAccount", "默认账号：操作员 / 1");
     }
 
-    public string Title => "用户登录";
+    public string Title => T("Security.Login.Title", "用户登录");
 
     public event Action<IDialogResult>? RequestClose;
 
     public ObservableCollection<string> UserNames { get; } = new();
-
-    private string userName = "admin";
 
     public string UserName
     {
@@ -33,15 +43,11 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
         set => SetProperty(ref userName, value);
     }
 
-    private string password = string.Empty;
-
     public string Password
     {
         get => password;
         set => SetProperty(ref password, value);
     }
-
-    private string message = "默认账号：admin / admin123";
 
     public string Message
     {
@@ -49,23 +55,30 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
         private set => SetProperty(ref message, value);
     }
 
-    private AsyncDelegateCommand? loginCommand;
-
     public AsyncDelegateCommand LoginCommand
         => loginCommand ??= new AsyncDelegateCommand(ExecuteLoginAsync);
 
     private async Task ExecuteLoginAsync()
     {
-        Message = string.Empty;
-        LoginResult result = await loginService.LoginAsync(UserName, Password, DestroyToken).ConfigureAwait(true);
-        if (!result.Succeeded)
+        try
         {
-            Message = result.ErrorMessage ?? "登录失败。";
-            return;
-        }
+            isDefaultMessageVisible = false;
+            Message = string.Empty;
+            LoginResult result = await loginService.LoginAsync(UserName, Password, DestroyToken).ConfigureAwait(true);
+            if (!result.Succeeded)
+            {
+                Message = result.ErrorMessage ?? T("Security.Login.Failed", "登录失败。");
+                return;
+            }
 
-        Password = string.Empty;
-        RequestClose?.Invoke(new DialogResult(ButtonResult.OK));
+            Password = string.Empty;
+            RequestClose?.Invoke(new DialogResult(ButtonResult.OK));
+        }
+        catch (Exception ex)
+        {
+            isDefaultMessageVisible = false;
+            Message = TF("Security.Login.Exception", "登录异常：{0}", ex.Message);
+        }
     }
 
     public bool CanCloseDialog() => true;
@@ -73,6 +86,7 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
     public void OnDialogClosed()
     {
         Password = string.Empty;
+        localizationService.LanguageChanged -= OnLanguageChanged;
     }
 
     public void OnDialogOpened(IDialogParameters parameters)
@@ -82,17 +96,68 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
 
     private async Task LoadUserNamesAsync()
     {
-        IReadOnlyList<string> users = await userStore.GetUserNamesAsync(DestroyToken).ConfigureAwait(true);
-        UserNames.Clear();
-        foreach (string user in users)
+        try
         {
-            UserNames.Add(user);
-        }
+            IReadOnlyList<string> users = await userStore.GetUserNamesAsync(DestroyToken).ConfigureAwait(true);
+            UserNames.Clear();
+            foreach (string user in users.OrderBy(GetUserDisplayOrder).ThenBy(static user => user, StringComparer.OrdinalIgnoreCase))
+            {
+                UserNames.Add(user);
+            }
 
-        if (UserNames.Count > 0
-            && (string.IsNullOrWhiteSpace(UserName) || !UserNames.Contains(UserName)))
+            string? defaultUser = UserNames.FirstOrDefault(static user => IsUser(user, "operator", "操作员"))
+                ?? UserNames.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(defaultUser))
+            {
+                UserName = defaultUser;
+            }
+        }
+        catch (Exception ex)
         {
-            UserName = UserNames[0];
+            isDefaultMessageVisible = false;
+            Message = TF("Security.Login.LoadUsersFailed", "加载用户失败：{0}", ex.Message);
         }
     }
+
+    private void OnLanguageChanged(object? sender, LanguageType languageType)
+    {
+        RaisePropertyChanged(nameof(Title));
+        if (isDefaultMessageVisible)
+        {
+            Message = T("Security.Login.DefaultAccount", "默认账号：操作员 / 1");
+        }
+    }
+
+    private string T(string key, string fallback)
+    {
+        string text = localizationService.GetString(key);
+        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
+    }
+
+    private string TF(string key, string fallback, params object[] args)
+        => string.Format(CultureInfo.CurrentCulture, T(key, fallback), args);
+
+    private static int GetUserDisplayOrder(string userName)
+    {
+        if (IsUser(userName, "operator", "操作员"))
+        {
+            return 0;
+        }
+
+        if (IsUser(userName, "engineer", "工程师"))
+        {
+            return 1;
+        }
+
+        if (IsUser(userName, "admin", "管理员"))
+        {
+            return 2;
+        }
+
+        return 100;
+    }
+
+    private static bool IsUser(string userName, string accountName, string displayName)
+        => string.Equals(userName, accountName, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(userName, displayName, StringComparison.OrdinalIgnoreCase);
 }

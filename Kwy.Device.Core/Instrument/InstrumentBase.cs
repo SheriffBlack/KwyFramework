@@ -11,6 +11,7 @@ namespace Kwy.Device.Core.Instrument;
 /// </summary>
 public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
 {
+    private static readonly TimeSpan ProtocolDisposeTimeout = TimeSpan.FromSeconds(3);
     private readonly SemaphoreSlim executionSemaphore = new(1, 1);
 
     protected readonly ICommunicationClient protocol;
@@ -91,51 +92,101 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         return ExecuteSerializedAsync(token => transport.WriteAsync(data, token), cancellationToken);
     }
 
-    public ValueTask<string> QueryAsync(string command, CancellationToken cancellationToken = default)
+    public async ValueTask<string> QueryAsync(string command, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
-        return ExecuteSerializedAsync(async token =>
+        try
         {
-            await transport.WriteTextAsync(command, cancellationToken: token);
-            return await ReadResponseCoreAsync(token);
-        }, cancellationToken);
+            return await ExecuteSerializedAsync(async token =>
+            {
+                await transport.WriteTextAsync(command, cancellationToken: token);
+                return await ReadResponseCoreAsync(token);
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            RaiseOperationFailed(DeviceOperationKind.Read, "Query", $"Instrument query failed. Command={FormatCommand(command)}, Error={ex.Message}", ex);
+            throw;
+        }
     }
 
-    public ValueTask<string> ReadResponseAsync(CancellationToken cancellationToken = default)
-        => ExecuteSerializedAsync(ReadResponseCoreAsync, cancellationToken);
+    public async ValueTask<string> ReadResponseAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await ExecuteSerializedAsync(ReadResponseCoreAsync, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            RaiseOperationFailed(DeviceOperationKind.Read, "ReadResponse", $"Instrument read response failed. Error={ex.Message}", ex);
+            throw;
+        }
+    }
 
-    public ValueTask TriggerAsync(string command = "*TRG", CancellationToken cancellationToken = default)
+    public async ValueTask TriggerAsync(string command = "*TRG", CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
-        return ExecuteSerializedAsync(
-            token => transport.WriteTextAsync(command, cancellationToken: token),
-            cancellationToken);
+        try
+        {
+            await ExecuteSerializedAsync(
+                token => transport.WriteTextAsync(command, cancellationToken: token),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            RaiseOperationFailed(DeviceOperationKind.Trigger, "Trigger", $"Instrument trigger failed. Command={FormatCommand(command)}, Error={ex.Message}", ex);
+            throw;
+        }
     }
 
-    public Task<string> WaitAndReadTriggeredResultAsync(
+    public async Task<string> WaitAndReadTriggeredResultAsync(
         Func<CancellationToken, Task> waitForCompletionAsync,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(waitForCompletionAsync);
-        return ExecuteSerializedAsync(async token =>
+        try
         {
-            await waitForCompletionAsync(token);
-            return await ReadResponseCoreAsync(token);
-        }, cancellationToken).AsTask();
+            return await ExecuteSerializedAsync(async token =>
+            {
+                await waitForCompletionAsync(token);
+                return await ReadResponseCoreAsync(token);
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            RaiseOperationFailed(DeviceOperationKind.Read, "WaitAndReadTriggeredResult", $"Instrument triggered result read failed. Error={ex.Message}", ex);
+            throw;
+        }
     }
 
-    public override Task ApplyConfigurationAsync(CancellationToken cancellationToken = default)
-        => ExecuteSerializedAsync(async token =>
+    public override async Task ApplyConfigAsync(CancellationToken cancellationToken = default)
+    {
+        try
         {
-            if (DeviceParameter == null)
-                throw new InvalidOperationException("Device configuration is not set.");
-            if (!DeviceParameter.Validate())
-                throw new InvalidOperationException("Device configuration is invalid.");
+            await ExecuteSerializedAsync(async token =>
+            {
+                if (DeviceParameter == null)
+                    throw new InvalidOperationException("Device configuration is not set.");
+                if (!DeviceParameter.Validate())
+                    throw new InvalidOperationException("Device configuration is invalid.");
 
-            var command = JoinCommand();
-            if (!string.IsNullOrWhiteSpace(command))
-                await transport.WriteTextAsync(command, cancellationToken: token);
-        }, cancellationToken).AsTask();
+                var command = JoinCommand();
+                if (!string.IsNullOrWhiteSpace(command))
+                    await transport.WriteTextAsync(command, cancellationToken: token);
+            }, cancellationToken).ConfigureAwait(false);
+
+            RaiseOperationOccurred(
+                DeviceOperationKind.ParameterWrite,
+                "ApplyConfig",
+                true,
+                $"Instrument parameter write succeeded. Device={DeviceName}.");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            RaiseOperationFailed(DeviceOperationKind.ParameterWrite, "ApplyConfig", $"Instrument parameter write failed. Device={DeviceName}, Error={ex.Message}", ex);
+            throw;
+        }
+    }
 
     public virtual string JoinCommand() => string.Empty;
 
@@ -144,6 +195,12 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
 
     protected virtual string ParseResponse(ReadOnlySpan<byte> responseBytes)
         => Encoding.UTF8.GetString(responseBytes).Trim();
+
+    private void RaiseOperationFailed(DeviceOperationKind kind, string operationName, string message, Exception exception)
+        => RaiseOperationOccurred(kind, operationName, false, message, exception);
+
+    private static string FormatCommand(string command)
+        => command.Replace("\r", "\\r", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal);
 
     private async ValueTask<string> ReadResponseCoreAsync(CancellationToken cancellationToken)
     {
@@ -215,9 +272,31 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         if (disposed)
             return;
 
-        await base.DisposeAsync();
-        UnsubscribeProtocolEvents();
-        await protocol.DisposeAsync();
-        executionSemaphore.Dispose();
+        try
+        {
+            await base.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            UnsubscribeProtocolEvents();
+            try
+            {
+                await protocol.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                RaiseErrorOccurred($"Instrument protocol cleanup failed: {ex.Message}", ex);
+            }
+
+            try
+            {
+                executionSemaphore.Dispose();
+            }
+            catch
+            {
+            }
+        }
     }
 }
+
+

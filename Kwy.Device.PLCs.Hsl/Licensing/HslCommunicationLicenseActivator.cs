@@ -20,14 +20,26 @@ public sealed class HslCommunicationLicenseActivator : ILicenseActivator
 
     public string ProviderName => "HslCommunication";
 
-    public async ValueTask<LicenseActivationResult> ActivateAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Activates HslCommunication by using the bundled default authorization code.
+    /// </summary>
+    public static LicenseActivationResult ActivateDefault()
+        => Activate(HslCommunicationLicenseOptions.DefaultLicenseKey, required: true);
+
+    public ValueTask<LicenseActivationResult> ActivateAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(Activate(options.LicenseKey, options.Required));
+    }
+
+    private static LicenseActivationResult Activate(string? licenseKey, bool required)
     {
         if (cachedResult?.Success == true)
         {
             return cachedResult;
         }
 
-        await ActivationLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        ActivationLock.Wait();
         try
         {
             if (cachedResult?.Success == true)
@@ -35,25 +47,25 @@ public sealed class HslCommunicationLicenseActivator : ILicenseActivator
                 return cachedResult;
             }
 
-            if (string.IsNullOrWhiteSpace(options.LicenseKey))
+            if (string.IsNullOrWhiteSpace(licenseKey))
             {
-                cachedResult = options.Required
-                    ? LicenseActivationResult.Failed(ProviderName, "HslCommunication license key is required but was not configured.")
-                    : LicenseActivationResult.Succeeded(ProviderName, "HslCommunication license activation skipped because no key was configured.");
+                cachedResult = required
+                    ? LicenseActivationResult.Failed("HslCommunication", "HslCommunication license key is required but was not configured.")
+                    : LicenseActivationResult.Succeeded("HslCommunication", "HslCommunication license activation skipped because no key was configured.");
                 return cachedResult;
             }
 
             try
             {
-                bool success = Authorization.SetAuthorizationCode(options.LicenseKey);
+                bool success = Authorization.SetAuthorizationCode(licenseKey);
                 cachedResult = success
-                    ? LicenseActivationResult.Succeeded(ProviderName, "HslCommunication license activated.")
-                    : LicenseActivationResult.Failed(ProviderName, "HslCommunication license activation returned false.");
+                    ? LicenseActivationResult.Succeeded("HslCommunication", "HslCommunication license activated.")
+                    : LicenseActivationResult.Failed("HslCommunication", "HslCommunication license activation returned false.");
                 return cachedResult;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                cachedResult = LicenseActivationResult.Failed(ProviderName, $"HslCommunication license activation failed: {ex.Message}", ex);
+                cachedResult = LicenseActivationResult.Failed("HslCommunication", $"HslCommunication license activation failed: {ex.Message}", ex);
                 return cachedResult;
             }
         }

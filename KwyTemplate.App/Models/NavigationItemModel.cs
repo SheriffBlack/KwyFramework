@@ -1,29 +1,57 @@
-﻿namespace KwyTemplate.App.Models;
+﻿using Kwy.MVVM.Core;
+using KwyTemplate.Contracts.Localization;
 
-public class NavigationItemModel
+namespace KwyTemplate.App.Models;
+
+public class NavigationItemModel : BindableBase
 {
-    public string DisplayText { get; set; } = string.Empty;
+    private string displayText = string.Empty;
+
+    public string DisplayText
+    {
+        get => displayText;
+        set => SetProperty(ref displayText, value ?? string.Empty);
+    }
+
+    public string LocalizationKey { get; set; } = string.Empty;
+
     public string ViewName { get; set; } = string.Empty;
+
     public bool IsVisibility { get; set; } = true;
 
     /// <summary>
-    /// true → KwyRadioButton, false → RadioButton
+    /// true -> navigation item has icon, false -> text only.
     /// </summary>
     public bool HasIcon => !string.IsNullOrWhiteSpace(Icon);
+
     public string Icon { get; set; } = string.Empty;
 
     /// <summary>
-    /// 导航参数：用于区分同视图的不同实例（如 电阻1, 电阻2）
+    /// Navigation parameter used to distinguish different instances of the same view.
     /// </summary>
     public string Parameter { get; set; } = string.Empty;
 
     /// <summary>
-    /// 导航权限码。为空表示不限制权限。
+    /// Permission code required to enter this navigation item. Empty means no permission check.
     /// </summary>
     public string PermissionCode { get; set; } = string.Empty;
 
     /// <summary>
-    /// 导航选中状态使用的稳定键。同一个 ViewName 可以通过不同 Parameter 表示不同实例。
+    /// Stable key used only by navigation button selected-state binding.
     /// </summary>
     public string NavigationKey => string.IsNullOrWhiteSpace(Parameter) ? ViewName : $"{ViewName}:{Parameter}";
+
+    public void RefreshLocalization(ILocalizationService localizationService)
+    {
+        if (localizationService == null || string.IsNullOrWhiteSpace(LocalizationKey))
+        {
+            return;
+        }
+
+        string text = localizationService.GetString(LocalizationKey);
+        if (!string.IsNullOrWhiteSpace(text) && !string.Equals(text, LocalizationKey, StringComparison.Ordinal))
+        {
+            DisplayText = text;
+        }
+    }
 }

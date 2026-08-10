@@ -1,16 +1,22 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
   <ItemGroup>
+    <None Remove="D:\Desktop\Kwy\README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
+    <ProjectReference Include="..\Kwy.Core\Kwy.Core.csproj" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Files\Kwy.Files.csproj" />
     <ProjectReference Include="..\Kwy.MVVM\Kwy.MVVM.csproj" />
+    <ProjectReference Include="..\Kwy.UI\Kwy.UI.csproj" />
     <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
     <ProjectReference Include="..\KwyTemplate.Device\KwyTemplate.Device.csproj" />
+    <ProjectReference Include="..\KwyTemplate.MES.Abstract\KwyTemplate.MES.Abstract.csproj" />
   </ItemGroup>
-
 </Project>
+

@@ -8,11 +8,9 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/DefaultStyle.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Themes/LightTheme.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF.FlowDesigner;component/DefaultStyle.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF.FlowDesigner;component/Themes/LightTheme.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/KwyTemplate.Vision;component/Themes/LightTheme.xaml" />
 
                 <ResourceDictionary Source="pack://application:,,,/KwyTemplate.App;component/Resources/Img.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/KwyTemplate.App;component/Resources/Lang/zh-CN.xaml" />
 
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

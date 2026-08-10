@@ -1,0 +1,198 @@
+<UserControl
+    x:Class="KwyTemplate.App.Views.CorrectionView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+    xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
+    xmlns:kwyui="http://schemas.kwy.com/ui"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:navigation="clr-namespace:KwyTemplate.Contracts.Navigation;assembly=KwyTemplate.Contracts"
+    mc:Ignorable="d">
+
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding EnsureDefaultContentCommand}" />
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <ContentControl
+            Grid.Row="0"
+            Margin="0"
+            kwymvvm:RegionManager.RegionName="{x:Static navigation:RegionNames.CorrectionRegion}" />
+
+        <ItemsControl Grid.Row="1" />
+
+        <GroupBox Grid.Row="2" Header="{DynamicResource Correction.Header.Correction}">
+            <Grid
+                Width="860"
+                Margin="24,18,24,24"
+                HorizontalAlignment="Left"
+                Grid.IsSharedSizeScope="True">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock
+                    Grid.Row="0"
+                    FontSize="18"
+                    FontWeight="Bold"
+                    Text="{DynamicResource Correction.Title.Parameters}" />
+
+                <UniformGrid
+                    Grid.Row="1"
+                    Margin="0,12,0,14"
+                    Columns="2">
+                    <kwyui:KwyFormItem Margin="0,0,34,0" Label="{DynamicResource Correction.Field.LoadType}">
+                        <ComboBox
+                            Width="150"
+                            HorizontalAlignment="Left"
+                            IsEnabled="{Binding CanEditCorrectionParameters}"
+                            ItemsSource="{Binding LoadTypeItems}"
+                            SelectedItem="{Binding LoadType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </kwyui:KwyFormItem>
+                    <kwyui:KwyFormItem Margin="60,0,0,0" Label="{DynamicResource Correction.Field.DcLoad}">
+                        <TextBox
+                            Width="150"
+                            HorizontalAlignment="Left"
+                            IsReadOnly="{Binding AreCorrectionParametersReadOnly}"
+                            Text="{Binding DcLoad, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </kwyui:KwyFormItem>
+                </UniformGrid>
+
+                <UniformGrid
+                    Grid.Row="2"
+                    Margin="0,12,0,14"
+                    Columns="2">
+                    <kwyui:KwyFormItem Margin="0,0,34,0" Label="{DynamicResource Correction.Field.Frequency}">
+                        <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                            <TextBox
+                                Width="150"
+                                IsReadOnly="{Binding AreCorrectionParametersReadOnly}"
+                                Text="{Binding Frequency, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center"
+                                Text="{Binding FrequencyUnit}" />
+                        </StackPanel>
+                    </kwyui:KwyFormItem>
+                    <kwyui:KwyFormItem Margin="60,0,0,0" Label="{DynamicResource Correction.Field.Voltage}">
+                        <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                            <TextBox
+                                Width="150"
+                                IsReadOnly="{Binding AreCorrectionParametersReadOnly}"
+                                Text="{Binding Voltage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center"
+                                Text="{Binding VoltageUnit}" />
+                        </StackPanel>
+                    </kwyui:KwyFormItem>
+                </UniformGrid>
+
+                <Border
+                    Grid.Row="3"
+                    Height="1"
+                    Background="{DynamicResource BorderBrush}" />
+
+                <Grid Grid.Row="4" Margin="0,18,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="40" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Text="Ls" />
+                        <kwyui:KwyFormItem Label="{DynamicResource Correction.Field.StandardValue}">
+                            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                <TextBox
+                                    Width="150"
+                                    IsReadOnly="True"
+                                    Text="{Binding LsStandardValue, Mode=OneWay}" />
+                                <TextBlock
+                                    Margin="8,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Text="{Binding LsStandardUnit}" />
+                            </StackPanel>
+                        </kwyui:KwyFormItem>
+                        <kwyui:KwyFormItem Label="{DynamicResource Correction.Field.ReturnValue}">
+                            <TextBox
+                                Width="150"
+                                HorizontalAlignment="Left"
+                                IsReadOnly="True"
+                                Text="{Binding LsCorrectionValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </kwyui:KwyFormItem>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Margin="40,0,0,0">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Text="Rs" />
+                        <kwyui:KwyFormItem Label="{DynamicResource Correction.Field.StandardValue}">
+                            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                <TextBox
+                                    Width="150"
+                                    IsReadOnly="True"
+                                    Text="{Binding RsStandardValue, Mode=OneWay}" />
+                                <TextBlock
+                                    Margin="8,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Text="{Binding RsStandardUnit}" />
+                            </StackPanel>
+                        </kwyui:KwyFormItem>
+                        <kwyui:KwyFormItem Label="{DynamicResource Correction.Field.ReturnValue}">
+                            <TextBox
+                                Width="150"
+                                HorizontalAlignment="Left"
+                                IsReadOnly="True"
+                                Text="{Binding RsCorrectionValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </kwyui:KwyFormItem>
+                    </StackPanel>
+                </Grid>
+
+                <UniformGrid
+                    Grid.Row="5"
+                    Width="640"
+                    Margin="0,28,0,0"
+                    HorizontalAlignment="Center"
+                    Columns="3">
+                    <Button
+                        Height="38"
+                        Margin="0,0,12,0"
+                        Command="{Binding ExecuteOpenCorrectionCommand}"
+                        Content="{DynamicResource Correction.Action.Open}" />
+                    <Button
+                        Height="38"
+                        Margin="12,0"
+                        Command="{Binding ExecuteShortCorrectionCommand}"
+                        Content="{DynamicResource Correction.Action.Short}" />
+                    <Button
+                        Height="38"
+                        Margin="12,0,0,0"
+                        Command="{Binding ExecuteLoadCorrectionCommand}"
+                        Content="{DynamicResource Correction.Action.Correct}" />
+                </UniformGrid>
+            </Grid>
+        </GroupBox>
+    </Grid>
+</UserControl>
+

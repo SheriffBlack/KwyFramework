@@ -9,6 +9,7 @@ namespace Kwy.Device.Core;
 /// </summary>
 public abstract class DeviceBase : IDevice
 {
+    private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(3);
     private readonly SemaphoreSlim lifecycleSemaphore = new(1, 1);
 
     public string DeviceId { get; protected set; }
@@ -19,6 +20,7 @@ public abstract class DeviceBase : IDevice
 
     public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged;
     public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred;
+    public event EventHandler<DeviceOperationEventArgs>? OperationOccurred;
 
     protected bool disposed;
 
@@ -127,7 +129,7 @@ public abstract class DeviceBase : IDevice
         }
     }
 
-    public virtual Task ApplyConfigurationAsync(CancellationToken cancellationToken = default)
+    public virtual Task ApplyConfigAsync(CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 
     protected void RaiseStateChanged(ConnectionState newState)
@@ -136,12 +138,24 @@ public abstract class DeviceBase : IDevice
             return;
 
         var oldState = State;
+
         State = newState;
         StateChanged?.Invoke(this, new ConnectionStateChangedEventArgs(oldState, newState));
     }
 
     protected void RaiseErrorOccurred(string message, Exception? ex = null)
         => ErrorOccurred?.Invoke(this, new ErrorOccurredEventArgs(ex ?? new Exception(message), message));
+
+    protected void RaiseOperationOccurred(
+        DeviceOperationKind kind,
+        string operationName,
+        bool isSuccess,
+        string message,
+        Exception? exception = null,
+        IReadOnlyDictionary<string, string>? properties = null)
+        => OperationOccurred?.Invoke(
+            this,
+            new DeviceOperationEventArgs(kind, operationName, isSuccess, message, exception, properties));
 
     private async Task DisconnectCoreSafelyAsync(CancellationToken cancellationToken)
     {
@@ -167,15 +181,29 @@ public abstract class DeviceBase : IDevice
         if (disposed)
             return;
 
+        bool lockTaken = false;
         try
         {
-            await lifecycleSemaphore.WaitAsync(CancellationToken.None);
+            using var shutdownCts = new CancellationTokenSource(ShutdownTimeout);
+            try
+            {
+                await lifecycleSemaphore.WaitAsync(shutdownCts.Token).ConfigureAwait(false);
+                lockTaken = true;
+            }
+            catch (OperationCanceledException)
+            {
+                RaiseErrorOccurred($"Device dispose timed out waiting for lifecycle operation after {ShutdownTimeout.TotalSeconds:0}s.");
+                disposed = true;
+                GC.SuppressFinalize(this);
+                return;
+            }
+
             try
             {
                 if (State != ConnectionState.Disconnected)
                 {
                     RaiseStateChanged(ConnectionState.Disconnecting);
-                    await DisconnectCoreSafelyAsync(CancellationToken.None);
+                    await DisconnectCoreSafelyAsync(shutdownCts.Token).ConfigureAwait(false);
                     RaiseStateChanged(ConnectionState.Disconnected);
                 }
             }
@@ -187,7 +215,11 @@ public abstract class DeviceBase : IDevice
         }
         finally
         {
-            lifecycleSemaphore.Dispose();
+            if (lockTaken)
+            {
+                lifecycleSemaphore.Dispose();
+            }
+
             GC.SuppressFinalize(this);
         }
     }
@@ -195,3 +227,7 @@ public abstract class DeviceBase : IDevice
     public virtual void Dispose()
         => DisposeAsync().AsTask().GetAwaiter().GetResult();
 }
+
+
+
+

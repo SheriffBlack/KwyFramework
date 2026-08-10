@@ -1,9 +1,8 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Windows.Media;
 using Kwy.UI.WPF.Charts.Abstractions;
 using OxyPlot;
-using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Series;
 
@@ -11,12 +10,16 @@ namespace Kwy.UI.WPF.Charts.OxyPlot;
 
 public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, IOxyRenderLoop
 {
+    private const string MeasurementAxisKey = "ValueAxis";
+    private const string FrequencyAxisKey = "FrequencyAxis";
     private readonly ConcurrentQueue<double> incomingData = new();
     private readonly PlotModel model;
     private readonly LinearAxis measurementAxis;
     private readonly LinearAxis frequencyAxis;
     private readonly PlotOrientation orientation;
     private readonly System.Diagnostics.Stopwatch runtimeStopwatch = System.Diagnostics.Stopwatch.StartNew();
+    private readonly List<LimitLineSeries> limitSeries = [];
+
     private HistogramChannel? channel;
     private string frequencyAxisTitle = "Frequency";
     private bool isActive;
@@ -62,9 +65,9 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             Position = options.Orientation == PlotOrientation.Horizontal ? AxisPosition.Left : AxisPosition.Bottom,
             Title = ValueAxisTitle,
             MajorGridlineStyle = LineStyle.Solid,
-            StringFormat = "N2",
+            LabelFormatter = value => OxyChartHelpers.FormatAdaptiveAxisLabel(value, measurementAxis),
             MinorTickSize = 0,
-            Key = "ValueAxis"
+            Key = MeasurementAxisKey
         };
         frequencyAxis = new LinearAxis
         {
@@ -72,13 +75,13 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             Title = FrequencyAxisTitle,
             Minimum = 0,
             AbsoluteMinimum = 0,
-            MinimumRange = 50,
             MinimumPadding = 0,
             MaximumPadding = 0.1,
             MinorTickSize = 0,
             IsPanEnabled = false,
             IsZoomEnabled = false,
-            LabelFormatter = value => Math.Abs(value) >= 1000 ? $"{value / 1000.0:0.#}k" : value.ToString("0")
+            LabelFormatter = value => Math.Abs(value) >= 1000 ? $"{value / 1000.0:0.#}k" : value.ToString("0"),
+            Key = FrequencyAxisKey
         };
 
         model.Axes.Add(measurementAxis);
@@ -136,11 +139,11 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
 
     public string HistogramSeriesTitle { get; set; } = "Histogram";
 
-    public string UpperLimitLabel { get; set; } = "Upper";
+    public string UpperLimitLabel { get; set; } = "\u4E0A\u9650";
 
-    public string LowerLimitLabel { get; set; } = "Lower";
+    public string LowerLimitLabel { get; set; } = "\u4E0B\u9650";
 
-    public string TargetValueLabel { get; set; } = "Target";
+    public string TargetValueLabel { get; set; } = "\u6807\u51C6\u503C";
 
     public double MinBinWidth
     {
@@ -183,7 +186,9 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             model.Axes.Remove(channel.ColorAxis);
         }
 
-        var oxyColor = OxyChartHelpers.ToOxyColor(color ?? PlotPalettes.GetColor(name));
+        var oxyColor = color.HasValue
+            ? OxyChartHelpers.ToOxyColor(color.Value)
+            : OxyChartHelpers.KwyTargetColor;
         var series = new HistogramRectangleSeries
         {
             Title = name,
@@ -230,20 +235,18 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
         lowerLimit = lower;
         upperLimit = upper;
         targetValue = target;
-        UpdateAnnotations();
+        UpdateLimitSeries();
 
-        if (lower.HasValue && upper.HasValue)
-        {
-            double range = upper.Value - lower.Value;
-            if (range > 0)
-            {
-                double padding = range * 0.1;
-                measurementAxis.Minimum = lower.Value - padding;
-                measurementAxis.Maximum = upper.Value + padding;
-            }
-        }
+        ApplyLimitAxisWindow();
 
         isDirty = true;
+    }
+
+    public void RefreshLimitLabels()
+    {
+        UpdateLimitSeries();
+        isDirty = true;
+        model.InvalidatePlot(false);
     }
 
     public void ClearData()
@@ -276,10 +279,27 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
     private PlotController CreateController()
     {
         var controller = new PlotController();
+        var resetCommand = new DelegatePlotCommand<OxyMouseDownEventArgs>((_, _, args) =>
+        {
+            ResetViewToLimits();
+            args.Handled = true;
+        });
         controller.BindMouseWheel(PlotCommands.ZoomWheel);
         controller.BindMouseDown(OxyMouseButton.Left, PlotCommands.PanAt);
+        controller.BindMouseDown(OxyMouseButton.Left, OxyModifierKeys.None, 2, resetCommand);
+        controller.BindMouseDown(OxyMouseButton.Middle, OxyModifierKeys.None, 2, resetCommand);
         controller.BindMouseEnter(PlotCommands.HoverSnapTrack);
         return controller;
+    }
+
+    public void ResetViewToLimits()
+    {
+        model.ResetAllAxes();
+        frequencyAxis.Minimum = 0;
+        ApplyLimitAxisWindow();
+        Refresh(true);
+        isDirty = true;
+        model.InvalidatePlot(false);
     }
 
     public void OnRenderFrame()
@@ -420,27 +440,86 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             index++;
         }
 
-        frequencyAxis.Maximum = maxCount < 50 ? 50 : maxCount * 1.1;
+        frequencyAxis.Maximum = maxCount > 0 ? Math.Max(1, maxCount * 1.1) : double.NaN;
     }
 
-    private void UpdateAnnotations()
+    private void UpdateLimitSeries()
     {
-        model.Annotations.Clear();
-        AddLimitAnnotation(lowerLimit, LowerLimitLabel, OxyColors.Red, LineStyle.LongDash);
-        AddLimitAnnotation(upperLimit, UpperLimitLabel, OxyColors.Red, LineStyle.LongDash);
-        AddLimitAnnotation(targetValue, TargetValueLabel, OxyColors.Green, LineStyle.Solid);
+        foreach (LimitLineSeries series in limitSeries)
+        {
+            model.Series.Remove(series);
+        }
+
+        limitSeries.Clear();
+        AddLimitSeries(lowerLimit, LowerLimitLabel, OxyChartHelpers.KwyLimitColor, LineStyle.LongDash);
+        AddLimitSeries(upperLimit, UpperLimitLabel, OxyChartHelpers.KwyLimitColor, LineStyle.LongDash);
+        AddLimitSeries(targetValue, TargetValueLabel, OxyChartHelpers.KwyTargetColor, LineStyle.Solid);
     }
 
-    private void AddLimitAnnotation(double? value, string label, OxyColor color, LineStyle lineStyle)
+    private void ApplyLimitAxisWindow()
+    {
+        List<double> values = [];
+        AddFiniteLimitValue(values, lowerLimit);
+        AddFiniteLimitValue(values, upperLimit);
+        AddFiniteLimitValue(values, targetValue);
+        if (values.Count == 0)
+        {
+            return;
+        }
+
+        double min = values.Min();
+        double max = values.Max();
+        double span = max - min;
+        double padding = span > 0 ? span * 0.2 : Math.Max(Math.Abs(min) * 0.1, 1.0);
+        measurementAxis.Minimum = min - padding;
+        measurementAxis.Maximum = max + padding;
+    }
+
+    private static void AddFiniteLimitValue(ICollection<double> values, double? value)
+    {
+        if (value.HasValue && double.IsFinite(value.Value))
+        {
+            values.Add(value.Value);
+        }
+    }
+
+    private void AddLimitSeries(double? value, string label, OxyColor color, LineStyle lineStyle)
     {
         if (!value.HasValue)
         {
             return;
         }
 
-        model.Annotations.Add(orientation == PlotOrientation.Horizontal
-            ? new LineAnnotation { Type = LineAnnotationType.Horizontal, Y = value.Value, Color = color, LineStyle = lineStyle, Text = label }
-            : new LineAnnotation { Type = LineAnnotationType.Vertical, X = value.Value, Color = color, LineStyle = lineStyle, Text = label });
+        double frequencyMinimum = 0;
+        double frequencyMaximum = double.IsFinite(frequencyAxis.Maximum) && frequencyAxis.Maximum > 0 ? frequencyAxis.Maximum : 1;
+
+        var series = new LimitLineSeries
+        {
+            Title = label,
+            LimitText = LimitLineSeries.FormatLabel(label, value.Value),
+            Orientation = orientation,
+            LimitTextColor = color,
+            Color = color,
+            LineStyle = lineStyle,
+            StrokeThickness = 1.4,
+            MarkerType = MarkerType.None,
+            XAxisKey = orientation == PlotOrientation.Horizontal ? FrequencyAxisKey : MeasurementAxisKey,
+            YAxisKey = orientation == PlotOrientation.Horizontal ? MeasurementAxisKey : FrequencyAxisKey
+        };
+
+        if (orientation == PlotOrientation.Horizontal)
+        {
+            series.Points.Add(new DataPoint(frequencyMinimum, value.Value));
+            series.Points.Add(new DataPoint(frequencyMaximum, value.Value));
+        }
+        else
+        {
+            series.Points.Add(new DataPoint(value.Value, frequencyMinimum));
+            series.Points.Add(new DataPoint(value.Value, frequencyMaximum));
+        }
+
+        limitSeries.Add(series);
+        model.Series.Add(series);
     }
 }
 
@@ -485,3 +564,6 @@ public sealed class HistogramItem : RectangleItem
 
     public double Count { get; set; }
 }
+
+
+

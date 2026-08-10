@@ -1,15 +1,213 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
+	<TargetFrameworks>net8.0-windows</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+	<PlatformTarget>x86</PlatformTarget>
+	  
+    <ApplicationIcon>..\KwyTemplate.App\Resources\ImgLogoHsy.ico</ApplicationIcon>
+    <AssemblyName>TP测包机</AssemblyName>
+
+    <ProgramSettingsConfigFile>$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\Config\System\ProgramSettings.json</ProgramSettingsConfigFile>
+
+    <AssemblyTitle>TP测包机</AssemblyTitle>
+    <AssemblyProduct>TP测包机</AssemblyProduct>
+    <AssemblyDescription>电子元器件测试包装机</AssemblyDescription>
+    <AssemblyCompany>苏州和胜禹机电</AssemblyCompany>
+    <AssemblyCopyright>Copyright © 2025-2026 苏州和胜禹机电 All Rights Reserved.</AssemblyCopyright>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0.0</InformationalVersion>
   </PropertyGroup>
+
+  <Target Name="LoadAssemblyInfoFromProgramSettings" BeforeTargets="GenerateAssemblyInfo" Condition="'$(TargetFramework)' != ''">
+    <ReadProgramSettingsFromJson ConfigFile="$(ProgramSettingsConfigFile)">
+      <Output TaskParameter="AssemblyTitle" PropertyName="AssemblyTitle" />
+      <Output TaskParameter="AssemblyProduct" PropertyName="AssemblyProduct" />
+      <Output TaskParameter="AssemblyDescription" PropertyName="AssemblyDescription" />
+      <Output TaskParameter="AssemblyCompany" PropertyName="AssemblyCompany" />
+      <Output TaskParameter="AssemblyCopyright" PropertyName="AssemblyCopyright" />
+      <Output TaskParameter="AssemblyVersion" PropertyName="AssemblyVersion" />
+      <Output TaskParameter="FileVersion" PropertyName="FileVersion" />
+      <Output TaskParameter="InformationalVersion" PropertyName="InformationalVersion" />
+    </ReadProgramSettingsFromJson>
+  </Target>
+
+  <UsingTask TaskName="ReadProgramSettingsFromJson" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <ConfigFile ParameterType="System.String" Required="true" />
+      <AssemblyTitle ParameterType="System.String" Output="true" />
+      <AssemblyProduct ParameterType="System.String" Output="true" />
+      <AssemblyDescription ParameterType="System.String" Output="true" />
+      <AssemblyCompany ParameterType="System.String" Output="true" />
+      <AssemblyCopyright ParameterType="System.String" Output="true" />
+      <AssemblyVersion ParameterType="System.String" Output="true" />
+      <FileVersion ParameterType="System.String" Output="true" />
+      <InformationalVersion ParameterType="System.String" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Globalization" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+#pragma warning disable 0162
+          const string DefaultTitle = "测包机";
+          const string DefaultProduct = "测包机";
+          const string DefaultDescription = "电子元器件测试包装机";
+          const string DefaultCompany = "苏州和胜裕机电";
+          const string DefaultCopyright = "Copyright © 2025-2026 苏州和胜裕机电 All Rights Reserved.";
+          const string DefaultVersion = "1.0.0.0";
+          const string DefaultOfficialUrl = "http://www.heshengyu.com";
+
+          string EscapeJson(string value)
+          {
+              return value
+                  .Replace("\\", "\\\\")
+                  .Replace("\"", "\\\"")
+                  .Replace("\r", "\\r")
+                  .Replace("\n", "\\n");
+          }
+
+          string UnescapeJson(string value)
+          {
+              var builder = new StringBuilder(value.Length);
+              for (int i = 0; i < value.Length; i++)
+              {
+                  char ch = value[i];
+                  if (ch != '\\' || i + 1 >= value.Length)
+                  {
+                      builder.Append(ch);
+                      continue;
+                  }
+
+                  char next = value[++i];
+                  switch (next)
+                  {
+                      case '"': builder.Append('"'); break;
+                      case '\\': builder.Append('\\'); break;
+                      case '/': builder.Append('/'); break;
+                      case 'b': builder.Append('\b'); break;
+                      case 'f': builder.Append('\f'); break;
+                      case 'n': builder.Append('\n'); break;
+                      case 'r': builder.Append('\r'); break;
+                      case 't': builder.Append('\t'); break;
+                      case 'u':
+                          if (i + 4 < value.Length && int.TryParse(value.Substring(i + 1, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int code))
+                          {
+                              builder.Append((char)code);
+                              i += 4;
+                          }
+                          else
+                          {
+                              builder.Append('u');
+                          }
+                          break;
+                      default:
+                          builder.Append(next);
+                          break;
+                  }
+              }
+
+              return builder.ToString();
+          }
+
+          string GetString(string json, string propertyName, string fallback)
+          {
+              string pattern = "\\\"" + Regex.Escape(propertyName) + "\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"])*)\\\"";
+              Match match = Regex.Match(json, pattern, RegexOptions.CultureInvariant);
+              if (!match.Success)
+              {
+                  return fallback;
+              }
+
+              string value = UnescapeJson(match.Groups[1].Value);
+              return string.IsNullOrWhiteSpace(value) ? fallback : value;
+          }
+
+          string NormalizeVersion(string value, string fallback)
+          {
+              if (!string.IsNullOrWhiteSpace(value) && Version.TryParse(value, out _))
+              {
+                  return value;
+              }
+
+              Log.LogWarning($"ProgramSettings version value '{value}' is invalid, fallback to {fallback}.");
+              return fallback;
+          }
+
+          void ApplyDefaults()
+          {
+              AssemblyTitle = DefaultTitle;
+              AssemblyProduct = DefaultProduct;
+              AssemblyDescription = DefaultDescription;
+              AssemblyCompany = DefaultCompany;
+              AssemblyCopyright = DefaultCopyright;
+              AssemblyVersion = DefaultVersion;
+              FileVersion = DefaultVersion;
+              InformationalVersion = DefaultVersion;
+          }
+
+          try
+          {
+              ApplyDefaults();
+
+              if (!File.Exists(ConfigFile))
+              {
+                  string directory = Path.GetDirectoryName(ConfigFile);
+                  if (!string.IsNullOrWhiteSpace(directory))
+                  {
+                      Directory.CreateDirectory(directory);
+                  }
+
+                  string defaultJson = "{\r\n" +
+                      $"  \"Title\": \"{EscapeJson(DefaultTitle)}\",\r\n" +
+                      $"  \"Product\": \"{EscapeJson(DefaultProduct)}\",\r\n" +
+                      $"  \"Description\": \"{EscapeJson(DefaultDescription)}\",\r\n" +
+                      $"  \"Company\": \"{EscapeJson(DefaultCompany)}\",\r\n" +
+                      $"  \"Copyright\": \"{EscapeJson(DefaultCopyright)}\",\r\n" +
+                      $"  \"Version\": \"{DefaultVersion}\",\r\n" +
+                      $"  \"FileVersion\": \"{DefaultVersion}\",\r\n" +
+                      $"  \"OfficialUrl\": \"{EscapeJson(DefaultOfficialUrl)}\"\r\n" +
+                      "}";
+
+                  File.WriteAllText(ConfigFile, defaultJson, new UTF8Encoding(false));
+                  Log.LogMessage(MessageImportance.Normal, $"ProgramSettings file not found, created default config: {ConfigFile}");
+                  return true;
+              }
+
+              string json = File.ReadAllText(ConfigFile, Encoding.UTF8);
+              AssemblyTitle = GetString(json, "Title", DefaultTitle);
+              AssemblyProduct = GetString(json, "Product", DefaultProduct);
+              AssemblyDescription = GetString(json, "Description", DefaultDescription);
+              AssemblyCompany = GetString(json, "Company", DefaultCompany);
+              AssemblyCopyright = GetString(json, "Copyright", DefaultCopyright);
+              AssemblyVersion = NormalizeVersion(GetString(json, "Version", DefaultVersion), DefaultVersion);
+              FileVersion = NormalizeVersion(GetString(json, "FileVersion", DefaultVersion), DefaultVersion);
+              InformationalVersion = AssemblyVersion;
+
+              Log.LogMessage(MessageImportance.Normal, $"Loaded assembly info from ProgramSettings: {ConfigFile}");
+              return true;
+          }
+          catch (Exception ex)
+          {
+              ApplyDefaults();
+              Log.LogWarning($"Failed to read ProgramSettings assembly info from {ConfigFile}: {ex.Message}. Using default values.");
+              return true;
+          }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
+    <ProjectReference Include="..\Kwy.Logging.Serilog\Kwy.Logging.Serilog.csproj" />
     <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF.Components\Kwy.UI.WPF.Components.csproj" />
@@ -17,8 +215,14 @@
     <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
     <ProjectReference Include="..\KwyTemplate.Device\KwyTemplate.Device.csproj" />
     <ProjectReference Include="..\KwyTemplate.Flow\KwyTemplate.Flow.csproj" />
+    <ProjectReference Include="..\KwyTemplate.MES.Cyntec\KwyTemplate.MES.Cyntec.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Security.SuperDog\KwyTemplate.Security.SuperDog.csproj" />
     <ProjectReference Include="..\KwyTemplate.Security\KwyTemplate.Security.csproj" />
-    <ProjectReference Include="..\KwyTemplate.Vision\KwyTemplate.Vision.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 
 </Project>
+

@@ -12,6 +12,9 @@ namespace Kwy.Device.PLCs.Hsl;
 
 public static class ServiceCollectionExtensions
 {
+    public static IServiceCollection AddHslCommunicationLicense(this IServiceCollection services)
+        => services.AddHslCommunicationLicense(_ => { });
+
     public static IServiceCollection AddHslCommunicationLicense(
         this IServiceCollection services,
         Action<HslCommunicationLicenseOptions> configure)

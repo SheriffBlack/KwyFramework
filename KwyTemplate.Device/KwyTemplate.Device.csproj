@@ -1,16 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.MVVM\Kwy.MVVM.csproj" />
+    <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
+    <ProjectReference Include="..\Kwy.Communicate.NI\Kwy.Communicate.NI.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.TcpSerial\Kwy.Communicate.TcpSerial.csproj" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Instruments\Kwy.Device.Instruments.csproj" />
+    <ProjectReference Include="..\Kwy.Device.IoCards.Advantech\Kwy.Device.IoCards.Advantech.csproj" />
     <ProjectReference Include="..\Kwy.Device.PLCs.Hsl\Kwy.Device.PLCs.Hsl.csproj" />
     <ProjectReference Include="..\Kwy.Files\Kwy.Files.csproj" />
     <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />

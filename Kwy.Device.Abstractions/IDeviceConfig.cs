@@ -54,10 +54,11 @@ public interface IHasAutoLevelControl
 }
 
 /// <summary>
-/// Device capability for exposing and applying a mutable configuration model.
+/// Device capability for exposing and applying a mutable config model.
 /// </summary>
 public interface IConfigurableDevice
 {
     IDeviceConfig DeviceParameter { get; set; }
-    Task ApplyConfigurationAsync(CancellationToken cancellationToken = default);
+    Task ApplyConfigAsync(CancellationToken cancellationToken = default);
 }
+

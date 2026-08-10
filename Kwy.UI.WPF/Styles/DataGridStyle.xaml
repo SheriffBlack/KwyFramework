@@ -17,6 +17,8 @@
     <Style TargetType="DataGrid">
         <!--  强制隐藏原生 RowHeader，避免选中时左侧出现系统蓝色行头区域。  -->
         <Setter Property="RowHeaderWidth" Value="0" />
+        <Setter Property="CanUserSortColumns" Value="False" />
+        <Setter Property="CanUserReorderColumns" Value="False" />
         <Style.Resources>
             <Style BasedOn="{StaticResource DefaultScrollBarStyle}" TargetType="ScrollBar" />
 
@@ -27,6 +29,7 @@
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Focusable" Value="False" />
                 <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                <Setter Property="Margin" Value="10,0,0,0" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="DataGridCell">
@@ -65,7 +68,7 @@
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Padding" Value="15,12" />
         <Setter Property="Height" Value="45" />
-        <Setter Property="BorderThickness" Value="0,0,0.4,0" />
+        <Setter Property="BorderThickness" Value="0,0,0.4,0.4" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
@@ -75,7 +78,7 @@
 
     <!--  DataGrid 行样式。  -->
     <Style x:Key="ModernDataGridRowStyle" TargetType="DataGridRow">
-        <Setter Property="Height" Value="32" />
+        <Setter Property="Height" Value="38" />
         <Setter Property="MinHeight" Value="28" />
         <!--  默认背景：偶数行使用控件背景色。  -->
         <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
@@ -130,7 +133,7 @@
         TargetType="DataGridCell">
         <Setter Property="MinHeight" Value="40" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0,0,0.4,0" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Padding" Value="10" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -144,7 +147,7 @@
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
                         SnapsToDevicePixels="True">
-                        <ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                        <ContentPresenter HorizontalAlignment="Left" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
                     </Border>
                 </ControlTemplate>
             </Setter.Value>

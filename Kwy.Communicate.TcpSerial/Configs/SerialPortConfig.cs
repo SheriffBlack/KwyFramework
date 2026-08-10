@@ -45,6 +45,7 @@ public class SerialPortConfig : IProtocolConfig, IKeepAliveConfig
     /// </summary>
     public HandshakeType Handshake { get; set; } = HandshakeType.None;
 
+
     /// <summary>
     /// 读取超时时间（毫秒）（高频场景建议减小）
     /// </summary>

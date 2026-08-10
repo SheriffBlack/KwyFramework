@@ -65,7 +65,8 @@ public class HslPlcConfig : PlcConfig
             or HslPlcBrandType.Mitsubishi_Fx3U
             or HslPlcBrandType.Mitsubishi_Fx5U
             or HslPlcBrandType.Omron_Fins
-            or HslPlcBrandType.Keyence_KV
+            or HslPlcBrandType.Keyence_MC
+            or HslPlcBrandType.Keyence_NanoSerialOverTcp
             or HslPlcBrandType.Panasonic_MC
             or HslPlcBrandType.Modbus_Tcp;
 

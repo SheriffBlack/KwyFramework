@@ -17,7 +17,7 @@
                     <DataTemplate>
                         <kwyui:KwyFormItem Label="{Binding DisplayName}">
                             <TextBox
-                                Width="180"
+                                Width="{Binding EditorWidth}"
                                 HorizontalAlignment="Left"
                                 IsReadOnly="{Binding IsReadOnly}"
                                 Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
@@ -33,7 +33,7 @@
                             <DataTemplate>
                                 <kwyui:KwyFormItem Label="{Binding DisplayName}">
                                     <ComboBox
-                                        Width="180"
+                                        Width="{Binding EditorWidth}"
                                         HorizontalAlignment="Left"
                                         ItemsSource="{Binding ItemsSource}"
                                         SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -49,7 +49,7 @@
                             <DataTemplate>
                                 <kwyui:KwyFormItem Label="{Binding DisplayName}">
                                     <kwyui:KwyNumberBox
-                                        Width="180"
+                                        Width="{Binding EditorWidth}"
                                         HorizontalAlignment="Left"
                                         DecimalPlaces="{Binding DecimalPlaces}"
                                         IsInteger="{Binding IsInteger}"
@@ -70,7 +70,7 @@
                             <DataTemplate>
                                 <kwyui:KwyFormItem Label="{Binding DisplayName}">
                                     <DatePicker
-                                        Width="180"
+                                        Width="{Binding EditorWidth}"
                                         HorizontalAlignment="Left"
                                         SelectedDate="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </kwyui:KwyFormItem>
@@ -108,8 +108,7 @@
                         </Setter.Value>
                     </Setter>
                 </DataTrigger>
-
-                <DataTrigger Binding="{Binding InputType}" Value="TextBoxWithRadioButton">
+<DataTrigger Binding="{Binding InputType}" Value="TextBoxWithRadioButton">
                     <Setter Property="ContentTemplate">
                         <Setter.Value>
                             <DataTemplate>
@@ -122,7 +121,7 @@
 
                                         <TextBox
                                             Grid.Column="0"
-                                            Width="180"
+                                            Width="{Binding EditorWidth}"
                                             HorizontalAlignment="Left"
                                             IsReadOnly="{Binding IsReadOnly}"
                                             Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
@@ -146,7 +145,7 @@
                             <DataTemplate>
                                 <kwyui:KwyFormItem Label="{Binding DisplayName}">
                                     <TextBlock
-                                        MinWidth="180"
+                                        MinWidth="{Binding EditorWidth}"
                                         VerticalAlignment="Center"
                                         Text="{Binding Value}" />
                                 </kwyui:KwyFormItem>
@@ -168,25 +167,63 @@
                 <WrapPanel Orientation="Horizontal" />
             </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
-
         <ItemsControl.ItemTemplate>
             <DataTemplate>
-                <GroupBox Margin="5" Header="{Binding GroupName}">
-                    <GroupBox.Width>
-                        <MultiBinding Converter="{StaticResource GroupWidthConverter}" ConverterParameter="24">
-                            <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
-                            <Binding Path="WidthRatio" />
-                        </MultiBinding>
-                    </GroupBox.Width>
+                <Grid>
+                    <GroupBox Margin="5" Header="{Binding GroupName}">
+                        <GroupBox.Style>
+                            <Style BasedOn="{StaticResource {x:Type GroupBox}}" TargetType="GroupBox">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasGroupHeader}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </GroupBox.Style>
+                        <GroupBox.Width>
+                            <MultiBinding Converter="{StaticResource GroupWidthConverter}" ConverterParameter="10">
+                                <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
+                                <Binding Path="WidthRatio" />
+                            </MultiBinding>
+                        </GroupBox.Width>
 
-                    <ItemsControl ItemsSource="{Binding Properties}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <ContentControl Content="{Binding}" Style="{StaticResource PropertyEditorHostStyle}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </GroupBox>
+                        <ItemsControl ItemsSource="{Binding Properties}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding}" Style="{StaticResource PropertyEditorHostStyle}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </GroupBox>
+
+                    <Border Margin="5" Padding="0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasGroupHeader}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Border.Width>
+                            <MultiBinding Converter="{StaticResource GroupWidthConverter}" ConverterParameter="10">
+                                <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
+                                <Binding Path="WidthRatio" />
+                            </MultiBinding>
+                        </Border.Width>
+
+                        <ItemsControl ItemsSource="{Binding Properties}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding}" Style="{StaticResource PropertyEditorHostStyle}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </Grid>
             </DataTemplate>
         </ItemsControl.ItemTemplate>
     </ItemsControl>

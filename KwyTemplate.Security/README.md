@@ -123,3 +123,28 @@ new NavigationItemModel
 | `CreatedAt` | 创建时间。 |
 
 旧的 `IsAdmin` 权限路径已经移除，后续统一使用 `Level` 与权限码判断。
+
+## SQLite 数据库落地路径
+
+Security 使用 EF Core SQLite，本地账号库落在 exe 所在目录下：
+
+```text
+{AppContext.BaseDirectory}/Data/security.db
+```
+
+也就是：
+
+- Debug 运行时：`bin/Debug/net8.0-windows/Data/security.db`
+- Release 或发布后：发布目录下的 `Data/security.db`
+
+这样符合现场部署流程：发布时直接拷贝 Release/发布目录即可，`Data/security.db` 可以随发布包一起带过去，也可以由程序首次启动自动创建。
+
+当前设计采用 Code First + Migration：
+
+- `SecurityDbContext` 和 `LocalUser` 是模型来源。
+- 启动初始化时执行数据库迁移。
+- 如果数据库不存在，会自动创建表并补默认账号。
+- 如果现场已有早期 `EnsureCreated` 创建的 `Users` 表但没有迁移历史，会自动补首个迁移历史记录，兼容旧库。
+- 默认账号通过 `LocalUserStore` 补种子，避免必须依赖预置 `.db` 文件。
+
+这种方式和旧 `Database` 模块的思路一致：连接字符串使用相对运行目录的数据库文件，发布目录就是数据库的落地根。

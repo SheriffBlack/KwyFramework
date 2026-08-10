@@ -3,14 +3,16 @@
 public class IconNames
 {
     // Segoe Fluent
+    public const string IconCamera = "IconCamera";
     public const string IconCalendar = "IconCalendar";
-
     public const string IconChart = "IconChart";
     public const string IconClose = "IconClose";
     public const string IconContact = "IconContact";
     public const string IconContactInfo = "IconContactInfo";
     public const string IconDelete = "IconDelete";
     public const string IconError = "IconError";
+    public const string IconEthernet = "IconEthernet";
+    public const string IconEthernetError = "IconEthernetError";
     public const string IconFlow = "IconFlow";
     public const string IconFolder = "IconFolder";
     public const string IconHome = "IconHome";
@@ -24,7 +26,6 @@ public class IconNames
     public const string IconMax = "IconMax";
     public const string IconMin = "IconMin";
     public const string IconMore = "IconMore";
-    public const string IconNet = "IconNet";
     public const string IconPause = "IconPause";
     public const string IconPlay = "IconPlay";
     public const string IconPowerButton = "IconPowerButton";
@@ -49,6 +50,8 @@ public class IconNames
 
     public const string IconAnticlockwise = "IconAnticlockwise";
     public const string IconClockise = "IconClockise";
+    public const string IconCompensate = "IconCompensate";
+    public const string IconCorrection = "IconCorrection";
     public const string IconDatabase = "IconDatabase";
     public const string IconDrag = "IconDrag";
     public const string IconEnglish = "IconEnglish";
@@ -62,6 +65,7 @@ public class IconNames
     public const string IconPCI = "IconPCI";
     public const string IconPLC = "IconPLC";
     public const string IconPrintscreen = "IconPrintscreen";
+    public const string IconStation = "IconStation";
     public const string IconSimplified = "IconSimplified";
     public const string IconTraditional = "IconTraditional";
     public const string IconUiModule = "IconUiModule";

@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/BaseStyle.xaml" />
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/TextBlockStyle.xaml" />
@@ -47,17 +47,22 @@
                                 VerticalAlignment="Stretch"
                                 Background="{DynamicResource BorderBrush}"
                                 Opacity="0.3" />
-                            <!--  TabItem 内容区域  -->
-                            <Border Background="{TemplateBinding Background}" BorderThickness="0">
+                            <!--  TabItem 样式：参考 RadioButtonItemStyle  -->
+                            <Border
+                                x:Name="PART_TabItemContentBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="0">
                                 <Grid
                                     x:Name="PART_ContentGrid"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center">
-                                    <TextBlock
-                                        x:Name="PART_HeaderTextBlock"
+                                    <ContentPresenter
+                                        x:Name="PART_HeaderContentPresenter"
                                         Margin="20,0,20,0"
-                                        Style="{StaticResource ControlTextBlockStyle}"
-                                        Text="{TemplateBinding Header}" />
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        ContentSource="Header"
+                                        RecognizesAccessKey="True" />
                                 </Grid>
                             </Border>
                         </Grid>
@@ -66,45 +71,23 @@
                     <ControlTemplate.Triggers>
                         <!--  选中状态  -->
                         <Trigger Property="IsSelected" Value="True">
-                            <!--  只设置 Header TextBlock 的颜色，不影响内容区域  -->
-                            <Setter TargetName="PART_HeaderTextBlock" Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+                            <!--  只设置 Header 内容的颜色，不影响内容区域  -->
+                            <Setter Property="Foreground" Value="{DynamicResource ControlSelectedForegroundBrush}" />
+                            <Setter TargetName="PART_HeaderContentPresenter" Property="TextElement.Foreground" Value="{DynamicResource ControlSelectedForegroundBrush}" />
+                            <Setter TargetName="PART_TabItemContentBorder" Property="Background" Value="{DynamicResource ControlSelectedBackgroundBrush}" />
                             <Setter TargetName="PART_TabItemBorder" Property="BorderThickness" Value="0,2,0,0" />
+
                             <Setter TargetName="PART_TabItemBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
-                            <Setter TargetName="PART_ContentGrid" Property="Opacity" Value="0.5" />
+                            <Setter TargetName="PART_ContentGrid" Property="Opacity" Value="1" />
                         </Trigger>
 
                         <!--  未选中状态  -->
                         <Trigger Property="IsSelected" Value="False">
-                            <!--  恢复 Header TextBlock 的默认颜色  -->
+                            <!--  恢复 Header 内容的默认颜色  -->
                             <Setter TargetName="PART_ContentGrid" Property="Opacity" Value="1" />
                         </Trigger>
 
-                        <!--  鼠标悬停效果：SourceName 锁定到 header Border，避免悬停 content 区域误触发  -->
-                        <Trigger SourceName="PART_TabItemBorder" Property="IsMouseOver" Value="True">
-                            <Setter TargetName="PART_TabItemBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect
-                                        BlurRadius="10"
-                                        Direction="315"
-                                        Opacity="0.7"
-                                        ShadowDepth="5"
-                                        Color="{DynamicResource DropShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-
-                        <Trigger SourceName="PART_TabItemBorder" Property="IsMouseOver" Value="False">
-                            <Setter TargetName="PART_TabItemBorder" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect
-                                        BlurRadius="5"
-                                        Direction="315"
-                                        Opacity="0.5"
-                                        ShadowDepth="2"
-                                        Color="{DynamicResource DropShadowColor}" />
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
+                        <!--  鼠标悬停保持无阴影，避免二级导航视觉过重。  -->
 
                         <!--  禁用状态  -->
                         <Trigger Property="IsEnabled" Value="False">
@@ -116,3 +99,6 @@
         </Setter>
     </Style>
 </ResourceDictionary>
+
+
+
