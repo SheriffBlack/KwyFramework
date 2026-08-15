@@ -66,7 +66,10 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <RadioButton Style="{StaticResource SecondaryNavigationButtonStyle}" />
+                            <RadioButton
+                                kwymvvm:Permission.Mode="Hide"
+                                kwymvvm:Permission.Policy="{Binding PermissionCode}"
+                                Style="{StaticResource SecondaryNavigationButtonStyle}" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

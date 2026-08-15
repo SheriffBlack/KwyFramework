@@ -71,16 +71,6 @@ services.AddSingleton<IAuthorizationService, PermissionAuthorizationService>();
         kwy:Permission.Mode="Hide" />
 ```
 
-也可以使用传统权限码写法：
-
-```xml
-<Button Content="编辑用户"
-        kwy:Permission.Code="User.Edit"
-        kwy:Permission.Mode="Disable" />
-```
-
-如果 `Policy` 和 `Code` 同时设置，`Policy` 优先。
-
 ### Mode
 
 - `Disable`：无权限时禁用控件，并保留原始 `IsEnabled` 状态以便权限恢复后还原。
@@ -88,14 +78,9 @@ services.AddSingleton<IAuthorizationService, PermissionAuthorizationService>();
 - `Both`：无权限时同时禁用和隐藏。
 - `Prompt`：保留给提示型场景；attached property 不直接弹窗。
 
-### 指定局部权限服务
+### 权限服务
 
-默认情况下，控件使用 `Permission.DefaultPermissionService`。如果某个区域需要独立权限上下文，可以给控件设置局部服务：
-
-```csharp
-Permission.SetService(deleteButton, permissionService);
-Permission.SetPolicy(deleteButton, "User.Delete");
-```
+控件统一使用应用启动时设置的 `Permission.DefaultPermissionService`，不支持在单个控件上替换服务。
 
 ### 权限刷新
 

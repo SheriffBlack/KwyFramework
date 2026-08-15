@@ -168,13 +168,13 @@ public class CompensateViewModel : BindableBase, INavigationAware
     private void LoadCheckFlowItems()
     {
         CheckFlowItems.Clear();
-        CheckFlowItems.Add(new CheckFlowItemModel(StandardFlowCode, T("Compensate.Flow.Standard", "标准件")));
-        CheckFlowItems.Add(new CheckFlowItemModel(ConfirmFlowCode, T("Compensate.Flow.Confirm", "确认件")));
+        CheckFlowItems.Add(new CheckFlowItemModel(StandardFlowCode, localizationService.T("Compensate.Flow.Standard", "标准件")));
+        CheckFlowItems.Add(new CheckFlowItemModel(ConfirmFlowCode, localizationService.T("Compensate.Flow.Confirm", "确认件")));
 
         if (HasPolarityCheckStation())
         {
-            CheckFlowItems.Add(new CheckFlowItemModel(PolarityForwardFlowCode, T("Compensate.Flow.PolarityForward", "极性正向件")));
-            CheckFlowItems.Add(new CheckFlowItemModel(PolarityReverseFlowCode, T("Compensate.Flow.PolarityReverse", "极性反向件")));
+            CheckFlowItems.Add(new CheckFlowItemModel(PolarityForwardFlowCode, localizationService.T("Compensate.Flow.PolarityForward", "极性正向件")));
+            CheckFlowItems.Add(new CheckFlowItemModel(PolarityReverseFlowCode, localizationService.T("Compensate.Flow.PolarityReverse", "极性反向件")));
         }
 
         RaisePropertyChanged(nameof(PolarityForwardCheckFlow));
@@ -326,7 +326,7 @@ public class CompensateViewModel : BindableBase, INavigationAware
         }
         catch (Exception ex)
         {
-            await notificationService.ErrorAsync(TF("Compensate.Message.ExecuteFailed", "点检执行失败：\\n{0}", ex.Message), T("Compensate.Title.CheckFailed", "点检失败")).ConfigureAwait(true);
+            await notificationService.ErrorAsync(string.Format(CultureInfo.CurrentCulture, localizationService.T("Compensate.Message.ExecuteFailed", "点检执行失败：\\n{0}").Replace("\\n", Environment.NewLine), ex.Message), localizationService.T("Compensate.Title.CheckFailed", "点检失败")).ConfigureAwait(true);
         }
         finally
         {
@@ -430,7 +430,6 @@ public class CompensateViewModel : BindableBase, INavigationAware
             }
 
             await ShowExamineResultAsync(currentStep, true).ConfigureAwait(true);
-            PublishWorkflowCompletedIfNeeded();
             executeCheckCommand?.RaiseCanExecuteChanged();
             return;
         }
@@ -448,51 +447,52 @@ public class CompensateViewModel : BindableBase, INavigationAware
     }
     private async Task<bool> SaveCompletedCheckResultsAsync()
     {
-        string title = T("Compensate.Title.CheckSave", "点检保存");
+        string title = localizationService.T("Compensate.Title.CheckSave", "点检保存");
         if (string.IsNullOrWhiteSpace(productionContext.EquipmentNo))
         {
-            await notificationService.WarningAsync(T("Compensate.Message.EquipmentNoRequired", "机台号为空，无法保存点检数据。"), title).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.T("Compensate.Message.EquipmentNoRequired", "机台号为空，无法保存点检数据。"), title).ConfigureAwait(true);
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(productionContext.WorkOrderNo))
         {
-            await notificationService.WarningAsync(T("Compensate.Message.WorkOrderRequired", "工单为空，无法保存点检数据。"), title).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.T("Compensate.Message.WorkOrderRequired", "工单为空，无法保存点检数据。"), title).ConfigureAwait(true);
             return false;
         }
 
         List<MesMeasurementResult> measurements = [];
         if (!AppendCheckSaveMeasurements(StandardFlowCode, sampleState.StandardSample, measurements))
         {
-            await notificationService.WarningAsync(T("Compensate.Message.StandardDataRequired", "标准件编号为空或没有可保存的标准件点检数据。"), title).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.T("Compensate.Message.StandardDataRequired", "标准件编号为空或没有可保存的标准件点检数据。"), title).ConfigureAwait(true);
             return false;
         }
 
         if (!AppendCheckSaveMeasurements(ConfirmFlowCode, sampleState.ConfirmSample, measurements))
         {
-            await notificationService.WarningAsync(T("Compensate.Message.ConfirmDataRequired", "确认件编号为空或没有可保存的确认件点检数据。"), title).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.T("Compensate.Message.ConfirmDataRequired", "确认件编号为空或没有可保存的确认件点检数据。"), title).ConfigureAwait(true);
             return false;
         }
 
+        DateTimeOffset completedAt = DateTimeOffset.Now;
         var request = new MesStandardSampleCheckSaveRequest(
             Context: CreateMesContext(),
             WorkOrderNo: productionContext.WorkOrderNo,
             SampleCode: sampleState.StandardSample.SampleCode.Trim(),
             Passed: measurements.All(static item => item.Passed),
-            Time: DateTimeOffset.Now,
+            Time: completedAt,
             Measurements: measurements);
 
         MesResult equipmentSaveResult = await mesStandardSampleService.SaveStandardSampleCheckEquipmentAsync(request).ConfigureAwait(true);
         if (!equipmentSaveResult.IsSuccess)
         {
-            await notificationService.ErrorAsync(TF("Compensate.Message.LocalSaveFailed", "点检数据本地保存失败：{0}", equipmentSaveResult.Message), T("Compensate.Title.CheckSaveFailed", "点检保存失败")).ConfigureAwait(true);
+            await notificationService.ErrorAsync(localizationService.TF("Compensate.Message.LocalSaveFailed", "点检数据本地保存失败：{0}", equipmentSaveResult.Message), localizationService.T("Compensate.Title.CheckSaveFailed", "点检保存失败")).ConfigureAwait(true);
             return false;
         }
 
         MesResult result = await mesStandardSampleService.SaveStandardSampleCheckAsync(request).ConfigureAwait(true);
         if (!IsMesAccepted(result))
         {
-            await notificationService.ErrorAsync(MesFailureMessageFormatter.Format(title, result), T("Compensate.Title.CheckSaveFailed", "点检保存失败")).ConfigureAwait(true);
+            await notificationService.ErrorAsync(MesFailureMessageFormatter.Format(title, result), localizationService.T("Compensate.Title.CheckSaveFailed", "点检保存失败")).ConfigureAwait(true);
             return false;
         }
         await machine.SetCheckCompletedAsync(true, DestroyToken).ConfigureAwait(true);
@@ -520,18 +520,6 @@ public class CompensateViewModel : BindableBase, INavigationAware
     }
     private bool IsAllCheckFlowCompleted()
         => CheckFlowItems.Count > 0 && CheckFlowItems.All(static item => item.IsCompleted);
-    private void PublishWorkflowCompletedIfNeeded()
-    {
-        if (!IsAllCheckFlowCompleted())
-        {
-            return;
-        }
-
-        messageBus.Publish(new CompensateWorkflowCompletedMessage(
-            DateTimeOffset.Now,
-            productionContext.WorkOrderNo,
-            productionContext.EquipmentNo));
-    }
     private bool AppendCheckSaveMeasurements(string flowCode, StandardSamplePanelModel panel, ICollection<MesMeasurementResult> results)
     {
         if (string.IsNullOrWhiteSpace(panel.SampleCode))
@@ -813,12 +801,12 @@ public class CompensateViewModel : BindableBase, INavigationAware
                     : failedItem.ConfirmUpperLimit;
 
                 await notificationService.ErrorAsync(
-                    TF("Compensate.Message.StepRangeFailed", "{{{0}}}{{{1}}}点检失败！\n{2}未在{3}~{4}范围内", prefix, failedItem.DisplayName, measuredValue, lowerLimit, upperLimit),
-                    T("Compensate.Title.CheckFailed", "点检失败"));
+                    string.Format(CultureInfo.CurrentCulture, localizationService.T("Compensate.Message.StepRangeFailed", "{{{0}}}{{{1}}}点检失败！\n{2}未在{3}~{4}范围内").Replace("\\n", Environment.NewLine), prefix, failedItem.DisplayName, measuredValue, lowerLimit, upperLimit),
+                    localizationService.T("Compensate.Title.CheckFailed", "点检失败"));
             }
             else
             {
-                await notificationService.ErrorAsync(TF("Compensate.Message.StepFailed", "{{{0}}}点检失败！", prefix), T("Compensate.Title.CheckFailed", "点检失败"));
+                await notificationService.ErrorAsync(localizationService.TF("Compensate.Message.StepFailed", "{{{0}}}点检失败！", prefix), localizationService.T("Compensate.Title.CheckFailed", "点检失败"));
             }
 
             return;
@@ -827,8 +815,8 @@ public class CompensateViewModel : BindableBase, INavigationAware
         StationCheckItemModel? firstItem = CheckItems.FirstOrDefault();
         string stationName = firstItem?.DisplayName ?? string.Empty;
         await notificationService.SuccessAsync(
-            TF("Compensate.Message.StepSuccess", "{{{0}}}{{{1}}}点检成功！", prefix, stationName),
-            T("Compensate.Title.CheckSuccess", "点检成功"));
+            localizationService.TF("Compensate.Message.StepSuccess", "{{{0}}}{{{1}}}点检成功！", prefix, stationName),
+            localizationService.T("Compensate.Title.CheckSuccess", "点检成功"));
     }
     private static bool IsValueInRange(double value, string lowerLimitText, string upperLimitText)
     {
@@ -889,23 +877,15 @@ public class CompensateViewModel : BindableBase, INavigationAware
         {
             item.DisplayName = item.Code switch
             {
-                StandardFlowCode => T("Compensate.Flow.Standard", "标准件"),
-                ConfirmFlowCode => T("Compensate.Flow.Confirm", "确认件"),
-                PolarityForwardFlowCode => T("Compensate.Flow.PolarityForward", "极性正向件"),
-                PolarityReverseFlowCode => T("Compensate.Flow.PolarityReverse", "极性反向件"),
+                StandardFlowCode => localizationService.T("Compensate.Flow.Standard", "标准件"),
+                ConfirmFlowCode => localizationService.T("Compensate.Flow.Confirm", "确认件"),
+                PolarityForwardFlowCode => localizationService.T("Compensate.Flow.PolarityForward", "极性正向件"),
+                PolarityReverseFlowCode => localizationService.T("Compensate.Flow.PolarityReverse", "极性反向件"),
                 _ => item.DisplayName
             };
         }
     }
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key, fallback).Replace("\\n", Environment.NewLine), args);
     private bool CanExecuteCheck()
         => !IsChecking && CheckFlowItems.Any(item => !item.IsCompleted);
 

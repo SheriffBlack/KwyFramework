@@ -58,6 +58,10 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="PART_CheckMark" Property="Visibility" Value="Visible" />
                         </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -101,7 +105,8 @@
                         </Trigger>
 
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="PART_RadioButtonBorder" Property="Opacity" Value="0.7" />
+                            <Setter TargetName="PART_RadioButtonBorder" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -144,7 +149,8 @@
                         </Trigger>
 
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="PART_RadioButtonBorder" Property="Opacity" Value="0.1" />
+                            <Setter TargetName="PART_RadioButtonBorder" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
                         </Trigger>
 
                     </ControlTemplate.Triggers>

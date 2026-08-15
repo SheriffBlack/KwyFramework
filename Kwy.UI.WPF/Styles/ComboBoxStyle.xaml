@@ -214,7 +214,10 @@
 
             <!--  当选中项有图标时，使用选中项的图标  -->
             <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+                <Setter TargetName="PART_BottomBorder" Property="Background" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+                <Setter TargetName="PART_Arrow" Property="Opacity" Value="0.55" />
             </Trigger>
         </ControlTemplate.Triggers>
     </ControlTemplate>

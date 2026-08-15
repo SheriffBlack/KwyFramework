@@ -71,20 +71,28 @@ public class InstrumentMeasurementDataDeal : IStationDataDeal, IStationInstrumen
             : result;
     }
 
-    public async Task CollectAsync(bool triggerResult, TestStationModel stationModel, CancellationToken cancellationToken = default)
+    public async Task<IStationDataCapture> CaptureAsync(CancellationToken cancellationToken = default)
+        => new MeasurementCapture(await ReadMeasurementAsync(cancellationToken).ConfigureAwait(false));
+
+    public void ApplyCapture(IStationDataCapture capture, bool triggerResult, TestStationModel stationModel)
     {
         ArgumentNullException.ThrowIfNull(stationModel);
+        if (capture is not MeasurementCapture measurementCapture)
+        {
+            throw new ArgumentException("Measurement capture type does not match the data deal.", nameof(capture));
+        }
 
         RefreshStationLimitFromInstrumentConfig(stationModel);
-
         InstrumentMeasurementResult result = ToEngineeringMeasurement(
-            await ReadMeasurementAsync(cancellationToken).ConfigureAwait(false));
+            measurementCapture.Result);
         InstrumentMeasurementValue value = GetValue(result, TestName, ValueIndex);
         stationModel.TestValues[TestName] = value.Value;
         stationModel.TestJudges[TestName] = stationModel.StationIo.ResultSource == StationResultSource.Hardware
             ? triggerResult
             : judgeService.IsPass(stationModel, TestName, value);
     }
+
+    private sealed record MeasurementCapture(InstrumentMeasurementResult Result) : IStationDataCapture;
 
     private void RefreshStationLimitFromInstrumentConfig(TestStationModel stationModel)
     {

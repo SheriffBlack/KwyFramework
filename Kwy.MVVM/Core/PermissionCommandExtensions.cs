@@ -94,6 +94,7 @@ public class PermissionCommandDecorator : ICommand, IDisposable
             return;
         }
 
+        (permissionService as IPermissionUsageNotifier)?.NotifyPermissionUsed(permissionCode);
         innerCommand.Execute(parameter);
     }
 

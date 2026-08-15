@@ -28,6 +28,7 @@
             <Setter Property="Command" Value="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
             <Setter Property="CommandParameter" Value="{Binding}" />
             <Setter Property="GroupName" Value="MainNavigationGroup" />
+            <Setter Property="IsEnabled" Value="{Binding IsNavigationEnabled}" />
             <Setter Property="IsChecked">
                 <Setter.Value>
                     <MultiBinding Converter="{StaticResource StringEqualityConverter}" Mode="OneWay">
@@ -67,7 +68,10 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <RadioButton Style="{StaticResource MainNavigationButtonStyle}" />
+                            <RadioButton
+                                kwymvvm:Permission.Mode="Hide"
+                                kwymvvm:Permission.Policy="{Binding PermissionCode}"
+                                Style="{StaticResource MainNavigationButtonStyle}" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

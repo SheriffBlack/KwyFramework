@@ -27,13 +27,7 @@ public sealed class StationEnableItemModel : BindableBase
 
     public string DeviceDisplayName => GetDeviceDisplayName();
 
-    public bool IsCameraStation => DisplayName.Contains("相机", StringComparison.OrdinalIgnoreCase)
-        || DisplayName.Contains("相機", StringComparison.OrdinalIgnoreCase)
-        || DisplayName.Contains("Camera", StringComparison.OrdinalIgnoreCase)
-        || DeviceDisplayName.Contains("相机", StringComparison.OrdinalIgnoreCase)
-        || DeviceDisplayName.Contains("相機", StringComparison.OrdinalIgnoreCase)
-        || DeviceDisplayName.Contains("Camera", StringComparison.OrdinalIgnoreCase)
-        || Station.InstrumentDeviceIds.Any(static id => id.Contains("Camera", StringComparison.OrdinalIgnoreCase));
+    public StationIconKind IconKind => Station.IconKind;
 
     public bool IsEnabled
     {
@@ -47,7 +41,9 @@ public sealed class StationEnableItemModel : BindableBase
         }
     }
 
-    public string StateText => IsEnabled ? T("Station.State.Enabled", "开启") : T("Station.State.Disabled", "关闭");
+    public string StateText => IsEnabled
+        ? localizationService.T("Station.State.Enabled", "开启")
+        : localizationService.T("Station.State.Disabled", "关闭");
 
     public void SyncFromStation()
         => IsEnabled = Station.IsEnabled;
@@ -57,23 +53,17 @@ public sealed class StationEnableItemModel : BindableBase
         OnPropertyChanged(nameof(DisplayName));
         OnPropertyChanged(nameof(StationDisplayName));
         OnPropertyChanged(nameof(DeviceDisplayName));
-        OnPropertyChanged(nameof(IsCameraStation));
+        OnPropertyChanged(nameof(IconKind));
         OnPropertyChanged(nameof(StateText));
-    }
-
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
     }
 
     private string ResolveStationName()
         => string.IsNullOrWhiteSpace(Station.StationNameKey)
             ? Station.StationName
-            : T(Station.StationNameKey, Station.StationName);
+            : localizationService.T(Station.StationNameKey, Station.StationName);
 
     private string ResolveOptional(string? key, string fallback)
-        => string.IsNullOrWhiteSpace(key) ? fallback : T(key, fallback);
+        => string.IsNullOrWhiteSpace(key) ? fallback : localizationService.T(key, fallback);
 
     private string GetStationDisplayName()
     {

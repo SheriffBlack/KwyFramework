@@ -39,6 +39,16 @@ public interface IPermissionService
 }
 
 /// <summary>
+/// Optional capability for permission services that track successful privileged-operation activity.
+/// Permission queries must remain side-effect free; callers invoke this only after an operation
+/// has been authorized for execution.
+/// </summary>
+public interface IPermissionUsageNotifier
+{
+    void NotifyPermissionUsed(string permissionCode);
+}
+
+/// <summary>
 /// 通用授权服务。用于业务操作层的最终校验，可携带资源上下文。
 /// </summary>
 public interface IAuthorizationService

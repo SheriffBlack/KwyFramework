@@ -90,6 +90,9 @@ public sealed class ConfigurableMachine : MachineBase
         {
             StationId = source.StationId,
             StationName = source.StationName,
+            IconKind = Enum.TryParse(source.IconKind, true, out StationIconKind iconKind)
+                ? iconKind
+                : StationIconKind.Station,
             IsEnabled = source.IsEnabled,
             ShowInResultGrid = source.ShowInResultGrid,
             UseInstrumentConfigTestNames = source.UseInstrumentConfigTestNames,

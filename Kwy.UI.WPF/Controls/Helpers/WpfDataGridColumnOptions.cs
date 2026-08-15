@@ -42,4 +42,9 @@ public class WpfDataGridColumnOptions : DataGridColumnDescriptor
     public string? EditingElementStyleKey { get; set; }
 
     public Style? EditingElementStyle { get; set; }
+
+    /// <summary>
+    /// Template 列单元格模板的资源键。
+    /// </summary>
+    public string? CellTemplateKey { get; set; }
 }

@@ -11,7 +11,7 @@
     xmlns:navigation="clr-namespace:KwyTemplate.Contracts.Navigation;assembly=KwyTemplate.Contracts"
     Title="{Binding AppTitle}"
     kwymvvm:ViewModelLocator.AutoWireViewModel="True"
-    Icon="{StaticResource ImgLogoHsy}"
+    Icon="{StaticResource ImgLogoTest}"
     ShowUserButton="True"
     UserCommand="{Binding SwitchUserCommand}"
     WindowState="Maximized"

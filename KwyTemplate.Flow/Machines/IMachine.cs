@@ -19,8 +19,6 @@ public interface IMachine : IDisposable
 
     Task StopAsync();
 
-    Task PauseAsync();
-
     Task ExecuteStationAsync(int stationId, bool triggerResult = true, CancellationToken cancellationToken = default);
 }
 

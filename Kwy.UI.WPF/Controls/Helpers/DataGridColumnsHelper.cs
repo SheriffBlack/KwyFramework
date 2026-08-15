@@ -240,6 +240,10 @@ public static class DataGridColumnsHelper
             case DataGridComboBoxColumn comboBoxColumn:
                 comboBoxColumn.SelectedItemBinding = binding;
                 break;
+
+            case DataGridTemplateColumn templateColumn when !string.IsNullOrWhiteSpace(options.CellTemplateKey):
+                templateColumn.CellTemplate = dataGrid.TryFindResource(options.CellTemplateKey) as DataTemplate;
+                break;
         }
 
         return column;
@@ -289,7 +293,8 @@ public static class DataGridColumnsHelper
         }
 
         string? styleKey = options?.ElementStyleKey ?? GetDefaultElementStyleKey(dataGrid);
-        if (!string.IsNullOrEmpty(styleKey) && Application.Current.TryFindResource(styleKey) is Style style)
+        if (!string.IsNullOrEmpty(styleKey)
+            && (dataGrid.TryFindResource(styleKey) ?? Application.Current.TryFindResource(styleKey)) is Style style)
         {
             textColumn.ElementStyle = style;
             return;

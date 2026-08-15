@@ -4,14 +4,18 @@ using System.Windows.Threading;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.PLC;
 using Kwy.MVVM.Core;
+using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Components.Dialogs;
 using Kwy.UI.WPF.Components.Logging;
+using Kwy.UI.WPF.Controls.Helpers;
 using KwyTemplate.App.Models;
 using KwyTemplate.App.Services;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device;
 using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
+using System.Windows.Controls;
+using Kwy.UI.Enums;
 
 namespace KwyTemplate.App.ViewModels;
 
@@ -24,6 +28,7 @@ public sealed class PlcPointViewModel : BindableBase
     private readonly MachineBase machine;
     private readonly ILocalizationService? localizationService;
     private readonly DispatcherTimer refreshTimer;
+    private readonly ObservableCollection<IDataGridColumnDescriptor> columns = [];
     private IPlcDevice? plc;
     private bool isRefreshing;
     private string statusMessage;
@@ -42,8 +47,13 @@ public sealed class PlcPointViewModel : BindableBase
         this.notificationService = notificationService;
         this.logService = logService;
         this.localizationService = localizationService;
-        statusMessage = T("PlcPoint.Status.Waiting", "等待 PLC 点位刷新");
+        statusMessage = localizationService?.T("PlcPoint.Status.Waiting", "等待 PLC 点位刷新") ?? "等待 PLC 点位刷新";
+        SyncColumns();
         LoadPoints();
+        if (localizationService != null)
+        {
+            localizationService.LanguageChanged += OnLanguageChanged;
+        }
 
         refreshTimer = new DispatcherTimer
         {
@@ -54,6 +64,8 @@ public sealed class PlcPointViewModel : BindableBase
     }
 
     public ObservableCollection<PlcPointModel> Points { get; } = [];
+
+    public ObservableCollection<IDataGridColumnDescriptor> Columns => columns;
 
     public string StatusMessage
     {
@@ -70,6 +82,56 @@ public sealed class PlcPointViewModel : BindableBase
     private AsyncDelegateCommand<PlcPointModel>? writeOneCommand;
     public AsyncDelegateCommand<PlcPointModel> WriteOneCommand => writeOneCommand ??= new AsyncDelegateCommand<PlcPointModel>(point => ExecuteWriteShortcutAsync(point, "1"));
 
+    private void SyncColumns()
+    {
+        columns.Clear();
+        columns.Add(CreateTextColumn(nameof(PlcPointModel.DisplayName), localizationService?.T("PlcPoint.Column.Description", "描述") ?? "描述", 300));
+        columns.Add(CreateTextColumn(nameof(PlcPointModel.Address), localizationService?.T("PlcPoint.Column.Address", "地址") ?? "地址", 100));
+        columns.Add(CreateTextColumn(nameof(PlcPointModel.DataTypeName), localizationService?.T("PlcPoint.Column.Type", "类型") ?? "类型", 80));
+        columns.Add(new WpfDataGridColumnOptions
+        {
+            ParameterId = nameof(PlcPointModel.ValueText),
+            DisplayName = localizationService?.T("PlcPoint.Column.RealTimeValue", "实时值") ?? "实时值",
+            BindingPath = nameof(PlcPointModel.ValueText),
+            Width = new DataGridLength(120),
+            ElementStyleKey = "PlcPointValueTextBlockStyle",
+            CanUserSort = false,
+            CanUserResize = false,
+            CanUserReorder = false
+        });
+        columns.Add(new WpfDataGridColumnOptions
+        {
+            // 模板列不参与测值判定着色；留空可保持与原静态 DataGridTemplateColumn 相同的单元格布局。
+            ParameterId = string.Empty,
+            DisplayName = localizationService?.T("PlcPoint.Column.WriteControl", "控制写入") ?? "控制写入",
+            ColumnType = DataGridColumnType.Template,
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+            CellTemplateKey = "PlcPointWriteControlTemplate",
+            CanUserSort = false,
+            CanUserResize = false,
+            CanUserReorder = false
+        });
+    }
+
+    private static IDataGridColumnDescriptor CreateTextColumn(string bindingPath, string displayName, double width)
+        => new WpfDataGridColumnOptions
+        {
+            ParameterId = bindingPath,
+            DisplayName = displayName,
+            BindingPath = bindingPath,
+            Width = new DataGridLength(width),
+            ElementStyleKey = "CenterAlignedTextBlock",
+            CanUserSort = false,
+            CanUserResize = false,
+            CanUserReorder = false
+        };
+
+    private void OnLanguageChanged(object? sender, LanguageType languageType)
+    {
+        SyncColumns();
+        LoadPoints();
+    }
+
     private void LoadPoints()
     {
         Points.Clear();
@@ -78,7 +140,9 @@ public sealed class PlcPointViewModel : BindableBase
             Points.Add(new PlcPointModel(point));
         }
 
-        StatusMessage = Points.Count == 0 ? T("PlcPoint.Status.NoPoints", "当前机型未注册 PLC 点位。") : TF("PlcPoint.Status.PointsLoaded", "已加载 {0} 个 PLC 点位。", Points.Count);
+        StatusMessage = Points.Count == 0
+            ? localizationService?.T("PlcPoint.Status.NoPoints", "当前机型未注册 PLC 点位。") ?? "当前机型未注册 PLC 点位。"
+            : localizationService?.TF("PlcPoint.Status.PointsLoaded", "已加载 {0} 个 PLC 点位。", Points.Count) ?? string.Format(CultureInfo.CurrentCulture, "已加载 {0} 个 PLC 点位。", Points.Count);
     }
 
     private async void OnRefreshTimerTick(object? sender, EventArgs e)
@@ -104,11 +168,11 @@ public sealed class PlcPointViewModel : BindableBase
         plc = TryGetMainPlc();
         if (plc == null || !plc.IsConnected)
         {
-            StatusMessage = T("PlcPoint.Status.PlcDisconnected", "PLC 未连接。");
+            StatusMessage = localizationService?.T("PlcPoint.Status.PlcDisconnected", "PLC 未连接。") ?? "PLC 未连接。";
             foreach (PlcPointModel point in Points)
             {
-                point.ValueText = T("PlcPoint.Value.Disconnected", "未连接");
-                point.StatusMessage = T("PlcPoint.Status.PlcDisconnectedShort", "PLC 未连接");
+                point.ValueText = localizationService?.T("PlcPoint.Value.Disconnected", "未连接") ?? "未连接";
+                point.StatusMessage = localizationService?.T("PlcPoint.Status.PlcDisconnectedShort", "PLC 未连接") ?? "PLC 未连接";
             }
 
             return;
@@ -119,7 +183,7 @@ public sealed class PlcPointViewModel : BindableBase
             await ReadPointAsync(point, DestroyToken);
         }
 
-        StatusMessage = TF("PlcPoint.Status.Refreshing", "PLC 点位刷新中：{0}", DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture));
+        StatusMessage = localizationService?.TF("PlcPoint.Status.Refreshing", "PLC 点位刷新中：{0}", DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture)) ?? string.Format(CultureInfo.CurrentCulture, "PLC 点位刷新中：{0}", DateTime.Now.ToString("HH:mm:ss", CultureInfo.CurrentCulture));
     }
 
     private async Task ExecuteWriteAsync(PlcPointModel? point)
@@ -143,24 +207,24 @@ public sealed class PlcPointViewModel : BindableBase
             PlcWriteOperation writeOperation = CreateWriteOperation(point);
             writeValue = writeOperation.ActualValue;
             await writeOperation.ExecuteAsync(DestroyToken).ConfigureAwait(false);
-            point.StatusMessage = T("PlcPoint.Status.WriteSuccess", "写入成功");
-            StatusMessage = TF("PlcPoint.Status.Written", "已写入：{0}", point.DisplayName);
+            point.StatusMessage = localizationService?.T("PlcPoint.Status.WriteSuccess", "写入成功") ?? "写入成功";
+            StatusMessage = localizationService?.TF("PlcPoint.Status.Written", "已写入：{0}", point.DisplayName) ?? string.Format(CultureInfo.CurrentCulture, "已写入：{0}", point.DisplayName);
             AddManualPlcWriteLog(point, writeValue, plcName);
 
             if (notificationService != null)
             {
-                await notificationService.SuccessAsync(TF("PlcPoint.Message.WriteSuccess", "{{{0}}}{{{1}}}写入{{{2}}}成功！", plcName, pointName, writeValue), T("PlcPoint.Title.Write", "PLC 写入"), writeLog: false).ConfigureAwait(false);
+                await notificationService.SuccessAsync(localizationService?.TF("PlcPoint.Message.WriteSuccess", "{{{0}}}{{{1}}}写入{{{2}}}成功！", plcName, pointName, writeValue) ?? string.Format(CultureInfo.CurrentCulture, "{{{0}}}{{{1}}}写入{{{2}}}成功！", plcName, pointName, writeValue), localizationService?.T("PlcPoint.Title.Write", "PLC 写入") ?? "PLC 写入", writeLog: false).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             string failureMessage = FormatWriteFailureMessage(ex);
             point.StatusMessage = failureMessage;
-            StatusMessage = TF("PlcPoint.Status.WriteFailed", "写入失败：{0}", failureMessage);
+            StatusMessage = localizationService?.TF("PlcPoint.Status.WriteFailed", "写入失败：{0}", failureMessage) ?? string.Format(CultureInfo.CurrentCulture, "写入失败：{0}", failureMessage);
 
             if (notificationService != null)
             {
-                await notificationService.ErrorAsync(TF("PlcPoint.Message.WriteFailed", "{{{0}}}{{{1}}}写入{{{2}}}失败！\n{3}", plcName, pointName, writeValue, failureMessage), T("PlcPoint.Title.WriteFailed", "PLC 写入失败"), writeLog: false).ConfigureAwait(false);
+                await notificationService.ErrorAsync(localizationService?.TF("PlcPoint.Message.WriteFailed", "{{{0}}}{{{1}}}写入{{{2}}}失败！\n{3}", plcName, pointName, writeValue, failureMessage) ?? string.Format(CultureInfo.CurrentCulture, "{{{0}}}{{{1}}}写入{{{2}}}失败！\n{3}", plcName, pointName, writeValue, failureMessage), localizationService?.T("PlcPoint.Title.WriteFailed", "PLC 写入失败") ?? "PLC 写入失败", writeLog: false).ConfigureAwait(false);
             }
 
             return;
@@ -172,7 +236,7 @@ public sealed class PlcPointViewModel : BindableBase
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            point.StatusMessage = TF("PlcPoint.Status.WriteSuccessReadFailed", "写入成功，刷新读取失败：{0}", FormatWriteFailureMessage(ex));
+            point.StatusMessage = localizationService?.TF("PlcPoint.Status.WriteSuccessReadFailed", "写入成功，刷新读取失败：{0}", FormatWriteFailureMessage(ex)) ?? string.Format(CultureInfo.CurrentCulture, "写入成功，刷新读取失败：{0}", FormatWriteFailureMessage(ex));
         }
     }
 
@@ -206,8 +270,8 @@ public sealed class PlcPointViewModel : BindableBase
 
         if (inputDialogService == null)
         {
-            StatusMessage = T("PlcPoint.Status.InputDialogMissing", "输入弹窗服务未注册，无法写入其他值。");
-            point.StatusMessage = T("PlcPoint.Status.InputDialogMissingShort", "输入弹窗服务未注册");
+            StatusMessage = localizationService?.T("PlcPoint.Status.InputDialogMissing", "输入弹窗服务未注册，无法写入其他值。") ?? "输入弹窗服务未注册，无法写入其他值。";
+            point.StatusMessage = localizationService?.T("PlcPoint.Status.InputDialogMissingShort", "输入弹窗服务未注册") ?? "输入弹窗服务未注册";
             return;
         }
 
@@ -247,11 +311,11 @@ public sealed class PlcPointViewModel : BindableBase
         plc = TryGetMainPlc();
         if (plc == null)
         {
-            StatusMessage = T("PlcPoint.Status.MainPlcMissing", "未找到主 PLC 设备。");
-            point.StatusMessage = T("PlcPoint.Status.PlcNotRegistered", "PLC 未注册");
+            StatusMessage = localizationService?.T("PlcPoint.Status.MainPlcMissing", "未找到主 PLC 设备。") ?? "未找到主 PLC 设备。";
+            point.StatusMessage = localizationService?.T("PlcPoint.Status.PlcNotRegistered", "PLC 未注册") ?? "PLC 未注册";
             if (notificationService != null)
             {
-                await notificationService.ErrorAsync(T("PlcPoint.Message.MainPlcMissing", "未找到主 PLC 设备，请检查设备注册。"), T("PlcPoint.Status.PlcNotRegistered", "PLC 未注册"), writeLog: false).ConfigureAwait(false);
+                await notificationService.ErrorAsync(localizationService?.T("PlcPoint.Message.MainPlcMissing", "未找到主 PLC 设备，请检查设备注册。") ?? "未找到主 PLC 设备，请检查设备注册。", localizationService?.T("PlcPoint.Status.PlcNotRegistered", "PLC 未注册") ?? "PLC 未注册", writeLog: false).ConfigureAwait(false);
             }
 
             return false;
@@ -262,11 +326,11 @@ public sealed class PlcPointViewModel : BindableBase
             return true;
         }
 
-        StatusMessage = T("PlcPoint.Status.PlcDisconnectedCannotWrite", "PLC 未连接，无法写入点位。");
-        point.StatusMessage = T("PlcPoint.Status.PlcDisconnectedShort", "PLC 未连接");
+        StatusMessage = localizationService?.T("PlcPoint.Status.PlcDisconnectedCannotWrite", "PLC 未连接，无法写入点位。") ?? "PLC 未连接，无法写入点位。";
+        point.StatusMessage = localizationService?.T("PlcPoint.Status.PlcDisconnectedShort", "PLC 未连接") ?? "PLC 未连接";
         if (notificationService != null)
         {
-            await notificationService.WarningAsync(T("PlcPoint.Message.PlcDisconnectedCannotWrite", "PLC 未连接，请先连接 PLC 后再写入点位。"), T("PlcPoint.Status.PlcDisconnectedShort", "PLC 未连接"), writeLog: false).ConfigureAwait(false);
+            await notificationService.WarningAsync(localizationService?.T("PlcPoint.Message.PlcDisconnectedCannotWrite", "PLC 未连接，请先连接 PLC 后再写入点位。") ?? "PLC 未连接，请先连接 PLC 后再写入点位。", localizationService?.T("PlcPoint.Status.PlcDisconnectedShort", "PLC 未连接") ?? "PLC 未连接", writeLog: false).ConfigureAwait(false);
         }
 
         return false;
@@ -312,14 +376,14 @@ public sealed class PlcPointViewModel : BindableBase
             return (await plc.ReadFloatAsync(address, cancellationToken)).ToString(CultureInfo.InvariantCulture);
         }
 
-        throw new NotSupportedException(TF("PlcPoint.Message.UnsupportedReadType", "不支持读取的数据类型：{0}", dataType.Name));
+        throw new NotSupportedException(localizationService?.TF("PlcPoint.Message.UnsupportedReadType", "不支持读取的数据类型：{0}", dataType.Name) ?? string.Format(CultureInfo.CurrentCulture, "不支持读取的数据类型：{0}", dataType.Name));
     }
 
     private PlcWriteOperation CreateWriteOperation(PlcPointModel point)
     {
         if (plc == null)
         {
-            throw new InvalidOperationException(T("PlcPoint.Status.PlcDisconnected", "PLC 未连接。"));
+            throw new InvalidOperationException(localizationService?.T("PlcPoint.Status.PlcDisconnected", "PLC 未连接。") ?? "PLC 未连接。");
         }
 
         Type dataType = point.Definition.DataType;
@@ -363,7 +427,7 @@ public sealed class PlcPointViewModel : BindableBase
             return new PlcWriteOperation(value.ToString(CultureInfo.InvariantCulture), token => plc.WriteFloatAsync(point.Address, value, token));
         }
 
-        throw new NotSupportedException(TF("PlcPoint.Message.UnsupportedWriteType", "不支持写入的数据类型：{0}", dataType.Name));
+        throw new NotSupportedException(localizationService?.TF("PlcPoint.Message.UnsupportedWriteType", "不支持写入的数据类型：{0}", dataType.Name) ?? string.Format(CultureInfo.CurrentCulture, "不支持写入的数据类型：{0}", dataType.Name));
     }
 
     private sealed record PlcWriteOperation(string ActualValue, Func<CancellationToken, Task> ExecuteAsync);
@@ -371,13 +435,13 @@ public sealed class PlcPointViewModel : BindableBase
     private void AddManualPlcWriteLog(PlcPointModel point, string writeValue, string plcName)
     {
         string pointName = FormatPointName(point);
-        logService?.Info(TF("PlcPoint.Log.ManualWriteSuccess", "{0}: 手动写入 {1} = {2} 成功。", plcName, pointName, writeValue));
+        logService?.Info(localizationService?.TF("PlcPoint.Log.ManualWriteSuccess", "{0}: 手动写入 {1} = {2} 成功。", plcName, pointName, writeValue) ?? string.Format(CultureInfo.CurrentCulture, "{0}: 手动写入 {1} = {2} 成功。", plcName, pointName, writeValue));
     }
 
     private string GetPlcDisplayName()
     {
         string? deviceName = plc?.DeviceName;
-        return string.IsNullOrWhiteSpace(deviceName) ? T("Device.MainPlc", "主 PLC") : deviceName;
+        return string.IsNullOrWhiteSpace(deviceName) ? localizationService?.T("Device.MainPlc", "主 PLC") ?? "主 PLC" : deviceName;
     }
 
     private static string FormatPointName(PlcPointModel point)
@@ -390,7 +454,7 @@ public sealed class PlcPointViewModel : BindableBase
         string message = exception.GetBaseException().Message;
         if (string.IsNullOrWhiteSpace(message))
         {
-            return T("Common.UnknownError", "未知错误。");
+            return localizationService?.T("Common.UnknownError", "未知错误。") ?? "未知错误。";
         }
 
         const string hslFailedMarker = " failed: ";
@@ -400,9 +464,9 @@ public sealed class PlcPointViewModel : BindableBase
             message = message[(markerIndex + hslFailedMarker.Length)..];
         }
 
-        message = message.Replace("PLC is not connected.", T("PlcPoint.Status.PlcDisconnected", "PLC 未连接。"), StringComparison.OrdinalIgnoreCase);
+        message = message.Replace("PLC is not connected.", localizationService?.T("PlcPoint.Status.PlcDisconnected", "PLC 未连接。") ?? "PLC 未连接。", StringComparison.OrdinalIgnoreCase);
         message = message.Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal).Trim();
-        return string.IsNullOrWhiteSpace(message) ? T("Common.UnknownError", "未知错误。") : message;
+        return string.IsNullOrWhiteSpace(message) ? localizationService?.T("Common.UnknownError", "未知错误。") ?? "未知错误。" : message;
     }
 
     private IPlcDevice? TryGetMainPlc()
@@ -427,7 +491,7 @@ public sealed class PlcPointViewModel : BindableBase
             return number != 0;
         }
 
-        throw new FormatException(T("PlcPoint.Message.BoolValueHint", "Bool 值只支持 True、False、1、0。"));
+        throw new FormatException(localizationService?.T("PlcPoint.Message.BoolValueHint", "Bool 值只支持 True、False、1、0。") ?? "Bool 值只支持 True、False、1、0。");
     }
 
     private InputDialogOptions CreateWriteDialogOptions(PlcPointModel point)
@@ -437,16 +501,16 @@ public sealed class PlcPointViewModel : BindableBase
 
         return new InputDialogOptions
         {
-            Title = T("PlcPoint.Dialog.WriteTitle", "写入 PLC 点位"),
-            Message = TF("PlcPoint.Dialog.WriteMessage", "请输入 {0}（{1}）的写入值。", point.DisplayName, point.Address),
-            Label = T("PlcPoint.Dialog.WriteValue", "写入值"),
+            Title = localizationService?.T("PlcPoint.Dialog.WriteTitle", "写入 PLC 点位") ?? "写入 PLC 点位",
+            Message = localizationService?.TF("PlcPoint.Dialog.WriteMessage", "请输入 {0}（{1}）的写入值。", point.DisplayName, point.Address) ?? string.Format(CultureInfo.CurrentCulture, "请输入 {0}（{1}）的写入值。", point.DisplayName, point.Address),
+            Label = localizationService?.T("PlcPoint.Dialog.WriteValue", "写入值") ?? "写入值",
             DefaultValue = GetDialogDefaultValue(point),
             InputType = dataType == typeof(bool) ? InputDialogType.Text : InputDialogType.Number,
             Minimum = minimum,
             Maximum = maximum,
             Unit = GetDialogUnit(dataType),
-            ConfirmButtonText = T("Common.Confirm", "确定"),
-            CancelButtonText = T("Common.Cancel", "取消"),
+            ConfirmButtonText = localizationService?.T("Common.Confirm", "确定") ?? "确定",
+            CancelButtonText = localizationService?.T("Common.Cancel", "取消") ?? "取消",
             ShowCancelButton = true
         };
     }
@@ -492,20 +556,16 @@ public sealed class PlcPointViewModel : BindableBase
     private static string GetDialogUnit(Type dataType)
         => dataType == typeof(bool) ? "True/False/1/0" : dataType.Name;
 
-    private string T(string key, string fallback)
-    {
-        string? text = localizationService?.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key, fallback), args);
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
             refreshTimer.Stop();
             refreshTimer.Tick -= OnRefreshTimerTick;
+            if (localizationService != null)
+            {
+                localizationService.LanguageChanged -= OnLanguageChanged;
+            }
         }
 
         base.Dispose(disposing);

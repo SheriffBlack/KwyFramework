@@ -6,7 +6,7 @@ using KwyTemplate.Security.Identity;
 
 namespace KwyTemplate.Security.Authorization;
 
-internal sealed class SecurityPermissionService : IPermissionService, IDisposable
+internal sealed class SecurityPermissionService : IPermissionService, IPermissionUsageNotifier, IDisposable
 {
     private readonly ICurrentUserService currentUserService;
     private readonly ILocalizationService localizationService;
@@ -32,6 +32,15 @@ internal sealed class SecurityPermissionService : IPermissionService, IDisposabl
     {
         SecurityUserLevel requiredLevel = ParseRequiredLevel(permissionCode);
         return TF("Security.Permission.Required", "当前操作需要 {0} 权限。", GetDisplayName(requiredLevel));
+    }
+
+    public void NotifyPermissionUsed(string permissionCode)
+    {
+        SecurityUserLevel requiredLevel = ParseRequiredLevel(permissionCode);
+        if (requiredLevel > SecurityUserLevel.Operator && GetCurrentLevel() >= requiredLevel)
+        {
+            currentUserService.RefreshElevatedSession();
+        }
     }
 
     public void Dispose()

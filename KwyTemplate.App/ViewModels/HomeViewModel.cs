@@ -2,6 +2,8 @@
 using Kwy.MVVM.Messaging;
 using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Components.Logging;
+using Kwy.UI.WPF.Components.Toasts;
+using Kwy.UI.WPF.Components.Dialogs;
 using Kwy.UI.WPF.Controls.Helpers;
 using KwyTemplate.App.Input;
 using KwyTemplate.App.Messages;
@@ -24,6 +26,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -38,6 +41,8 @@ public sealed class HomeViewModel : BindableBase
     private readonly IMesConnection mesConnection;
     private readonly IRawInputBarcodeReceiver rawInputBarcodeReceiver;
     private readonly IAppNotificationService notificationService;
+    private readonly IToastMessageService toastMessageService;
+    private readonly IInputDialogService inputDialogService;
     private readonly ISecurityKeyChecker securityKeyChecker;
     private readonly IPermissionService permissionService;
     private readonly KwyLogService? logService;
@@ -60,6 +65,9 @@ public sealed class HomeViewModel : BindableBase
     private bool areStationLimitsVisible;
     private long chartSampleSequence;
     private int chartLimitsSyncPending;
+    private bool requiresLsLowerLimitOverride;
+    private string specialMachineLsLowerLimitText = string.Empty;
+    private string specialMachineLsUnit = string.Empty;
     private AsyncDelegateCommand? mesConnectionCommand;
     private AsyncDelegateCommand? startCommand;
     private AsyncDelegateCommand? stopCommand;
@@ -74,6 +82,8 @@ public sealed class HomeViewModel : BindableBase
         IMesConnection mesConnection,
         IRawInputBarcodeReceiver rawInputBarcodeReceiver,
         IAppNotificationService notificationService,
+        IToastMessageService toastMessageService,
+        IInputDialogService inputDialogService,
         ISecurityKeyChecker securityKeyChecker,
         IPermissionService permissionService,
         KwyLogService? logService,
@@ -96,6 +106,8 @@ public sealed class HomeViewModel : BindableBase
         this.mesConnection = mesConnection ?? throw new ArgumentNullException(nameof(mesConnection));
         this.rawInputBarcodeReceiver = rawInputBarcodeReceiver ?? throw new ArgumentNullException(nameof(rawInputBarcodeReceiver));
         this.notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+        this.toastMessageService = toastMessageService ?? throw new ArgumentNullException(nameof(toastMessageService));
+        this.inputDialogService = inputDialogService ?? throw new ArgumentNullException(nameof(inputDialogService));
         this.securityKeyChecker = securityKeyChecker ?? throw new ArgumentNullException(nameof(securityKeyChecker));
         this.permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
         this.logService = logService;
@@ -163,6 +175,21 @@ public sealed class HomeViewModel : BindableBase
 
     public string MachineType { get => productionContext.MachineType; set => productionContext.MachineType = value; }
 
+    public bool IsTrailingXMachineType
+        => MachineType.Trim().EndsWith("X", StringComparison.OrdinalIgnoreCase);
+
+    public string SpecialMachineLsLowerLimitText
+    {
+        get => specialMachineLsLowerLimitText;
+        private set => SetProperty(ref specialMachineLsLowerLimitText, value);
+    }
+
+    public string SpecialMachineLsUnit
+    {
+        get => specialMachineLsUnit;
+        private set => SetProperty(ref specialMachineLsUnit, value);
+    }
+
     public string ReelMatNo { get => productionContext.ReelMatNo; set => productionContext.ReelMatNo = value; }
 
     public string BarcodeContent { get => productionContext.BarcodeContent; set => productionContext.BarcodeContent = value; }
@@ -195,7 +222,7 @@ public sealed class HomeViewModel : BindableBase
     {
         if (MesStatus.State == MesConnectionState.Connecting)
         {
-            await ShowWarningOnUiAsync(T("Home.Message.MesConnecting", "MES is connecting, please wait."), T("Home.Title.MesConnect", "MES Connect")).ConfigureAwait(false);
+            await ShowWarningOnUiAsync(localizationService.T("Home.Message.MesConnecting", "MES is connecting, please wait."), localizationService.T("Home.Title.MesConnect", "MES Connect")).ConfigureAwait(false);
             return;
         }
 
@@ -220,11 +247,11 @@ public sealed class HomeViewModel : BindableBase
 
             if (result.IsSuccess)
             {
-                await ShowMessageOnUiAsync(T("Home.Message.MesConnectSuccess", "MES connected."), T("Home.Title.MesConnect", "MES Connect")).ConfigureAwait(false);
+                await ShowMessageOnUiAsync(localizationService.T("Home.Message.MesConnectSuccess", "MES connected."), localizationService.T("Home.Title.MesConnect", "MES Connect")).ConfigureAwait(false);
                 return;
             }
 
-            await ShowErrorOnUiAsync(TF("Home.Message.MesConnectFailed", "MES connect failed:\n{0}", result.Message), T("Home.Title.MesConnect", "MES Connect")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(localizationService.TF("Home.Message.MesConnectFailed", "MES connect failed:\n{0}", result.Message), localizationService.T("Home.Title.MesConnect", "MES Connect")).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -233,7 +260,7 @@ public sealed class HomeViewModel : BindableBase
         {
             MesStatus.State = MesConnectionState.Faulted;
             MesStatus.Message = ex.Message;
-            await ShowErrorOnUiAsync(TF("Home.Message.MesConnectException", "MES connect exception:\n{0}", ex.Message), T("Home.Title.MesConnect", "MES Connect")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(localizationService.TF("Home.Message.MesConnectException", "MES connect exception:\n{0}", ex.Message), localizationService.T("Home.Title.MesConnect", "MES Connect")).ConfigureAwait(false);
         }
     }
 
@@ -241,15 +268,17 @@ public sealed class HomeViewModel : BindableBase
     {
         if (!securityKeyChecker.IsPresent())
         {
-            await ShowWarningOnUiAsync(T("Home.Message.MesDisconnectNoKey", "No permission to disconnect MES."), T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
+            await ShowWarningOnUiAsync(localizationService.T("Home.Message.MesDisconnectNoKey", "No permission to disconnect MES."), localizationService.T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
             return;
         }
 
         if (!permissionService.HasPermission(PermissionCodes.Engineer))
         {
-            await ShowWarningOnUiAsync(T("Home.Message.MesDisconnectEngineerRequired", "MES disconnect requires engineer permission."), T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
+            await ShowWarningOnUiAsync(localizationService.T("Home.Message.MesDisconnectEngineerRequired", "MES disconnect requires engineer permission."), localizationService.T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
             return;
         }
+
+        (permissionService as IPermissionUsageNotifier)?.NotifyPermissionUsed(PermissionCodes.Engineer);
 
         try
         {
@@ -259,11 +288,11 @@ public sealed class HomeViewModel : BindableBase
 
             if (result.IsSuccess)
             {
-                await ShowMessageOnUiAsync(T("Home.Message.MesDisconnected", "MES disconnected."), T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
+                await ShowMessageOnUiAsync(localizationService.T("Home.Message.MesDisconnected", "MES disconnected."), localizationService.T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
                 return;
             }
 
-            await ShowErrorOnUiAsync(TF("Home.Message.MesDisconnectFailed", "MES disconnect failed:\n{0}", result.Message), T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(localizationService.TF("Home.Message.MesDisconnectFailed", "MES disconnect failed:\n{0}", result.Message), localizationService.T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -271,7 +300,7 @@ public sealed class HomeViewModel : BindableBase
         catch (Exception ex)
         {
             MesStatus.Message = ex.Message;
-            await ShowErrorOnUiAsync(TF("Home.Message.MesDisconnectException", "MES disconnect exception:\n{0}", ex.Message), T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(localizationService.TF("Home.Message.MesDisconnectException", "MES disconnect exception:\n{0}", ex.Message), localizationService.T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
         }
     }
 
@@ -302,7 +331,24 @@ public sealed class HomeViewModel : BindableBase
 
             if (string.IsNullOrWhiteSpace(WorkOrderNo))
             {
-                await ShowWarningOnUiAsync(T("Home.Message.WorkOrderRequired", "Please scan work order first."), T("Home.Action.Start", "Start")).ConfigureAwait(false);
+                await ShowWarningOnUiAsync(localizationService.T("Home.Message.WorkOrderRequired", "Please scan work order first."), localizationService.T("Home.Action.Start", "Start")).ConfigureAwait(false);
+                return;
+            }
+
+            if (requiresLsLowerLimitOverride)
+            {
+                await ShowWarningOnUiAsync(
+                    localizationService.T("Home.Message.LsLowerLimitRequired", "该工单需要重新输入 Ls 下限后才能启动。"),
+                    localizationService.T("Home.Title.LsLowerLimit", "Ls 下限")).ConfigureAwait(false);
+                return;
+            }
+
+            bool? isCheckCompleted = await machine.ReadCheckCompletedAsync(DestroyToken).ConfigureAwait(false);
+            if (isCheckCompleted is false)
+            {
+                await ShowWarningOnUiAsync(
+                    localizationService.T("Home.Message.CheckRequired", "请先完成点检，再启动生产。"),
+                    localizationService.T("Home.Title.CheckRequired", "点检提醒")).ConfigureAwait(false);
                 return;
             }
 
@@ -312,7 +358,7 @@ public sealed class HomeViewModel : BindableBase
 
             if (!IsMesAccepted(trackInResult))
             {
-                await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(T("Home.Title.MesTrackIn", "MES Track In"), trackInResult), T("Home.Title.MesTrackIn", "MES Track In")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(localizationService.T("Home.Title.MesTrackIn", "MES Track In"), trackInResult), localizationService.T("Home.Title.MesTrackIn", "MES Track In")).ConfigureAwait(false);
                 return;
             }
 
@@ -328,7 +374,7 @@ public sealed class HomeViewModel : BindableBase
         }
         catch (Exception ex)
         {
-            await ShowErrorOnUiAsync(TF("Home.Message.StartFailed", "Start failed:\n{0}", ex.Message), T("Home.Title.StartFailed", "Start Failed")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(localizationService.TF("Home.Message.StartFailed", "Start failed:\n{0}", ex.Message), localizationService.T("Home.Title.StartFailed", "Start Failed")).ConfigureAwait(false);
         }
     }
 
@@ -342,18 +388,18 @@ public sealed class HomeViewModel : BindableBase
             }
 
             bool shouldTrackOut = await ShowConfirmOnUiAsync(
-                T("Home.Message.TrackOutConfirm", "Track out?"),
-                T("Home.Title.MesTrackOut", "MES Track Out")).ConfigureAwait(false);
-            if (!shouldTrackOut)
-            {
-                await machine.PauseAsync().ConfigureAwait(false);
-                return;
-            }
+                localizationService.T("Home.Message.TrackOutConfirm", "Track out?"),
+                localizationService.T("Home.Title.MesTrackOut", "MES Track Out")).ConfigureAwait(false);
 
             await machine.StopAsync().ConfigureAwait(false);
             if (machine is IMachineWorkOrderStartSignalMachine workOrderStartSignalMachine)
             {
                 await workOrderStartSignalMachine.ResetWorkOrderStartSignalsAsync(DestroyToken).ConfigureAwait(false);
+            }
+
+            if (!shouldTrackOut)
+            {
+                return;
             }
 
             if (!await SaveProductionDataAsync(DestroyToken).ConfigureAwait(false))
@@ -372,7 +418,7 @@ public sealed class HomeViewModel : BindableBase
 
             if (trackOutResult.Exchange?.ReturnCode != 0)
             {
-                await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(T("Home.Title.MesTrackOut", "MES Track Out"), trackOutResult), T("Home.Title.MesTrackOut", "MES Track Out")).ConfigureAwait(false);
+                await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(localizationService.T("Home.Title.MesTrackOut", "MES Track Out"), trackOutResult), localizationService.T("Home.Title.MesTrackOut", "MES Track Out")).ConfigureAwait(false);
                 return;
             }
 
@@ -387,7 +433,7 @@ public sealed class HomeViewModel : BindableBase
         }
         catch (Exception ex)
         {
-            await ShowErrorOnUiAsync(TF("Home.Message.StopFailed", "Stop failed:\n{0}", ex.Message), T("Home.Title.StopFailed", "Stop Failed")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(localizationService.TF("Home.Message.StopFailed", "Stop failed:\n{0}", ex.Message), localizationService.T("Home.Title.StopFailed", "Stop Failed")).ConfigureAwait(false);
         }
     }
 
@@ -416,14 +462,17 @@ public sealed class HomeViewModel : BindableBase
 
             if (!moved)
             {
-                logService?.Warn($"Production runtime data file was not found: {Path.Combine(ProductionRecordPathHelper.RuntimeDirectory, fileName)}");
+                logService?.Warn(localizationService.TF(
+                    "Home.Log.RuntimeDataFileMissing",
+                    "Production runtime data file was not found: {0}",
+                    Path.Combine(ProductionRecordPathHelper.RuntimeDirectory, fileName)));
             }
 
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            await ShowErrorOnUiAsync(TF("Home.Message.ProductionDataSaveFailed", "Production data save failed:\n{0}", ex.Message), T("Home.Title.ProductionDataSave", "Production Data Save")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(localizationService.TF("Home.Message.ProductionDataSaveFailed", "Production data save failed:\n{0}", ex.Message), localizationService.T("Home.Title.ProductionDataSave", "Production Data Save")).ConfigureAwait(false);
             return false;
         }
     }
@@ -486,7 +535,7 @@ public sealed class HomeViewModel : BindableBase
             return;
         }
 
-        logService?.Info($"Blind scan content: {value}");
+        logService?.Info(localizationService.TF("Home.Log.BlindScanContent", "Blind scan content: {0}", value));
 
         try
         {
@@ -497,21 +546,31 @@ public sealed class HomeViewModel : BindableBase
         }
         catch (Exception ex)
         {
-            await ShowErrorOnUiAsync(ex.Message, T("Home.Title.BlindScan", "Blind Scan")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(ex.Message, localizationService.T("Home.Title.BlindScan", "Blind Scan")).ConfigureAwait(false);
         }
     }
 
     private async Task ApplyRawBarcodeAsync(string value)
     {
+        if (machine.ProductionState != MachineProductionState.Stopped)
+        {
+            await ShowWarningOnUiAsync(
+                localizationService.T("Home.Message.BlindScanRequiresStopped", "机台非停止状态，禁止盲扫修改生产信息。"),
+                localizationService.T("Home.Title.BlindScan", "盲扫")).ConfigureAwait(false);
+            return;
+        }
+
+        toastMessageService.ShowInfo(localizationService.TF("Home.Message.BlindScanReceived", "Blind scan: {0}", value));
+
         switch (value.Length)
         {
             case 6 when value.All(char.IsDigit):
-                await ShowWarningOnUiAsync(TF("Home.Message.SixDigitInvalid", "Pure 6-digit value {0} is invalid.", value), T("Home.Title.BlindScan", "Blind Scan")).ConfigureAwait(false);
+                await ShowWarningOnUiAsync(localizationService.TF("Home.Message.SixDigitInvalid", "Pure 6-digit value {0} is invalid.", value), localizationService.T("Home.Title.BlindScan", "Blind Scan")).ConfigureAwait(false);
                 break;
             case 6:
                 if (!value.StartsWith("TP", StringComparison.OrdinalIgnoreCase))
                 {
-                    await ShowWarningOnUiAsync(TF("Home.Message.EquipmentNoPrefixInvalid", "Equipment no {0} does not start with TP.", value), T("Home.Title.BlindScan", "Blind Scan")).ConfigureAwait(false);
+                    await ShowWarningOnUiAsync(localizationService.TF("Home.Message.EquipmentNoPrefixInvalid", "Equipment no {0} does not start with TP.", value), localizationService.T("Home.Title.BlindScan", "Blind Scan")).ConfigureAwait(false);
                     return;
                 }
 
@@ -525,21 +584,28 @@ public sealed class HomeViewModel : BindableBase
                 break;
             case 12:
                 string previousMachineType = MachineType;
+                string workOrderNo = CleanWorkOrderBarcode(value);
                 ClearForNewWorkOrderScan(clearSampleState: false);
                 await ResetProductionCounterForNewWorkOrderAsync().ConfigureAwait(false);
-                WorkOrderNo = value;
-                await LoadWorkOrderSetupAsync(value, previousMachineType).ConfigureAwait(false);
+                WorkOrderNo = workOrderNo;
+                await LoadWorkOrderSetupAsync(workOrderNo, previousMachineType).ConfigureAwait(false);
                 break;
             case 76:
             case 84:
             case 89:
             case 120:
+            case 123:
                 await ApplyCoverOrTablePaperAsync(value).ConfigureAwait(false);
                 break;
             case 116:
                 await ApplyReelMaterialAsync(value).ConfigureAwait(false);
                 break;
             default:
+                toastMessageService.ShowError(localizationService.TF(
+                    "Home.Message.BlindScanUnsupportedLength",
+                    "Blind scan content: {0}; unsupported length: {1}.",
+                    value,
+                    value.Length));
                 break;
         }
     }
@@ -560,7 +626,10 @@ public sealed class HomeViewModel : BindableBase
         }
         catch (Exception ex)
         {
-            logService?.Warn($"Production counter reset failed while scanning new work order: {ex.Message}");
+            logService?.Warn(localizationService.TF(
+                "Home.Log.CounterResetFailed",
+                "Production counter reset failed while scanning new work order: {0}",
+                ex.Message));
         }
     }
     private void ClearForNewWorkOrderScan(bool clearSampleState = true)
@@ -568,6 +637,8 @@ public sealed class HomeViewModel : BindableBase
         {
             machine.ClearDataGrid();
             WorkOrderNo = string.Empty;
+            SpecialMachineLsLowerLimitText = string.Empty;
+            SpecialMachineLsUnit = string.Empty;
             TablePaperCode = string.Empty;
             TopCoverCode = string.Empty;
             OperatorNo = string.Empty;
@@ -597,7 +668,7 @@ public sealed class HomeViewModel : BindableBase
 
         if (!IsMesAccepted(result) || result.Data == null)
         {
-            await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(TF("Home.Message.WorkOrderImportWithNo", "Work order {0} import", workOrderNo), result), T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(localizationService.TF("Home.Message.WorkOrderImportWithNo", "Work order {0} import", workOrderNo), result), localizationService.T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
             return;
         }
 
@@ -621,7 +692,82 @@ public sealed class HomeViewModel : BindableBase
         productionContext.IsResultGridDataEnabled = true;
         SyncChartLimits();
         SyncTapeParameterRows(result.Data.TapeSetup);
-        await ShowMessageOnUiAsync(TF("Home.Message.WorkOrderImportSuccess", "Work order {0} imported.", workOrderNo), T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
+        await ShowMessageOnUiAsync(localizationService.TF("Home.Message.WorkOrderImportSuccess", "Work order {0} imported.", workOrderNo), localizationService.T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
+        await ApplyTrailingXMachineTypeLsLowerLimitAsync(result.Data).ConfigureAwait(false);
+    }
+
+    private async Task ApplyTrailingXMachineTypeLsLowerLimitAsync(MesWorkOrderSetup setup)
+    {
+        requiresLsLowerLimitOverride = false;
+        // X 机种以 MES 解析后写入 HomeView 的机种标识为准，而不是工单号。
+        string displayedMachineType = MachineType.Trim();
+        if (!displayedMachineType.EndsWith("X", StringComparison.OrdinalIgnoreCase))
+        {
+            SpecialMachineLsLowerLimitText = string.Empty;
+            SpecialMachineLsUnit = string.Empty;
+            return;
+        }
+
+        logService?.Info(localizationService.TF(
+            "Home.Log.TrailingXMachineType",
+            "Trailing-X machine type detected. MachineType={0}",
+            displayedMachineType));
+
+        MesWorkOrderInstrumentSetup? lsSetup = setup.InstrumentSetups?.FirstOrDefault(item =>
+            string.Equals(item.ParameterId, "Ls", StringComparison.OrdinalIgnoreCase));
+        if (lsSetup == null)
+        {
+            await ShowWarningOnUiAsync(
+                localizationService.T("Home.Message.LsSetupMissing", "该工单未提供 Ls 配置，无法重新设置 Ls 下限。"),
+                localizationService.T("Home.Title.LsLowerLimit", "Ls 下限")).ConfigureAwait(false);
+            requiresLsLowerLimitOverride = true;
+            return;
+        }
+
+        // 工单导入来自扫码异步链路，前面使用 ConfigureAwait(false) 后不保证仍在 UI 线程；
+        // InputDialogService 不负责切换线程，必须在 UI Dispatcher 上创建输入框。
+        InputDialogResult input = await InvokeOnUiAsync(() => inputDialogService.ShowAsync(new InputDialogOptions
+        {
+            Title = localizationService.T("Home.Title.LsLowerLimit", "Ls 下限"),
+            ShowContentTitle = false,
+            Message = localizationService.T("Home.Message.LsLowerLimitInput", "该工单以 X 结尾，请重新输入电感 Ls 下限。"),
+            Label = localizationService.T("Home.Field.LsLowerLimit", "Ls 下限"),
+            InputType = InputDialogType.Number,
+            Minimum = 0,
+            Unit = lsSetup.Unit,
+            ConfirmButtonText = localizationService.T("Common.Confirm", "确定"),
+            CancelButtonText = localizationService.T("Common.Cancel", "取消"),
+            ShowCancelButton = false
+        })).ConfigureAwait(false);
+
+        if (!input.IsConfirmed || !input.TryGetDecimal(out decimal lowerLimit))
+        {
+            requiresLsLowerLimitOverride = true;
+            await ShowWarningOnUiAsync(
+                localizationService.T("Home.Message.LsLowerLimitRequired", "该工单需要重新输入 Ls 下限后才能启动。"),
+                localizationService.T("Home.Title.LsLowerLimit", "Ls 下限")).ConfigureAwait(false);
+            return;
+        }
+
+        MesWorkOrderInstrumentSetup[] instrumentSetups = (setup.InstrumentSetups ?? [])
+            .Select(item => string.Equals(item.ParameterId, "Ls", StringComparison.OrdinalIgnoreCase)
+                ? item with { LowerLimit = (double)lowerLimit }
+                : item)
+            .ToArray();
+        MesWorkOrderSetup overriddenSetup = setup with { InstrumentSetups = instrumentSetups };
+
+        await machine.ApplyWorkOrderSetupAsync(overriddenSetup, DestroyToken).ConfigureAwait(false);
+        currentWorkOrderSetup = overriddenSetup;
+        SpecialMachineLsLowerLimitText = lowerLimit.ToString("G29", CultureInfo.CurrentCulture);
+        SpecialMachineLsUnit = lsSetup.Unit?.Trim() ?? string.Empty;
+        RunOnUi(() =>
+        {
+            machine.RefreshResultGrid();
+            SyncColumns();
+            SyncChartTabs();
+        });
+        SyncChartLimits();
+        messageBus.Publish(new StationLimitsAppliedMessage());
     }
 
     private async Task SaveBraidOptionsAsync(MesWorkOrderTapeSetup? tapeSetup)
@@ -658,8 +804,8 @@ public sealed class HomeViewModel : BindableBase
         catch (Exception ex)
         {
             await notificationService.ErrorAsync(
-                T("Home.Message.MarkPrintFailed", "缂栧甫瀛楃鍐欏叆鎵撳嵃鏈哄け璐ワ紒"),
-                T("Home.Title.MarkPrint", "缂栧甫瀛楃"),
+                localizationService.T("Home.Message.MarkPrintFailed", "缂栧甫瀛楃鍐欏叆鎵撳嵃鏈哄け璐ワ紒"),
+                localizationService.T("Home.Title.MarkPrint", "缂栧甫瀛楃"),
                 ex).ConfigureAwait(false);
         }
     }
@@ -690,7 +836,7 @@ public sealed class HomeViewModel : BindableBase
             return;
         }
 
-        await ShowWarningOnUiAsync(T("Home.Message.CoverOrPaperMismatch", "Top cover or table paper does not match MES."), T("Home.Title.MaterialCheck", "Material Check")).ConfigureAwait(false);
+        await ShowWarningOnUiAsync(localizationService.T("Home.Message.CoverOrPaperMismatch", "Top cover or table paper does not match MES."), localizationService.T("Home.Title.MaterialCheck", "Material Check")).ConfigureAwait(false);
     }
 
 
@@ -714,10 +860,25 @@ public sealed class HomeViewModel : BindableBase
             return;
         }
 
-        await ShowWarningOnUiAsync(T("Home.Message.ReelMatMismatch", "Reel material does not match MES."), T("Home.Title.MaterialError", "Material Error")).ConfigureAwait(false);
+        await ShowWarningOnUiAsync(localizationService.T("Home.Message.ReelMatMismatch", "Reel material does not match MES."), localizationService.T("Home.Title.MaterialError", "Material Error")).ConfigureAwait(false);
     }
     private static string CleanRawBarcodeValue(string value)
         => value.Trim();
+
+    private static string CleanWorkOrderBarcode(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        string normalized = value.Normalize(NormalizationForm.FormKC);
+        return new string(normalized
+            .Where(static character => !char.IsControl(character)
+                && character is not '\u200B' and not '\uFEFF')
+            .ToArray())
+            .Trim();
+    }
 
     private static string CleanOperatorBarcode(string value)
     {
@@ -795,12 +956,12 @@ public sealed class HomeViewModel : BindableBase
         => RunOnUi(() =>
         {
             tapeParameterColumns.Clear();
-            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.BeforeSpaceQty), T("Braid.BeforeSpaceQty", "Before Space")));
-            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.PackageQty), T("Braid.PackageQty", "Package Qty")));
-            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.AfterSpaceQty), T("Braid.AfterSpaceQty", "After Space")));
-            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.SampleQty), T("Braid.SampleQty", "Sample Qty")));
-            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.BlankQty), T("Braid.BlankQty", "Blank Qty")));
-            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.BackNoFilmQty), T("Braid.BackNoFilmQty", "Back No Film")));
+            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.BeforeSpaceQty), localizationService.T("Braid.BeforeSpaceQty", "Before Space")));
+            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.PackageQty), localizationService.T("Braid.PackageQty", "Package Qty")));
+            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.AfterSpaceQty), localizationService.T("Braid.AfterSpaceQty", "After Space")));
+            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.SampleQty), localizationService.T("Braid.SampleQty", "Sample Qty")));
+            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.BlankQty), localizationService.T("Braid.BlankQty", "Blank Qty")));
+            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.BackNoFilmQty), localizationService.T("Braid.BackNoFilmQty", "Back No Film")));
         });
 
     private static IDataGridColumnDescriptor CreateTapeParameterColumn(string bindingPath, string displayName)
@@ -1066,6 +1227,7 @@ public sealed class HomeViewModel : BindableBase
     }
     private void OnLanguageChanged(object? sender, LanguageType languageType)
     {
+        SyncColumns();
         SyncTapeParameterColumns();
     }
 
@@ -1090,6 +1252,7 @@ public sealed class HomeViewModel : BindableBase
                 break;
             case nameof(IProductionContext.MachineType):
                 RaisePropertyChanged(nameof(MachineType));
+                RaisePropertyChanged(nameof(IsTrailingXMachineType));
                 break;
             case nameof(IProductionContext.ReelMatNo):
                 RaisePropertyChanged(nameof(ReelMatNo));
@@ -1150,14 +1313,6 @@ public sealed class HomeViewModel : BindableBase
         return dispatcher.InvokeAsync(action).Task.Unwrap();
     }
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key, fallback), args);
 
     private static void PostOnUi(Action action, DispatcherPriority priority = DispatcherPriority.Background)
     {

@@ -71,6 +71,20 @@ public sealed class CompositeDataDeal
 
     public async Task ExecuteMeasurementAsync(bool triggerResult, TestStationModel station, CancellationToken cancellationToken)
     {
+        if (station.StationIo.ResultSource == StationResultSource.Hardware && dispatchQueue != null)
+        {
+            IReadOnlyList<CapturedStationDataDeal> capturedMeasurements = await CaptureMeasurementAsync(station, cancellationToken).ConfigureAwait(false);
+            StationResultMessage deferredMessage = StationResultMessage.CreateDeferredHardware(station, triggerResult, capturedMeasurements);
+            dispatchQueue.TryEnqueue(deferredMessage);
+
+            if (TriggerMode != TriggerMode.Programmatic)
+            {
+                await machine.CompleteStationHandshakeAsync(station, triggerResult, cancellationToken).ConfigureAwait(false);
+            }
+
+            return;
+        }
+
         Dictionary<string, double> previousValues = new(station.TestValues, StringComparer.OrdinalIgnoreCase);
         Dictionary<string, bool> previousJudges = new(station.TestJudges, StringComparer.OrdinalIgnoreCase);
 
@@ -86,17 +100,17 @@ public sealed class CompositeDataDeal
             }
         }
 
-        StationResultMessage message = CreateResultMessage(station);
+        StationResultMessage message = StationResultMessage.Create(station);
 
         // PLC/IO 握手必须先完成，后面的 UI、统计、保存都不能拖慢这条实时链路。
-        if (TriggerMode != TriggerMode.Programmatic)
-        {
-            await machine.CompleteStationHandshakeAsync(station, message.IsPass, cancellationToken).ConfigureAwait(false);
-        }
-
         if (dispatchQueue != null)
         {
             RestoreStationSnapshot(station, previousValues, previousJudges);
+            if (TriggerMode != TriggerMode.Programmatic)
+            {
+                await machine.CompleteStationHandshakeAsync(station, message.IsPass, cancellationToken).ConfigureAwait(false);
+            }
+
             dispatchQueue.TryEnqueue(message);
             return;
         }
@@ -104,34 +118,23 @@ public sealed class CompositeDataDeal
         await machine.ProcessStationResultAsync(message, cancellationToken).ConfigureAwait(false);
     }
 
-    private static StationResultMessage CreateResultMessage(TestStationModel station)
+    private async Task<IReadOnlyList<CapturedStationDataDeal>> CaptureMeasurementAsync(TestStationModel station, CancellationToken cancellationToken)
     {
-        var values = new List<StationResultValue>();
-        var testNames = new List<string>(station.OrderedTestNames);
-        if (station.ShowInResultGrid)
+        if (station.ParallelDeals)
         {
-            foreach (string testName in station.TestValues.Keys)
-            {
-                if (!testNames.Contains(testName, StringComparer.OrdinalIgnoreCase))
-                {
-                    testNames.Add(testName);
-                }
-            }
+            CapturedStationDataDeal[] capturedMeasurements = await Task.WhenAll(subDeals
+                .Select(async deal => new CapturedStationDataDeal(deal, await deal.CaptureAsync(cancellationToken).ConfigureAwait(false))))
+                .ConfigureAwait(false);
+            return capturedMeasurements;
         }
 
-        foreach (string testName in testNames)
+        var captures = new List<CapturedStationDataDeal>(subDeals.Count);
+        foreach (IStationDataDeal deal in subDeals)
         {
-            if (station.TestValues.TryGetValue(testName, out double value))
-            {
-                values.Add(new StationResultValue(
-                    testName,
-                    value,
-                    station.TestJudges.TryGetValue(testName, out bool ok) ? ok : null));
-            }
+            IStationDataCapture capture = await deal.CaptureAsync(cancellationToken).ConfigureAwait(false);
+            captures.Add(new CapturedStationDataDeal(deal, capture));
         }
-
-        bool isPass = station.TestJudges.Count == 0 || station.TestJudges.All(static pair => pair.Value);
-        return new StationResultMessage(station, values, isPass);
+        return captures;
     }
 
     private static void RestoreStationSnapshot(

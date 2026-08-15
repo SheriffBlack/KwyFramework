@@ -294,7 +294,6 @@ WPF 控件权限不在 `Kwy.MVVM` 中实现，而是在 `Kwy.MVVM.WPF` 的 `Perm
 也可以给某个控件单独指定权限服务：
 
 ```csharp
-Permission.SetService(deleteButton, permissionService);
 Permission.SetPolicy(deleteButton, "User.Delete");
 ```
 

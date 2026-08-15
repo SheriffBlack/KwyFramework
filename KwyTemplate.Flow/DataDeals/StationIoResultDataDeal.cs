@@ -22,11 +22,20 @@ public sealed class StationIoResultDataDeal : IStationDataDeal
 
     public double FailValue { get; }
 
-    public Task CollectAsync(bool triggerResult, TestStationModel stationModel, CancellationToken cancellationToken = default)
+    public Task<IStationDataCapture> CaptureAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IStationDataCapture>(new IoResultCapture());
+
+    public void ApplyCapture(IStationDataCapture capture, bool triggerResult, TestStationModel stationModel)
     {
         ArgumentNullException.ThrowIfNull(stationModel);
+        if (capture is not IoResultCapture)
+        {
+            throw new ArgumentException("Measurement capture type does not match the data deal.", nameof(capture));
+        }
+
         stationModel.TestValues[TestName] = triggerResult ? PassValue : FailValue;
         stationModel.TestJudges[TestName] = triggerResult;
-        return Task.CompletedTask;
     }
+
+    private sealed record IoResultCapture : IStationDataCapture;
 }

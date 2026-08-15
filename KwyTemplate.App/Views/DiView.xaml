@@ -3,11 +3,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:kwycontrols="clr-namespace:Kwy.UI.WPF.Controls;assembly=Kwy.UI.WPF"
+    xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
     xmlns:kwyui="http://schemas.kwy.com/ui"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="720"
-    d:DesignWidth="1280"
+    xmlns:permissionCode="clr-namespace:KwyTemplate.Contracts.Security;assembly=KwyTemplate.Contracts"
     mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="DiCardStyle" TargetType="Border">
@@ -84,20 +83,20 @@
             Grid.Column="1"
             Header="{DynamicResource Io.Header.SignalSettings}">
             <StackPanel Margin="8" Grid.IsSharedSizeScope="True">
-                <kwycontrols:KwyFormItem Label="{DynamicResource Io.Field.Count}">
+                <kwyui:KwyFormItem Label="{DynamicResource Io.Field.Count}">
                     <Button
                         Width="120"
                         HorizontalAlignment="Left"
                         Command="{Binding ClearCountCommand}"
                         Content="{DynamicResource Io.Action.ClearCount}" />
-                </kwycontrols:KwyFormItem>
+                </kwyui:KwyFormItem>
 
-                <kwycontrols:KwyFormItem Label="{DynamicResource Io.Field.InputReverse}">
+                <kwyui:KwyFormItem Label="{DynamicResource Io.Field.InputReverse}">
                     <ToggleButton
                         HorizontalAlignment="Left"
                         IsChecked="{Binding IsReverseChecked, Mode=TwoWay}"
                         Style="{StaticResource ToggleButtonSwitchNoContentStyle}" />
-                </kwycontrols:KwyFormItem>
+                </kwyui:KwyFormItem>
 
                 <TextBlock
                     Margin="4,18,4,0"
@@ -112,6 +111,14 @@
             Grid.ColumnSpan="2"
             Margin="0,12,0,0"
             Header="{DynamicResource Io.Di.Header.LogicMonitor}">
+
+
+            <!--<StackPanel>
+                <Button kwymvvm:Permission.Mode="Disable" kwymvvm:Permission.Policy="{x:Static permissionCode:PermissionCodes.Admin}" />
+                <Button kwymvvm:Permission.Mode="Disable" kwymvvm:Permission.Policy="{x:Static permissionCode:PermissionCodes.Operator}" />
+            </StackPanel>-->
+
+
             <Border
                 MinHeight="90"
                 Padding="14"

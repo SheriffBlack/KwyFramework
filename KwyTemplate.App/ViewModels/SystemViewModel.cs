@@ -152,20 +152,20 @@ public sealed class SystemViewModel : BindableBase, INavigationAware
     private void LoadProgramSettings()
     {
         IsParameterEditorVisible = true;
-        SelectedParameterHeader = GetLocalizedText("Nav.ProgramSettings", "程序设定");
+        SelectedParameterHeader = localizationService.T("Nav.ProgramSettings", "程序设定");
 
         try
         {
             ProgramSettingsLoadResult result = programSettingsStore.LoadOrCreate();
             SelectedParameterSource = result.Settings;
             StatusMessage = result.Created
-                ? TF("System.Status.ProgramSettingsCreated", "程序设定文件不存在，已使用默认值并创建配置：{0}", result.FilePath)
-                : TF("System.Status.ProgramSettingsReloaded", "程序设定已从 {0} 重载。", result.FilePath);
+                ? localizationService.TF("System.Status.ProgramSettingsCreated", "程序设定文件不存在，已使用默认值并创建配置：{0}", result.FilePath)
+                : localizationService.TF("System.Status.ProgramSettingsReloaded", "程序设定已从 {0} 重载。", result.FilePath);
         }
         catch (Exception ex)
         {
             SelectedParameterSource = new ProgramSettingsModel();
-            StatusMessage = TF("System.Status.ProgramSettingsReloadFailed", "程序设定重载失败，已使用默认值：{0}", ex.Message);
+            StatusMessage = localizationService.TF("System.Status.ProgramSettingsReloadFailed", "程序设定重载失败，已使用默认值：{0}", ex.Message);
         }
 
         applyCommand?.RaiseCanExecuteChanged();
@@ -295,7 +295,7 @@ public sealed class SystemViewModel : BindableBase, INavigationAware
         RefreshNavigationLocalization();
         if (SelectedParameterSource is ProgramSettingsModel)
         {
-            SelectedParameterHeader = GetLocalizedText("Nav.ProgramSettings", "程序设定");
+            SelectedParameterHeader = localizationService.T("Nav.ProgramSettings", "程序设定");
         }
     }
 
@@ -307,14 +307,6 @@ public sealed class SystemViewModel : BindableBase, INavigationAware
         }
     }
 
-    private string GetLocalizedText(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(System.Globalization.CultureInfo.CurrentCulture, GetLocalizedText(key, fallback), args);
     private bool CanApply() => SelectedParameterSource is ProgramSettingsModel or MachineBasicEditorModel or MachineStationEditorModel or MachineIoPointsEditorModel or MachinePlcPointsEditorModel;
 
     private async Task ExecuteApplyAsync()
@@ -347,18 +339,18 @@ public sealed class SystemViewModel : BindableBase, INavigationAware
 
         if (SelectedParameterSource is not ProgramSettingsModel settings)
         {
-            StatusMessage = GetLocalizedText("System.Status.NoProgramSettingsToSave", "当前没有可保存的程序设定。");
+            StatusMessage = localizationService.T("System.Status.NoProgramSettingsToSave", "当前没有可保存的程序设定。");
             return;
         }
 
         try
         {
             await programSettingsStore.SaveAsync(settings).ConfigureAwait(false);
-            StatusMessage = TF("System.Status.ProgramSettingsSaved", "程序设定已保存到 {0}", programSettingsStore.FilePath);
+            StatusMessage = localizationService.TF("System.Status.ProgramSettingsSaved", "程序设定已保存到 {0}", programSettingsStore.FilePath);
         }
         catch (Exception ex)
         {
-            StatusMessage = TF("System.Status.ProgramSettingsSaveFailed", "程序设定保存失败：{0}", ex.Message);
+            StatusMessage = localizationService.TF("System.Status.ProgramSettingsSaveFailed", "程序设定保存失败：{0}", ex.Message);
         }
     }
 }

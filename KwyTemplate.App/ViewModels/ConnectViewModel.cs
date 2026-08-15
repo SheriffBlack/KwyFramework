@@ -39,7 +39,7 @@ public sealed class ConnectViewModel : BindableBase
         this.machine = machine ?? throw new ArgumentNullException(nameof(machine));
         this.devices = devices ?? throw new ArgumentNullException(nameof(devices));
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
-        statusMessage = T("Connect.Status.Initial", "设备连接配置按 Config/{CatalogKey}/{DeviceId}.json 保存；修改参数后请重新连接对应设备。");
+        statusMessage = localizationService.T("Connect.Status.Initial", "设备连接配置按 Config/{CatalogKey}/{DeviceId}.json 保存；修改参数后请重新连接对应设备。");
         dispatcher = Dispatcher.CurrentDispatcher;
         this.localizationService.LanguageChanged += OnLanguageChanged;
         ReloadConfigSources();
@@ -64,7 +64,7 @@ public sealed class ConnectViewModel : BindableBase
     private async Task ExecuteSaveAsync()
     {
         await deviceConfigProvider.SaveAsync(DestroyToken).ConfigureAwait(false);
-        StatusMessage = T("Connect.Status.Saved", "设备连接配置已保存到 Config/{CatalogKey}；下次启动会自动加载。");
+        StatusMessage = localizationService.T("Connect.Status.Saved", "设备连接配置已保存到 Config/{CatalogKey}；下次启动会自动加载。");
     }
 
     private async Task ExecuteReloadAsync()
@@ -73,14 +73,8 @@ public sealed class ConnectViewModel : BindableBase
         RunOnUi(() =>
         {
             ReloadConfigSources();
-            StatusMessage = T("Connect.Status.Reloaded", "设备连接配置已从 Config/{CatalogKey} 重载。");
+            StatusMessage = localizationService.T("Connect.Status.Reloaded", "设备连接配置已从 Config/{CatalogKey} 重载。");
         });
-    }
-
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
     }
 
     private void ReloadConfigSources()
@@ -122,10 +116,10 @@ public sealed class ConnectViewModel : BindableBase
         string defaultName = string.IsNullOrWhiteSpace(fallback) ? deviceId : fallback;
         return deviceId switch
         {
-            DeviceIds.MainPlc => T("Device.MainPlc", defaultName),
-            DeviceIds.MainIoCard => T("Device.MainIoCard", defaultName),
-            DeviceIds.MainScanner => T("Device.MainScanner", defaultName),
-            DeviceIds.MainMarkPrinter => T("Device.MainMarkPrinter", defaultName),
+            DeviceIds.MainPlc => localizationService.T("Device.MainPlc", defaultName),
+            DeviceIds.MainIoCard => localizationService.T("Device.MainIoCard", defaultName),
+            DeviceIds.MainScanner => localizationService.T("Device.MainScanner", defaultName),
+            DeviceIds.MainMarkPrinter => localizationService.T("Device.MainMarkPrinter", defaultName),
             _ => defaultName
         };
     }
@@ -133,7 +127,7 @@ public sealed class ConnectViewModel : BindableBase
     private string ResolveStationName(TestStationModel station)
         => string.IsNullOrWhiteSpace(station.StationNameKey)
             ? station.StationName
-            : T(station.StationNameKey, station.StationName);
+            : localizationService.T(station.StationNameKey, station.StationName);
 
     private void OnLanguageChanged(object? sender, LanguageType languageType)
         => RunOnUi(ReloadConfigSources);

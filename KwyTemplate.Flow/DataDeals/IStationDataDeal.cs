@@ -7,5 +7,15 @@ namespace KwyTemplate.Flow.DataDeals;
 /// </summary>
 public interface IStationDataDeal
 {
-    Task CollectAsync(bool triggerResult, TestStationModel stationModel, CancellationToken cancellationToken = default);
+    Task<IStationDataCapture> CaptureAsync(CancellationToken cancellationToken = default);
+
+    void ApplyCapture(IStationDataCapture capture, bool triggerResult, TestStationModel stationModel);
+
+    async Task CollectAsync(bool triggerResult, TestStationModel stationModel, CancellationToken cancellationToken = default)
+    {
+        IStationDataCapture capture = await CaptureAsync(cancellationToken).ConfigureAwait(false);
+        ApplyCapture(capture, triggerResult, stationModel);
+    }
 }
+
+public interface IStationDataCapture;

@@ -118,6 +118,7 @@ private long nextSequence;
         TrimToMaxCount();
     }
 
+
     private void TrimToMaxCount()
     {
         while (Entries.Count > maxCount)

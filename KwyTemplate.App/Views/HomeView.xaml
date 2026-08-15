@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:behaviors="clr-namespace:KwyTemplate.App.Behaviors"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:flowModels="clr-namespace:KwyTemplate.Flow.Models;assembly=KwyTemplate.Flow"
     xmlns:kwyCharts="http://schemas.kwy.com/ui/charts"
     xmlns:kwyui="http://schemas.kwy.com/ui"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -43,7 +44,7 @@
         </Style>
 
         <Style x:Key="StationCardBorderStyle" TargetType="Border">
-            <Setter Property="Height" Value="54" />
+            <Setter Property="Height" Value="48" />
             <Setter Property="MinWidth" Value="380" />
             <Setter Property="Margin" Value="0,0,0,8" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
@@ -76,7 +77,10 @@
                 <DataTrigger Binding="{Binding IsEnabled}" Value="True">
                     <Setter Property="Fill" Value="{DynamicResource SuccessBrush}" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding IsCameraStation}" Value="True">
+                <DataTrigger Binding="{Binding IconKind}" Value="{x:Static flowModels:StationIconKind.Camera}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IconKind}" Value="{x:Static flowModels:StationIconKind.AirSpray}">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
             </Style.Triggers>
@@ -89,7 +93,20 @@
                 <DataTrigger Binding="{Binding IsEnabled}" Value="True">
                     <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding IsCameraStation}" Value="True">
+                <DataTrigger Binding="{Binding IconKind}" Value="{x:Static flowModels:StationIconKind.Camera}">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StationCardAirSprayIconStyle" TargetType="Path">
+            <Setter Property="Fill" Value="{DynamicResource ErrorBrush}" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsEnabled}" Value="True">
+                    <Setter Property="Fill" Value="{DynamicResource SuccessBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IconKind}" Value="{x:Static flowModels:StationIconKind.AirSpray}">
                     <Setter Property="Visibility" Value="Visible" />
                 </DataTrigger>
             </Style.Triggers>
@@ -194,12 +211,12 @@
                                     behaviors:ChartValuePushBehavior.Sample="{Binding LatestSample}"
                                     behaviors:ChartValuePushBehavior.Samples="{Binding Samples}"
                                     Background="{DynamicResource TransparentBrush}"
+                                    LowerLimitLabel="{DynamicResource Home.Chart.LowerLimit}"
                                     SampleAxisMajorStep="50"
                                     SampleAxisTitle="{DynamicResource Home.Chart.SampleAxis}"
                                     SampleAxisViewWindow="500"
-                                    UpperLimitLabel="{DynamicResource Home.Chart.UpperLimit}"
-                                    LowerLimitLabel="{DynamicResource Home.Chart.LowerLimit}"
                                     TargetValueLabel="{DynamicResource Home.Chart.TargetValue}"
+                                    UpperLimitLabel="{DynamicResource Home.Chart.UpperLimit}"
                                     ValueAxisTitle="{DynamicResource Home.Chart.ValueAxis}" />
 
                                 <kwyCharts:KwyHistogramPlotView
@@ -212,22 +229,24 @@
                                     behaviors:ChartValuePushBehavior.Samples="{Binding Samples}"
                                     Background="{DynamicResource TransparentBrush}"
                                     FrequencyAxisTitle="{DynamicResource Home.Chart.FrequencyAxis}"
-                                    UpperLimitLabel="{DynamicResource Home.Chart.UpperLimit}"
                                     LowerLimitLabel="{DynamicResource Home.Chart.LowerLimit}"
-                                    TargetValueLabel="{DynamicResource Home.Chart.TargetValue}"
                                     MinBinWidth="0.001"
+                                    TargetValueLabel="{DynamicResource Home.Chart.TargetValue}"
+                                    UpperLimitLabel="{DynamicResource Home.Chart.UpperLimit}"
                                     ValueAxisTitle="{DynamicResource Home.Chart.ValueAxis}" />
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </Grid>
-        </Border>        <!--  table/station/reel area  -->
+        </Border>
+        <!--  table/station/reel area  -->
         <Grid
             Grid.Row="1"
             Grid.Column="0"
             MaxHeight="505">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -236,8 +255,29 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <DataGrid
+
+            <Border
                 Grid.Row="0"
+                Grid.Column="0"
+                BorderBrush="{DynamicResource ControlBorderBrush}"
+                BorderThickness="1,1,1,0"
+                Visibility="{Binding IsTrailingXMachineType, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <kwyui:KwyFormItem Label="{DynamicResource Home.Field.SpecialMachineOperation}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox
+                            Width="140"
+                            IsReadOnly="True"
+                            Text="{Binding SpecialMachineLsLowerLimitText, Mode=OneWay}" />
+                        <TextBlock
+                            Margin="10,0,0,0"
+                            VerticalAlignment="Center"
+                            Text="{Binding SpecialMachineLsUnit, Mode=OneWay}" />
+                    </StackPanel>
+                </kwyui:KwyFormItem>
+            </Border>
+
+            <DataGrid
+                Grid.Row="1"
                 Grid.Column="0"
                 kwyui:DataGridColumnsHelper.ColumnsSource="{Binding PartColumns}"
                 kwyui:DataGridColumnsHelper.ShowRowHeaderColumn="False"
@@ -258,7 +298,7 @@
                 SelectionMode="Single" />
 
             <!--  tape area  -->
-            <StackPanel Grid.Row="1" Grid.Column="0">
+            <StackPanel Grid.Row="2" Grid.Column="0">
 
                 <TextBlock
                     Margin="5"
@@ -287,9 +327,9 @@
                     SelectionMode="Single" />
             </StackPanel>
 
-            <!--  宸ヤ綅鍚敤鐘舵€?  -->
+            <!--  station  -->
             <ItemsControl
-                Grid.RowSpan="2"
+                Grid.RowSpan="3"
                 Grid.Column="1"
                 Margin="10,0"
                 ItemsSource="{Binding StationInstrumentItems}">
@@ -331,14 +371,22 @@
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
                                         FontFamily="{StaticResource SegoeFluent}"
-                                        FontSize="28"
+                                        FontSize="26"
                                         Style="{StaticResource StationCardCameraIconStyle}"
                                         Text="{StaticResource IconCamera}" />
+
+                                    <Path
+                                        Width="26"
+                                        Height="26"
+                                        VerticalAlignment="Center"
+                                        Data="{StaticResource IconAirspay}"
+                                        Stretch="Uniform"
+                                        Style="{StaticResource StationCardAirSprayIconStyle}" />
 
                                     <TextBlock
                                         Grid.Column="1"
                                         VerticalAlignment="Center"
-                                        FontSize="26"
+                                        FontSize="24"
                                         FontWeight="SemiBold"
                                         Text="{Binding StationDisplayName}" />
                                 </Grid>
@@ -347,7 +395,7 @@
                                     Grid.Column="2"
                                     Margin="22,0,10,0"
                                     VerticalAlignment="Center"
-                                    FontSize="20"
+                                    FontSize="18"
                                     Text="{Binding DeviceDisplayName}" />
 
                                 <StackPanel
@@ -374,8 +422,9 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+
             <Border
-                Grid.RowSpan="2"
+                Grid.RowSpan="3"
                 Grid.Column="2"
                 Padding="10"
                 BorderBrush="{DynamicResource ControlBorderBrush}"

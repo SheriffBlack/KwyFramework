@@ -25,6 +25,7 @@
     <Color x:Key="ControlBackgroundColor">#2B2D30</Color>
     <Color x:Key="ControlBorderColor">#505861</Color>
     <Color x:Key="ControlForegroundColor">#E5E9ED</Color>
+    <Color x:Key="ControlSecondaryForegroundColor">#B8C2CC</Color>
     <Color x:Key="ControlFocusedBorderColor">#4DB5FF</Color>
     <Color x:Key="ControlFocusedBorderSecondColor">#356C91</Color>
     <Color x:Key="ControlHoverBackgroundColor">#373B42</Color>
@@ -47,6 +48,7 @@
     <SolidColorBrush x:Key="ControlBackgroundBrush" Color="{DynamicResource ControlBackgroundColor}" />
     <SolidColorBrush x:Key="ControlBorderBrush" Color="{DynamicResource ControlBorderColor}" />
     <SolidColorBrush x:Key="ControlForegroundBrush" Color="{DynamicResource ControlForegroundColor}" />
+    <SolidColorBrush x:Key="ControlSecondaryForegroundBrush" Color="{DynamicResource ControlSecondaryForegroundColor}" />
     <SolidColorBrush x:Key="ControlFocusedBorderBrush" Color="{DynamicResource ControlFocusedBorderColor}" />
     <SolidColorBrush x:Key="ControlFocusedBorderSecondBrush" Color="{DynamicResource ControlFocusedBorderSecondColor}" />
     <SolidColorBrush x:Key="ControlHoverBackgroundBrush" Color="{DynamicResource ControlHoverBackgroundColor}" />

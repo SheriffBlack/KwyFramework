@@ -51,6 +51,12 @@ public sealed class MachineRuntimeOrchestrator : IDisposable
     /// </summary>
     public void Stop()
     {
+        // 工控机在线等安全下线信号必须先复位，不能被后续最长 5 秒的工单信号复位阻塞。
+        foreach (IMachineRuntimeFeature feature in activeFeatures.Where(static feature => feature.ShutdownOrder < 0).OrderBy(static feature => feature.ShutdownOrder))
+        {
+            feature.Stop();
+        }
+
         if (machine is IMachineWorkOrderStartSignalMachine workOrderStartSignalMachine)
         {
             try
@@ -61,7 +67,7 @@ public sealed class MachineRuntimeOrchestrator : IDisposable
             {
             }
         }
-        foreach (IMachineRuntimeFeature feature in activeFeatures)
+        foreach (IMachineRuntimeFeature feature in activeFeatures.Where(static feature => feature.ShutdownOrder >= 0).OrderBy(static feature => feature.ShutdownOrder))
         {
             feature.Stop();
         }

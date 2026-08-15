@@ -27,10 +27,8 @@ internal class SetViewModel : BindableBase, INavigationAware
     private const string InstrumentParameterHeader = "仪表参数";
     private const string BraidParameterHeader = "编带参数";
     private const string MarkPrintParameterHeader = "\u7F16\u5E26\u5B57\u7B26";
-    private const string CompensateParameterHeader = "点检配置";
     private const string MesOnlineParameterLockedMessage = "MES在线时禁止编辑本地参数，请先断开MES。";
     private const string MesOnlineBraidLockedMessage = "MES在线时禁止编辑本地编带参数，请先断开MES。";
-    private const string MesOnlineCompensateLockedMessage = "MES在线时禁止编辑本地点检配置，请先断开MES。";
     private const string MesOnlineMarkPrintLockedMessage = "\u004D\u0045\u0053\u5728\u7EBF\u65F6\u7981\u6B62\u7F16\u8F91\u672C\u5730\u7F16\u5E26\u5B57\u7B26\uFF0C\u8BF7\u5148\u65AD\u5F00\u004D\u0045\u0053\u3002";
     private readonly IRegionManager regionManager;
     private readonly MachineBase machine;
@@ -46,6 +44,7 @@ internal class SetViewModel : BindableBase, INavigationAware
     private readonly IMessageBus messageBus;
     private readonly IDialogMessageService dialogMessageService;
     private readonly ILocalizationService localizationService;
+    private readonly IDisposable stationLimitsAppliedSubscription;
     private readonly NavigationConfigModel navigationConfig = new();
     private bool isInitialized;
     private string selectedSubView = string.Empty;
@@ -88,6 +87,9 @@ internal class SetViewModel : BindableBase, INavigationAware
         this.messageBus = messageBus ?? throw new ArgumentNullException(nameof(messageBus));
         this.dialogMessageService = dialogMessageService ?? throw new ArgumentNullException(nameof(dialogMessageService));
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
+        stationLimitsAppliedSubscription = this.messageBus.Subscribe<SetViewModel, StationLimitsAppliedMessage>(
+            this,
+            static (viewModel, _) => viewModel.RefreshSelectedInstrumentParameter());
         this.mesConnectionStatus.PropertyChanged += OnMesConnectionStatusPropertyChanged;
         this.localizationService.LanguageChanged += OnLanguageChanged;
         InitializeNavigationItems();
@@ -188,7 +190,7 @@ internal class SetViewModel : BindableBase, INavigationAware
 
         items.Add(new NavigationItemModel
         {
-            DisplayText = CompensateParameterHeader,
+            DisplayText = "点检配置",
             LocalizationKey = "Nav.CompensateOptions",
             Parameter = CompensateOptionsParameter
         });
@@ -221,7 +223,7 @@ internal class SetViewModel : BindableBase, INavigationAware
 
                 yield return new NavigationItemModel
                 {
-                    DisplayText = TF("Set.Nav.StationInstrumentParameter", "{0} 参数", ResolveStationShortName(station)),
+                    DisplayText = localizationService.TF("Set.Nav.StationInstrumentParameter", "{0} 参数", ResolveStationShortName(station)),
                     Parameter = deviceId
                 };
             }
@@ -243,8 +245,13 @@ internal class SetViewModel : BindableBase, INavigationAware
             RaisePropertyChanged(nameof(SelectedNavigationKey));
 
             string message = permissionService.GetNoPermissionMessage(item.PermissionCode);
-            await dialogMessageService.ShowWarningAsync(message, T("Main.Title.PermissionDenied", "权限不足")).ConfigureAwait(false);
+            await dialogMessageService.ShowWarningAsync(message, localizationService.T("Main.Title.PermissionDenied", "权限不足")).ConfigureAwait(false);
             return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.PermissionCode))
+        {
+            (permissionService as IPermissionUsageNotifier)?.NotifyPermissionUsed(item.PermissionCode);
         }
 
         SelectedSubView = item.ViewName;
@@ -300,7 +307,7 @@ internal class SetViewModel : BindableBase, INavigationAware
         if (!devices.TryGet(deviceId, out IConfigurableDevice? device) || device == null)
         {
             SelectedParameterHeader = deviceId;
-            StatusMessage = TF("Set.Status.DeviceNotRegistered", "设备未注册：{0}", deviceId);
+            StatusMessage = localizationService.TF("Set.Status.DeviceNotRegistered", "设备未注册：{0}", deviceId);
             applyCommand?.RaiseCanExecuteChanged();
             return;
         }
@@ -309,9 +316,22 @@ internal class SetViewModel : BindableBase, INavigationAware
         SelectedParameterSource = device.DeviceParameter;
         SelectedParameterHeader = device is IDevice kwyDevice ? kwyDevice.DeviceName : deviceId;
         StatusMessage = CanEditParameters
-            ? T("Set.Status.InstrumentEditHint", "修改参数后点击应用保存；若设备已连接，部分参数需要重新初始化仪表后生效。")
-            : T("Set.Status.MesOnlineParameterLocked", MesOnlineParameterLockedMessage);
+            ? localizationService.T("Set.Status.InstrumentEditHint", "修改参数后点击应用保存；若设备已连接，部分参数需要重新初始化仪表后生效。")
+            : localizationService.T("Set.Status.MesOnlineParameterLocked", MesOnlineParameterLockedMessage);
         applyCommand?.RaiseCanExecuteChanged();
+    }
+
+    private void RefreshSelectedInstrumentParameter()
+    {
+        if (selectedConfigurableDevice == null)
+        {
+            return;
+        }
+
+        // HIOKI 配置对象不实现 INotifyPropertyChanged。重新绑定当前对象，
+        // 使已打开的 SetView 工位参数立即显示 MES/工单运行时更新后的限值。
+        SelectedParameterSource = null;
+        SelectedParameterSource = selectedConfigurableDevice.DeviceParameter;
     }
 
     private void LoadBraidOptions()
@@ -322,12 +342,12 @@ internal class SetViewModel : BindableBase, INavigationAware
 
         BraidOptionsLoadResult result = braidOptionsStore.LoadOrCreate();
         SelectedParameterSource = result.Options;
-        SelectedParameterHeader = GetLocalizedText("Nav.BraidOptions", BraidParameterHeader);
+        SelectedParameterHeader = localizationService.T("Nav.BraidOptions", BraidParameterHeader);
         StatusMessage = CanEditParameters
             ? result.Created
-                ? TF("Set.Status.BraidCreated", "已创建默认编带参数：{0}", result.FilePath)
-                : T("Set.Status.BraidEditHint", "修改编带参数后点击应用保存；MES离线时会按本地值写入PLC。")
-            : T("Set.Status.MesOnlineBraidLocked", MesOnlineBraidLockedMessage);
+                ? localizationService.TF("Set.Status.BraidCreated", "已创建默认编带参数：{0}", result.FilePath)
+                : localizationService.T("Set.Status.BraidEditHint", "修改编带参数后点击应用保存；MES离线时会按本地值写入PLC。")
+            : localizationService.T("Set.Status.MesOnlineBraidLocked", MesOnlineBraidLockedMessage);
         applyCommand?.RaiseCanExecuteChanged();
     }
 
@@ -339,12 +359,12 @@ internal class SetViewModel : BindableBase, INavigationAware
 
         MarkPrintOptionsLoadResult result = markPrintOptionsStore.LoadOrCreate();
         SelectedParameterSource = result.Options;
-        SelectedParameterHeader = GetLocalizedText("Nav.MarkPrintOptions", MarkPrintParameterHeader);
+        SelectedParameterHeader = localizationService.T("Nav.MarkPrintOptions", MarkPrintParameterHeader);
         StatusMessage = CanEditParameters
             ? result.Created
-                ? TF("Set.Status.MarkPrintCreated", "\u5DF2\u521B\u5EFA\u9ED8\u8BA4\u7F16\u5E26\u5B57\u7B26\uFF1A{0}", result.FilePath)
-                : T("Set.Status.MarkPrintEditHint", "\u4FEE\u6539\u7F16\u5E26\u5B57\u7B26\u540E\u70B9\u51FB\u5E94\u7528\u4FDD\u5B58\u3002")
-            : T("Set.Status.MesOnlineMarkPrintLocked", MesOnlineMarkPrintLockedMessage);
+                ? localizationService.TF("Set.Status.MarkPrintCreated", "\u5DF2\u521B\u5EFA\u9ED8\u8BA4\u7F16\u5E26\u5B57\u7B26\uFF1A{0}", result.FilePath)
+                : localizationService.T("Set.Status.MarkPrintEditHint", "\u4FEE\u6539\u7F16\u5E26\u5B57\u7B26\u540E\u70B9\u51FB\u5E94\u7528\u4FDD\u5B58\u3002")
+            : localizationService.T("Set.Status.MesOnlineMarkPrintLocked", MesOnlineMarkPrintLockedMessage);
         applyCommand?.RaiseCanExecuteChanged();
     }
 
@@ -356,12 +376,12 @@ internal class SetViewModel : BindableBase, INavigationAware
 
         CompensateOptionsLoadResult result = compensateOptionsStore.LoadOrCreate();
         SelectedParameterSource = result.Options;
-        SelectedParameterHeader = GetLocalizedText("Nav.CompensateOptions", CompensateParameterHeader);
+        SelectedParameterHeader = localizationService.T("Nav.CompensateOptions", "点检配置");
         StatusMessage = CanEditParameters
             ? result.Created
-                ? TF("Set.Status.CompensateCreated", "已创建默认点检配置：{0}", result.FilePath)
-                : T("Set.Status.CompensateEditHint", "修改点检配置后点击应用保存。")
-            : T("Set.Status.MesOnlineCompensateLocked", MesOnlineCompensateLockedMessage);
+                ? localizationService.TF("Set.Status.CompensateCreated", "已创建默认点检配置：{0}", result.FilePath)
+                : localizationService.T("Set.Status.CompensateEditHint", "修改点检配置后点击应用保存。")
+            : localizationService.T("Set.Status.MesOnlineCompensateLocked", "MES在线时禁止编辑本地点检配置，请先断开MES。");
         applyCommand?.RaiseCanExecuteChanged();
     }
 
@@ -382,7 +402,7 @@ internal class SetViewModel : BindableBase, INavigationAware
         {
             if (!CanEditParameters)
             {
-                StatusMessage = T("Set.Status.MesOnlineApplyLocked", "MES在线时禁止应用本地参数，请先断开MES。");
+                StatusMessage = localizationService.T("Set.Status.MesOnlineApplyLocked", "MES在线时禁止应用本地参数，请先断开MES。");
                 return;
             }
 
@@ -392,11 +412,11 @@ internal class SetViewModel : BindableBase, INavigationAware
                 if (machine is IMachineBraidSetupMachine braidMachine)
                 {
                     await braidMachine.ApplyBraidSetupAsync(braidOptions.ToTapeSetup(), DestroyToken).ConfigureAwait(true);
-                    StatusMessage = T("Set.Status.BraidSavedAndWritten", "编带参数已保存并写入PLC。");
+                    StatusMessage = localizationService.T("Set.Status.BraidSavedAndWritten", "编带参数已保存并写入PLC。");
                     return;
                 }
 
-                StatusMessage = T("Set.Status.BraidSavedUnsupported", "编带参数已保存，当前机型不支持写入PLC。");
+                StatusMessage = localizationService.T("Set.Status.BraidSavedUnsupported", "编带参数已保存，当前机型不支持写入PLC。");
                 return;
             }
 
@@ -408,7 +428,7 @@ internal class SetViewModel : BindableBase, INavigationAware
                     await markPrintMachine.ApplyMarkPrintStringAsync(markPrintOptions.PrintString, DestroyToken).ConfigureAwait(true);
                 }
 
-                StatusMessage = T("Set.Status.MarkPrintSaved", "编带字符已保存。");
+                StatusMessage = localizationService.T("Set.Status.MarkPrintSaved", "编带字符已保存。");
                 return;
             }
 
@@ -416,19 +436,19 @@ internal class SetViewModel : BindableBase, INavigationAware
             {
                 await compensateOptionsStore.SaveAsync(compensateOptions).ConfigureAwait(true);
                 messageBus.Publish(new CompensateOptionsChangedMessage(compensateOptions));
-                StatusMessage = T("Set.Status.CompensateSaved", "点检配置已保存。");
+                StatusMessage = localizationService.T("Set.Status.CompensateSaved", "点检配置已保存。");
                 return;
             }
 
             if (selectedConfigurableDevice == null)
             {
-                StatusMessage = T("Set.Status.NoParameterToSave", "当前没有可保存的参数。");
+                StatusMessage = localizationService.T("Set.Status.NoParameterToSave", "当前没有可保存的参数。");
                 return;
             }
 
             if (!selectedConfigurableDevice.DeviceParameter.Validate())
             {
-                StatusMessage = T("Set.Status.ParameterValidateFailed", "参数校验失败，请检查上下限、量程等配置。");
+                StatusMessage = localizationService.T("Set.Status.ParameterValidateFailed", "参数校验失败，请检查上下限、量程等配置。");
                 return;
             }
 
@@ -438,14 +458,14 @@ internal class SetViewModel : BindableBase, INavigationAware
 
             productionContext.IsResultGridDataEnabled = true;
             messageBus.Publish(new StationLimitsAppliedMessage());
-            StatusMessage = T("Set.Status.InstrumentSaved", "仪表参数已保存。");
+            StatusMessage = localizationService.T("Set.Status.InstrumentSaved", "仪表参数已保存。");
         }
         catch (Exception ex)
         {
             string targetName = selectedConfigurableDevice is IDevice device ? device.DeviceName : SelectedParameterHeader;
-            string message = TF("Set.Message.ApplyFailed", "{0}参数应用失败！\n{1}", targetName, ex.Message);
+            string message = localizationService.TF("Set.Message.ApplyFailed", "{0}参数应用失败！\n{1}", targetName, ex.Message);
             StatusMessage = message;
-            await dialogMessageService.ShowErrorAsync(message, T("Set.Title.ApplyFailed", "参数应用失败")).ConfigureAwait(true);
+            await dialogMessageService.ShowErrorAsync(message, localizationService.T("Set.Title.ApplyFailed", "参数应用失败")).ConfigureAwait(true);
         }
     }
 
@@ -471,14 +491,14 @@ internal class SetViewModel : BindableBase, INavigationAware
 
         StatusMessage = SelectedParameterSource switch
         {
-            BraidOptions when !CanEditParameters => T("Set.Status.MesOnlineBraidLocked", MesOnlineBraidLockedMessage),
-            BraidOptions => T("Set.Status.BraidEditHint", "\u4FEE\u6539\u7F16\u5E26\u53C2\u6570\u540E\u70B9\u51FB\u5E94\u7528\u4FDD\u5B58\uFF1BMES\u79BB\u7EBF\u65F6\u4F1A\u6309\u672C\u5730\u503C\u5199\u5165PLC\u3002"),
-            CompensateOptions when !CanEditParameters => T("Set.Status.MesOnlineCompensateLocked", MesOnlineCompensateLockedMessage),
-            CompensateOptions => T("Set.Status.CompensateEditHint", "\u4FEE\u6539\u70B9\u68C0\u914D\u7F6E\u540E\u70B9\u51FB\u5E94\u7528\u4FDD\u5B58\u3002"),
-            MarkPrintOptions when !CanEditParameters => T("Set.Status.MesOnlineMarkPrintLocked", MesOnlineMarkPrintLockedMessage),
-            MarkPrintOptions => T("Set.Status.MarkPrintEditHint", "\u4FEE\u6539\u7F16\u5E26\u5B57\u7B26\u540E\u70B9\u51FB\u5E94\u7528\u4FDD\u5B58\u3002"),
-            _ when !CanEditParameters => T("Set.Status.MesOnlineParameterLocked", MesOnlineParameterLockedMessage),
-            _ => T("Set.Status.InstrumentEditHint", "\u4FEE\u6539\u53C2\u6570\u540E\u70B9\u51FB\u5E94\u7528\u4FDD\u5B58\uFF1B\u82E5\u8BBE\u5907\u5DF2\u8FDE\u63A5\uFF0C\u90E8\u5206\u53C2\u6570\u9700\u8981\u91CD\u65B0\u521D\u59CB\u5316\u4EEA\u8868\u540E\u751F\u6548\u3002")
+            BraidOptions when !CanEditParameters => localizationService.T("Set.Status.MesOnlineBraidLocked", MesOnlineBraidLockedMessage),
+            BraidOptions => localizationService.T("Set.Status.BraidEditHint", "\u4FEE\u6539\u7F16\u5E26\u53C2\u6570\u540E\u70B9\u51FB\u5E94\u7528\u4FDD\u5B58\uFF1BMES\u79BB\u7EBF\u65F6\u4F1A\u6309\u672C\u5730\u503C\u5199\u5165PLC\u3002"),
+            CompensateOptions when !CanEditParameters => localizationService.T("Set.Status.MesOnlineCompensateLocked", "MES在线时禁止编辑本地点检配置，请先断开MES。"),
+            CompensateOptions => localizationService.T("Set.Status.CompensateEditHint", "修改点检配置后点击应用保存。"),
+            MarkPrintOptions when !CanEditParameters => localizationService.T("Set.Status.MesOnlineMarkPrintLocked", MesOnlineMarkPrintLockedMessage),
+            MarkPrintOptions => localizationService.T("Set.Status.MarkPrintEditHint", "\u4FEE\u6539\u7F16\u5E26\u5B57\u7B26\u540E\u70B9\u51FB\u5E94\u7528\u4FDD\u5B58\u3002"),
+            _ when !CanEditParameters => localizationService.T("Set.Status.MesOnlineParameterLocked", MesOnlineParameterLockedMessage),
+            _ => localizationService.T("Set.Status.InstrumentEditHint", "\u4FEE\u6539\u53C2\u6570\u540E\u70B9\u51FB\u5E94\u7528\u4FDD\u5B58\uFF1B\u82E5\u8BBE\u5907\u5DF2\u8FDE\u63A5\uFF0C\u90E8\u5206\u53C2\u6570\u9700\u8981\u91CD\u65B0\u521D\u59CB\u5316\u4EEA\u8868\u540E\u751F\u6548\u3002")
         };
     }
 
@@ -494,15 +514,15 @@ internal class SetViewModel : BindableBase, INavigationAware
 
         if (SelectedParameterSource is BraidOptions)
         {
-            SelectedParameterHeader = GetLocalizedText("Nav.BraidOptions", BraidParameterHeader);
+            SelectedParameterHeader = localizationService.T("Nav.BraidOptions", BraidParameterHeader);
         }
         else if (SelectedParameterSource is CompensateOptions)
         {
-            SelectedParameterHeader = GetLocalizedText("Nav.CompensateOptions", CompensateParameterHeader);
+            SelectedParameterHeader = localizationService.T("Nav.CompensateOptions", "点检配置");
         }
         else if (SelectedParameterSource is MarkPrintOptions)
         {
-            SelectedParameterHeader = GetLocalizedText("Nav.MarkPrintOptions", MarkPrintParameterHeader);
+            SelectedParameterHeader = localizationService.T("Nav.MarkPrintOptions", MarkPrintParameterHeader);
         }
 
     }
@@ -522,7 +542,7 @@ internal class SetViewModel : BindableBase, INavigationAware
                 NavigationItemModel? item = NavigationItems.FirstOrDefault(candidate => string.Equals(candidate.Parameter, deviceId, StringComparison.OrdinalIgnoreCase));
                 if (item != null)
                 {
-                    item.DisplayText = TF("Set.Nav.StationInstrumentParameter", "{0} 参数", ResolveStationShortName(station));
+                    item.DisplayText = localizationService.TF("Set.Nav.StationInstrumentParameter", "{0} 参数", ResolveStationShortName(station));
                 }
             }
         }
@@ -532,23 +552,14 @@ internal class SetViewModel : BindableBase, INavigationAware
     {
         if (!string.IsNullOrWhiteSpace(station.StationShortNameKey))
         {
-            return T(station.StationShortNameKey, station.StationName);
+            return localizationService.T(station.StationShortNameKey, station.StationName);
         }
 
         return string.IsNullOrWhiteSpace(station.StationNameKey)
             ? station.StationName
-            : T(station.StationNameKey, station.StationName);
+            : localizationService.T(station.StationNameKey, station.StationName);
     }
 
-    private string T(string key, string fallback) => GetLocalizedText(key, fallback);
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, GetLocalizedText(key, fallback), args);
-    private string GetLocalizedText(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
 }
 
 

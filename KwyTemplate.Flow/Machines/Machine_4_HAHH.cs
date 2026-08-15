@@ -431,6 +431,7 @@ public class Machine_4_HAHH :
             new TestStationModel
             {
                 StationId = 5,
+                IconKind = StationIconKind.Camera,
                 StationSwitchPointKey = (int)PlcPoints.工位6开关,
                 StationName = "工位五 A面相机",
                 StationNameKey = "Station.Machine4HAHH.5.Name",
@@ -445,6 +446,7 @@ public class Machine_4_HAHH :
             new TestStationModel
             {
                 StationId = 6,
+                IconKind = StationIconKind.Camera,
                 StationSwitchPointKey = (int)PlcPoints.工位7开关,
                 StationName = "工位六 B面相机",
                 StationNameKey = "Station.Machine4HAHH.6.Name",
@@ -459,11 +461,27 @@ public class Machine_4_HAHH :
             new TestStationModel
             {
                 StationId = 7,
+                IconKind = StationIconKind.Camera,
                 StationSwitchPointKey = (int)PlcPoints.工位8开关,
                 StationName = "工位七 编带相机",
                 StationNameKey = "Station.Machine4HAHH.7.Name",
                 StationShortNameKey = "Station.Common.7",
                 StationDeviceNameKey = "Station.Device.TapingCamera",
+                ShowInResultGrid = false,
+                OrderedTestNames = [],
+                TestValues = new(StringComparer.OrdinalIgnoreCase),
+                TestJudges = new(StringComparer.OrdinalIgnoreCase),
+                StationDataDeals = []
+            },
+            new TestStationModel
+            {
+                StationId = 8,
+                IconKind = StationIconKind.AirSpray,
+                StationSwitchPointKey = (int)PlcPoints.工位9开关,
+                StationName = "工位八 喷墨",
+                StationNameKey = "Station.Machine4HAHH.8.Name",
+                StationShortNameKey = "Station.Common.8",
+                StationDeviceNameKey = "Station.Device.AirSpray",
                 ShowInResultGrid = false,
                 OrderedTestNames = [],
                 TestValues = new(StringComparer.OrdinalIgnoreCase),
@@ -681,8 +699,8 @@ public class Machine_4_HAHH :
             }
 
             await WriteTapeSetupToPlcAsync(currentTapeSetup, CancellationToken.None).ConfigureAwait(false);
+            await NotifyExternalStartAsync().ConfigureAwait(false);
             succeeded = true;
-            ResumeProductionFromExternalSignal();
         }
         catch
         {
@@ -1487,8 +1505,27 @@ public class Machine_4_HAHH :
         await plc.WriteInt16Async(address, isCompleted ? (short)1 : (short)0, cancellationToken).ConfigureAwait(false);
     }
 
-    public override Task OnCompensateScheduleExpiredAsync(DateTimeOffset start, DateTimeOffset end, CancellationToken cancellationToken = default)
-        => SetCheckCompletedAsync(false, cancellationToken);
+    public override async Task<bool?> ReadCheckCompletedAsync(CancellationToken cancellationToken = default)
+    {
+        IPlcDevice? plc = Plc;
+        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue((int)PlcPoints.点检完成, out string? address))
+        {
+            return null;
+        }
+
+        return await plc.ReadInt16Async(address, cancellationToken).ConfigureAwait(false) != 0;
+    }
+
+    public override async Task SetStandardSampleExpiredAsync(bool isExpired, CancellationToken cancellationToken = default)
+    {
+        IPlcDevice? plc = Plc;
+        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue((int)PlcPoints.标准件过期, out string? address))
+        {
+            return;
+        }
+
+        await plc.WriteInt16Async(address, isExpired ? (short)0 : (short)1, cancellationToken).ConfigureAwait(false);
+    }
 
     public async Task<bool> ResetProductionCounterAsync(CancellationToken cancellationToken = default)
     {
@@ -1530,22 +1567,6 @@ public class Machine_4_HAHH :
             if (plc is { IsConnected: true })
             {
                 await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.PC启动按钮], 0, cancellationToken).ConfigureAwait(false);
-                await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.PC停止按钮], 1, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        finally
-        {
-            await FlushProductionRecordsAsync().ConfigureAwait(false);
-        }
-    }
-
-    protected override async Task OnTestPausedAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            IPlcDevice? plc = Plc;
-            if (plc is { IsConnected: true })
-            {
                 await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.PC停止按钮], 1, cancellationToken).ConfigureAwait(false);
             }
         }

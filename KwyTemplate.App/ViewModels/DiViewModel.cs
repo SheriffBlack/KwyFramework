@@ -29,7 +29,7 @@ public sealed class DiViewModel : BindableBase, INavigationAware
         this.deviceRegistry = deviceRegistry;
         this.machine = machine;
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
-        statusMessage = T("Di.Status.Waiting", "等待 IO 输入刷新");
+        statusMessage = localizationService.T("Di.Status.Waiting", "等待 IO 输入刷新");
     }
 
     public ObservableCollection<IoPointModel> InPutPoints { get; } = [];
@@ -62,14 +62,6 @@ public sealed class DiViewModel : BindableBase, INavigationAware
     }
 
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key, fallback), args);
     private void StartRefresh()
     {
         if (refreshTask is { IsCompleted: false })
@@ -88,7 +80,7 @@ public sealed class DiViewModel : BindableBase, INavigationAware
         activeCts?.Dispose();
         activeCts = null;
         refreshTask = null;
-        StatusMessage = T("Di.Status.Stopped", "IO 输入刷新已停止");
+        StatusMessage = localizationService.T("Di.Status.Stopped", "IO 输入刷新已停止");
     }
 
     private void LoadNamedInputPoints()
@@ -132,7 +124,7 @@ public sealed class DiViewModel : BindableBase, INavigationAware
             }
             catch (Exception ex)
             {
-                StatusMessage = TF("Di.Status.RefreshFailed", "IO 输入快照刷新失败：{0}", ex.Message);
+                StatusMessage = localizationService.TF("Di.Status.RefreshFailed", "IO 输入快照刷新失败：{0}", ex.Message);
                 await Task.Delay(500, cancellationToken).ConfigureAwait(true);
             }
         }
@@ -141,7 +133,7 @@ public sealed class DiViewModel : BindableBase, INavigationAware
     private void RefreshInputs()
     {
         bool hasSnapshot = machine != null;
-        StatusMessage = hasSnapshot ? T("Di.Status.Monitoring", "IO 输入快照监控中") : T("Di.Status.NoSnapshot", "未找到机台 IO 快照，当前显示机台定义点位");
+        StatusMessage = hasSnapshot ? localizationService.T("Di.Status.Monitoring", "IO 输入快照监控中") : localizationService.T("Di.Status.NoSnapshot", "未找到机台 IO 快照，当前显示机台定义点位");
 
         foreach (IoPointModel point in InPutPoints)
         {

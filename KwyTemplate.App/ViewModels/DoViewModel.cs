@@ -120,11 +120,6 @@ public sealed class DoViewModel : BindableBase, INavigationAware
     }
 
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
     private void ExecuteIoTriggerCommand(IoPointModel? item)
     {
         if (item == null)
@@ -141,7 +136,7 @@ public sealed class DoViewModel : BindableBase, INavigationAware
         ioCard ??= TryGetMainIoCard();
         if (ioCard == null || !ioCard.IsConnected)
         {
-            _ = notificationService?.WarningAsync(T("Do.Message.IoCardNotConnected", "IO 卡未连接，无法手动操作输出点。"), T("Do.Title.Output", "IO 输出"));
+            _ = notificationService?.WarningAsync(localizationService.T("Do.Message.IoCardNotConnected", "IO 卡未连接，无法手动操作输出点。"), localizationService.T("Do.Title.Output", "IO 输出"));
             return;
         }
 
@@ -181,7 +176,7 @@ public sealed class DoViewModel : BindableBase, INavigationAware
             return;
         }
 
-        await notificationService.WarningAsync(T("Do.Message.ProductionRunningCannotOperate", "生产运行中禁止手动操作 IO 输出。"), T("Do.Title.Output", "IO 输出")).ConfigureAwait(true);
+        await notificationService.WarningAsync(localizationService.T("Do.Message.ProductionRunningCannotOperate", "生产运行中禁止手动操作 IO 输出。"), localizationService.T("Do.Title.Output", "IO 输出")).ConfigureAwait(true);
     }
 
     private static async Task ResetReversePulseAsync(

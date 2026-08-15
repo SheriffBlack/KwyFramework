@@ -68,6 +68,21 @@ internal sealed class CurrentUserService : ICurrentUserService, IDisposable
         CurrentUserChanged?.Invoke(this, user);
     }
 
+    public void RefreshElevatedSession()
+    {
+        lock (syncRoot)
+        {
+            if (currentUser.Level <= SecurityUserLevel.Operator)
+            {
+                return;
+            }
+
+            sessionVersion++;
+            ResetSessionTimeoutLocked();
+            StartSessionTimeoutLocked(currentUser, sessionVersion);
+        }
+    }
+
     public void Dispose()
     {
         lock (syncRoot)

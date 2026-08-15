@@ -292,6 +292,7 @@ public class Machine_2_A :
             new TestStationModel
             {
                 StationId = 3,
+                IconKind = StationIconKind.Camera,
                 StationSwitchPointKey = (int)PlcPoints.工位6开关,
                 StationName = "工位三 A面相机",
                 StationNameKey = "Station.Machine2A.3.Name",
@@ -306,6 +307,7 @@ public class Machine_2_A :
             new TestStationModel
             {
                 StationId = 4,
+                IconKind = StationIconKind.Camera,
                 StationSwitchPointKey = (int)PlcPoints.工位8开关,
                 StationName = "工位四 编带相机",
                 StationNameKey = "Station.Machine2A.4.Name",
@@ -501,10 +503,8 @@ public class Machine_2_A :
             }
 
             await WriteTapeSetupToPlcAsync(currentTapeSetup, CancellationToken.None).ConfigureAwait(false);
+            await NotifyExternalStartAsync().ConfigureAwait(false);
             succeeded = true;
-
-            // 人机在暂停态按启动时会触发参数对比；参数重写成功后，PC 侧恢复为 Running。
-            ResumeProductionFromExternalSignal();
         }
         catch
         {
@@ -833,6 +833,17 @@ public class Machine_2_A :
         await plc.WriteInt16Async(address, isCompleted ? (short)1 : (short)0, cancellationToken).ConfigureAwait(false);
     }
 
+    public override async Task<bool?> ReadCheckCompletedAsync(CancellationToken cancellationToken = default)
+    {
+        IPlcDevice? plc = Plc;
+        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue(0, out string? address))
+        {
+            return null;
+        }
+
+        return await plc.ReadInt16Async(address, cancellationToken).ConfigureAwait(false) != 0;
+    }
+
     public override async Task SetStandardSampleExpiredAsync(bool isExpired, CancellationToken cancellationToken = default)
     {
         IPlcDevice? plc = Plc;
@@ -1149,22 +1160,6 @@ public class Machine_2_A :
 
         await plc.WriteInt16Async(address, 1, cancellationToken).ConfigureAwait(false);
         return true;
-    }
-
-    protected override async Task OnTestPausedAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            IPlcDevice? plc = Plc;
-            if (plc is { IsConnected: true })
-            {
-                await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.PC停止按钮], 1, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        finally
-        {
-            await FlushProductionRecordsAsync().ConfigureAwait(false);
-        }
     }
 
     private async Task FlushProductionRecordsAsync()

@@ -1,5 +1,6 @@
 ﻿using KwyTemplate.App.Runtime;
 using KwyTemplate.Contracts.Services;
+using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Flow.Machines;
 using KwyTemplate.MES.Abstract.Events;
 using KwyTemplate.MES.Abstract.Models;
@@ -17,6 +18,7 @@ public sealed class MesConnectionFeature : IMachineRuntimeFeature
     private readonly IMesConnection mesConnection;
     private readonly MesConnectionStatus status;
     private readonly StartupProgressService startupProgress;
+    private readonly ILocalizationService localizationService;
     private CancellationTokenSource? stopCts;
     private Task? worker;
     private bool disposed;
@@ -24,11 +26,13 @@ public sealed class MesConnectionFeature : IMachineRuntimeFeature
     public MesConnectionFeature(
         IMesConnection mesConnection,
         MesConnectionStatus status,
-        StartupProgressService startupProgress)
+        StartupProgressService startupProgress,
+        ILocalizationService localizationService)
     {
         this.mesConnection = mesConnection ?? throw new ArgumentNullException(nameof(mesConnection));
         this.status = status ?? throw new ArgumentNullException(nameof(status));
         this.startupProgress = startupProgress ?? throw new ArgumentNullException(nameof(startupProgress));
+        this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
         this.mesConnection.StateChanged += OnMesStateChanged;
     }
 
@@ -86,11 +90,13 @@ public sealed class MesConnectionFeature : IMachineRuntimeFeature
     {
         try
         {
-            startupProgress.Report("正在连接 MES...", 80);
+            startupProgress.Report(localizationService.T("Startup.Mes.Connecting", "Connecting MES..."), 80);
             MesResult result = await mesConnection.ConnectAsync(cancellationToken).ConfigureAwait(false);
             status.Message = result.Message;
             status.State = mesConnection.State;
-            startupProgress.Report(result.IsSuccess ? "MES 连接完成" : "MES 连接失败", 95);
+            startupProgress.Report(result.IsSuccess
+                ? localizationService.T("Startup.Mes.Connected", "MES connected.")
+                : localizationService.T("Startup.Mes.ConnectionFailed", "MES connection failed."), 95);
         }
         catch (OperationCanceledException)
         {
@@ -99,7 +105,7 @@ public sealed class MesConnectionFeature : IMachineRuntimeFeature
         {
             status.State = MesConnectionState.Faulted;
             status.Message = ex.Message;
-            startupProgress.Report("MES 连接异常", 95);
+            startupProgress.Report(localizationService.T("Startup.Mes.ConnectionAbnormal", "MES connection abnormal."), 95);
         }
     }
 
@@ -108,6 +114,7 @@ public sealed class MesConnectionFeature : IMachineRuntimeFeature
         status.State = e.State;
         status.Message = e.Message ?? string.Empty;
     }
+
 }
 
 

@@ -62,9 +62,12 @@ public partial class App : KwyApplication
     {
         WireStartupProgressLog(serviceProvider);
         WireGlobalExceptionLog(serviceProvider);
-        serviceProvider.GetRequiredService<StartupProgressService>().Report("正在加载程序设定...", 5);
         ProgramSettingsLoadResult settingsLoadResult = serviceProvider.GetRequiredService<ProgramSettingsStore>().LoadOrCreate();
-        serviceProvider.GetRequiredService<ILocalizationService>().Apply(settingsLoadResult.Settings.Language);
+        ILocalizationService localizationService = serviceProvider.GetRequiredService<ILocalizationService>();
+        localizationService.Apply(settingsLoadResult.Settings.Language);
+        serviceProvider.GetRequiredService<StartupProgressService>().Report(
+            localizationService.T("Startup.Program.LoadingSettings", "Loading program settings..."),
+            5);
         ShowStartupWindow();
     }
 

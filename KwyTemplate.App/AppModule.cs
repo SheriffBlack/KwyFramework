@@ -43,13 +43,13 @@ public class AppModule : IModule
         containerRegistry.AddSingleton<ICorrectionParameterProvider, CorrectionParameterProvider>();
         containerRegistry.AddSingleton<StationEnableStateStore>();
         containerRegistry.AddSingleton<IAppNotificationService, AppNotificationService>();
+        containerRegistry.AddSingleton<IApplicationCloseGuard, ApplicationCloseGuard>();
         containerRegistry.AddSingleton<MachineRuntimeOrchestrator>();
         containerRegistry.AddSingleton<ICyntecReelScanWorkflow, CyntecReelScanWorkflow>();
         containerRegistry.AddSingleton<IMachineRuntimeFeature, MesConnectionFeature>();
         containerRegistry.AddSingleton<IMachineRuntimeFeature, MachineOnlineSignalFeature>();
         containerRegistry.AddSingleton<IMachineRuntimeFeature, MachinePlcStopSignalFeature>();
         containerRegistry.AddSingleton<IMachineRuntimeFeature, CyntecReelScanFeature>();
-        containerRegistry.AddSingleton<IMachineRuntimeFeature, CompensateScheduleMonitorFeature>();
         containerRegistry.AddSingleton<IMachineRuntimeFeature, StandardSampleExpirationMonitorFeature>();
 
         containerRegistry.RegisterForNavigation<CompensateView, CompensateViewModel>();

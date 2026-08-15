@@ -61,7 +61,10 @@
                             <Setter TargetName="PART_CheckBoxBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.56" />
+                            <Setter Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+                            <Setter TargetName="PART_CheckBoxBorder" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter TargetName="PART_CheckBoxBorder" Property="BorderBrush" Value="{DynamicResource ControlDisabledForegroundBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -112,7 +115,8 @@
                             <Setter TargetName="PART_CheckMark" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.56" />
+                            <Setter Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -155,7 +159,8 @@
                             <Setter TargetName="PART_CheckMark" Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="PART_CheckBoxButtonBorder" Property="Opacity" Value="0.7" />
+                            <Setter TargetName="PART_CheckBoxButtonBorder" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

@@ -12,7 +12,7 @@ public sealed class MesConnectionStatus : BindableBase
 
     public MesConnectionStatus(ILocalizationService localizationService)
     {
-        this.localizationService = localizationService;
+        this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
         this.localizationService.LanguageChanged += OnLanguageChanged;
     }
 
@@ -30,9 +30,9 @@ public sealed class MesConnectionStatus : BindableBase
 
     public string DisplayText => State switch
     {
-        MesConnectionState.Online => T("Home.MesStatus.Online", "MES在线"),
-        MesConnectionState.Connecting => T("Home.MesStatus.Connecting", "MES连接中"),
-        _ => T("Home.MesStatus.Offline", "MES离线")
+        MesConnectionState.Online => localizationService.T("Home.MesStatus.Online", "MES在线"),
+        MesConnectionState.Connecting => localizationService.T("Home.MesStatus.Connecting", "MES连接中"),
+        _ => localizationService.T("Home.MesStatus.Offline", "MES离线")
     };
 
     public string Message
@@ -43,10 +43,4 @@ public sealed class MesConnectionStatus : BindableBase
 
     private void OnLanguageChanged(object? sender, LanguageType languageType)
         => RaisePropertyChanged(nameof(DisplayText));
-
-    private string T(string key, string fallback)
-    {
-        string value = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(value) || string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
-    }
 }

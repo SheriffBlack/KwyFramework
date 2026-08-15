@@ -71,20 +71,22 @@ public sealed class NavigationConfigModel
             {
                 ViewName = ViewNames.DiView,
                 DisplayText = "DI 输入",
-                LocalizationKey = "Nav.Di"
+                LocalizationKey = "Nav.Di",
+                PermissionCode = PermissionCodes.Admin
             },
             new NavigationItemModel
             {
                 ViewName = ViewNames.DoView,
                 DisplayText = "DO 输出",
-                LocalizationKey = "Nav.Do"
+                LocalizationKey = "Nav.Do",
+                PermissionCode = PermissionCodes.Admin
             },
             new NavigationItemModel
             {
                 ViewName = ViewNames.PlcPointView,
                 DisplayText = "PLC 点位",
                 LocalizationKey = "Nav.PlcPoint",
-                PermissionCode = PermissionCodes.Engineer
+                PermissionCode = PermissionCodes.Admin
             },
         ],
         [ViewNames.SystemView] =

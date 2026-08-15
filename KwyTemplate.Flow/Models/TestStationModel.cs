@@ -30,6 +30,9 @@ public sealed class TestStationModel
     /// Optional machine PLC point key used for station enable switch. When null, StationId is mapped by the machine.
     /// </summary>
     public int? StationSwitchPointKey { get; set; }
+
+    /// <summary>Explicit icon category used by station-card UIs.</summary>
+    public StationIconKind IconKind { get; set; } = StationIconKind.Station;
     /// <summary>
     /// 工位名称，用于 UI 显示。
     /// </summary>

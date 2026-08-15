@@ -28,7 +28,7 @@ public sealed class StationTestItemModel : BindableBase
 
     public string DisplayName => string.IsNullOrWhiteSpace(Station.StationNameKey)
         ? Station.StationName
-        : T(Station.StationNameKey, Station.StationName);
+        : localizationService.T(Station.StationNameKey, Station.StationName);
 
     public ObservableCollection<StationInstrumentItemModel> Instruments { get; } = [];
 
@@ -51,9 +51,4 @@ public sealed class StationTestItemModel : BindableBase
     public void RefreshLocalization()
         => RaisePropertyChanged(nameof(DisplayName));
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
 }

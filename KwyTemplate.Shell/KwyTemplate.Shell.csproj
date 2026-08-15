@@ -8,7 +8,7 @@
     <UseWPF>true</UseWPF>
 	<PlatformTarget>x86</PlatformTarget>
 	  
-    <ApplicationIcon>..\KwyTemplate.App\Resources\ImgLogoHsy.ico</ApplicationIcon>
+    <ApplicationIcon>..\KwyTemplate.App\Resources\ImgLogoTest.ico</ApplicationIcon>
     <AssemblyName>TP测包机</AssemblyName>
 
     <ProgramSettingsConfigFile>$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\Config\System\ProgramSettings.json</ProgramSettingsConfigFile>

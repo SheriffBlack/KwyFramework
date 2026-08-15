@@ -48,6 +48,7 @@ public class IconNames
     // Geometry
     public const string IconCPU = "IconCPU";
 
+    public const string IconAirspay = "IconAirspay";
     public const string IconAnticlockwise = "IconAnticlockwise";
     public const string IconClockise = "IconClockise";
     public const string IconCompensate = "IconCompensate";

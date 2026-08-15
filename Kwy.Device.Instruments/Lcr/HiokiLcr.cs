@@ -275,7 +275,9 @@ public class HiokiLcr :
                 await WriteLcrCommandAsync(":MODE LCR", token).ConfigureAwait(false);
                 await WriteLcrCommandAsync($":LOAD {spot}", token).ConfigureAwait(false);
                 await WriteLcrCommandAsync($":CORRection:LOAD:CONDition {spot},{frequency},{range},OFF,V,{voltage},OFF,0", token).ConfigureAwait(false);
-                await WriteLcrCommandAsync($"SAVE {spot},100k", token).ConfigureAwait(false);
+                // :SAVE persists all panel measurement conditions, including comparator limits.
+                // A load correction must never overwrite the production panel with its temporary
+                // correction state.
                 await WriteLcrCommandAsync($":CORRection:LOAD:REFerence {spot},{modeNo},{FormatNumber(request.PrimaryReferenceValue)},{FormatNumber(request.SecondaryReferenceValue)}", token).ConfigureAwait(false);
                 await WriteLcrCommandAsync(":CORRection:LOAD:EXECute", token).ConfigureAwait(false);
             },

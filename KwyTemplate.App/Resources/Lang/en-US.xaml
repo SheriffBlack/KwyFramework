@@ -232,7 +232,17 @@
     <sys:String x:Key="Home.Title.MesTrackIn">MES Track In</sys:String>
     <sys:String x:Key="Home.Message.CoverOrPaperMismatch">Top cover or table paper does not match MES!</sys:String>
     <sys:String x:Key="Home.Title.BlindScan">Blind Scan</sys:String>
+    <sys:String x:Key="Home.Message.BlindScanReceived">Blind scan: {0}</sys:String>
+    <sys:String x:Key="Home.Message.BlindScanRequiresStopped">Blind scanning cannot modify production data while the machine is not stopped.</sys:String>
+    <sys:String x:Key="Shell.Message.ExitRequiresStopped">The program cannot be closed while the machine is not stopped.</sys:String>
+    <sys:String x:Key="Shell.Title.ExitBlocked">Close Program</sys:String>
+    <sys:String x:Key="Home.Message.BlindScanUnsupportedLength">Blind scan content: {0}; unsupported length: {1}.</sys:String>
     <sys:String x:Key="Home.Message.WorkOrderImportSuccess">Work order {0} imported successfully!</sys:String>
+    <sys:String x:Key="Home.Title.LsLowerLimit">Ls Lower Limit</sys:String>
+    <sys:String x:Key="Home.Field.LsLowerLimit">Ls Lower Limit</sys:String>
+    <sys:String x:Key="Home.Message.LsLowerLimitInput">This work order ends with X. Re-enter the inductance Ls lower limit.</sys:String>
+    <sys:String x:Key="Home.Message.LsLowerLimitRequired">Re-enter the Ls lower limit before starting this work order.</sys:String>
+    <sys:String x:Key="Home.Message.LsSetupMissing">This work order has no Ls configuration, so its Ls lower limit cannot be overridden.</sys:String>
     <sys:String x:Key="Home.Message.SaveDataConfirm">Save data?</sys:String>
     <sys:String x:Key="Home.Message.TrackOutConfirm">Track out?</sys:String>
     <sys:String x:Key="Home.Title.MaterialError">Material Error</sys:String>
@@ -405,5 +415,30 @@
     <sys:String x:Key="Device.MainIoCard">Main IO Card</sys:String>
     <sys:String x:Key="Device.MainScanner">Reel Scanner</sys:String>
     <sys:String x:Key="Device.MainMarkPrinter">Mark Printer</sys:String>
+    <sys:String x:Key="Station.Common.8">ST8</sys:String>
+    <sys:String x:Key="Station.Device.AirSpray">Inkjet</sys:String>
+    <sys:String x:Key="Station.Machine4HAHH.8.Name">Station 8 Inkjet</sys:String>
+    <sys:String x:Key="Home.Message.CheckRequired">Please complete the inspection before starting production.</sys:String>
+    <sys:String x:Key="Home.Title.CheckRequired">Inspection Reminder</sys:String>
+    <sys:String x:Key="Compensate.Title.CheckReminder">Inspection Reminder</sys:String>
+    <sys:String x:Key="Compensate.Message.CheckNotCompleted">Inspection is not complete. Please complete it as soon as possible.</sys:String>
+    <sys:String x:Key="Compensate.Message.ScheduleCheckRequired">Inspection was not completed during the required time {0}~{1}. Please complete it.</sys:String>
+    <sys:String x:Key="Home.Field.SpecialMachineOperation">Special Machine Operation</sys:String>
+    <sys:String x:Key="Home.Log.RuntimeDataFileMissing">Production runtime data file was not found: {0}</sys:String>
+    <sys:String x:Key="Home.Log.BlindScanContent">Blind scan content: {0}</sys:String>
+    <sys:String x:Key="Home.Log.CounterResetFailed">Production counter reset failed while scanning new work order: {0}</sys:String>
+    <sys:String x:Key="Home.Log.TrailingXMachineType">Trailing-X machine type detected. MachineType={0}</sys:String>
+    <sys:String x:Key="Startup.Device.LoadingConfiguration">Loading device configuration...</sys:String>
+    <sys:String x:Key="Startup.Program.LoadingSettings">Loading program settings...</sys:String>
+    <sys:String x:Key="Startup.Device.None">No devices are configured for connection.</sys:String>
+    <sys:String x:Key="Startup.Device.Connecting">Connecting device: {0}</sys:String>
+    <sys:String x:Key="Startup.Device.Connected">Device connected: {0}</sys:String>
+    <sys:String x:Key="Startup.Device.ConnectionAbnormal">Device connection abnormal: {0}, State={1}, IsConnected=False</sys:String>
+    <sys:String x:Key="Startup.Device.ConnectionFailed">Device connection failed: {0}, {1}</sys:String>
+    <sys:String x:Key="Startup.Device.CommunicationReady">Device communication is ready.</sys:String>
+    <sys:String x:Key="Startup.Mes.Connecting">Connecting MES...</sys:String>
+    <sys:String x:Key="Startup.Mes.Connected">MES connected.</sys:String>
+    <sys:String x:Key="Startup.Mes.ConnectionFailed">MES connection failed.</sys:String>
+    <sys:String x:Key="Startup.Mes.ConnectionAbnormal">MES connection abnormal.</sys:String>
 </ResourceDictionary>
 

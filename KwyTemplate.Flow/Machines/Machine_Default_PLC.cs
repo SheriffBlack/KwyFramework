@@ -370,16 +370,27 @@ public sealed class Machine_Default_PLC : MachineBase
 
     private sealed class DemoLsRsDataDeal : IStationDataDeal
     {
-        public Task CollectAsync(bool triggerResult, TestStationModel station, CancellationToken cancellationToken)
+        public Task<IStationDataCapture> CaptureAsync(CancellationToken cancellationToken = default)
         {
             double ls = Random.Shared.NextDouble() * 0.1 + 1.0;
             double rs = Random.Shared.NextDouble() * 0.02 + 0.1;
-            station.TestValues["Ls"] = ls;
-            station.TestValues["Rs"] = rs;
-            station.TestJudges["Ls"] = triggerResult && ls is >= 1.0 and <= 1.1;
-            station.TestJudges["Rs"] = triggerResult && rs is >= 0.1 and <= 0.12;
-            return Task.CompletedTask;
+            return Task.FromResult<IStationDataCapture>(new DemoLsRsCapture(ls, rs));
         }
+
+        public void ApplyCapture(IStationDataCapture capture, bool triggerResult, TestStationModel station)
+        {
+            if (capture is not DemoLsRsCapture values)
+            {
+                throw new ArgumentException("Measurement capture type does not match the data deal.", nameof(capture));
+            }
+
+            station.TestValues["Ls"] = values.Ls;
+            station.TestValues["Rs"] = values.Rs;
+            station.TestJudges["Ls"] = triggerResult && values.Ls is >= 1.0 and <= 1.1;
+            station.TestJudges["Rs"] = triggerResult && values.Rs is >= 0.1 and <= 0.12;
+        }
+
+        private sealed record DemoLsRsCapture(double Ls, double Rs) : IStationDataCapture;
     }
 }
 

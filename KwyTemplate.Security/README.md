@@ -33,7 +33,7 @@ currentUser.Level >= SecurityUserLevel.Engineer
 
 ## 会话超时
 
-`SecuritySessionOptions` 用于配置高级用户登录时长。`Operator` 不启动超时计时；`Engineer` 和 `Admin` 使用同一个高级用户会话时长，到期后会自动切换为操作员用户，系统回到 `Operator` 语义。
+`SecuritySessionOptions` 用于配置高级用户空闲超时时长。`Operator` 不启动超时计时；`Engineer` 和 `Admin` 在成功使用需要高级权限的功能后，从该时刻开始计时。连续未使用高级权限功能达到时长后，会自动切换为操作员用户，系统回到 `Operator` 语义。权限查询、界面刷新和按钮可用性检查不会重置计时。
 
 模板中可以在 `KwyTemplate.Shell.App.RegisterTypes` 配置：
 

@@ -20,6 +20,7 @@ internal sealed class InputDialogViewModel : BindableBase, IDialogAware
     private string confirmButtonText = "确定";
     private string cancelButtonText = "取消";
     private bool showCancelButton = true;
+    private bool showContentTitle = true;
     private string unit = string.Empty;
 
     public string Title
@@ -34,7 +35,19 @@ internal sealed class InputDialogViewModel : BindableBase, IDialogAware
         }
     }
 
-    public bool IsTitleVisible => !string.IsNullOrWhiteSpace(Title);
+    public bool IsTitleVisible => showContentTitle && !string.IsNullOrWhiteSpace(Title);
+
+    public bool ShowContentTitle
+    {
+        get => showContentTitle;
+        private set
+        {
+            if (SetProperty(ref showContentTitle, value))
+            {
+                RaisePropertyChanged(nameof(IsTitleVisible));
+            }
+        }
+    }
 
     public string Message
     {
@@ -137,11 +150,16 @@ internal sealed class InputDialogViewModel : BindableBase, IDialogAware
         options = parameters.GetValueOrDefault<InputDialogOptions>() ?? new InputDialogOptions();
 
         Title = options.Title ?? string.Empty;
+        ShowContentTitle = options.ShowContentTitle;
         Message = options.Message ?? string.Empty;
         Label = string.IsNullOrWhiteSpace(options.Label) ? "输入" : options.Label;
         InputText = options.DefaultValue ?? string.Empty;
-        ConfirmButtonText = string.IsNullOrWhiteSpace(options.ConfirmButtonText) ? "确定" : options.ConfirmButtonText;
-        CancelButtonText = string.IsNullOrWhiteSpace(options.CancelButtonText) ? "取消" : options.CancelButtonText;
+        ConfirmButtonText = string.IsNullOrWhiteSpace(options.ConfirmButtonText)
+            ? GetResourceText("Common.Confirm", "确定")
+            : options.ConfirmButtonText;
+        CancelButtonText = string.IsNullOrWhiteSpace(options.CancelButtonText)
+            ? GetResourceText("Common.Cancel", "取消")
+            : options.CancelButtonText;
         ShowCancelButton = options.ShowCancelButton;
         Unit = options.Unit ?? string.Empty;
         ValidationMessage = string.Empty;
@@ -189,6 +207,9 @@ internal sealed class InputDialogViewModel : BindableBase, IDialogAware
     private static bool TryParseDecimal(string text, out decimal value)
         => decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out value)
         || decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out value);
+
+    private static string GetResourceText(string key, string fallback)
+        => System.Windows.Application.Current?.TryFindResource(key) as string ?? fallback;
 
     private void Close(ButtonResult result)
     {

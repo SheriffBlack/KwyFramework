@@ -1,5 +1,6 @@
 using Kwy.MVVM.Core;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace Kwy.MVVM.WPF.Permissions;
 
@@ -9,13 +10,6 @@ namespace Kwy.MVVM.WPF.Permissions;
 public static class Permission
 {
     public static IPermissionService? DefaultPermissionService { get; set; }
-
-    public static readonly DependencyProperty CodeProperty =
-        DependencyProperty.RegisterAttached(
-            "Code",
-            typeof(string),
-            typeof(Permission),
-            new PropertyMetadata(null, OnPermissionChanged));
 
     public static readonly DependencyProperty PolicyProperty =
         DependencyProperty.RegisterAttached(
@@ -31,13 +25,6 @@ public static class Permission
             typeof(Permission),
             new PropertyMetadata(PermissionCheckMode.Disable, OnPermissionChanged));
 
-    public static readonly DependencyProperty ServiceProperty =
-        DependencyProperty.RegisterAttached(
-            "Service",
-            typeof(IPermissionService),
-            typeof(Permission),
-            new PropertyMetadata(null, OnPermissionChanged));
-
     private static readonly DependencyProperty OriginalIsEnabledProperty =
         DependencyProperty.RegisterAttached(
             "OriginalIsEnabled",
@@ -51,6 +38,20 @@ public static class Permission
             typeof(Visibility),
             typeof(Permission),
             new PropertyMetadata(Visibility.Visible));
+
+    private static readonly DependencyProperty OriginalToolTipProperty =
+        DependencyProperty.RegisterAttached(
+            "OriginalToolTip",
+            typeof(object),
+            typeof(Permission),
+            new PropertyMetadata(null));
+
+    private static readonly DependencyProperty OriginalShowToolTipOnDisabledProperty =
+        DependencyProperty.RegisterAttached(
+            "OriginalShowToolTipOnDisabled",
+            typeof(bool),
+            typeof(Permission),
+            new PropertyMetadata(false));
 
     private static readonly DependencyProperty SubscribedServiceProperty =
         DependencyProperty.RegisterAttached(
@@ -66,10 +67,6 @@ public static class Permission
             typeof(Permission),
             new PropertyMetadata(null));
 
-    public static string? GetCode(DependencyObject obj) => (string?)obj.GetValue(CodeProperty);
-
-    public static void SetCode(DependencyObject obj, string? value) => obj.SetValue(CodeProperty, value);
-
     public static string? GetPolicy(DependencyObject obj) => (string?)obj.GetValue(PolicyProperty);
 
     public static void SetPolicy(DependencyObject obj, string? value) => obj.SetValue(PolicyProperty, value);
@@ -77,10 +74,6 @@ public static class Permission
     public static PermissionCheckMode GetMode(DependencyObject obj) => (PermissionCheckMode)obj.GetValue(ModeProperty);
 
     public static void SetMode(DependencyObject obj, PermissionCheckMode value) => obj.SetValue(ModeProperty, value);
-
-    public static IPermissionService? GetService(DependencyObject obj) => (IPermissionService?)obj.GetValue(ServiceProperty);
-
-    public static void SetService(DependencyObject obj, IPermissionService? value) => obj.SetValue(ServiceProperty, value);
 
     private static void OnPermissionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -93,8 +86,7 @@ public static class Permission
         if (string.IsNullOrEmpty(GetPermissionKey(element)))
         {
             UnregisterPermissionChanged(element);
-            if ((e.Property == CodeProperty || e.Property == PolicyProperty)
-                && !string.IsNullOrEmpty(e.OldValue as string))
+            if (e.Property == PolicyProperty && !string.IsNullOrEmpty(e.OldValue as string))
             {
                 RestoreOriginalState(element);
             }
@@ -102,11 +94,12 @@ public static class Permission
             return;
         }
 
-        if ((e.Property == CodeProperty || e.Property == PolicyProperty)
-            && string.IsNullOrEmpty(e.OldValue as string))
+        if (e.Property == PolicyProperty && string.IsNullOrEmpty(e.OldValue as string))
         {
             element.SetValue(OriginalIsEnabledProperty, element.IsEnabled);
             element.SetValue(OriginalVisibilityProperty, element.Visibility);
+            element.SetValue(OriginalToolTipProperty, element.ToolTip);
+            element.SetValue(OriginalShowToolTipOnDisabledProperty, ToolTipService.GetShowOnDisabled(element));
         }
 
         element.Loaded -= OnElementLoaded;
@@ -207,6 +200,8 @@ public static class Permission
             if (mode is PermissionCheckMode.Disable or PermissionCheckMode.Both)
             {
                 element.SetCurrentValue(UIElement.IsEnabledProperty, false);
+                element.SetCurrentValue(FrameworkElement.ToolTipProperty, permissionService.GetNoPermissionMessage(permissionKey));
+                ToolTipService.SetShowOnDisabled(element, true);
             }
 
             if (mode is PermissionCheckMode.Hide or PermissionCheckMode.Both)
@@ -221,14 +216,16 @@ public static class Permission
     }
 
     private static string? GetPermissionKey(DependencyObject obj)
-        => GetPolicy(obj) ?? GetCode(obj);
+        => GetPolicy(obj);
 
     private static IPermissionService? ResolvePermissionService(DependencyObject obj)
-        => GetService(obj) ?? DefaultPermissionService;
+        => DefaultPermissionService;
 
     private static void RestoreOriginalState(FrameworkElement element)
     {
         element.SetCurrentValue(UIElement.IsEnabledProperty, (bool)element.GetValue(OriginalIsEnabledProperty));
         element.SetCurrentValue(UIElement.VisibilityProperty, (Visibility)element.GetValue(OriginalVisibilityProperty));
+        element.SetCurrentValue(FrameworkElement.ToolTipProperty, element.GetValue(OriginalToolTipProperty));
+        ToolTipService.SetShowOnDisabled(element, (bool)element.GetValue(OriginalShowToolTipOnDisabledProperty));
     }
 }

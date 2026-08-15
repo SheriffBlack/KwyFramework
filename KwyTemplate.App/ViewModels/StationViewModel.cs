@@ -114,7 +114,7 @@ public class StationViewModel : BindableBase, INavigationAware
         }
         catch (Exception ex)
         {
-            await notificationService.WarningAsync(TF("Station.Message.RefreshEnabledFailed", "Refresh station enabled state failed: {0}", ex.Message), T("Station.Title.Settings", "Station Settings")).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.TF("Station.Message.RefreshEnabledFailed", "Refresh station enabled state failed: {0}", ex.Message), localizationService.T("Station.Title.Settings", "Station Settings")).ConfigureAwait(true);
         }
         finally
         {
@@ -132,7 +132,7 @@ public class StationViewModel : BindableBase, INavigationAware
         if (!CanEditStationEnabled)
         {
             item.SyncFromStation();
-            await notificationService.WarningAsync(T("Station.Message.MesOnlineCannotToggle", "MES is online. Disconnect MES before changing station enabled state."), T("Station.Title.Settings", "Station Settings")).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.T("Station.Message.MesOnlineCannotToggle", "MES is online. Disconnect MES before changing station enabled state."), localizationService.T("Station.Title.Settings", "Station Settings")).ConfigureAwait(true);
             return;
         }
 
@@ -145,19 +145,11 @@ public class StationViewModel : BindableBase, INavigationAware
         {
             item.IsEnabled = !requestedState;
             item.Station.IsEnabled = item.IsEnabled;
-            await notificationService.ErrorAsync(TF("Station.Message.SaveEnabledFailed", "Save station enabled state failed: {0}", ex.Message), T("Station.Title.Settings", "Station Settings"), ex).ConfigureAwait(true);
+            await notificationService.ErrorAsync(localizationService.TF("Station.Message.SaveEnabledFailed", "Save station enabled state failed: {0}", ex.Message), localizationService.T("Station.Title.Settings", "Station Settings"), ex).ConfigureAwait(true);
         }
     }
 
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key, fallback), args);
     private static bool CanTriggerStationInstruments(StationTestItemModel? item)
         => item?.CanTrigger == true;
 
@@ -186,7 +178,7 @@ public class StationViewModel : BindableBase, INavigationAware
         }
         catch (Exception ex)
         {
-            await notificationService.ErrorAsync(TF("Station.Message.SoftTriggerFailed", "Station {0} soft trigger failed: {1}", item.DisplayName, ex.Message), T("Station.Title.SoftTrigger", "Station Soft Trigger"), ex).ConfigureAwait(true);
+            await notificationService.ErrorAsync(localizationService.TF("Station.Message.SoftTriggerFailed", "Station {0} soft trigger failed: {1}", item.DisplayName, ex.Message), localizationService.T("Station.Title.SoftTrigger", "Station Soft Trigger"), ex).ConfigureAwait(true);
         }
         finally
         {

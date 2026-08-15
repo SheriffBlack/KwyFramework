@@ -159,7 +159,7 @@
     <sys:String x:Key="Main.Title.PermissionDenied">权限不足</sys:String>
     <sys:String x:Key="Main.Message.PauseFailed">
         机台暂停失败：
-        {0}
+        {0}Station.Machine4HAHH
     </sys:String>
     <sys:String x:Key="Main.Message.EnterCompensateNeedPause">机台运行中，进入点检界面需要暂停，是否暂停？</sys:String>
     <sys:String x:Key="System.Status.NoProgramSettingsToSave">当前没有可保存的程序设定。</sys:String>
@@ -241,7 +241,17 @@
     <sys:String x:Key="Home.Title.MesTrackIn">MES进站</sys:String>
     <sys:String x:Key="Home.Message.CoverOrPaperMismatch">上盖或台纸信息错误，与MES不同！</sys:String>
     <sys:String x:Key="Home.Title.BlindScan">盲扫</sys:String>
+    <sys:String x:Key="Home.Message.BlindScanReceived">盲扫内容：{0}</sys:String>
+    <sys:String x:Key="Home.Message.BlindScanRequiresStopped">机台非停止状态，禁止盲扫修改生产信息。</sys:String>
+    <sys:String x:Key="Shell.Message.ExitRequiresStopped">程序非停止状态，禁止关闭</sys:String>
+    <sys:String x:Key="Shell.Title.ExitBlocked">关闭程序</sys:String>
+    <sys:String x:Key="Home.Message.BlindScanUnsupportedLength">盲扫内容：{0}，不支持长度：{1}</sys:String>
     <sys:String x:Key="Home.Message.WorkOrderImportSuccess">工单{0}导入成功！</sys:String>
+    <sys:String x:Key="Home.Title.LsLowerLimit">Ls下限</sys:String>
+    <sys:String x:Key="Home.Field.LsLowerLimit">Ls下限</sys:String>
+    <sys:String x:Key="Home.Message.LsLowerLimitInput">该工单以 X 结尾，请重新输入电感 Ls 下限。</sys:String>
+    <sys:String x:Key="Home.Message.LsLowerLimitRequired">该工单需要重新输入 Ls 下限后才能启动。</sys:String>
+    <sys:String x:Key="Home.Message.LsSetupMissing">该工单未提供 Ls 配置，无法重新设置 Ls 下限。</sys:String>
     <sys:String x:Key="Home.Message.SaveDataConfirm">是否保存数据？</sys:String>
     <sys:String x:Key="Home.Message.TrackOutConfirm">是否出站？</sys:String>
     <sys:String x:Key="Home.Title.MaterialError">物料错误</sys:String>
@@ -405,4 +415,29 @@
     <sys:String x:Key="Security.Role.Admin">管理员</sys:String>
     <sys:String x:Key="Security.Login.SuccessTitle">登录成功</sys:String>
     <sys:String x:Key="Security.Login.CurrentUserMessage">当前用户：{0}</sys:String>
+    <sys:String x:Key="Station.Common.8">工位八</sys:String>
+    <sys:String x:Key="Station.Device.AirSpray">喷墨</sys:String>
+    <sys:String x:Key="Station.Machine4HAHH.8.Name">工位八 喷墨</sys:String>
+    <sys:String x:Key="Home.Message.CheckRequired">请先完成点检，再启动生产。</sys:String>
+    <sys:String x:Key="Home.Title.CheckRequired">点检提醒</sys:String>
+    <sys:String x:Key="Compensate.Title.CheckReminder">点检提醒</sys:String>
+    <sys:String x:Key="Compensate.Message.CheckNotCompleted">点检未完成，请尽快完成点检。</sys:String>
+    <sys:String x:Key="Compensate.Message.ScheduleCheckRequired">未在规定时间{0}~{1}内点检，请完成！</sys:String>
+    <sys:String x:Key="Home.Field.SpecialMachineOperation">特殊机种作业</sys:String>
+    <sys:String x:Key="Home.Log.RuntimeDataFileMissing">未找到生产运行数据文件：{0}</sys:String>
+    <sys:String x:Key="Home.Log.BlindScanContent">盲扫内容：{0}</sys:String>
+    <sys:String x:Key="Home.Log.CounterResetFailed">扫描新工单时清零生产计数失败：{0}</sys:String>
+    <sys:String x:Key="Home.Log.TrailingXMachineType">检测到以 X 结尾的机型：MachineType={0}</sys:String>
+    <sys:String x:Key="Startup.Device.LoadingConfiguration">正在加载设备配置...</sys:String>
+    <sys:String x:Key="Startup.Program.LoadingSettings">程序正在加载设定...</sys:String>
+    <sys:String x:Key="Startup.Device.None">未配置需要连接的设备。</sys:String>
+    <sys:String x:Key="Startup.Device.Connecting">正在连接设备：{0}</sys:String>
+    <sys:String x:Key="Startup.Device.Connected">设备连接完成：{0}</sys:String>
+    <sys:String x:Key="Startup.Device.ConnectionAbnormal">设备连接异常：{0}，State={1}，IsConnected=False</sys:String>
+    <sys:String x:Key="Startup.Device.ConnectionFailed">设备连接失败：{0}，{1}</sys:String>
+    <sys:String x:Key="Startup.Device.CommunicationReady">设备通讯链路建立完成。</sys:String>
+    <sys:String x:Key="Startup.Mes.Connecting">正在连接 MES...</sys:String>
+    <sys:String x:Key="Startup.Mes.Connected">MES 连接完成。</sys:String>
+    <sys:String x:Key="Startup.Mes.ConnectionFailed">MES 连接失败。</sys:String>
+    <sys:String x:Key="Startup.Mes.ConnectionAbnormal">MES 连接异常。</sys:String>
 </ResourceDictionary>

@@ -10,6 +10,9 @@ public sealed class InputDialogOptions
     /// </summary>
     public string? Title { get; set; }
 
+    /// <summary>Whether to repeat the title inside the dialog content area.</summary>
+    public bool ShowContentTitle { get; set; } = true;
+
     /// <summary>
     /// 提示文本。
     /// </summary>
@@ -48,12 +51,12 @@ public sealed class InputDialogOptions
     /// <summary>
     /// 确认按钮文本。
     /// </summary>
-    public string ConfirmButtonText { get; set; } = "确定";
+    public string? ConfirmButtonText { get; set; }
 
     /// <summary>
     /// 取消按钮文本。
     /// </summary>
-    public string CancelButtonText { get; set; } = "取消";
+    public string? CancelButtonText { get; set; }
 
     /// <summary>
     /// 是否显示取消按钮。

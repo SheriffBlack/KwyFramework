@@ -11,5 +11,9 @@ public interface ICurrentUserService
     void SignIn(CurrentUser user);
 
     void SignOut();
-}
 
+    /// <summary>
+    /// Restarts the elevated-user inactivity timeout after an authorized elevated operation.
+    /// </summary>
+    void RefreshElevatedSession();
+}

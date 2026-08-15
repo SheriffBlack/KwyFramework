@@ -112,6 +112,11 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
     public event EventHandler? RunningStateChanged;
 
+    /// <summary>
+    /// 外部人机通过参数对比请求启动时通知应用层。仅用于提示等非阻断业务。
+    /// </summary>
+    public event Func<CancellationToken, Task>? ExternalStartRequested;
+
     public event EventHandler? TableChanged;
 
     public event EventHandler<StationResultPublishedEventArgs>? StationResultPublished;
@@ -176,9 +181,6 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
     public Task StopAsync()
         => StopProductionCoreAsync(OnTestStoppedAsync);
-
-    public Task PauseAsync()
-        => PauseProductionCoreAsync();
 
     public async Task StartRuntimeAsync(CancellationToken cancellationToken = default)
     {
@@ -383,18 +385,6 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         ResetIoSnapshot();
     }
 
-    private async Task PauseProductionCoreAsync()
-    {
-        if (!isRunning)
-        {
-            return;
-        }
-
-        await OnTestPausedAsync(CancellationToken.None).ConfigureAwait(false);
-        productionState = MachineProductionState.Paused;
-        RaiseRunningStateChanged();
-    }
-
     private async Task StopProductionCoreAsync(Func<CancellationToken, Task> stateChanged)
     {
         if (!isRunning)
@@ -414,20 +404,25 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         }
     }
 
-    /// <summary>
-    /// 外部人机从暂停态恢复生产时调用。
-    /// 这里只切换 PC 侧生产状态，不重复执行 OnTestStartedAsync，避免重新进站或重置生产数据。
-    /// </summary>
-    protected bool ResumeProductionFromExternalSignal()
+    protected async Task NotifyExternalStartAsync(CancellationToken cancellationToken = default)
     {
-        if (!isRunning || productionState != MachineProductionState.Paused)
+        Func<CancellationToken, Task>? handlers = ExternalStartRequested;
+        if (handlers == null)
         {
-            return false;
+            return;
         }
 
-        productionState = MachineProductionState.Running;
-        RaiseRunningStateChanged();
-        return true;
+        foreach (Func<CancellationToken, Task> handler in handlers.GetInvocationList().Cast<Func<CancellationToken, Task>>())
+        {
+            try
+            {
+                await handler(cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // 外部启动提示属于附加体验，不应影响既有参数重写和启动握手。
+            }
+        }
     }
     private void RaiseRunningStateChanged()
         => RunningStateChanged?.Invoke(this, EventArgs.Empty);
@@ -616,6 +611,12 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
         => Task.CompletedTask;
 
     /// <summary>
+    /// 读取 PLC 点检完成信号。返回 null 表示当前机型未配置该点位或 PLC 不可用，调用方不应将其误判为未完成。
+    /// </summary>
+    public virtual Task<bool?> ReadCheckCompletedAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<bool?>(null);
+
+    /// <summary>
     /// 设置 PLC 标准件过期信号。默认机型不需要该信号。
     /// </summary>
     public virtual Task SetStandardSampleExpiredAsync(bool isExpired, CancellationToken cancellationToken = default)
@@ -624,8 +625,6 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
     /// <summary>
     /// 自动点检时间窗口超时且未点检成功时触发。默认机型只弹窗提醒，不执行硬件动作。
     /// </summary>
-    public virtual Task OnCompensateScheduleExpiredAsync(DateTimeOffset start, DateTimeOffset end, CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
     public virtual Task<MachineExamineResult> ExecuteExamineAsync(string flowCode, IProgress<MachineExamineMeasurement>? progress = null, CancellationToken cancellationToken = default)
         => Task.FromResult(MachineExamineResult.Failed($"Machine does not support examine flow: {flowCode}."));
 
@@ -1251,9 +1250,6 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
         => Task.CompletedTask;
 
     protected virtual Task OnTestStoppedAsync(CancellationToken cancellationToken)
-        => Task.CompletedTask;
-
-    protected virtual Task OnTestPausedAsync(CancellationToken cancellationToken)
         => Task.CompletedTask;
 
     protected static string CreateCellKey(int stationId, string testName)

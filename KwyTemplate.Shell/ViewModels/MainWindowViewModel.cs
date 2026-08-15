@@ -176,8 +176,8 @@ public class MainWindowViewModel : BindableBase
         if (user != null)
         {
             await dialogMessageService.ShowInfoAsync(
-                TF("Security.Login.CurrentUserMessage", "当前用户：{0}", GetCurrentUserDisplayName(user)),
-                T("Security.Login.SuccessTitle", "登录成功"));
+                localizationService.TF("Security.Login.CurrentUserMessage", "当前用户：{0}", GetCurrentUserDisplayName(user)),
+                localizationService.T("Security.Login.SuccessTitle", "登录成功"));
         }
     }
 
@@ -308,9 +308,9 @@ public class MainWindowViewModel : BindableBase
     private string GetRoleDisplayName(SecurityUserLevel level)
         => level switch
         {
-            SecurityUserLevel.Operator => T("Security.Role.Operator", "操作员"),
-            SecurityUserLevel.Engineer => T("Security.Role.Engineer", "工程师"),
-            SecurityUserLevel.Admin => T("Security.Role.Admin", "管理员"),
+            SecurityUserLevel.Operator => localizationService.T("Security.Role.Operator", "操作员"),
+            SecurityUserLevel.Engineer => localizationService.T("Security.Role.Engineer", "工程师"),
+            SecurityUserLevel.Admin => localizationService.T("Security.Role.Admin", "管理员"),
             _ => level.ToString()
         };
 
@@ -319,14 +319,6 @@ public class MainWindowViewModel : BindableBase
         RunOnUi(() => UpdateCurrentUserDisplayName());
     }
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(System.Globalization.CultureInfo.CurrentCulture, T(key, fallback), args);
 
     private void InitializeSelectedLanguage()
     {

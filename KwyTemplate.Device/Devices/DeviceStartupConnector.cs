@@ -1,6 +1,7 @@
 using Kwy.Device.Abstractions;
 using Kwy.Device.Core;
 using KwyTemplate.Contracts.Services;
+using KwyTemplate.Contracts.Localization;
 
 namespace KwyTemplate.Device.Devices;
 
@@ -8,13 +9,15 @@ public sealed class DeviceStartupConnector : IDeviceStartupConnector
 {
     private readonly IDeviceRegistry registry;
     private readonly StartupProgressService startupProgress;
+    private readonly ILocalizationService localizationService;
     private readonly SemaphoreSlim connectGate = new(1, 1);
     private bool disposed;
 
-    public DeviceStartupConnector(IDeviceRegistry registry, StartupProgressService startupProgress)
+    public DeviceStartupConnector(IDeviceRegistry registry, StartupProgressService startupProgress, ILocalizationService localizationService)
     {
         this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
         this.startupProgress = startupProgress ?? throw new ArgumentNullException(nameof(startupProgress));
+        this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
     }
 
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
@@ -26,7 +29,7 @@ public sealed class DeviceStartupConnector : IDeviceStartupConnector
             IDevice[] devices = registry.Devices.ToArray();
             if (devices.Length == 0)
             {
-                startupProgress.Report("未配置需要连接的设备", 75);
+                startupProgress.Report(localizationService.T("Startup.Device.None", "No devices are configured for connection."), 75);
                 return;
             }
 
@@ -37,7 +40,7 @@ public sealed class DeviceStartupConnector : IDeviceStartupConnector
                 IDevice device = devices[index];
                 double progress = 15 + index * 60d / devices.Length;
                 double completedProgress = 15 + (index + 1) * 60d / devices.Length;
-                startupProgress.Report($"正在连接设备：{device.DeviceName}", progress);
+                startupProgress.Report(localizationService.TF("Startup.Device.Connecting", "Connecting device: {0}", device.DeviceName), progress);
 
                 try
                 {
@@ -48,20 +51,20 @@ public sealed class DeviceStartupConnector : IDeviceStartupConnector
 
                     if (device.IsConnected)
                     {
-                        startupProgress.Report($"设备连接完成：{device.DeviceName}", completedProgress);
+                        startupProgress.Report(localizationService.TF("Startup.Device.Connected", "Device connected: {0}", device.DeviceName), completedProgress);
                     }
                     else
                     {
-                        startupProgress.Report($"设备连接异常：{device.DeviceName}，State={device.State}，IsConnected=False", completedProgress);
+                        startupProgress.Report(localizationService.TF("Startup.Device.ConnectionAbnormal", "Device connection abnormal: {0}, State={1}, IsConnected=False", device.DeviceName, device.State), completedProgress);
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    startupProgress.Report($"设备连接失败：{device.DeviceName}，{ex.Message}", completedProgress);
+                    startupProgress.Report(localizationService.TF("Startup.Device.ConnectionFailed", "Device connection failed: {0}, {1}", device.DeviceName, ex.Message), completedProgress);
                 }
             }
 
-            startupProgress.Report("设备通讯链路建立完成", 75);
+            startupProgress.Report(localizationService.T("Startup.Device.CommunicationReady", "Device communication is ready."), 75);
         }
         finally
         {
@@ -100,4 +103,5 @@ public sealed class DeviceStartupConnector : IDeviceStartupConnector
             throw new ObjectDisposedException(nameof(DeviceStartupConnector));
         }
     }
+
 }

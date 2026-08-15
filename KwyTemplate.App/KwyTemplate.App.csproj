@@ -13,6 +13,7 @@
     <None Remove="Resources\InfoHsy.png" />
     <None Remove="Resources\LogoHsy.png" />
     <None Remove="Resources\LogoJdl.png" />
+    <None Remove="Resources\LogoTest.png" />
   </ItemGroup>
 
 
@@ -36,6 +37,7 @@
     <Resource Include="Resources\InfoHsy.png" />
     <Resource Include="Resources\LogoHsy.png" />
     <Resource Include="Resources\LogoJdl.png" />
+    <Resource Include="Resources\LogoTest.png" />
   </ItemGroup>
 
 </Project>

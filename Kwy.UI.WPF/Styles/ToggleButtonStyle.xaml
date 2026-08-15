@@ -94,6 +94,7 @@
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="PART_SwitchTrack" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
                             <Setter TargetName="PART_SwitchThumb" Property="Opacity" Value="0.65" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -156,6 +157,7 @@
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="PART_SwitchTrack" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
                             <Setter TargetName="PART_SwitchThumb" Property="Opacity" Value="0.65" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -196,7 +198,8 @@
                             <Setter TargetName="PART_CheckMark" Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="PART_ToggleButtonBorder" Property="Opacity" Value="0.7" />
+                            <Setter TargetName="PART_ToggleButtonBorder" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

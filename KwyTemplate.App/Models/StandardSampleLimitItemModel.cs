@@ -27,7 +27,8 @@ public sealed class StandardSampleLimitItemModel : BindableBase
 
     public string DisplayName { get; }
 
-    public string LimitTitle => TF("Standard.Field.LimitRange", "{0}下限~上限", DisplayName);
+    public string LimitTitle => localizationService?.TF("Standard.Field.LimitRange", "{0}下限~上限", DisplayName)
+        ?? string.Format(System.Globalization.CultureInfo.CurrentCulture, "{0}下限~上限", DisplayName);
 
     public string LowerLimit
     {
@@ -99,17 +100,5 @@ public sealed class StandardSampleLimitItemModel : BindableBase
         FrequencyUnit = string.Empty;
     }
 
-    private string T(string key, string fallback)
-    {
-        if (localizationService == null)
-        {
-            return fallback;
-        }
 
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(System.Globalization.CultureInfo.CurrentCulture, T(key, fallback), args);
 }

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.Instrument;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
@@ -207,18 +208,10 @@ public class CorrectionViewModel : BindableBase
         => !IsCorrectionBusy && FindCorrectionInstrument() != null;
 
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key, fallback), args);
     private async Task ExecuteOpenCorrectionAsync()
     {
         await ExecuteCorrectionActionAsync(
-            T("Correction.Action.Open", "开路"),
+            localizationService.T("Correction.Action.Open", "开路"),
             async instrument =>
             {
                 await instrument.ExecuteOpenCorrectionAsync(CreateCorrectionConditionRequest()).ConfigureAwait(false);
@@ -230,7 +223,7 @@ public class CorrectionViewModel : BindableBase
     private async Task ExecuteShortCorrectionAsync()
     {
         await ExecuteCorrectionActionAsync(
-            T("Correction.Action.Short", "短路"),
+            localizationService.T("Correction.Action.Short", "短路"),
             async instrument =>
             {
                 await instrument.ExecuteShortCorrectionAsync(CreateCorrectionConditionRequest()).ConfigureAwait(false);
@@ -242,15 +235,28 @@ public class CorrectionViewModel : BindableBase
     private async Task ExecuteLoadCorrectionAsync()
     {
         await ExecuteCorrectionActionAsync(
-            T("Correction.Action.Correct", "校正"),
+            localizationService.T("Correction.Action.Correct", "校正"),
             async instrument =>
             {
-                InstrumentLoadCorrectionRequest request = CreateLoadCorrectionRequest();
-                await instrument.ExecuteLoadCorrectionAsync(request).ConfigureAwait(false);
-                await Task.Delay(LoadCorrectionExecuteDelay).ConfigureAwait(false);
-                await instrument.EnableLoadCorrectionAsync().ConfigureAwait(false);
-                await Task.Delay(LoadCorrectionEnableDelay).ConfigureAwait(false);
-                return await ReadCorrectionDataWithRetryAsync(instrument.ReadLoadCorrectionAsync).ConfigureAwait(false);
+                try
+                {
+                    InstrumentLoadCorrectionRequest request = CreateLoadCorrectionRequest();
+                    await instrument.ExecuteLoadCorrectionAsync(request).ConfigureAwait(false);
+                    await Task.Delay(LoadCorrectionExecuteDelay).ConfigureAwait(false);
+                    await instrument.EnableLoadCorrectionAsync().ConfigureAwait(false);
+                    await Task.Delay(LoadCorrectionEnableDelay).ConfigureAwait(false);
+                    return await ReadCorrectionDataWithRetryAsync(instrument.ReadLoadCorrectionAsync).ConfigureAwait(false);
+                }
+                finally
+                {
+                    // Hioki load correction loads a panel first. Re-apply the current production
+                    // configuration even after a correction failure so Panel 1 cannot leave the
+                    // instrument with stale/zero Ls and Rs comparator limits.
+                    if (instrument is IConfigurableDevice configurableDevice)
+                    {
+                        await configurableDevice.ApplyConfigAsync().ConfigureAwait(false);
+                    }
+                }
             }).ConfigureAwait(false);
     }
 
@@ -261,7 +267,7 @@ public class CorrectionViewModel : BindableBase
         IInstrumentCorrection? instrument = FindCorrectionInstrument();
         if (instrument == null)
         {
-            await notificationService.WarningAsync(T("Correction.Message.NoInstrument", "未找到支持校正的仪表。"), T("Correction.Header.Correction", "校正")).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.T("Correction.Message.NoInstrument", "未找到支持校正的仪表。"), localizationService.T("Correction.Header.Correction", "校正")).ConfigureAwait(true);
             return;
         }
 
@@ -270,11 +276,11 @@ public class CorrectionViewModel : BindableBase
         {
             InstrumentCorrectionData data = await action(instrument).ConfigureAwait(true);
             ApplyCorrectionData(data);
-            await notificationService.InfoAsync(TF("Correction.Message.ActionCompleted", "{0}已完成。", actionName), T("Correction.Header.Correction", "校正")).ConfigureAwait(true);
+            await notificationService.InfoAsync(localizationService.TF("Correction.Message.ActionCompleted", "{0}已完成。", actionName), localizationService.T("Correction.Header.Correction", "校正")).ConfigureAwait(true);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            await notificationService.ErrorAsync(TF("Correction.Message.ActionFailed", "{0}失败：{1}", actionName, ex.Message), T("Correction.Header.Correction", "校正")).ConfigureAwait(true);
+            await notificationService.ErrorAsync(localizationService.TF("Correction.Message.ActionFailed", "{0}失败：{1}", actionName, ex.Message), localizationService.T("Correction.Header.Correction", "校正")).ConfigureAwait(true);
         }
         finally
         {
@@ -323,16 +329,16 @@ public class CorrectionViewModel : BindableBase
     {
         if (string.IsNullOrWhiteSpace(LsStandardValue))
         {
-            throw new InvalidOperationException(T("Correction.Message.MissingLsStandardValue", "标准件中没有 LS 中心值，无法执行校正。"));
+            throw new InvalidOperationException(localizationService.T("Correction.Message.MissingLsStandardValue", "标准件中没有 LS 中心值，无法执行校正。"));
         }
 
         if (string.IsNullOrWhiteSpace(RsStandardValue))
         {
-            throw new InvalidOperationException(T("Correction.Message.MissingRsStandardValue", "标准件中没有 RS 中心值，无法执行校正。"));
+            throw new InvalidOperationException(localizationService.T("Correction.Message.MissingRsStandardValue", "标准件中没有 RS 中心值，无法执行校正。"));
         }
 
-        double lsValue = ConvertInductanceToHenry(ParseRequiredDouble(LsStandardValue, "LS", T("Correction.Field.StandardValue", "中心值")), LsStandardUnit);
-        double rsValue = ConvertResistanceToOhm(ParseRequiredDouble(RsStandardValue, "RS", T("Correction.Field.StandardValue", "中心值")), RsStandardUnit);
+        double lsValue = ConvertInductanceToHenry(ParseRequiredDouble(LsStandardValue, "LS", localizationService.T("Correction.Field.StandardValue", "中心值")), LsStandardUnit);
+        double rsValue = ConvertResistanceToOhm(ParseRequiredDouble(RsStandardValue, "RS", localizationService.T("Correction.Field.StandardValue", "中心值")), RsStandardUnit);
 
         string frequencyUnit = FrequencyUnit;
         string voltageUnit = VoltageUnit;
@@ -366,7 +372,7 @@ public class CorrectionViewModel : BindableBase
             return result;
         }
 
-        throw new InvalidOperationException(TF("Correction.Message.InvalidNumber", "{0}{1}不是有效数字：{2}", parameterName, valueName, value ?? string.Empty));
+        throw new InvalidOperationException(localizationService.TF("Correction.Message.InvalidNumber", "{0}{1}不是有效数字：{2}", parameterName, valueName, value ?? string.Empty));
     }
 
     private static double? TryParseNullableDouble(string? value)

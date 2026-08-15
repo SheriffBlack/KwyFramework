@@ -82,20 +82,20 @@ public sealed class StandardViewModel : BindableBase
 
         if (string.IsNullOrWhiteSpace(productionContext.WorkOrderNo))
         {
-            await notificationService.WarningAsync(T("Standard.Message.WorkOrderRequired", "请先输入或扫描工单。"), T("Standard.Title.WorkOrderEmpty", "工单为空")).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.T("Standard.Message.WorkOrderRequired", "请先输入或扫描工单。"), localizationService.T("Standard.Title.WorkOrderEmpty", "工单为空")).ConfigureAwait(true);
             return;
         }
 
         if (string.IsNullOrWhiteSpace(productionContext.EquipmentNo))
         {
-            await notificationService.WarningAsync(T("Standard.Message.EquipmentRequired", "请先输入或扫描机台号。"), T("Standard.Title.EquipmentEmpty", "机台号为空")).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.T("Standard.Message.EquipmentRequired", "请先输入或扫描机台号。"), localizationService.T("Standard.Title.EquipmentEmpty", "机台号为空")).ConfigureAwait(true);
             return;
         }
 
         string sampleCode = panel.SampleCode.Trim();
         if (string.IsNullOrWhiteSpace(sampleCode))
         {
-            await notificationService.WarningAsync(TF("Standard.Message.SampleCodeRequired", "请输入{0}编号。", GetPanelTitle(panel)), TF("Standard.Title.SampleCodeEmpty", "{0}编号为空", GetPanelTitle(panel))).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.TF("Standard.Message.SampleCodeRequired", "请输入{0}编号。", GetPanelTitle(panel)), localizationService.TF("Standard.Title.SampleCodeEmpty", "{0}编号为空", GetPanelTitle(panel))).ConfigureAwait(true);
             return;
         }
 
@@ -110,14 +110,14 @@ public sealed class StandardViewModel : BindableBase
             if (!IsMesAccepted(result) || result.Data == null)
             {
                 panel.StatusMessage = result.Message;
-                await notificationService.ErrorAsync(MesFailureMessageFormatter.Format(TF("Standard.Action.QueryWithTitle", "{0}查询", GetPanelTitle(panel)), result), GetPanelTitle(panel)).ConfigureAwait(true);
+                await notificationService.ErrorAsync(MesFailureMessageFormatter.Format(localizationService.TF("Standard.Action.QueryWithTitle", "{0}查询", GetPanelTitle(panel)), result), GetPanelTitle(panel)).ConfigureAwait(true);
                 return;
             }
 
             ApplySampleSetup(panel, result.Data);
             await ResetStandardSampleExpiredSignalIfNeededAsync(panel).ConfigureAwait(true);
             await WarnIfSampleExpiresSoonAsync(panel).ConfigureAwait(true);
-            panel.StatusMessage = T("Standard.Message.QuerySuccess", "查询成功");
+            panel.StatusMessage = localizationService.T("Standard.Message.QuerySuccess", "查询成功");
         }
         catch (OperationCanceledException)
         {
@@ -125,7 +125,7 @@ public sealed class StandardViewModel : BindableBase
         catch (Exception ex)
         {
             panel.StatusMessage = ex.Message;
-            await notificationService.ErrorAsync(TF("Standard.Message.QueryException", "{0}查询异常：\n{1}", GetPanelTitle(panel), ex.Message), GetPanelTitle(panel), ex).ConfigureAwait(true);
+            await notificationService.ErrorAsync(localizationService.TF("Standard.Message.QueryException", "{0}查询异常：\n{1}", GetPanelTitle(panel), ex.Message), GetPanelTitle(panel), ex).ConfigureAwait(true);
         }
         finally
         {
@@ -149,17 +149,8 @@ public sealed class StandardViewModel : BindableBase
     }
     private string GetPanelTitle(StandardSamplePanelModel panel)
         => ReferenceEquals(panel, StandardSample)
-            ? T("Standard.Header.StandardSample", "标准件")
-            : T("Standard.Header.ConfirmSample", "确认件");
-
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key, fallback), args);
+            ? localizationService.T("Standard.Header.StandardSample", "标准件")
+            : localizationService.T("Standard.Header.ConfirmSample", "确认件");
     private MesRequestContext CreateMesContext()
         => new(
             MachineId: productionContext.EquipmentNo,
@@ -399,7 +390,7 @@ public sealed class StandardViewModel : BindableBase
         TimeSpan remaining = expireTime - DateTime.Now;
         if (remaining >= TimeSpan.Zero && remaining <= TimeSpan.FromHours(24))
         {
-            await notificationService.WarningAsync(TF("Standard.Message.ExpiresWithin24Hours", "{0}到期时间：{1}，已不足24小时！", panel.SampleCode, panel.ExpireDate), GetPanelTitle(panel)).ConfigureAwait(true);
+            await notificationService.WarningAsync(localizationService.TF("Standard.Message.ExpiresWithin24Hours", "{0}到期时间：{1}，已不足24小时！", panel.SampleCode, panel.ExpireDate), GetPanelTitle(panel)).ConfigureAwait(true);
         }
     }
 

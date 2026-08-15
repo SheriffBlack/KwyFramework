@@ -8,5 +8,6 @@
     <BitmapImage x:Key="ImgInfoHsy" UriSource="/KwyTemplate.App;component/Resources/InfoHsy.png" />
 
     <BitmapImage x:Key="ImgLogoJdl" UriSource="/KwyTemplate.App;component/Resources/LogoJdl.png" />
+    <BitmapImage x:Key="ImgLogoTest" UriSource="/KwyTemplate.App;component/Resources/LogoTest.png" />
 
 </ResourceDictionary>

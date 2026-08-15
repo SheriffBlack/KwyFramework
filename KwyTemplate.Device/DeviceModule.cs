@@ -7,6 +7,7 @@ using Kwy.Device.Abstractions;
 using Kwy.MVVM.Modularity;
 using KwyTemplate.Contracts.Modularity;
 using KwyTemplate.Contracts.Services;
+using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Profiles;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,7 +51,11 @@ public sealed class DeviceModule : IModule
     public void OnInitialized(IServiceProvider provider)
     {
         ArgumentNullException.ThrowIfNull(provider);
-        provider.GetRequiredService<StartupProgressService>().Report("正在加载设备配置...", 10);
+        ILocalizationService localizationService = provider.GetRequiredService<ILocalizationService>();
+        string loadingMessage = localizationService.T("Startup.Device.LoadingConfiguration", "Loading device configuration...");
+        provider.GetRequiredService<StartupProgressService>().Report(
+            loadingMessage,
+            10);
         provider.GetRequiredService<IDeviceRegistryInitializer>().Initialize();
         _ = provider.GetRequiredService<IDeviceStartupConnector>().ConnectAsync();
     }

@@ -8,6 +8,7 @@ using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Navigation;
 using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
+using System.Windows.Threading;
 
 namespace KwyTemplate.App.ViewModels;
 
@@ -19,6 +20,7 @@ public class MainViewModel : BindableBase, INavigationAware
     private readonly IAppNotificationService? notificationService;
     private readonly ILocalizationService localizationService;
     private readonly NavigationConfigModel navigationConfig = new();
+    private readonly Dispatcher dispatcher;
     private bool isInitialized;
     private string selectedView = string.Empty;
     private string selectedNavigationKey = string.Empty;
@@ -35,7 +37,9 @@ public class MainViewModel : BindableBase, INavigationAware
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
         this.permissionService = permissionService;
         this.notificationService = notificationService;
+        dispatcher = Dispatcher.CurrentDispatcher;
         this.localizationService.LanguageChanged += OnLanguageChanged;
+        machine.RunningStateChanged += OnMachineRunningStateChanged;
         InitializeNavigationItems();
     }
 
@@ -67,7 +71,7 @@ public class MainViewModel : BindableBase, INavigationAware
             var correctionItem = new NavigationItemModel
             {
                 ViewName = ViewNames.CorrectionView,
-                DisplayText = T("Nav.Correction", "校正"),
+                DisplayText = localizationService.T("Nav.Correction", "校正"),
                 LocalizationKey = "Nav.Correction",
                 Icon = IconNames.IconCorrection
             };
@@ -89,6 +93,28 @@ public class MainViewModel : BindableBase, INavigationAware
         }
 
         NavigationItems = items;
+        RefreshNavigationAvailability();
+    }
+
+    private void OnMachineRunningStateChanged(object? sender, EventArgs e)
+    {
+        if (dispatcher.CheckAccess())
+        {
+            RefreshNavigationAvailability();
+            return;
+        }
+
+        _ = dispatcher.InvokeAsync(RefreshNavigationAvailability);
+    }
+
+    private void RefreshNavigationAvailability()
+    {
+        bool isProductionRunning = machine.ProductionState == MachineProductionState.Running;
+        foreach (NavigationItemModel item in NavigationItems)
+        {
+            item.IsNavigationEnabled = !isProductionRunning
+                || string.Equals(item.ViewName, ViewNames.HomeView, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private void OnLanguageChanged(object? sender, LanguageType languageType)
@@ -142,15 +168,15 @@ public class MainViewModel : BindableBase, INavigationAware
             if (notificationService != null)
             {
                 string message = permissionService.GetNoPermissionMessage(item.PermissionCode);
-                await notificationService.WarningAsync(message, T("Main.Title.PermissionDenied", "权限不足"));
+                await notificationService.WarningAsync(message, localizationService.T("Main.Title.PermissionDenied", "权限不足"));
             }
 
             return;
         }
 
-        if (!await EnsureCanNavigateToCompensateAsync(item, previousView, previousNavigationKey))
+        if (!string.IsNullOrWhiteSpace(item.PermissionCode))
         {
-            return;
+            (permissionService as IPermissionUsageNotifier)?.NotifyPermissionUsed(item.PermissionCode);
         }
 
         SelectedView = item.ViewName;
@@ -165,54 +191,6 @@ public class MainViewModel : BindableBase, INavigationAware
         regionManager.RequestNavigate(RegionNames.MainRegion, item.ViewName, parameters);
     }
 
-    private async Task<bool> EnsureCanNavigateToCompensateAsync(
-        NavigationItemModel item,
-        string previousView,
-        string previousNavigationKey)
-    {
-        if (!string.Equals(item.ViewName, ViewNames.CompensateView, StringComparison.OrdinalIgnoreCase)
-            || machine.ProductionState != MachineProductionState.Running)
-        {
-            return true;
-        }
-
-        if (notificationService == null)
-        {
-            RestoreNavigationSelection(previousView, previousNavigationKey);
-            return false;
-        }
-
-        bool shouldPause = await notificationService.ConfirmAsync(
-            T("Main.Message.EnterCompensateNeedPause", "机台运行中，进入点检界面需要暂停，是否暂停？"),
-            T("Main.Title.EnterCompensate", "进入点检"));
-        if (!shouldPause)
-        {
-            RestoreNavigationSelection(previousView, previousNavigationKey);
-            return false;
-        }
-
-        try
-        {
-            await machine.PauseAsync();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            RestoreNavigationSelection(previousView, previousNavigationKey);
-            await notificationService.ErrorAsync(TF("Main.Message.PauseFailed", "机台暂停失败：\n{0}", ex.Message), T("Main.Title.EnterCompensate", "进入点检"), ex);
-            return false;
-        }
-    }
-
-
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(System.Globalization.CultureInfo.CurrentCulture, T(key, fallback), args);
     private void RestoreNavigationSelection(string previousView, string previousNavigationKey)
     {
         SelectedView = previousView;

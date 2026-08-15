@@ -6,11 +6,18 @@ namespace KwyTemplate.App.Models;
 public class NavigationItemModel : BindableBase
 {
     private string displayText = string.Empty;
+    private bool isNavigationEnabled = true;
 
     public string DisplayText
     {
         get => displayText;
         set => SetProperty(ref displayText, value ?? string.Empty);
+    }
+
+    public bool IsNavigationEnabled
+    {
+        get => isNavigationEnabled;
+        set => SetProperty(ref isNavigationEnabled, value);
     }
 
     public string LocalizationKey { get; set; } = string.Empty;

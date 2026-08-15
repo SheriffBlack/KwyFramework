@@ -8,7 +8,9 @@ namespace KwyTemplate.Device.MarkPrinters;
 public sealed class TcpMarkPrintDevice : DeviceBase, IMarkPrintDevice
 {
     private const string CommandPrefix = "PRINT ";
-    private const string SuccessResponse = "succeed";
+    // The printer protocol returns the literal token SUCCESS on an accepted print string.
+    // Only that token is success; FAIL and every other response must remain failures.
+    private const string SuccessResponse = "SUCCESS";
     private const int ReadBufferSize = 1024;
 
     private readonly ICommunicationFactory communicationFactory;

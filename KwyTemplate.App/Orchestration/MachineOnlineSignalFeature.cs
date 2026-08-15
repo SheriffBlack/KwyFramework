@@ -16,6 +16,8 @@ public sealed class MachineOnlineSignalFeature : IMachineRuntimeFeature
     private Task? worker;
     private bool disposed;
 
+    public int ShutdownOrder => -100;
+
     public bool CanAttach(MachineBase machine)
         => machine is IIndustrialPcOnlineSignalMachine;
 

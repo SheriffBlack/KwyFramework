@@ -69,15 +69,26 @@ public sealed class InstrumentMultiMeasurementDataDeal : IStationDataDeal, IStat
             : result;
     }
 
-    public async Task CollectAsync(bool triggerResult, TestStationModel stationModel, CancellationToken cancellationToken = default)
+    public async Task<IStationDataCapture> CaptureAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<MeasurementValueMapping> activeMappings = (mappings ?? InstrumentMeasurementNameHelper.CreateMappings(meter)).ToArray();
+        InstrumentMeasurementResult result = await ReadMeasurementAsync(cancellationToken).ConfigureAwait(false);
+        return new MultiMeasurementCapture(result, activeMappings);
+    }
+
+    public void ApplyCapture(IStationDataCapture capture, bool triggerResult, TestStationModel stationModel)
     {
         ArgumentNullException.ThrowIfNull(stationModel);
+        if (capture is not MultiMeasurementCapture measurementCapture)
+        {
+            throw new ArgumentException("Measurement capture type does not match the data deal.", nameof(capture));
+        }
 
-        IReadOnlyList<MeasurementValueMapping> activeMappings = mappings ?? InstrumentMeasurementNameHelper.CreateMappings(meter);
+        IReadOnlyList<MeasurementValueMapping> activeMappings = measurementCapture.Mappings;
         SyncStationTestNames(stationModel, activeMappings);
         RefreshStationLimitsFromInstrumentConfig(stationModel, activeMappings);
         InstrumentMeasurementResult result = ToEngineeringMeasurement(
-            await ReadMeasurementAsync(cancellationToken).ConfigureAwait(false));
+            measurementCapture.Result);
         foreach (MeasurementValueMapping mapping in activeMappings)
         {
             InstrumentMeasurementValue value = GetValue(result, mapping);
@@ -87,6 +98,10 @@ public sealed class InstrumentMultiMeasurementDataDeal : IStationDataDeal, IStat
                 : judgeService.IsPass(stationModel, mapping.TestName, value);
         }
     }
+
+    private sealed record MultiMeasurementCapture(
+        InstrumentMeasurementResult Result,
+        IReadOnlyList<MeasurementValueMapping> Mappings) : IStationDataCapture;
 
     private static void SyncStationTestNames(TestStationModel stationModel, IReadOnlyList<MeasurementValueMapping> activeMappings)
     {
