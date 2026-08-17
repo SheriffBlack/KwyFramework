@@ -1,4 +1,5 @@
 using Kwy.Device.Abstractions.Instrument;
+using Kwy.Converter;
 using KwyTemplate.Flow.Models;
 
 namespace KwyTemplate.Flow.DataDeals;

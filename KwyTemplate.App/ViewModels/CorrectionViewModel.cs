@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using Kwy.Converter;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.Instrument;
 using Kwy.MVVM.Core;
@@ -337,8 +338,8 @@ public class CorrectionViewModel : BindableBase
             throw new InvalidOperationException(localizationService.T("Correction.Message.MissingRsStandardValue", "标准件中没有 RS 中心值，无法执行校正。"));
         }
 
-        double lsValue = ConvertInductanceToHenry(ParseRequiredDouble(LsStandardValue, "LS", localizationService.T("Correction.Field.StandardValue", "中心值")), LsStandardUnit);
-        double rsValue = ConvertResistanceToOhm(ParseRequiredDouble(RsStandardValue, "RS", localizationService.T("Correction.Field.StandardValue", "中心值")), RsStandardUnit);
+        double lsValue = MeasurementUnitConverter.ToBaseUnit(ParseRequiredDouble(LsStandardValue, "LS", localizationService.T("Correction.Field.StandardValue", "中心值")), "Ls", LsStandardUnit);
+        double rsValue = MeasurementUnitConverter.ToBaseUnit(ParseRequiredDouble(RsStandardValue, "RS", localizationService.T("Correction.Field.StandardValue", "中心值")), "Rs", RsStandardUnit);
 
         string frequencyUnit = FrequencyUnit;
         string voltageUnit = VoltageUnit;
@@ -386,48 +387,6 @@ public class CorrectionViewModel : BindableBase
         return null;
     }
 
-    private static double ConvertInductanceToHenry(double value, string? unit)
-    {
-        string normalizedUnit = NormalizeUnit(unit);
-        return normalizedUnit switch
-        {
-            "H" => value,
-            "MH" => value / 1_000D,
-            "UH" => value / 1_000_000D,
-            "NH" => value / 1_000_000_000D,
-            _ => value
-        };
-    }
-
-    private static double ConvertResistanceToOhm(double value, string? unit)
-    {
-        string normalizedUnit = NormalizeUnit(unit);
-        return normalizedUnit switch
-        {
-            "OHM" => value,
-            "MOHM" => value / 1_000D,
-            "UOHM" => value / 1_000_000D,
-            "NOHM" => value / 1_000_000_000D,
-            _ => value
-        };
-    }
-
-    private static string NormalizeUnit(string? unit)
-    {
-        if (string.IsNullOrWhiteSpace(unit))
-        {
-            return string.Empty;
-        }
-
-        return unit.Trim()
-            .Replace("\u03A9", "OHM", StringComparison.OrdinalIgnoreCase)
-            .Replace("\u2126", "OHM", StringComparison.OrdinalIgnoreCase)
-            .Replace("\u60DF", "OHM", StringComparison.OrdinalIgnoreCase)
-            .Replace("\u03BC", "U", StringComparison.OrdinalIgnoreCase)
-            .Replace("\u00B5", "U", StringComparison.OrdinalIgnoreCase)
-            .Replace("\u6E2D", "U", StringComparison.OrdinalIgnoreCase)
-            .ToUpperInvariant();
-    }
     protected override void Dispose(bool disposing)
     {
         if (!disposing || disposed)

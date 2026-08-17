@@ -1,24 +1,23 @@
-namespace KwyTemplate.Flow.DataDeals;
+namespace Kwy.Converter;
 
 /// <summary>
-/// Converts instrument measurements between the engineering units used by station limits and UI.
+/// Converts engineering measurement values between their display units and SI base units.
+/// This class is intentionally independent of UI, flow and device protocols.
 /// </summary>
 public static class MeasurementUnitConverter
 {
-    public static double Convert(double value, string testName, string? sourceUnit, string? targetUnit)
+    public static double Convert(double value, string quantity, string? sourceUnit, string? targetUnit)
     {
-        if (string.IsNullOrWhiteSpace(targetUnit)
-            || UnitsEqual(sourceUnit, targetUnit))
+        if (string.IsNullOrWhiteSpace(targetUnit) || UnitsEqual(sourceUnit, targetUnit))
         {
             return value;
         }
 
-        double baseValue = ToBaseUnit(value, testName, sourceUnit);
-        return FromBaseUnit(baseValue, testName, targetUnit);
+        return FromBaseUnit(ToBaseUnit(value, quantity, sourceUnit), quantity, targetUnit);
     }
 
-    public static double ToBaseUnit(double value, string testName, string? unit)
-        => NormalizeTestName(testName) switch
+    public static double ToBaseUnit(double value, string quantity, string? unit)
+        => NormalizeQuantity(quantity) switch
         {
             "LS" or "LP" => value * InductanceFactor(unit),
             "RS" or "RP" or "Z" or "X" or "DCR" or "DCR1" or "DCR2" => value * ResistanceFactor(unit),
@@ -26,8 +25,8 @@ public static class MeasurementUnitConverter
             _ => value
         };
 
-    public static double FromBaseUnit(double value, string testName, string? unit)
-        => NormalizeTestName(testName) switch
+    public static double FromBaseUnit(double value, string quantity, string? unit)
+        => NormalizeQuantity(quantity) switch
         {
             "LS" or "LP" => value / InductanceFactor(unit),
             "RS" or "RP" or "Z" or "X" or "DCR" or "DCR1" or "DCR2" => value / ResistanceFactor(unit),
@@ -67,7 +66,7 @@ public static class MeasurementUnitConverter
             _ => 1d
         };
 
-    private static string NormalizeTestName(string value)
+    private static string NormalizeQuantity(string value)
         => value.Trim().Replace("θ", "PHASE", StringComparison.OrdinalIgnoreCase).ToUpperInvariant();
 
     private static string NormalizeUnit(string? unit)
@@ -79,9 +78,9 @@ public static class MeasurementUnitConverter
 
         string value = unit.Trim()
             .Replace("Ω", "Ω", StringComparison.Ordinal)
-            .Replace("惟", "Ω", StringComparison.Ordinal)
+            .Replace("\u60DF", "Ω", StringComparison.Ordinal)
             .Replace("µ", "μ", StringComparison.Ordinal)
-            .Replace("渭", "μ", StringComparison.Ordinal)
+            .Replace("\u6E2D", "μ", StringComparison.Ordinal)
             .Replace("u", "μ", StringComparison.OrdinalIgnoreCase);
 
         return value switch

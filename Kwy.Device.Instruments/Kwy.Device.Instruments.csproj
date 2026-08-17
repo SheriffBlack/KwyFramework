@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
+    <ProjectReference Include="..\Kwy.Converter\Kwy.Converter.csproj" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
   </ItemGroup>

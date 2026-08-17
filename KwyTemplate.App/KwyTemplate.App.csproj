@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
+    <ProjectReference Include="..\Kwy.Converter\Kwy.Converter.csproj" />
     <ProjectReference Include="..\Kwy.Files\Kwy.Files.csproj" />
     <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF.Charts.OxyPlot\Kwy.UI.WPF.Charts.OxyPlot.csproj" />

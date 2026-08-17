@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Kwy.Converter;
 using Kwy.Communicate.Abstractions;
 using Kwy.Device.Core.Instrument;
 using Kwy.Device.Abstractions;
@@ -621,90 +622,10 @@ public class HiokiLcr :
     }
 
     private static string FormatMeasurementLimit(double value, string unit, string parameter)
-        => FormatNumber(ConvertMeasurementLimitToBaseUnit(value, unit, parameter));
-
-    private static double ConvertMeasurementLimitToBaseUnit(double value, string? unit, string parameter)
-        => NormalizeParameter(parameter) switch
-        {
-            "LS" or "LP" => ConvertInductanceToHenries(value, unit),
-            "Z" or "RS" or "RP" or "X" => ConvertResistanceToOhms(value, unit),
-            "CS" or "CP" => ConvertCapacitanceToFarads(value, unit),
-            "PHASE" or "PHAS" => value,
-            _ => value
-        };
+        => FormatNumber(MeasurementUnitConverter.ToBaseUnit(value, parameter, unit));
 
     private static double ConvertMeasurementValueFromBaseUnit(double value, string? unit, string parameter)
-        => NormalizeParameter(parameter) switch
-        {
-            "LS" or "LP" => ConvertHenriesToDisplayUnit(value, unit),
-            "Z" or "RS" or "RP" or "X" => ConvertOhmsToDisplayUnit(value, unit),
-            "CS" or "CP" => ConvertFaradsToDisplayUnit(value, unit),
-            "PHASE" or "PHAS" => value,
-            _ => value
-        };
-
-    private static double ConvertOhmsToDisplayUnit(double value, string? unit)
-        => NormalizeUnit(unit) switch
-        {
-            "MOHM" => value * 1_000D,
-            "UOHM" => value * 1_000_000D,
-            _ => value
-        };
-
-    private static double ConvertHenriesToDisplayUnit(double value, string? unit)
-        => NormalizeUnit(unit) switch
-        {
-            "MH" => value * 1_000D,
-            "UH" => value * 1_000_000D,
-            "NH" => value * 1_000_000_000D,
-            _ => value
-        };
-
-    private static double ConvertFaradsToDisplayUnit(double value, string? unit)
-        => NormalizeUnit(unit) switch
-        {
-            "MF" => value * 1_000D,
-            "UF" => value * 1_000_000D,
-            "NF" => value * 1_000_000_000D,
-            "PF" => value * 1_000_000_000_000D,
-            _ => value
-        };
-
-    private static string NormalizeParameter(string? parameter)
-        => string.IsNullOrWhiteSpace(parameter)
-            ? string.Empty
-            : parameter.Trim()
-                .Replace("_", string.Empty, StringComparison.Ordinal)
-                .Replace("-", string.Empty, StringComparison.Ordinal)
-                .Replace(" ", string.Empty, StringComparison.Ordinal)
-                .ToUpperInvariant();
-
-    private static double ConvertResistanceToOhms(double value, string? unit)
-        => NormalizeUnit(unit) switch
-        {
-            "MOHM" => value / 1_000D,
-            "UOHM" => value / 1_000_000D,
-            _ => value
-        };
-
-    private static double ConvertInductanceToHenries(double value, string? unit)
-        => NormalizeUnit(unit) switch
-        {
-            "MH" => value / 1_000D,
-            "UH" => value / 1_000_000D,
-            "NH" => value / 1_000_000_000D,
-            _ => value
-        };
-
-    private static double ConvertCapacitanceToFarads(double value, string? unit)
-        => NormalizeUnit(unit) switch
-        {
-            "MF" => value / 1_000D,
-            "UF" => value / 1_000_000D,
-            "NF" => value / 1_000_000_000D,
-            "PF" => value / 1_000_000_000_000D,
-            _ => value
-        };
+        => MeasurementUnitConverter.FromBaseUnit(value, parameter, unit);
 
     private static string NormalizeUnit(string? unit)
     {
