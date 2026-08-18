@@ -349,6 +349,20 @@ public sealed class HomeViewModel : BindableBase
                 return;
             }
 
+            // Before MES track-in, retrieve the latest work-order setup and use
+            // the same parse/apply path as an Offline -> Online transition.
+            // Offline manual operation deliberately keeps its local settings.
+            if (mesConnection.State == MesConnectionState.Online
+                && !await RefreshCurrentWorkOrderSetupFromMesAsync().ConfigureAwait(false))
+            {
+                return;
+            }
+
+            if (mesConnection.State != MesConnectionState.Online)
+            {
+                await ApplyOfflineSetViewParametersAsync().ConfigureAwait(false);
+            }
+
             bool? isCheckCompleted = await machine.ReadCheckCompletedAsync(DestroyToken).ConfigureAwait(false);
             if (isCheckCompleted is false)
             {
@@ -763,26 +777,7 @@ public sealed class HomeViewModel : BindableBase
 
         try
         {
-            string workOrderNo = WorkOrderNo.Trim();
-            MesResult<MesWorkOrderSetup> result = await mesWorkOrderService.GetWorkOrderSetupAsync(
-                new MesWorkOrderRequest(CreateMesContext(), workOrderNo),
-                DestroyToken).ConfigureAwait(false);
-
-            if (!IsMesAccepted(result) || result.Data == null)
-            {
-                await ShowErrorOnUiAsync(
-                    MesFailureMessageFormatter.Format(localizationService.TF("Home.Message.WorkOrderImportWithNo", "Work order {0} import", workOrderNo), result),
-                    localizationService.T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
-                return;
-            }
-
-            MesWorkOrderSetup setup = PreserveTrailingXMachineTypeLsLowerLimit(result.Data);
-            await ApplyWorkOrderSetupToMachineAsync(
-                setup,
-                MachineType,
-                workOrderNo,
-                showImportSuccessMessage: false,
-                applyTrailingXOverride: false).ConfigureAwait(false);
+            await RefreshCurrentWorkOrderSetupFromMesAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -797,6 +792,49 @@ public sealed class HomeViewModel : BindableBase
         {
             Interlocked.Exchange(ref onlineWorkOrderRefreshPending, 0);
         }
+    }
+
+    private async Task<bool> RefreshCurrentWorkOrderSetupFromMesAsync()
+    {
+        string workOrderNo = WorkOrderNo.Trim();
+        if (string.IsNullOrWhiteSpace(workOrderNo))
+        {
+            return false;
+        }
+
+        MesResult<MesWorkOrderSetup> result = await mesWorkOrderService.GetWorkOrderSetupAsync(
+            new MesWorkOrderRequest(CreateMesContext(), workOrderNo),
+            DestroyToken).ConfigureAwait(false);
+
+        if (!IsMesAccepted(result) || result.Data == null)
+        {
+            await ShowErrorOnUiAsync(
+                MesFailureMessageFormatter.Format(localizationService.TF("Home.Message.WorkOrderImportWithNo", "Work order {0} import", workOrderNo), result),
+                localizationService.T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
+            return false;
+        }
+
+        MesWorkOrderSetup setup = PreserveTrailingXMachineTypeLsLowerLimit(result.Data);
+        await ApplyWorkOrderSetupToMachineAsync(
+            setup,
+            MachineType,
+            workOrderNo,
+            showImportSuccessMessage: false,
+            applyTrailingXOverride: false).ConfigureAwait(false);
+        return true;
+    }
+
+    private async Task ApplyOfflineSetViewParametersAsync()
+    {
+        await machine.ApplyStationInstrumentConfigsAsync(DestroyToken).ConfigureAwait(false);
+
+        if (machine is IMachineBraidSetupMachine braidMachine)
+        {
+            await braidMachine.ApplyBraidSetupAsync(braidOptionsStore.Current.ToTapeSetup(), DestroyToken).ConfigureAwait(false);
+        }
+
+        machine.RefreshStationLimitsFromInstrumentConfigs();
+        messageBus.Publish(new StationLimitsAppliedMessage());
     }
 
     private MesWorkOrderSetup PreserveTrailingXMachineTypeLsLowerLimit(MesWorkOrderSetup refreshedSetup)

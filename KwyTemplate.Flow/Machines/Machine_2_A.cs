@@ -494,13 +494,7 @@ public class Machine_2_A :
         {
             ResetParameterCompareResultOutputs();
 
-            foreach (string deviceId in TestStations.SelectMany(static station => station.InstrumentDeviceIds).Where(static deviceId => !string.IsNullOrWhiteSpace(deviceId)).Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                if (Devices.TryGet<IConfigurableDevice>(deviceId, out IConfigurableDevice? device) && device != null)
-                {
-                    await device.ApplyConfigAsync().ConfigureAwait(false);
-                }
-            }
+            await ApplyStationInstrumentConfigsAsync().ConfigureAwait(false);
 
             await WriteTapeSetupToPlcAsync(currentTapeSetup, CancellationToken.None).ConfigureAwait(false);
             await NotifyExternalStartAsync().ConfigureAwait(false);

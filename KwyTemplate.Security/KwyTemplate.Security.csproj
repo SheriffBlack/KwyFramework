@@ -7,6 +7,14 @@
 	<ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- The packaging project is nested below this project. Exclude its generated
+       sources so they are not compiled into KwyTemplate.Security. -->
+  <ItemGroup>
+    <Compile Remove="Kwy.Packaging\**\*.cs" />
+    <EmbeddedResource Remove="Kwy.Packaging\**\*" />
+    <None Remove="Kwy.Packaging\**\*" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Data.EFCore.Sqlite\Kwy.Data.EFCore.Sqlite.csproj" />
     <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />

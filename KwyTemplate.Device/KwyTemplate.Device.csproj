@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Kwy.Device.PLCs.Hsl\Kwy.Device.PLCs.Hsl.csproj" />
     <ProjectReference Include="..\Kwy.MVVM\Kwy.MVVM.csproj" />
     <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.NI\Kwy.Communicate.NI.csproj" />
@@ -15,7 +16,6 @@
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
     <ProjectReference Include="..\Kwy.Device.Instruments\Kwy.Device.Instruments.csproj" />
     <ProjectReference Include="..\Kwy.Device.IoCards.Advantech\Kwy.Device.IoCards.Advantech.csproj" />
-    <ProjectReference Include="..\Kwy.Device.PLCs.Hsl\Kwy.Device.PLCs.Hsl.csproj" />
     <ProjectReference Include="..\Kwy.Files\Kwy.Files.csproj" />
     <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
   </ItemGroup>

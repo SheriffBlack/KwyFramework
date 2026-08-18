@@ -7,6 +7,13 @@
   <ItemGroup>
     <None Remove="D:\Desktop\Kwy\README.md" />
   </ItemGroup>
+  <!-- The packaging project is nested below this project. Exclude its generated
+       sources so they are not compiled into KwyTemplate.Flow. -->
+  <ItemGroup>
+    <Compile Remove="Kwy.Packaging\**\*.cs" />
+    <EmbeddedResource Remove="Kwy.Packaging\**\*" />
+    <None Remove="Kwy.Packaging\**\*" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
     <ProjectReference Include="..\Kwy.Converter\Kwy.Converter.csproj" />

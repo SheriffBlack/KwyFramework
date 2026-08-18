@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Kwy.ComponentModel;
+using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Abstractions.Instrument;
 using Kwy.Device.Abstractions.PLC;
@@ -559,6 +560,24 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
         UpdateLimitRows();
         RaiseTableChanged();
+    }
+
+    /// <summary>
+    /// Reapplies the current configuration of every instrument bound to a test
+    /// station. Used by parameter-compare handshakes and offline PC startup.
+    /// </summary>
+    public async Task ApplyStationInstrumentConfigsAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (string deviceId in TestStations
+            .SelectMany(static station => station.InstrumentDeviceIds)
+            .Where(static deviceId => !string.IsNullOrWhiteSpace(deviceId))
+            .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (Devices.TryGet<IConfigurableDevice>(deviceId, out IConfigurableDevice? device) && device != null)
+            {
+                await device.ApplyConfigAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     protected void UpdateLimitRows()

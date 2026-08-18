@@ -12,6 +12,8 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
 {
     private const string MeasurementAxisKey = "ValueAxis";
     private const string FrequencyAxisKey = "FrequencyAxis";
+    private const double DefaultFrequencyAxisMaximum = 500;
+    private const double FrequencyAxisStep = 50;
     private readonly ConcurrentQueue<double> incomingData = new();
     private readonly PlotModel model;
     private readonly LinearAxis measurementAxis;
@@ -74,9 +76,14 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             Position = options.Orientation == PlotOrientation.Horizontal ? AxisPosition.Bottom : AxisPosition.Left,
             Title = FrequencyAxisTitle,
             Minimum = 0,
+            Maximum = DefaultFrequencyAxisMaximum,
             AbsoluteMinimum = 0,
             MinimumPadding = 0,
             MaximumPadding = 0.1,
+            // Frequency is discrete. Keep the axis on integer major ticks so a
+            // visible tick never needs to be hidden by the label formatter.
+            MajorStep = FrequencyAxisStep,
+            MinorStep = FrequencyAxisStep,
             MinorTickSize = 0,
             IsPanEnabled = false,
             IsZoomEnabled = false,
@@ -443,7 +450,9 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             index++;
         }
 
-        double nextFrequencyMaximum = maxCount > 0 ? Math.Max(1, maxCount * 1.1) : double.NaN;
+        double nextFrequencyMaximum = Math.Max(
+            DefaultFrequencyAxisMaximum,
+            Math.Ceiling(maxCount / DefaultFrequencyAxisMaximum) * DefaultFrequencyAxisMaximum);
         if (!AreSameAxisMaximum(frequencyAxis.Maximum, nextFrequencyMaximum))
         {
             frequencyAxis.Maximum = nextFrequencyMaximum;

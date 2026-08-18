@@ -51,6 +51,7 @@ public class AppModule : IModule
         containerRegistry.AddSingleton<IMachineRuntimeFeature, MachinePlcStopSignalFeature>();
         containerRegistry.AddSingleton<IMachineRuntimeFeature, CyntecReelScanFeature>();
         containerRegistry.AddSingleton<IMachineRuntimeFeature, StandardSampleExpirationMonitorFeature>();
+        containerRegistry.AddSingleton<IMachineRuntimeFeature, CompensateScheduleMonitorFeature>();
 
         containerRegistry.RegisterForNavigation<CompensateView, CompensateViewModel>();
         containerRegistry.RegisterForNavigation<CorrectionView, CorrectionViewModel>();
