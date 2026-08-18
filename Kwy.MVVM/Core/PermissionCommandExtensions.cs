@@ -10,24 +10,14 @@ namespace Kwy.MVVM.Core;
 public enum PermissionCheckMode
 {
     /// <summary>
-    /// 禁用模式：没有权限时 CanExecute 返回 false (按钮变灰)
+    /// 禁用模式：没有权限时不可执行。WPF 控件同时显示统一的无权限提示。
     /// </summary>
     Disable,
 
     /// <summary>
-    /// 提示模式：按钮可点，但执行时检查权限并弹窗提示 (主要用于 Command)
-    /// </summary>
-    Prompt,
-
-    /// <summary>
     /// 隐藏模式：没有权限时控件完全隐藏
     /// </summary>
-    Hide,
-
-    /// <summary>
-    /// 组合模式：同时禁用且隐藏
-    /// </summary>
-    Both
+    Hide
 }
 
 /// <summary>
@@ -78,7 +68,7 @@ public class PermissionCommandDecorator : ICommand, IDisposable
 
     public bool CanExecute(object? parameter)
     {
-        if (mode is PermissionCheckMode.Disable or PermissionCheckMode.Both
+        if (mode == PermissionCheckMode.Disable
             && permissionService?.HasPermission(permissionCode) == false)
         {
             return false;

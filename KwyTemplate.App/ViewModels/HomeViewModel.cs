@@ -57,6 +57,7 @@ public sealed class HomeViewModel : BindableBase
     private readonly IMessageBus messageBus;
     private readonly ILocalizationService localizationService;
     private readonly IDisposable stationLimitsAppliedSubscription;
+    private readonly object mesStateSyncRoot = new();
     private readonly ObservableCollection<IDataGridColumnDescriptor> partColumns = [];
     private readonly ObservableCollection<HomeChartTabModel> chartTabs = [];
     private readonly ObservableCollection<IDataGridColumnDescriptor> tapeParameterColumns = [];
@@ -66,6 +67,9 @@ public sealed class HomeViewModel : BindableBase
     private long chartSampleSequence;
     private int chartLimitsSyncPending;
     private bool requiresLsLowerLimitOverride;
+    private MesConnectionState lastMesConnectionState;
+    private int onlineWorkOrderRefreshPending;
+    private int offlineMaterialScanSequence;
     private string specialMachineLsLowerLimitText = string.Empty;
     private string specialMachineLsUnit = string.Empty;
     private AsyncDelegateCommand? mesConnectionCommand;
@@ -104,6 +108,7 @@ public sealed class HomeViewModel : BindableBase
         this.reelScanWorkflow = reelScanWorkflow ?? throw new ArgumentNullException(nameof(reelScanWorkflow));
         this.mesConnectionStatus = mesConnectionStatus ?? throw new ArgumentNullException(nameof(mesConnectionStatus));
         this.mesConnection = mesConnection ?? throw new ArgumentNullException(nameof(mesConnection));
+        lastMesConnectionState = this.mesConnection.State;
         this.rawInputBarcodeReceiver = rawInputBarcodeReceiver ?? throw new ArgumentNullException(nameof(rawInputBarcodeReceiver));
         this.notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         this.toastMessageService = toastMessageService ?? throw new ArgumentNullException(nameof(toastMessageService));
@@ -136,6 +141,7 @@ public sealed class HomeViewModel : BindableBase
         machine.RunningStateChanged += OnMachineRunningStateChanged;
         this.productionContext.PropertyChanged += OnProductionContextPropertyChanged;
         this.rawInputBarcodeReceiver.BarcodeReceived += OnRawInputBarcodeReceived;
+        this.mesConnection.StateChanged += OnMesConnectionStateChanged;
         this.localizationService.LanguageChanged += OnLanguageChanged;
         stationLimitsAppliedSubscription = messageBus.Subscribe<HomeViewModel, StationLimitsAppliedMessage>(
             this,
@@ -419,7 +425,6 @@ public sealed class HomeViewModel : BindableBase
             if (trackOutResult.Exchange?.ReturnCode != 0)
             {
                 await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(localizationService.T("Home.Title.MesTrackOut", "MES Track Out"), trackOutResult), localizationService.T("Home.Title.MesTrackOut", "MES Track Out")).ConfigureAwait(false);
-                return;
             }
 
             if (machine is IMachineProductionCounterResetMachine counterResetMachine)
@@ -590,6 +595,13 @@ public sealed class HomeViewModel : BindableBase
                 WorkOrderNo = workOrderNo;
                 await LoadWorkOrderSetupAsync(workOrderNo, previousMachineType).ConfigureAwait(false);
                 break;
+            case 18:
+                // 在线时机种只能由 MES 工单解析结果写入；离线时允许通过机种条码补录。
+                if (mesConnection.State != MesConnectionState.Online)
+                {
+                    MachineType = CleanRawBarcodeValue(value);
+                }
+                break;
             case 76:
             case 84:
             case 89:
@@ -637,6 +649,7 @@ public sealed class HomeViewModel : BindableBase
         {
             machine.ClearDataGrid();
             WorkOrderNo = string.Empty;
+            Interlocked.Exchange(ref offlineMaterialScanSequence, 0);
             SpecialMachineLsLowerLimitText = string.Empty;
             SpecialMachineLsUnit = string.Empty;
             TablePaperCode = string.Empty;
@@ -672,28 +685,142 @@ public sealed class HomeViewModel : BindableBase
             return;
         }
 
-        currentWorkOrderSetup = result.Data;
+        await ApplyWorkOrderSetupToMachineAsync(
+            result.Data,
+            previousMachineType,
+            workOrderNo,
+            showImportSuccessMessage: true,
+            applyTrailingXOverride: true).ConfigureAwait(false);
+    }
+
+    private async Task ApplyWorkOrderSetupToMachineAsync(
+        MesWorkOrderSetup setup,
+        string? previousMachineType,
+        string workOrderNo,
+        bool showImportSuccessMessage,
+        bool applyTrailingXOverride)
+    {
+        currentWorkOrderSetup = setup;
         areStationLimitsVisible = true;
-        await machine.ApplyWorkOrderSetupAsync(result.Data, DestroyToken).ConfigureAwait(false);
-        await SaveBraidOptionsAsync(result.Data.TapeSetup).ConfigureAwait(false);
-        await SaveMarkPrintOptionsAsync(result.Data).ConfigureAwait(false);
+        await machine.ApplyWorkOrderSetupAsync(setup, DestroyToken).ConfigureAwait(false);
+        await SaveBraidOptionsAsync(setup.TapeSetup).ConfigureAwait(false);
+        await SaveMarkPrintOptionsAsync(setup).ConfigureAwait(false);
         RunOnUi(() =>
         {
             machine.RefreshResultGrid();
             SyncColumns();
             SyncChartTabs();
         });
-        string newMachineType = GetWorkOrderMachineType(result.Data);
+        string newMachineType = GetWorkOrderMachineType(setup);
         if (ShouldClearSampleStateForMachineTypeChange(previousMachineType, newMachineType))
         {
             RunOnUi(ClearSampleState);
         }
-        ApplyWorkOrderSetup(result.Data);
+        ApplyWorkOrderSetup(setup);
         productionContext.IsResultGridDataEnabled = true;
         SyncChartLimits();
-        SyncTapeParameterRows(result.Data.TapeSetup);
-        await ShowMessageOnUiAsync(localizationService.TF("Home.Message.WorkOrderImportSuccess", "Work order {0} imported.", workOrderNo), localizationService.T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
-        await ApplyTrailingXMachineTypeLsLowerLimitAsync(result.Data).ConfigureAwait(false);
+        SyncTapeParameterRows(setup.TapeSetup);
+
+        if (showImportSuccessMessage)
+        {
+            await ShowMessageOnUiAsync(localizationService.TF("Home.Message.WorkOrderImportSuccess", "Work order {0} imported.", workOrderNo), localizationService.T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
+        }
+
+        if (applyTrailingXOverride)
+        {
+            await ApplyTrailingXMachineTypeLsLowerLimitAsync(setup).ConfigureAwait(false);
+        }
+
+        // The work-order setup has updated live device configuration.  Notify all
+        // parameter consumers after optional X-type overrides are complete, so an
+        // already opened SetView station editor rebinds without a tab switch.
+        messageBus.Publish(new StationLimitsAppliedMessage());
+    }
+
+    private async void OnMesConnectionStateChanged(object? sender, KwyTemplate.MES.Abstract.Events.MesStateChangedEventArgs e)
+    {
+        bool shouldRefresh;
+        bool shouldResetOfflineMaterialScanSequence;
+        lock (mesStateSyncRoot)
+        {
+            shouldRefresh = lastMesConnectionState != MesConnectionState.Online
+                && e.State == MesConnectionState.Online;
+            shouldResetOfflineMaterialScanSequence = lastMesConnectionState == MesConnectionState.Online
+                && e.State != MesConnectionState.Online;
+            lastMesConnectionState = e.State;
+        }
+
+        if (shouldResetOfflineMaterialScanSequence)
+        {
+            Interlocked.Exchange(ref offlineMaterialScanSequence, 0);
+        }
+
+        if (!shouldRefresh || string.IsNullOrWhiteSpace(WorkOrderNo)
+            || Interlocked.Exchange(ref onlineWorkOrderRefreshPending, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            string workOrderNo = WorkOrderNo.Trim();
+            MesResult<MesWorkOrderSetup> result = await mesWorkOrderService.GetWorkOrderSetupAsync(
+                new MesWorkOrderRequest(CreateMesContext(), workOrderNo),
+                DestroyToken).ConfigureAwait(false);
+
+            if (!IsMesAccepted(result) || result.Data == null)
+            {
+                await ShowErrorOnUiAsync(
+                    MesFailureMessageFormatter.Format(localizationService.TF("Home.Message.WorkOrderImportWithNo", "Work order {0} import", workOrderNo), result),
+                    localizationService.T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
+                return;
+            }
+
+            MesWorkOrderSetup setup = PreserveTrailingXMachineTypeLsLowerLimit(result.Data);
+            await ApplyWorkOrderSetupToMachineAsync(
+                setup,
+                MachineType,
+                workOrderNo,
+                showImportSuccessMessage: false,
+                applyTrailingXOverride: false).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorOnUiAsync(
+                ex.Message,
+                localizationService.T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref onlineWorkOrderRefreshPending, 0);
+        }
+    }
+
+    private MesWorkOrderSetup PreserveTrailingXMachineTypeLsLowerLimit(MesWorkOrderSetup refreshedSetup)
+    {
+        if (!IsTrailingXMachineType || requiresLsLowerLimitOverride || currentWorkOrderSetup == null)
+        {
+            return refreshedSetup;
+        }
+
+        MesWorkOrderInstrumentSetup? currentLsSetup = currentWorkOrderSetup.InstrumentSetups?.FirstOrDefault(item =>
+            string.Equals(item.ParameterId, "Ls", StringComparison.OrdinalIgnoreCase)
+            && item.LowerLimit.HasValue);
+        if (currentLsSetup?.LowerLimit is not double currentLowerLimit)
+        {
+            return refreshedSetup;
+        }
+
+        MesWorkOrderInstrumentSetup[] instrumentSetups = (refreshedSetup.InstrumentSetups ?? [])
+            .Select(item => string.Equals(item.ParameterId, "Ls", StringComparison.OrdinalIgnoreCase)
+                ? item with { LowerLimit = currentLowerLimit }
+                : item)
+            .ToArray();
+
+        return refreshedSetup with { InstrumentSetups = instrumentSetups };
     }
 
     private async Task ApplyTrailingXMachineTypeLsLowerLimitAsync(MesWorkOrderSetup setup)
@@ -767,7 +894,6 @@ public sealed class HomeViewModel : BindableBase
             SyncChartTabs();
         });
         SyncChartLimits();
-        messageBus.Publish(new StationLimitsAppliedMessage());
     }
 
     private async Task SaveBraidOptionsAsync(MesWorkOrderTapeSetup? tapeSetup)
@@ -812,14 +938,30 @@ public sealed class HomeViewModel : BindableBase
 
     private async Task ApplyCoverOrTablePaperAsync(string value)
     {
-        MesWorkOrderMaterialRequirements? requirements = currentWorkOrderSetup?.MaterialRequirements;
-        if (requirements == null)
+        string materialNo = CleanMaterialBarcode(value);
+        if (string.IsNullOrWhiteSpace(materialNo))
         {
             return;
         }
 
-        string materialNo = CleanMaterialBarcode(value);
-        if (string.IsNullOrWhiteSpace(materialNo))
+        // 离线无法依据 MES 料号区分物料：按扫描顺序交替填充。
+        if (mesConnection.State != MesConnectionState.Online)
+        {
+            int sequence = Interlocked.Increment(ref offlineMaterialScanSequence);
+            if ((sequence & 1) == 1)
+            {
+                TablePaperCode = materialNo;
+            }
+            else
+            {
+                TopCoverCode = materialNo;
+            }
+
+            return;
+        }
+
+        MesWorkOrderMaterialRequirements? requirements = currentWorkOrderSetup?.MaterialRequirements;
+        if (requirements == null)
         {
             return;
         }
@@ -1367,6 +1509,7 @@ public sealed class HomeViewModel : BindableBase
             machine.RunningStateChanged -= OnMachineRunningStateChanged;
             productionContext.PropertyChanged -= OnProductionContextPropertyChanged;
             rawInputBarcodeReceiver.BarcodeReceived -= OnRawInputBarcodeReceived;
+            mesConnection.StateChanged -= OnMesConnectionStateChanged;
             localizationService.LanguageChanged -= OnLanguageChanged;
             sampleState.StandardSample.LimitItems.CollectionChanged -= OnStandardSampleLimitItemsChanged;
             DetachStandardSampleLimitItemHandlers(sampleState.StandardSample.LimitItems);

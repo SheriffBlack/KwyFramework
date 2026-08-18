@@ -89,7 +89,8 @@ internal class SetViewModel : BindableBase, INavigationAware
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
         stationLimitsAppliedSubscription = this.messageBus.Subscribe<SetViewModel, StationLimitsAppliedMessage>(
             this,
-            static (viewModel, _) => viewModel.RefreshSelectedInstrumentParameter());
+            static (viewModel, _) => viewModel.RefreshSelectedInstrumentParameter(),
+            MessageSubscribeOptions<StationLimitsAppliedMessage>.OnUI);
         this.mesConnectionStatus.PropertyChanged += OnMesConnectionStatusPropertyChanged;
         this.localizationService.LanguageChanged += OnLanguageChanged;
         InitializeNavigationItems();

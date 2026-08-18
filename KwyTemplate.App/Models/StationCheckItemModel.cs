@@ -143,6 +143,7 @@ public sealed class StationCheckItemModel : BindableBase
         if (e.PropertyName is nameof(StandardSampleLimitItemModel.UpperLimit)
             or nameof(StandardSampleLimitItemModel.LowerLimit)
             or nameof(StandardSampleLimitItemModel.StandardValue)
+            or nameof(StandardSampleLimitItemModel.Unit)
             or null
             or "")
         {
@@ -155,6 +156,7 @@ public sealed class StationCheckItemModel : BindableBase
         if (e.PropertyName is nameof(StandardSampleLimitItemModel.UpperLimit)
             or nameof(StandardSampleLimitItemModel.LowerLimit)
             or nameof(StandardSampleLimitItemModel.StandardValue)
+            or nameof(StandardSampleLimitItemModel.Unit)
             or null
             or "")
         {
@@ -167,6 +169,7 @@ public sealed class StationCheckItemModel : BindableBase
         RaisePropertyChanged(nameof(StandardUpperLimit));
         RaisePropertyChanged(nameof(StandardLowerLimit));
         RaisePropertyChanged(nameof(StandardValue));
+        RaisePropertyChanged(nameof(StandardUnit));
     }
 
     private void RaiseConfirmLimitPropertiesChanged()
@@ -174,6 +177,7 @@ public sealed class StationCheckItemModel : BindableBase
         RaisePropertyChanged(nameof(ConfirmUpperLimit));
         RaisePropertyChanged(nameof(ConfirmLowerLimit));
         RaisePropertyChanged(nameof(ConfirmValue));
+        RaisePropertyChanged(nameof(ConfirmUnit));
     }
 
     protected override void Dispose(bool disposing)

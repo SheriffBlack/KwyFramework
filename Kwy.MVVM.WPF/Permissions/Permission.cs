@@ -197,14 +197,14 @@ public static class Permission
         {
             RestoreOriginalState(element);
 
-            if (mode is PermissionCheckMode.Disable or PermissionCheckMode.Both)
+            if (mode == PermissionCheckMode.Disable)
             {
                 element.SetCurrentValue(UIElement.IsEnabledProperty, false);
                 element.SetCurrentValue(FrameworkElement.ToolTipProperty, permissionService.GetNoPermissionMessage(permissionKey));
                 ToolTipService.SetShowOnDisabled(element, true);
             }
 
-            if (mode is PermissionCheckMode.Hide or PermissionCheckMode.Both)
+            if (mode == PermissionCheckMode.Hide)
             {
                 element.SetCurrentValue(UIElement.VisibilityProperty, Visibility.Collapsed);
             }

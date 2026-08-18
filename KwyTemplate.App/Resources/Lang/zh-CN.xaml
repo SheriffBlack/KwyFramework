@@ -56,6 +56,7 @@
     <sys:String x:Key="Standard.Message.EquipmentRequired">请先输入或扫描机台号。</sys:String>
     <sys:String x:Key="Standard.Message.SampleCodeRequired">请输入{0}编号。</sys:String>
     <sys:String x:Key="Standard.Message.QuerySuccess">查询成功</sys:String>
+    <sys:String x:Key="Standard.Message.SampleCodesMustDiffer">标准件与确认件编号不能相同，已清空两者信息。</sys:String>
     <sys:String x:Key="Standard.Message.QueryException">
         {0}查询异常：
         {1}
@@ -65,6 +66,7 @@
     <sys:String x:Key="Standard.Action.Query">查询</sys:String>
     <sys:String x:Key="Standard.Title.EquipmentEmpty">机台号为空</sys:String>
     <sys:String x:Key="Standard.Title.WorkOrderEmpty">工单为空</sys:String>
+    <sys:String x:Key="Standard.Title.SampleCodesDuplicate">标准件/确认件编号重复</sys:String>
     <sys:String x:Key="Standard.Field.LimitRange">{0}下限~上限</sys:String>
     <sys:String x:Key="Standard.Field.StandardValue">中心值</sys:String>
     <sys:String x:Key="Standard.Message.ExpiresWithin24Hours">{0}到期时间：{1}，已不足24小时！</sys:String>

@@ -45,8 +45,20 @@ public class HiokiLcr :
 
         HiokiLcrParameterPair activeParameters = config.GetActiveParameterPair();
         var result = new Dictionary<string, InstrumentMeasurementLimit>(StringComparer.OrdinalIgnoreCase);
-        AddMeasurementLimit(result, activeParameters.Parameter1, config.Parameter1Min, config.Parameter1Max, config.Parameter1MinUnit);
-        AddMeasurementLimit(result, activeParameters.Parameter3, config.Parameter3Min, config.Parameter3Max, config.Parameter3MinUnit);
+        AddMeasurementLimit(
+            result,
+            activeParameters.Parameter1,
+            config.Parameter1Min,
+            config.Parameter1MinUnit,
+            config.Parameter1Max,
+            config.Parameter1MaxUnit);
+        AddMeasurementLimit(
+            result,
+            activeParameters.Parameter3,
+            config.Parameter3Min,
+            config.Parameter3MinUnit,
+            config.Parameter3Max,
+            config.Parameter3MaxUnit);
 
         limits = result;
         return result.Count > 0;
@@ -56,8 +68,9 @@ public class HiokiLcr :
         IDictionary<string, InstrumentMeasurementLimit> limits,
         string parameter,
         double lowerLimit,
+        string? lowerUnit,
         double upperLimit,
-        string? unit)
+        string? upperUnit)
     {
         string testName = HiokiLcrLoadTypes.ToDisplayParameter(parameter);
         if (string.IsNullOrWhiteSpace(testName))
@@ -65,7 +78,16 @@ public class HiokiLcr :
             return;
         }
 
-        limits[testName] = new InstrumentMeasurementLimit(lowerLimit, upperLimit, unit);
+        // The station result, standard-sample and point-check paths carry one
+        // display unit per measurement. Keep the lower-bound unit as that
+        // display unit and normalize the upper bound before exposing it.
+        string displayUnit = lowerUnit ?? string.Empty;
+        double normalizedUpperLimit = MeasurementUnitConverter.Convert(
+            upperLimit,
+            parameter,
+            upperUnit,
+            displayUnit);
+        limits[testName] = new InstrumentMeasurementLimit(lowerLimit, normalizedUpperLimit, displayUnit);
     }
 
     public HiokiLcr(string deviceId, string deviceName, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)

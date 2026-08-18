@@ -30,28 +30,28 @@ internal sealed class LocalLoginService : ILoginService
     {
         if (string.IsNullOrWhiteSpace(userName))
         {
-            return LoginResult.Failed(T("Security.Login.UserNameRequired", "请输入用户名。"));
+            return LoginResult.Failed(localizationService.T("Security.Login.UserNameRequired", "请输入用户名。"));
         }
 
         if (string.IsNullOrWhiteSpace(password))
         {
-            return LoginResult.Failed(T("Security.Login.PasswordRequired", "请输入密码。"));
+            return LoginResult.Failed(localizationService.T("Security.Login.PasswordRequired", "请输入密码。"));
         }
 
         LocalUser? user = await userStore.FindByUserNameAsync(userName, cancellationToken).ConfigureAwait(false);
         if (user == null)
         {
-            return LoginResult.Failed(T("Security.Login.InvalidCredential", "用户名或密码错误。"));
+            return LoginResult.Failed(localizationService.T("Security.Login.InvalidCredential", "用户名或密码错误。"));
         }
 
         if (!user.IsEnabled)
         {
-            return LoginResult.Failed(T("Security.Login.AccountDisabled", "账号已禁用。"));
+            return LoginResult.Failed(localizationService.T("Security.Login.AccountDisabled", "账号已禁用。"));
         }
 
         if (!passwordHasher.Verify(password, user.PasswordHash, user.PasswordSalt))
         {
-            return LoginResult.Failed(T("Security.Login.InvalidCredential", "用户名或密码错误。"));
+            return LoginResult.Failed(localizationService.T("Security.Login.InvalidCredential", "用户名或密码错误。"));
         }
 
         var currentUser = new CurrentUser(user.Id, user.UserName, user.DisplayName, user.Level);
@@ -64,9 +64,4 @@ internal sealed class LocalLoginService : ILoginService
         currentUserService.SignOut();
     }
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
 }

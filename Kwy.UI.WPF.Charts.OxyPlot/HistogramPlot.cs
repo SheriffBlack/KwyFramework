@@ -80,7 +80,10 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             MinorTickSize = 0,
             IsPanEnabled = false,
             IsZoomEnabled = false,
-            LabelFormatter = value => Math.Abs(value) >= 1000 ? $"{value / 1000.0:0.#}k" : value.ToString("0"),
+            // Histogram frequency is a discrete count.  Do not round fractional
+            // auto ticks (for example 1.1) to an integer label, otherwise both
+            // 1.0 and 1.1 render as "1".
+            LabelFormatter = FormatFrequencyAxisLabel,
             Key = FrequencyAxisKey
         };
 
@@ -440,7 +443,32 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             index++;
         }
 
-        frequencyAxis.Maximum = maxCount > 0 ? Math.Max(1, maxCount * 1.1) : double.NaN;
+        double nextFrequencyMaximum = maxCount > 0 ? Math.Max(1, maxCount * 1.1) : double.NaN;
+        if (!AreSameAxisMaximum(frequencyAxis.Maximum, nextFrequencyMaximum))
+        {
+            frequencyAxis.Maximum = nextFrequencyMaximum;
+            // Limit lines use data coordinates.  Refresh their frequency-axis
+            // endpoint only when the histogram height changes, so upper/lower/
+            // target lines always span the full plot instead of stopping at 1.
+            UpdateLimitSeries();
+        }
+    }
+
+    private static bool AreSameAxisMaximum(double current, double next)
+        => double.IsNaN(current) && double.IsNaN(next)
+            || double.IsFinite(current) && double.IsFinite(next) && Math.Abs(current - next) < 1e-9;
+
+    private static string FormatFrequencyAxisLabel(double value)
+    {
+        double rounded = Math.Round(value);
+        if (Math.Abs(value - rounded) > 1e-6)
+        {
+            return string.Empty;
+        }
+
+        return Math.Abs(rounded) >= 1000
+            ? $"{rounded / 1000.0:0.#}k"
+            : rounded.ToString("0");
     }
 
     private void UpdateLimitSeries()

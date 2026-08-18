@@ -1,5 +1,4 @@
 ﻿using System.Collections.ObjectModel;
-using System.Globalization;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Dialogs;
 using KwyTemplate.Contracts.Localization;
@@ -28,10 +27,10 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
         this.userStore = userStore ?? throw new ArgumentNullException(nameof(userStore));
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
         this.localizationService.LanguageChanged += OnLanguageChanged;
-        message = T("Security.Login.DefaultAccount", "默认账号：操作员 / 1");
+        message = localizationService.T("Security.Login.DefaultAccount", "默认账号：操作员 / 1");
     }
 
-    public string Title => T("Security.Login.Title", "用户登录");
+    public string Title => localizationService.T("Security.Login.Title", "用户登录");
 
     public event Action<IDialogResult>? RequestClose;
 
@@ -67,7 +66,7 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
             LoginResult result = await loginService.LoginAsync(UserName, Password, DestroyToken).ConfigureAwait(true);
             if (!result.Succeeded)
             {
-                Message = result.ErrorMessage ?? T("Security.Login.Failed", "登录失败。");
+                Message = result.ErrorMessage ?? localizationService.T("Security.Login.Failed", "登录失败。");
                 return;
             }
 
@@ -77,7 +76,7 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
         catch (Exception ex)
         {
             isDefaultMessageVisible = false;
-            Message = TF("Security.Login.Exception", "登录异常：{0}", ex.Message);
+            Message = localizationService.TF("Security.Login.Exception", "登录异常：{0}", ex.Message);
         }
     }
 
@@ -115,7 +114,7 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
         catch (Exception ex)
         {
             isDefaultMessageVisible = false;
-            Message = TF("Security.Login.LoadUsersFailed", "加载用户失败：{0}", ex.Message);
+            Message = localizationService.TF("Security.Login.LoadUsersFailed", "加载用户失败：{0}", ex.Message);
         }
     }
 
@@ -124,18 +123,9 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
         RaisePropertyChanged(nameof(Title));
         if (isDefaultMessageVisible)
         {
-            Message = T("Security.Login.DefaultAccount", "默认账号：操作员 / 1");
+            Message = localizationService.T("Security.Login.DefaultAccount", "默认账号：操作员 / 1");
         }
     }
-
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key, fallback), args);
 
     private static int GetUserDisplayOrder(string userName)
     {

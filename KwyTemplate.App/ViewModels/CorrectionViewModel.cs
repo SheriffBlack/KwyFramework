@@ -358,8 +358,12 @@ public class CorrectionViewModel : BindableBase
 
     private void ApplyCorrectionData(InstrumentCorrectionData data)
     {
-        LsCorrectionValue = FormatCorrectionValue(data.PrimaryValue);
-        RsCorrectionValue = FormatCorrectionValue(data.SecondaryValue);
+        // HIOKI 校正回传与写入校正参考值一样采用 H / Ω 基准单位；
+        // 校正页需与标准件设定值保持同一显示单位。
+        LsCorrectionValue = FormatCorrectionValue(
+            MeasurementUnitConverter.FromBaseUnit(data.PrimaryValue, "Ls", LsStandardUnit));
+        RsCorrectionValue = FormatCorrectionValue(
+            MeasurementUnitConverter.FromBaseUnit(data.SecondaryValue, "Rs", RsStandardUnit));
     }
 
     private static string FormatCorrectionValue(double value)

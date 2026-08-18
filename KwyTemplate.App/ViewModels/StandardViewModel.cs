@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Globalization;
+using Kwy.Converter;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Messaging;
 using KwyTemplate.App.Messages;
@@ -28,6 +30,7 @@ public sealed class StandardViewModel : BindableBase
     private readonly IDisposable stationLimitsAppliedSubscription;
     private AsyncDelegateCommand? queryStandardCommand;
     private AsyncDelegateCommand? queryConfirmCommand;
+    private bool isClearingDuplicateSampleCodes;
     private bool disposed;
 
     public StandardViewModel(
@@ -57,6 +60,8 @@ public sealed class StandardViewModel : BindableBase
         EnsureLimitItems(ConfirmSample.LimitItems);
         StandardSample.LimitItems.CollectionChanged += OnLimitItemsChanged;
         ConfirmSample.LimitItems.CollectionChanged += OnLimitItemsChanged;
+        StandardSample.PropertyChanged += OnSamplePanelPropertyChanged;
+        ConfirmSample.PropertyChanged += OnSamplePanelPropertyChanged;
         this.mesConnectionStatus.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MesConnectionStatus.State))
@@ -75,6 +80,38 @@ public sealed class StandardViewModel : BindableBase
     public AsyncDelegateCommand QueryStandardCommand => queryStandardCommand ??= new AsyncDelegateCommand(() => QuerySampleAsync(StandardSample));
 
     public AsyncDelegateCommand QueryConfirmCommand => queryConfirmCommand ??= new AsyncDelegateCommand(() => QuerySampleAsync(ConfirmSample));
+
+    private void OnSamplePanelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (isClearingDuplicateSampleCodes || e.PropertyName != nameof(StandardSamplePanelModel.SampleCode))
+        {
+            return;
+        }
+
+        string standardCode = StandardSample.SampleCode;
+        string confirmCode = ConfirmSample.SampleCode;
+        if (string.IsNullOrWhiteSpace(standardCode)
+            || string.IsNullOrWhiteSpace(confirmCode)
+            || !string.Equals(standardCode, confirmCode, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        isClearingDuplicateSampleCodes = true;
+        try
+        {
+            // SampleCode 已在面板模型中完成清洗；这里比较的是 UI 和 MES 实际使用的净值。
+            sampleState.ClearAll();
+        }
+        finally
+        {
+            isClearingDuplicateSampleCodes = false;
+        }
+
+        _ = notificationService.WarningAsync(
+            localizationService.T("Standard.Message.SampleCodesMustDiffer", "标准件与确认件编号不能相同，已清空两者信息。"),
+            localizationService.T("Standard.Title.SampleCodesDuplicate", "标准件/确认件编号重复"));
+    }
 
     private async Task QuerySampleAsync(StandardSamplePanelModel panel)
     {
@@ -185,12 +222,16 @@ public sealed class StandardViewModel : BindableBase
         {
             string code = NormalizeLimitCode(limit.ParameterId) ?? NormalizeLimitCode(limit.DisplayName) ?? limit.ParameterId;
             string displayName = string.IsNullOrWhiteSpace(limit.DisplayName) ? code : limit.DisplayName;
+            string sourceUnit = limit.Unit ?? string.Empty;
+            // 标准件/确认件面板是点检范围的唯一来源：在这里一次性转换为当前工位单位，
+            // 后续 CompensateView 的自动与手动点检只需在同一单位中显示和判定。
+            string targetUnit = ResolveDefaultLimitUnit(code) ?? sourceUnit;
             var item = new StandardSampleLimitItemModel(code, displayName, localizationService)
             {
-                LowerLimit = FormatNumber(limit.LowerLimit),
-                UpperLimit = FormatNumber(limit.UpperLimit),
-                StandardValue = FormatNumber(limit.StandardValue),
-                Unit = limit.Unit ?? string.Empty,
+                LowerLimit = FormatConvertedNumber(limit.LowerLimit, code, sourceUnit, targetUnit),
+                UpperLimit = FormatConvertedNumber(limit.UpperLimit, code, sourceUnit, targetUnit),
+                StandardValue = FormatConvertedNumber(limit.StandardValue, code, sourceUnit, targetUnit),
+                Unit = targetUnit,
                 SerialNo = limit.SerialNo ?? string.Empty,
                 MeterType = limit.MeterType ?? string.Empty,
                 ItemName = limit.ItemName ?? displayName,
@@ -232,19 +273,18 @@ public sealed class StandardViewModel : BindableBase
     {
         foreach (StandardSampleLimitItemModel item in items)
         {
-            bool hasManualOrMesValues = !string.IsNullOrWhiteSpace(item.LowerLimit)
-                || !string.IsNullOrWhiteSpace(item.UpperLimit)
-                || !string.IsNullOrWhiteSpace(item.StandardValue);
-            if (hasManualOrMesValues && !string.IsNullOrWhiteSpace(item.Unit))
+            string? targetUnit = ResolveDefaultLimitUnit(item.Code);
+            if (string.IsNullOrWhiteSpace(targetUnit)
+                || string.Equals(item.Unit, targetUnit, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            string? unit = ResolveDefaultLimitUnit(item.Code);
-            if (unit != null)
-            {
-                item.Unit = unit;
-            }
+            string sourceUnit = item.Unit;
+            item.LowerLimit = ConvertLimitText(item.LowerLimit, item.Code, sourceUnit, targetUnit);
+            item.UpperLimit = ConvertLimitText(item.UpperLimit, item.Code, sourceUnit, targetUnit);
+            item.StandardValue = ConvertLimitText(item.StandardValue, item.Code, sourceUnit, targetUnit);
+            item.Unit = targetUnit;
         }
     }
 
@@ -333,7 +373,7 @@ public sealed class StandardViewModel : BindableBase
             return null;
         }
 
-        string code = value.Trim().ToUpperInvariant();
+        string code = MeasurementUnitConverter.NormalizeQuantity(value);
         while (code.Length > 0 && char.IsDigit(code[^1]))
         {
             code = code[..^1];
@@ -344,6 +384,16 @@ public sealed class StandardViewModel : BindableBase
 
     private static string FormatNumber(double? value)
         => value?.ToString("0.##########", CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private static string FormatConvertedNumber(double? value, string quantity, string sourceUnit, string targetUnit)
+        => value.HasValue
+            ? FormatNumber(MeasurementUnitConverter.Convert(value.Value, quantity, sourceUnit, targetUnit))
+            : string.Empty;
+
+    private static string ConvertLimitText(string value, string quantity, string sourceUnit, string targetUnit)
+        => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed)
+            ? FormatNumber(MeasurementUnitConverter.Convert(parsed, quantity, sourceUnit, targetUnit))
+            : value;
 
     private static string? GetParameterValue(MesParameterBag parameters, string key)
     {
@@ -415,6 +465,8 @@ public sealed class StandardViewModel : BindableBase
         localizationService.LanguageChanged -= OnLanguageChanged;
         StandardSample.LimitItems.CollectionChanged -= OnLimitItemsChanged;
         ConfirmSample.LimitItems.CollectionChanged -= OnLimitItemsChanged;
+        StandardSample.PropertyChanged -= OnSamplePanelPropertyChanged;
+        ConfirmSample.PropertyChanged -= OnSamplePanelPropertyChanged;
         base.Dispose(disposing);
     }
 }

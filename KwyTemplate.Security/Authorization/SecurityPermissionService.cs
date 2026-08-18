@@ -31,7 +31,7 @@ internal sealed class SecurityPermissionService : IPermissionService, IPermissio
     public string GetNoPermissionMessage(string permissionCode)
     {
         SecurityUserLevel requiredLevel = ParseRequiredLevel(permissionCode);
-        return TF("Security.Permission.Required", "当前操作需要 {0} 权限。", GetDisplayName(requiredLevel));
+        return localizationService.TF("Security.Permission.Required", "当前操作需要 {0} 权限。", GetDisplayName(requiredLevel));
     }
 
     public void NotifyPermissionUsed(string permissionCode)
@@ -69,16 +69,16 @@ internal sealed class SecurityPermissionService : IPermissionService, IPermissio
             PermissionCodes.Admin => SecurityUserLevel.Admin,
             _ when Enum.TryParse(permissionCode, ignoreCase: true, out SecurityUserLevel level)
                 && Enum.IsDefined(level) => level,
-            _ => throw new InvalidOperationException(TF("Security.Permission.UnknownCode", "未知权限码：{0}。", permissionCode))
+            _ => throw new InvalidOperationException(localizationService.TF("Security.Permission.UnknownCode", "未知权限码：{0}。", permissionCode))
         };
     }
 
     private string GetDisplayName(SecurityUserLevel level)
         => level switch
         {
-            SecurityUserLevel.Operator => T("Security.Role.Operator", "操作员"),
-            SecurityUserLevel.Engineer => T("Security.Role.Engineer", "工程师"),
-            SecurityUserLevel.Admin => T("Security.Role.Admin", "管理员"),
+            SecurityUserLevel.Operator => localizationService.T("Security.Role.Operator", "操作员"),
+            SecurityUserLevel.Engineer => localizationService.T("Security.Role.Engineer", "工程师"),
+            SecurityUserLevel.Admin => localizationService.T("Security.Role.Admin", "管理员"),
             _ => level.ToString()
         };
 
@@ -88,12 +88,4 @@ internal sealed class SecurityPermissionService : IPermissionService, IPermissio
     private void OnLanguageChanged(object? sender, LanguageType languageType)
         => PermissionsChanged?.Invoke(this, new PermissionChangedEventArgs());
 
-    private string T(string key, string fallback)
-    {
-        string text = localizationService.GetString(key);
-        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
-    }
-
-    private string TF(string key, string fallback, params object[] args)
-        => string.Format(CultureInfo.CurrentCulture, T(key, fallback), args);
 }

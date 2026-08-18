@@ -62,10 +62,12 @@ public sealed class StationInstrumentItemModel : BindableBase
 
     private static string FormatValue(InstrumentMeasurementValue value)
     {
-        string text = !string.IsNullOrWhiteSpace(value.RawValue)
-            ? value.RawValue
-            : value.Value.ToString("G8", CultureInfo.InvariantCulture);
-        if (string.IsNullOrWhiteSpace(value.RawValue) && !string.IsNullOrWhiteSpace(value.Unit))
+        // RawValue belongs exclusively to the "原始值" column.  The net value
+        // must always use the engineering value already formatted by the
+        // instrument operation, otherwise a device raw string can bypass the
+        // shared display-unit conversion.
+        string text = value.Value.ToString("G8", CultureInfo.InvariantCulture);
+        if (!string.IsNullOrWhiteSpace(value.Unit))
         {
             text += value.Unit;
         }

@@ -605,6 +605,12 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
         => Task.CompletedTask;
 
     /// <summary>
+    /// 点检页面进入后的机型专属处理。默认机型无需额外处理。
+    /// </summary>
+    public virtual Task OnCheckViewEnteredAsync(CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    /// <summary>
     /// 设置 PLC 点检完成信号。默认机型不需要该信号。
     /// </summary>
     public virtual Task SetCheckCompletedAsync(bool isCompleted, CancellationToken cancellationToken = default)

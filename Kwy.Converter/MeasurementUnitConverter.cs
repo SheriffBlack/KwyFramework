@@ -66,8 +66,30 @@ public static class MeasurementUnitConverter
             _ => 1d
         };
 
-    private static string NormalizeQuantity(string value)
-        => value.Trim().Replace("θ", "PHASE", StringComparison.OrdinalIgnoreCase).ToUpperInvariant();
+    /// <summary>
+    /// Normalizes measurement names exchanged by MES, the station model and
+    /// instrument protocols, for example L_S / Ls and R_S / Rs.
+    /// </summary>
+    public static string NormalizeQuantity(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        string normalized = value.Trim()
+            .Replace("θ", "PHASE", StringComparison.OrdinalIgnoreCase)
+            // HIOKI protocol names use L_S / R_S / C_S while the application
+            // uses Ls / Rs / Cs. They represent the same measurement quantity.
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToUpperInvariant();
+
+        return string.Equals(normalized, "PHAS", StringComparison.Ordinal)
+            ? "PHASE"
+            : normalized;
+    }
 
     private static string NormalizeUnit(string? unit)
     {

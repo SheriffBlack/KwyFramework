@@ -137,6 +137,10 @@ public class CompensateViewModel : BindableBase, INavigationAware
         try
         {
             await machine.SetCheckViewActiveAsync(isActive, DestroyToken).ConfigureAwait(false);
+            if (isActive)
+            {
+                await machine.OnCheckViewEnteredAsync(DestroyToken).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -766,12 +770,18 @@ public class CompensateViewModel : BindableBase, INavigationAware
             return station.OrderedTestNames[valueIndex];
         }
 
+        string measuredName = measurement.Measurement.Values[valueIndex].Name;
+        if (!string.IsNullOrWhiteSpace(measuredName))
+        {
+            return measuredName;
+        }
+
         if (valueIndex == 0 && !string.IsNullOrWhiteSpace(measurement.InstrumentCode))
         {
             return measurement.InstrumentCode;
         }
 
-        return measurement.Measurement.Values[valueIndex].Name;
+        return string.Empty;
     }
 
     private StationCheckItemModel? FindCheckItem(int stationId, string testName)
@@ -846,19 +856,43 @@ public class CompensateViewModel : BindableBase, INavigationAware
         for (int i = 0; i < CheckItems.Count; i++)
         {
             StationCheckItemModel item = CheckItems[i];
-            item.SetStandardLimitItem(GetLimitItem(sampleState.StandardSample.LimitItems, i));
-            item.SetConfirmLimitItem(GetLimitItem(sampleState.ConfirmSample.LimitItems, i));
+            item.SetStandardLimitItem(GetLimitItem(sampleState.StandardSample.LimitItems, item.TestName, i));
+            item.SetConfirmLimitItem(GetLimitItem(sampleState.ConfirmSample.LimitItems, item.TestName, i));
         }
     }
 
-    private static StandardSampleLimitItemModel? GetLimitItem(IList<StandardSampleLimitItemModel> limitItems, int index)
+    private static StandardSampleLimitItemModel? GetLimitItem(
+        IList<StandardSampleLimitItemModel> limitItems,
+        string testName,
+        int fallbackIndex)
     {
         if (limitItems.Count == 0)
         {
             return null;
         }
 
-        return limitItems[Math.Min(index, limitItems.Count - 1)];
+        StandardSampleLimitItemModel? exactMatch = limitItems.FirstOrDefault(item =>
+            string.Equals(item.Code, testName, StringComparison.OrdinalIgnoreCase));
+        if (exactMatch != null)
+        {
+            return exactMatch;
+        }
+
+        string normalizedTestName = NormalizeMeasurementCode(testName);
+        StandardSampleLimitItemModel? normalizedMatch = limitItems.FirstOrDefault(item =>
+            string.Equals(NormalizeMeasurementCode(item.Code), normalizedTestName, StringComparison.OrdinalIgnoreCase));
+        return normalizedMatch ?? limitItems[Math.Min(fallbackIndex, limitItems.Count - 1)];
+    }
+
+    private static string NormalizeMeasurementCode(string? value)
+    {
+        string code = MeasurementUnitConverter.NormalizeQuantity(value);
+        while (code.Length > 0 && char.IsDigit(code[^1]))
+        {
+            code = code[..^1];
+        }
+
+        return code;
     }
 
 

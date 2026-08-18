@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Kwy.Converter\Kwy.Converter.csproj" />
     <ProjectReference Include="..\KwyTemplate.App\KwyTemplate.App.csproj" />
     <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
     <ProjectReference Include="..\KwyTemplate.Flow\KwyTemplate.Flow.csproj" />

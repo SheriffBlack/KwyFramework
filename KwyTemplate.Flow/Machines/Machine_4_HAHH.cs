@@ -949,9 +949,11 @@ public class Machine_4_HAHH :
         if (setup.Parameters.TryGetDouble("LFreq", out double frequency) && frequency > 0)
         {
             // Cyntec work-order LFreq is expressed in kHz (legacy MES contract).
-            // HIOKI parameter commands use the base frequency unit (Hz).
-            config.Frequency = frequency * 1_000d;
-            config.FrequencyUnit = "Hz";
+            // Keep the configuration in its engineering display unit so SetView
+            // shows 5 MHz instead of the protocol value 5,000,000 Hz.  HiokiLcr
+            // converts the configured MHz value to Hz when it sends the command.
+            config.Frequency = frequency / 1_000d;
+            config.FrequencyUnit = "MHz";
         }
 
         if (!string.IsNullOrWhiteSpace(lsSetup?.Range))
@@ -1493,6 +1495,12 @@ public class Machine_4_HAHH :
 
         await plc.WriteInt16Async(address, isActive ? (short)1 : (short)0, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// HAHH 人机进入点检页面时，复位点检完成位。
+    /// </summary>
+    public override Task OnCheckViewEnteredAsync(CancellationToken cancellationToken = default)
+        => SetCheckCompletedAsync(false, cancellationToken);
 
     public override async Task SetCheckCompletedAsync(bool isCompleted, CancellationToken cancellationToken = default)
     {

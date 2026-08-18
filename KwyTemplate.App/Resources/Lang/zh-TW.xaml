@@ -56,6 +56,7 @@
     <sys:String x:Key="Standard.Message.EquipmentRequired">請先輸入或掃描機台號。</sys:String>
     <sys:String x:Key="Standard.Message.SampleCodeRequired">請輸入{0}編號。</sys:String>
     <sys:String x:Key="Standard.Message.QuerySuccess">查詢成功</sys:String>
+    <sys:String x:Key="Standard.Message.SampleCodesMustDiffer">標準件與確認件編號不可相同，已清空兩者資訊。</sys:String>
     <sys:String x:Key="Standard.Message.QueryException">
         {0}查詢異常：
         {1}
@@ -65,6 +66,7 @@
     <sys:String x:Key="Standard.Action.Query">查詢</sys:String>
     <sys:String x:Key="Standard.Title.EquipmentEmpty">機台號為空</sys:String>
     <sys:String x:Key="Standard.Title.WorkOrderEmpty">工單為空</sys:String>
+    <sys:String x:Key="Standard.Title.SampleCodesDuplicate">標準件/確認件編號重複</sys:String>
     <sys:String x:Key="Standard.Field.LimitRange">{0}下限~上限</sys:String>
     <sys:String x:Key="Standard.Field.StandardValue">中心值</sys:String>
     <sys:String x:Key="Standard.Message.ExpiresWithin24Hours">{0}到期時間：{1}，已不足24小時！</sys:String>

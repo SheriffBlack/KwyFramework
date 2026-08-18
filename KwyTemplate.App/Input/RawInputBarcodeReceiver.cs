@@ -31,6 +31,8 @@ public sealed class RawInputBarcodeReceiver : IRawInputBarcodeReceiver
 
     public event EventHandler<BarcodeInputReceivedEventArgs>? BarcodeReceived;
 
+    public event EventHandler<RawInputBarcodeDiagnosticEventArgs>? DiagnosticOccurred;
+
     public bool IsInitialized { get; private set; }
 
     public string? LastCode { get; private set; }
@@ -118,6 +120,11 @@ public sealed class RawInputBarcodeReceiver : IRawInputBarcodeReceiver
         if (virtualKey is VkShift or VkLeftShift or VkRightShift)
         {
             isShiftPressed = isKeyDown;
+            if (isKeyDown)
+            {
+                PublishDiagnostic(RawInputBarcodeDiagnosticKind.KeyReceived, virtualKey);
+            }
+
             return;
         }
 
@@ -134,6 +141,7 @@ public sealed class RawInputBarcodeReceiver : IRawInputBarcodeReceiver
 
         if (virtualKey == VkEnter)
         {
+            PublishDiagnostic(RawInputBarcodeDiagnosticKind.KeyReceived, virtualKey);
             PublishBarcode();
         }
         else
@@ -141,8 +149,15 @@ public sealed class RawInputBarcodeReceiver : IRawInputBarcodeReceiver
             char? character = MapVirtualKeyToChar(virtualKey, isShiftPressed);
             if (character.HasValue)
             {
+                if (barcodeBuilder.Length == 0)
+                {
+                    PublishDiagnostic(RawInputBarcodeDiagnosticKind.ScanStarted);
+                }
+
                 barcodeBuilder.Append(character.Value);
             }
+
+            PublishDiagnostic(RawInputBarcodeDiagnosticKind.KeyReceived, virtualKey);
         }
 
         lastKeystroke = DateTime.Now;
@@ -169,8 +184,18 @@ public sealed class RawInputBarcodeReceiver : IRawInputBarcodeReceiver
         }
 
         LastCode = code;
+        PublishDiagnostic(RawInputBarcodeDiagnosticKind.ScanCompleted, code: code, bufferLength: code.Length);
         BarcodeReceived?.Invoke(this, new BarcodeInputReceivedEventArgs(code, DateTimeOffset.Now));
     }
+
+    private void PublishDiagnostic(
+        RawInputBarcodeDiagnosticKind kind,
+        ushort? virtualKey = null,
+        string? code = null,
+        int? bufferLength = null)
+        => DiagnosticOccurred?.Invoke(
+            this,
+            new RawInputBarcodeDiagnosticEventArgs(kind, virtualKey, isShiftPressed, bufferLength ?? barcodeBuilder.Length, code));
 
     private static char? MapVirtualKeyToChar(ushort virtualKey, bool isShift)
     {

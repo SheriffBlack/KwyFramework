@@ -183,6 +183,8 @@ public class DialogService : IDialogService
                 var ownerHitTestChanged = false;
                 var previousOwnerHitTestVisible = true;
                 var ownerActivationHooked = false;
+                var isCloseRequested = false;
+                IDialogResult? requestedResult = null;
 
                 void DisableOwnerHitTest()
                 {
@@ -260,10 +262,13 @@ public class DialogService : IDialogService
 
                 void RequestCloseHandler(IDialogResult result)
                 {
-                    viewModel.RequestClose -= RequestCloseHandler;
-                    UnhookOwnerActivation();
-                    RestoreOwnerHitTest();
-                    tcs.TrySetResult(result);
+                    if (isCloseRequested)
+                    {
+                        return;
+                    }
+
+                    isCloseRequested = true;
+                    requestedResult = result;
                     realWindow.Close();
                 }
 
@@ -274,6 +279,8 @@ public class DialogService : IDialogService
                     if (!viewModel.CanCloseDialog())
                     {
                         e.Cancel = true;
+                        isCloseRequested = false;
+                        requestedResult = null;
                     }
                 };
 
@@ -282,10 +289,10 @@ public class DialogService : IDialogService
                     UnhookOwnerActivation();
                     RestoreOwnerHitTest();
                     viewModel.OnDialogClosed();
+                    viewModel.RequestClose -= RequestCloseHandler;
                     if (!tcs.Task.IsCompleted)
                     {
-                        viewModel.RequestClose -= RequestCloseHandler;
-                        tcs.TrySetResult(new DialogResult(ButtonResult.None));
+                        tcs.TrySetResult(requestedResult ?? new DialogResult(ButtonResult.None));
                     }
                 };
 

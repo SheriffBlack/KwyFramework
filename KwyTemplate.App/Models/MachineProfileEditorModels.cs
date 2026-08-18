@@ -110,7 +110,7 @@ public sealed class MachineBasicEditorModel : BindableBase
 
     [Category("运行选择")]
     [DisplayName("运行方式")]
-    [InputType(InputType.ComboBox)]
+    [InputType(InputType.RadioButton)]
     [ItemsSource("Configurable", "Special")]
     public string RunMode
     {
@@ -149,6 +149,8 @@ public sealed class MachineBasicEditorModel : BindableBase
         }
     }
 
+    // 仅作为 ConfigurableProfileKey 的下拉数据源，不属于可编辑的机种配置字段。
+    [Browsable(false)]
     public IReadOnlyList<string> ConfigurableProfileKeys => getConfigurableProfileKeys();
 
     [Category("运行选择")]

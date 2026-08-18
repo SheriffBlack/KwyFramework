@@ -133,11 +133,16 @@
                             </StackPanel>
                         </kwyui:KwyFormItem>
                         <kwyui:KwyFormItem Label="{DynamicResource Correction.Field.ReturnValue}">
-                            <TextBox
-                                Width="150"
-                                HorizontalAlignment="Left"
-                                IsReadOnly="True"
-                                Text="{Binding LsCorrectionValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                <TextBox
+                                    Width="150"
+                                    IsReadOnly="True"
+                                    Text="{Binding LsCorrectionValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock
+                                    Margin="8,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Text="{Binding LsStandardUnit}" />
+                            </StackPanel>
                         </kwyui:KwyFormItem>
                     </StackPanel>
 
@@ -160,11 +165,16 @@
                             </StackPanel>
                         </kwyui:KwyFormItem>
                         <kwyui:KwyFormItem Label="{DynamicResource Correction.Field.ReturnValue}">
-                            <TextBox
-                                Width="150"
-                                HorizontalAlignment="Left"
-                                IsReadOnly="True"
-                                Text="{Binding RsCorrectionValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                                <TextBox
+                                    Width="150"
+                                    IsReadOnly="True"
+                                    Text="{Binding RsCorrectionValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock
+                                    Margin="8,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Text="{Binding RsStandardUnit}" />
+                            </StackPanel>
                         </kwyui:KwyFormItem>
                     </StackPanel>
                 </Grid>
