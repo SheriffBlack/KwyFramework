@@ -13,7 +13,14 @@ namespace KwyTemplate.Shell.Views;
 public partial class MainWindow : KwyWindow
 {
     private const int WmSysCommand = 0x0112;
+    private const int WmKeyDown = 0x0100;
+    private const int WmKeyUp = 0x0101;
+    private const int WmChar = 0x0102;
+    private const int WmSysKeyDown = 0x0104;
+    private const int WmSysKeyUp = 0x0105;
     private const int ScMinimize = 0xF020;
+    private const int ScMaximize = 0xF030;
+    private const int ScRestore = 0xF120;
     private const int SysCommandMask = 0xFFF0;
     private readonly IRawInputBarcodeReceiver rawInputBarcodeReceiver;
     private readonly IApplicationCloseGuard applicationCloseGuard;
@@ -49,10 +56,37 @@ public partial class MainWindow : KwyWindow
 
     private IntPtr MainWindowWndProc(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        // 扫码枪会同时产生 Raw Input 与普通键盘消息。扫码过程中的普通字符、
+        // 末尾 Enter 以及 Alt 等系统键都不能继续路由给当前焦点控件；否则 Enter
+        // 可能误执行“MES 连接”等按钮命令。
+        if (rawInputBarcodeReceiver.ShouldSuppressKeyboardInput &&
+            message is WmKeyDown or WmKeyUp or WmChar or WmSysKeyDown or WmSysKeyUp)
+        {
+            handled = true;
+            logService.Warn($"Blocked MainWindow keyboard message during raw barcode scan: Message=0x{message:X4}, VirtualKey=0x{wParam.ToInt64() & 0xFFFF:X2}.");
+            return IntPtr.Zero;
+        }
+
         if (message == WmSysCommand)
         {
             int command = unchecked((int)(wParam.ToInt64() & SysCommandMask));
-            logService.Info($"MainWindow WM_SYSCOMMAND: 0x{command:X4}" + (command == ScMinimize ? " (SC_MINIMIZE)" : string.Empty));
+            string commandName = command switch
+            {
+                ScMinimize => "SC_MINIMIZE",
+                ScMaximize => "SC_MAXIMIZE",
+                ScRestore => "SC_RESTORE",
+                _ => string.Empty
+            };
+
+            if (rawInputBarcodeReceiver.ShouldSuppressKeyboardInput &&
+                (command == ScMinimize || command == ScMaximize || command == ScRestore))
+            {
+                handled = true;
+                logService.Warn($"Blocked MainWindow WM_SYSCOMMAND during raw barcode scan: 0x{command:X4} ({commandName}).");
+                return IntPtr.Zero;
+            }
+
+            logService.Info($"MainWindow WM_SYSCOMMAND: 0x{command:X4}" + (string.IsNullOrEmpty(commandName) ? string.Empty : $" ({commandName})"));
         }
 
         return IntPtr.Zero;

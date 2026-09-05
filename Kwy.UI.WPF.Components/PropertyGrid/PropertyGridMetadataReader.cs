@@ -15,7 +15,7 @@ internal static class PropertyGridMetadataReader
         }
 
         var properties = PropertyMetadataReader.GetProperties(source)
-            .Where(metadata => metadata.IsBrowsable)
+            .Where(metadata => metadata.IsBrowsable && IsVisible(source, metadata.Property))
             .Select(metadata => new
             {
                 Metadata = metadata,
@@ -53,6 +53,20 @@ internal static class PropertyGridMetadataReader
         }
 
         return groups;
+    }
+
+    private static bool IsVisible(object source, PropertyInfo property)
+    {
+        VisibleWhenAttribute? attribute = property.GetCustomAttribute<VisibleWhenAttribute>();
+        if (attribute == null)
+        {
+            return true;
+        }
+
+        PropertyInfo? conditionProperty = source.GetType().GetProperty(attribute.PropertyName, BindingFlags.Instance | BindingFlags.Public);
+        return conditionProperty?.PropertyType == typeof(bool)
+            && conditionProperty.GetValue(source) is bool value
+            && value == attribute.ExpectedValue;
     }
 
     private static string ResolveCategory(object source, PropertyMetadataItem metadata)

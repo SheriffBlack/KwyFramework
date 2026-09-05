@@ -43,22 +43,23 @@ public class HiokiLcr :
             return false;
         }
 
-        HiokiLcrParameterPair activeParameters = config.GetActiveParameterPair();
+        HiokiLcrMeasurementSettings active = config.GetActiveMeasurementSettings();
+        HiokiLcrParameterPair activeParameters = active.Parameters;
         var result = new Dictionary<string, InstrumentMeasurementLimit>(StringComparer.OrdinalIgnoreCase);
         AddMeasurementLimit(
             result,
             activeParameters.Parameter1,
-            config.Parameter1Min,
-            config.Parameter1MinUnit,
-            config.Parameter1Max,
-            config.Parameter1MaxUnit);
+            active.PrimaryLimit.Minimum,
+            active.PrimaryLimit.MinimumUnit,
+            active.PrimaryLimit.Maximum,
+            active.PrimaryLimit.MaximumUnit);
         AddMeasurementLimit(
             result,
             activeParameters.Parameter3,
-            config.Parameter3Min,
-            config.Parameter3MinUnit,
-            config.Parameter3Max,
-            config.Parameter3MaxUnit);
+            active.SecondaryLimit.Minimum,
+            active.SecondaryLimit.MinimumUnit,
+            active.SecondaryLimit.Maximum,
+            active.SecondaryLimit.MaximumUnit);
 
         limits = result;
         return result.Count > 0;
@@ -110,7 +111,8 @@ public class HiokiLcr :
             return string.Empty;
         }
 
-        HiokiLcrParameterPair activeParameters = config.GetActiveParameterPair();
+        HiokiLcrMeasurementSettings active = config.GetActiveMeasurementSettings();
+        HiokiLcrParameterPair activeParameters = active.Parameters;
 
         var builder = new StringBuilder();
         builder.Append(":MODE LCR;");
@@ -118,16 +120,23 @@ public class HiokiLcr :
         builder.Append(":PARameter2 OFF;");
         builder.Append(CultureInfo.InvariantCulture, $":PARameter3 {MapParameter(activeParameters.Parameter3)};");
         builder.Append(":PARameter4 OFF;");
+        if (config.IsMeasurementDisabled)
+        {
+            builder.Append(":COMParator OFF;");
+            builder.Append(CultureInfo.InvariantCulture, $":TRIGger {ExternalTriggerMode};");
+            return builder.ToString();
+        }
+
         builder.Append(CultureInfo.InvariantCulture, $":COMParator {ComparatorOn};");
         builder.Append(CultureInfo.InvariantCulture, $":SPEEd {config.Speed};");
         builder.Append(CultureInfo.InvariantCulture, $":DCResistance:SPEEd {config.Speed};");
-        builder.Append(CultureInfo.InvariantCulture, $":FREQuency {FormatEngineeringValue(config.Frequency, config.FrequencyUnit)};");
+        builder.Append(CultureInfo.InvariantCulture, $":FREQuency {FormatEngineeringValue(active.Frequency, active.FrequencyUnit)};");
         builder.Append(CultureInfo.InvariantCulture, $":LEVel:VOLTage {FormatEngineeringValue(config.Voltage, config.VoltageUnit)};");
         builder.Append(CultureInfo.InvariantCulture, $":TRIGger {ExternalTriggerMode};");
         builder.Append(CultureInfo.InvariantCulture, $":TRIGger:DELay {FormatNumber(config.Delay)};");
         builder.Append(CultureInfo.InvariantCulture, $":RANGe {MapRange(config.Range)};");
-        builder.Append(CultureInfo.InvariantCulture, $":COMPARATOR:FLIMIT:ABSOLUTE {FormatMeasurementLimit(config.Parameter1Min, config.Parameter1MinUnit, activeParameters.Parameter1)},{FormatMeasurementLimit(config.Parameter1Max, config.Parameter1MaxUnit, activeParameters.Parameter1)};");
-        builder.Append(CultureInfo.InvariantCulture, $":COMPARATOR:SLIMIT:ABSOLUTE {FormatMeasurementLimit(config.Parameter3Min, config.Parameter3MinUnit, activeParameters.Parameter3)},{FormatMeasurementLimit(config.Parameter3Max, config.Parameter3MaxUnit, activeParameters.Parameter3)};");
+        builder.Append(CultureInfo.InvariantCulture, $":COMPARATOR:FLIMIT:ABSOLUTE {FormatMeasurementLimit(active.PrimaryLimit.Minimum, active.PrimaryLimit.MinimumUnit, activeParameters.Parameter1)},{FormatMeasurementLimit(active.PrimaryLimit.Maximum, active.PrimaryLimit.MaximumUnit, activeParameters.Parameter1)};");
+        builder.Append(CultureInfo.InvariantCulture, $":COMPARATOR:SLIMIT:ABSOLUTE {FormatMeasurementLimit(active.SecondaryLimit.Minimum, active.SecondaryLimit.MinimumUnit, activeParameters.Parameter3)},{FormatMeasurementLimit(active.SecondaryLimit.Maximum, active.SecondaryLimit.MaximumUnit, activeParameters.Parameter3)};");
 
         return builder.ToString();
     }
@@ -303,6 +312,9 @@ public class HiokiLcr :
                 // correction state.
                 await WriteLcrCommandAsync($":CORRection:LOAD:REFerence {spot},{modeNo},{FormatNumber(request.PrimaryReferenceValue)},{FormatNumber(request.SecondaryReferenceValue)}", token).ConfigureAwait(false);
                 await WriteLcrCommandAsync(":CORRection:LOAD:EXECute", token).ConfigureAwait(false);
+                // 与开路、短路校正一致，必须等待仪表实际完成后才能查询 LOAD:DATA?。
+                // 固定延时在不同频率/量程的本地离线配方下并不可靠，容易读到未就绪状态并最终超时。
+                await WaitForOperationCompleteAsync("LoadCorrection", token).ConfigureAwait(false);
             },
             cancellationToken).ConfigureAwait(false);
     }
@@ -409,11 +421,11 @@ public class HiokiLcr :
 
     private string GetMeasurementDisplayUnit(int valueIndex)
     {
-        HiokiLcrConfig config = GetConfig();
+        HiokiLcrMeasurementSettings active = GetConfig().GetActiveMeasurementSettings();
         return valueIndex switch
         {
-            1 => config.Parameter1MinUnit,
-            2 => config.Parameter3MinUnit,
+            1 => active.PrimaryLimit.MinimumUnit,
+            2 => active.SecondaryLimit.MinimumUnit,
             _ => string.Empty
         };
     }

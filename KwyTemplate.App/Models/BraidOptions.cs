@@ -34,11 +34,6 @@ public sealed class BraidOptions
     [InputType(InputType.NumberBox)]
     public int BlankQty { get; set; }
 
-    [DisplayName("后不封膜")]
-    [DisplayNameKey("Braid.BackNoFilmQty")]
-    [InputType(InputType.NumberBox)]
-    public int BackNoFilmQty { get; set; }
-
     public static BraidOptions FromTapeSetup(MesWorkOrderTapeSetup? setup)
         => setup == null
             ? new BraidOptions()
@@ -48,8 +43,7 @@ public sealed class BraidOptions
                 PackageQty = setup.PackageQty ?? 0,
                 AfterSpaceQty = setup.AfterSpaceQty ?? 0,
                 SampleQty = setup.SampleQty ?? 0,
-                BlankQty = setup.BlankQty ?? 0,
-                BackNoFilmQty = setup.BackNoFilmQty ?? 0
+                BlankQty = setup.BlankQty ?? 0
             };
 
     public MesWorkOrderTapeSetup ToTapeSetup()
@@ -59,5 +53,5 @@ public sealed class BraidOptions
             AfterSpaceQty,
             SampleQty,
             BlankQty,
-            BackNoFilmQty);
+            BlankQty);
 }

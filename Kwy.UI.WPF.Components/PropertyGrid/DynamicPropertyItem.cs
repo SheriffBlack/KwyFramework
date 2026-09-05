@@ -26,6 +26,7 @@ public sealed class DynamicPropertyItem : BindableBase
     private readonly string? displayNameKey;
     private readonly string groupNameFallback;
     private readonly string? groupNameKey;
+    private readonly DisableWhenAttribute? disableWhen;
 
     internal event EventHandler? ValueChanged;
 
@@ -37,6 +38,7 @@ public sealed class DynamicPropertyItem : BindableBase
         propertyInfo = metadata.Property;
         getter = BuildGetter(propertyInfo);
         setter = metadata.IsReadOnly ? null : BuildSetter(propertyInfo);
+        disableWhen = propertyInfo.GetCustomAttribute<DisableWhenAttribute>();
 
         unitPropertyInfo = source.GetType().GetProperty(propertyInfo.Name + "Unit", BindingFlags.Instance | BindingFlags.Public);
         if (unitPropertyInfo is { CanRead: true })
@@ -54,7 +56,6 @@ public sealed class DynamicPropertyItem : BindableBase
         GroupWidth = metadata.GroupWidth;
         InlineGroup = metadata.InlineGroup;
         EditorWidth = metadata.EditorWidth is > 0 ? metadata.EditorWidth.Value : 180.0;
-        IsReadOnly = setter == null;
         IsInteger = IsIntegerType(propertyInfo.PropertyType);
         Minimum = metadata.Minimum;
         Maximum = metadata.Maximum;
@@ -76,7 +77,9 @@ public sealed class DynamicPropertyItem : BindableBase
 
     public object? ItemsSource => itemsSourceProviderGetter?.Invoke(source) ?? staticItemsSource;
 
-    public bool IsReadOnly { get; }
+    public bool IsReadOnly => setter == null || IsConditionDisabled();
+
+    public bool IsEnabled => !IsReadOnly;
 
     public double? GroupWidth { get; }
 
@@ -101,7 +104,7 @@ public sealed class DynamicPropertyItem : BindableBase
         get => getter(source);
         set
         {
-            if (setter == null)
+            if (setter == null || IsConditionDisabled())
             {
                 return;
             }
@@ -143,6 +146,19 @@ public sealed class DynamicPropertyItem : BindableBase
 
         CoerceUnitValueToItemsSource();
         RaisePropertyChanged(nameof(ItemsSource));
+    }
+
+    private bool IsConditionDisabled()
+    {
+        if (disableWhen == null)
+        {
+            return false;
+        }
+
+        PropertyInfo? conditionProperty = source.GetType().GetProperty(disableWhen.PropertyName, BindingFlags.Instance | BindingFlags.Public);
+        return conditionProperty?.PropertyType == typeof(bool)
+            && conditionProperty.GetValue(source) is bool value
+            && value == disableWhen.ExpectedValue;
     }
 
     private void CoerceUnitValueToItemsSource()

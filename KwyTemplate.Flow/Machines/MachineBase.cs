@@ -44,6 +44,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     private MachineProductionState productionState = MachineProductionState.Stopped;
 
     private volatile bool runtimeStopping;
+    private long resultGeneration;
     private bool disposed;
 
     protected MachineBase(IMachineDeviceContext devices, ILocalizationService? localizationService = null)
@@ -121,6 +122,11 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     public event EventHandler? TableChanged;
 
     public event EventHandler<StationResultPublishedEventArgs>? StationResultPublished;
+
+    /// <summary>
+    /// 后台处理单颗工位结果失败时通知应用层。该失败不会中断后续工位结果消费。
+    /// </summary>
+    public event EventHandler<StationResultProcessingFailedEventArgs>? StationResultProcessingFailed;
 
     public event EventHandler<StationEnabledChangedEventArgs>? StationEnabledChanged;
 
@@ -612,10 +618,58 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     private static string FormatLimitNumber(double? value)
         => value?.ToString("0.##########", CultureInfo.InvariantCulture) ?? string.Empty;
 
-public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+    /// <summary>Apply parsed work-order values to the live configuration and station models only.</summary>
+    public virtual Task ApplyWorkOrderRuntimeSetupAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(setup);
         return Task.CompletedTask;
+    }
+
+    /// <summary>Write an already prepared work-order configuration to physical devices.</summary>
+    public virtual Task<WorkOrderHardwareWriteResult> WriteWorkOrderSetupToHardwareAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+        => Task.FromResult(new WorkOrderHardwareWriteResult());
+
+    /// <summary>
+    /// Compatibility entry point for callers which do not need to separate UI refresh from hardware I/O.
+    /// New work-order flows should call the two explicit phases above.
+    /// </summary>
+    public virtual async Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+    {
+        await ApplyWorkOrderRuntimeSetupAsync(setup, cancellationToken).ConfigureAwait(false);
+        await WriteWorkOrderSetupToHardwareAsync(setup, cancellationToken).ConfigureAwait(false);
+    }
+
+    protected static async Task TryApplyWorkOrderConfigAsync(
+        string target,
+        IMeasurementInstrument? instrument,
+        WorkOrderHardwareWriteResult result,
+        CancellationToken cancellationToken)
+    {
+        if (instrument is not IConfigurableDevice configurable)
+        {
+            return;
+        }
+
+        await TryWriteWorkOrderHardwareAsync(target, () => configurable.ApplyConfigAsync(cancellationToken), result).ConfigureAwait(false);
+    }
+
+    protected static async Task TryWriteWorkOrderHardwareAsync(
+        string target,
+        Func<Task> writeAsync,
+        WorkOrderHardwareWriteResult result)
+    {
+        try
+        {
+            await writeAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            result.AddFailure(target, ex);
+        }
     }
     /// <summary>
     /// 设置点检界面进入状态。默认机型不需要写 PLC。
@@ -1079,6 +1133,8 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
     }
     public void ClearDataGrid()
     {
+        // 使已经进入后台队列、但尚未消费的旧工位结果失效。
+        Interlocked.Increment(ref resultGeneration);
         foreach (TestStationModel station in TestStations)
         {
             station.TestValues.Clear();
@@ -1141,6 +1197,14 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
         return true;
     }
 
+    /// <summary>
+    /// 工位完成上升沿已被确认，且本次硬件 OK/NG 已读取。
+    /// 用于必须与实时握手同步的机型级统计；UI、保存等仍走结果队列。
+    /// </summary>
+    internal virtual void OnStationTestTriggered(TestStationModel station, bool triggerResult)
+    {
+    }
+
     public bool TryReadDiSnapshotBit(int channel, out bool state)
     {
         state = false;
@@ -1201,6 +1265,19 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 完成软件判定工位的实时握手。
+    /// <paramref name="message"/> 是本次测试的不可变结果快照；不能从可能已恢复的工位状态读取本次判定。
+    /// </summary>
+    internal virtual Task CompleteSoftwareStationHandshakeAsync(
+        TestStationModel station,
+        StationResultMessage message,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        return CompleteStationHandshakeAsync(station, message.IsPass, cancellationToken);
+    }
+
     private void WriteResultOutputs(StationIoBinding io, bool isPass)
     {
         if (runtimeStopping || IoCard == null || !IoCard.IsConnected)
@@ -1222,10 +1299,23 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
     internal Task ProcessTestRecordCoreAsync(TestResultPayload record, CancellationToken cancellationToken)
         => ProcessTestRecordAsync(record, cancellationToken);
 
+    /// <summary>当前生产结果代次；清空生产界面时递增，用于拒绝旧的异步结果。</summary>
+    public long CurrentResultGeneration => Volatile.Read(ref resultGeneration);
+
     internal async Task ProcessStationResultAsync(StationResultMessage message, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(message);
+        if (message.ResultGeneration != CurrentResultGeneration)
+        {
+            return;
+        }
+
         message.ApplyToStation();
+        if (message.ResultGeneration != CurrentResultGeneration)
+        {
+            return;
+        }
+
         ApplyStationResultToTable(message);
         RaiseStationResultPublished(message);
 
@@ -1235,6 +1325,16 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
                 new TestResultPayload(RecordType.Numeric, value.TestName, value.Value, value.Judge),
                 cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    internal void ReportStationResultProcessingFailed(StationResultMessage message, Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(exception);
+
+        StationResultProcessingFailed?.Invoke(
+            this,
+            new StationResultProcessingFailedEventArgs(message.Station, exception));
     }
 
     protected virtual bool ShouldApplyRealtimeStatisticsToTable => true;
@@ -1288,7 +1388,7 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
         var values = message.Values
             .Select(static value => new TestResultPayload(RecordType.Numeric, value.TestName, value.Value, value.Judge))
             .ToArray();
-        StationResultPublished?.Invoke(this, new StationResultPublishedEventArgs(message.Station, values, message.IsPass));
+        StationResultPublished?.Invoke(this, new StationResultPublishedEventArgs(message.Station, values, message.IsPass, message.ResultGeneration));
     }
 
     private async Task RunMachinePollingAsync(CancellationToken cancellationToken)
@@ -1442,6 +1542,33 @@ public virtual Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, Cancellati
         RaiseTableChanged();
     }
 
+    /// <summary>
+    /// 刷新工单参数后，仅在测试列结构发生变化时重建结果表。
+    /// 这样同一机种的参数更新不会替换“测试值/统计”行，避免 UI 闪烁。
+    /// </summary>
+    /// <returns>是否因测试列结构变化而重建了结果表。</returns>
+    public bool RefreshResultGridIfStructureChanged()
+    {
+        RefreshResultGridTestNames();
+        string[] expectedColumnIds =
+        [
+            "RowName",
+            .. TestStations.SelectMany(station => station.OrderedTestNames.Select(testName => CreateCellKey(station.StationId, testName)))
+        ];
+        bool structureChanged = !PartColumns
+            .Select(static column => column.ParameterId)
+            .SequenceEqual(expectedColumnIds, StringComparer.OrdinalIgnoreCase);
+
+        if (structureChanged)
+        {
+            BuildDataGrid();
+        }
+
+        UpdateLimitRows();
+        RaiseTableChanged();
+        return structureChanged;
+    }
+
     private string T(string key, string fallback)
     {
         string? text = localizationService?.GetString(key);
@@ -1494,11 +1621,12 @@ public sealed class StationEnabledChangedEventArgs : EventArgs
 
 public sealed class StationResultPublishedEventArgs : EventArgs
 {
-    public StationResultPublishedEventArgs(TestStationModel station, IReadOnlyList<TestResultPayload> values, bool isPass)
+    public StationResultPublishedEventArgs(TestStationModel station, IReadOnlyList<TestResultPayload> values, bool isPass, long resultGeneration)
     {
         Station = station ?? throw new ArgumentNullException(nameof(station));
         Values = values ?? throw new ArgumentNullException(nameof(values));
         IsPass = isPass;
+        ResultGeneration = resultGeneration;
     }
 
     public TestStationModel Station { get; }
@@ -1506,7 +1634,23 @@ public sealed class StationResultPublishedEventArgs : EventArgs
     public IReadOnlyList<TestResultPayload> Values { get; }
 
     public bool IsPass { get; }
+
+    public long ResultGeneration { get; }
 }
+
+public sealed class StationResultProcessingFailedEventArgs : EventArgs
+{
+    public StationResultProcessingFailedEventArgs(TestStationModel station, Exception exception)
+    {
+        Station = station ?? throw new ArgumentNullException(nameof(station));
+        Exception = exception ?? throw new ArgumentNullException(nameof(exception));
+    }
+
+    public TestStationModel Station { get; }
+
+    public Exception Exception { get; }
+}
+
 public enum RecordType
 {
     Numeric,

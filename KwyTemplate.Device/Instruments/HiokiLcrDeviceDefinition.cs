@@ -11,9 +11,17 @@ public sealed class HiokiLcrDeviceDefinition : InstrumentDeviceDefinition
         string deviceId,
         string deviceName,
         IProtocolConfig connectionConfig,
-        HiokiLcrConfig? parameter = null)
-        : base(deviceId, deviceName, connectionConfig, parameter ?? new HiokiLcrConfig())
+        HiokiLcrConfig? parameter = null,
+        bool supportsDualFrequency = false)
+        : base(deviceId, deviceName, connectionConfig, ConfigureCapabilities(parameter, supportsDualFrequency))
     {
+    }
+
+    private static HiokiLcrConfig ConfigureCapabilities(HiokiLcrConfig? parameter, bool supportsDualFrequency)
+    {
+        HiokiLcrConfig config = parameter ?? new HiokiLcrConfig();
+        config.SupportsDualFrequency = supportsDualFrequency;
+        return config;
     }
 
     public override IDevice CreateDevice(IServiceProvider services)

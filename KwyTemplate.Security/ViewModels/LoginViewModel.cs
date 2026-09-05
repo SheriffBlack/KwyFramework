@@ -99,7 +99,11 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
         {
             IReadOnlyList<string> users = await userStore.GetUserNamesAsync(DestroyToken).ConfigureAwait(true);
             UserNames.Clear();
-            foreach (string user in users.OrderBy(GetUserDisplayOrder).ThenBy(static user => user, StringComparer.OrdinalIgnoreCase))
+            // Admin 不作为下拉候选项展示；登录框仍可编辑，手动输入 admin 仍走原有登录校验。
+            foreach (string user in users
+                .Where(static user => !IsUser(user, "admin", "管理员"))
+                .OrderBy(GetUserDisplayOrder)
+                .ThenBy(static user => user, StringComparer.OrdinalIgnoreCase))
             {
                 UserNames.Add(user);
             }
@@ -137,11 +141,6 @@ public sealed class LoginViewModel : BindableBase, IDialogAware
         if (IsUser(userName, "engineer", "工程师"))
         {
             return 1;
-        }
-
-        if (IsUser(userName, "admin", "管理员"))
-        {
-            return 2;
         }
 
         return 100;

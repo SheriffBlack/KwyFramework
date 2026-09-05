@@ -5,6 +5,7 @@ namespace Kwy.MVVM.Core;
 /// <summary>
 /// 参数容器的基础实现。
 /// 已针对 .NET 8 进行了极致性能优化，使用 ReadOnlySpan<char> 消除字符串解析时的数组内存分配。
+/// ParametersBase(string query) 是一个高性能 query 参数解析器，用于把 "a=1&b=2" 这种字符串转成内部的 List<KeyValuePair<string, object?>> 参数列表
 /// </summary>
 public abstract class ParametersBase : IParameters
 {

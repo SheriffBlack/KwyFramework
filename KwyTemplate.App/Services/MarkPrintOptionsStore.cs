@@ -19,12 +19,16 @@ public sealed class MarkPrintOptionsStore
 
     public MarkPrintOptions Current { get; private set; } = new();
 
+    /// <summary>当前编带字符配置已成功保存并替换。</summary>
+    public event EventHandler? OptionsChanged;
+
     public MarkPrintOptionsLoadResult LoadOrCreate()
     {
         if (!File.Exists(OptionsFilePath))
         {
             Current = new MarkPrintOptions();
             JsonHelper.Write(OptionsFilePath, Current);
+            OptionsChanged?.Invoke(this, EventArgs.Empty);
             return new MarkPrintOptionsLoadResult(Current, OptionsFilePath, true);
         }
 
@@ -37,6 +41,7 @@ public sealed class MarkPrintOptionsStore
         ArgumentNullException.ThrowIfNull(options);
         await JsonHelper.WriteAsync(OptionsFilePath, options).ConfigureAwait(false);
         Current = options;
+        OptionsChanged?.Invoke(this, EventArgs.Empty);
     }
 }
 

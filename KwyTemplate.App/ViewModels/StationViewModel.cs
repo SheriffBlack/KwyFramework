@@ -5,11 +5,13 @@ using KwyTemplate.App.Models;
 using KwyTemplate.App.Runtime;
 using KwyTemplate.App.Services;
 using KwyTemplate.Contracts.Localization;
+using KwyTemplate.Contracts.Security;
 using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
 using KwyTemplate.MES.Abstract.Models;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Windows;
 
 namespace KwyTemplate.App.ViewModels;
 
@@ -20,6 +22,7 @@ public class StationViewModel : BindableBase, INavigationAware
     private readonly StationEnableStateStore stationEnableStateStore;
     private readonly MesConnectionStatus mesConnectionStatus;
     private readonly ILocalizationService localizationService;
+    private readonly IPermissionService? permissionService;
     private AsyncDelegateCommand<StationEnableItemModel>? toggleStationEnabledCommand;
     private AsyncDelegateCommand<StationTestItemModel>? triggerStationInstrumentsCommand;
     private int refreshStationEnabledGate;
@@ -29,14 +32,20 @@ public class StationViewModel : BindableBase, INavigationAware
         IAppNotificationService notificationService,
         StationEnableStateStore stationEnableStateStore,
         MesConnectionStatus mesConnectionStatus,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        IPermissionService? permissionService = null)
     {
         this.machine = machine ?? throw new ArgumentNullException(nameof(machine));
         this.notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         this.stationEnableStateStore = stationEnableStateStore ?? throw new ArgumentNullException(nameof(stationEnableStateStore));
         this.mesConnectionStatus = mesConnectionStatus ?? throw new ArgumentNullException(nameof(mesConnectionStatus));
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
+        this.permissionService = permissionService;
         this.mesConnectionStatus.PropertyChanged += OnMesConnectionStatusPropertyChanged;
+        if (this.permissionService != null)
+        {
+            this.permissionService.PermissionsChanged += OnPermissionsChanged;
+        }
         this.localizationService.LanguageChanged += OnLanguageChanged;
 
         foreach (TestStationModel station in machine.TestStations)
@@ -51,7 +60,9 @@ public class StationViewModel : BindableBase, INavigationAware
 
     public ObservableCollection<StationTestItemModel> StationTestItems { get; } = [];
 
-    public bool CanEditStationEnabled => mesConnectionStatus.State != MesConnectionState.Online;
+    public bool CanEditStationEnabled
+        => mesConnectionStatus.State != MesConnectionState.Online
+           && permissionService?.HasPermission(PermissionCodes.Admin) == true;
 
     public AsyncDelegateCommand<StationEnableItemModel> ToggleStationEnabledCommand
         => toggleStationEnabledCommand ??= new AsyncDelegateCommand<StationEnableItemModel>(ToggleStationEnabledAsync, _ => CanEditStationEnabled);
@@ -75,6 +86,10 @@ public class StationViewModel : BindableBase, INavigationAware
         if (disposing)
         {
             mesConnectionStatus.PropertyChanged -= OnMesConnectionStatusPropertyChanged;
+            if (permissionService != null)
+            {
+                permissionService.PermissionsChanged -= OnPermissionsChanged;
+            }
             localizationService.LanguageChanged -= OnLanguageChanged;
         }
 
@@ -97,6 +112,24 @@ public class StationViewModel : BindableBase, INavigationAware
             return;
         }
 
+        RaisePropertyChanged(nameof(CanEditStationEnabled));
+        toggleStationEnabledCommand?.RaiseCanExecuteChanged();
+    }
+
+    private void OnPermissionsChanged(object? sender, PermissionChangedEventArgs e)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.CheckAccess())
+        {
+            RefreshStationEnabledEditPermission();
+            return;
+        }
+
+        _ = dispatcher.InvokeAsync(RefreshStationEnabledEditPermission);
+    }
+
+    private void RefreshStationEnabledEditPermission()
+    {
         RaisePropertyChanged(nameof(CanEditStationEnabled));
         toggleStationEnabledCommand?.RaiseCanExecuteChanged();
     }
@@ -132,7 +165,11 @@ public class StationViewModel : BindableBase, INavigationAware
         if (!CanEditStationEnabled)
         {
             item.SyncFromStation();
-            await notificationService.WarningAsync(localizationService.T("Station.Message.MesOnlineCannotToggle", "MES is online. Disconnect MES before changing station enabled state."), localizationService.T("Station.Title.Settings", "Station Settings")).ConfigureAwait(true);
+            string message = mesConnectionStatus.State == MesConnectionState.Online
+                ? localizationService.T("Station.Message.MesOnlineCannotToggle", "MES is online. Disconnect MES before changing station enabled state.")
+                : permissionService?.GetNoPermissionMessage(PermissionCodes.Admin)
+                  ?? localizationService.T("Station.Message.AdminRequired", "Administrator permission is required to change station enabled state.");
+            await notificationService.WarningAsync(message, localizationService.T("Station.Title.Settings", "Station Settings")).ConfigureAwait(true);
             return;
         }
 

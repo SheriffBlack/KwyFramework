@@ -277,6 +277,9 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             channel.Series.Items.Clear();
             channel.Series.Counts.Clear();
             lastStep = -1;
+            frequencyAxis.Maximum = DefaultFrequencyAxisMaximum;
+            frequencyAxis.MajorStep = FrequencyAxisStep;
+            frequencyAxis.MinorStep = FrequencyAxisStep;
             isDirty = true;
         }
     }
@@ -450,17 +453,43 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
             index++;
         }
 
-        double nextFrequencyMaximum = Math.Max(
-            DefaultFrequencyAxisMaximum,
-            Math.Ceiling(maxCount / DefaultFrequencyAxisMaximum) * DefaultFrequencyAxisMaximum);
-        if (!AreSameAxisMaximum(frequencyAxis.Maximum, nextFrequencyMaximum))
+        (double nextFrequencyMaximum, double nextFrequencyStep) = CalculateFrequencyAxisScale(maxCount);
+        if (!AreSameAxisMaximum(frequencyAxis.Maximum, nextFrequencyMaximum) ||
+            !AreSameAxisMaximum(frequencyAxis.MajorStep, nextFrequencyStep))
         {
             frequencyAxis.Maximum = nextFrequencyMaximum;
+            frequencyAxis.MajorStep = nextFrequencyStep;
+            frequencyAxis.MinorStep = nextFrequencyStep;
             // Limit lines use data coordinates.  Refresh their frequency-axis
             // endpoint only when the histogram height changes, so upper/lower/
             // target lines always span the full plot instead of stopping at 1.
             UpdateLimitSeries();
         }
+    }
+
+    /// <summary>
+    /// 数量轴保持约十个主刻度。默认是 0~500、每格 50；最大柱数量增大后，
+    /// 自动扩展坐标范围和刻度步长，始终完整显示频次分布。
+    /// </summary>
+    private static (double Maximum, double Step) CalculateFrequencyAxisScale(int maxCount)
+    {
+        if (maxCount <= DefaultFrequencyAxisMaximum)
+        {
+            return (DefaultFrequencyAxisMaximum, FrequencyAxisStep);
+        }
+
+        const int targetTickCount = 10;
+        double step = GetNiceFrequencyStep(maxCount / (double)targetTickCount);
+        double maximum = Math.Ceiling(maxCount / (step * targetTickCount)) * step * targetTickCount;
+        return (maximum, step);
+    }
+
+    private static double GetNiceFrequencyStep(double rawStep)
+    {
+        double exponent = Math.Pow(10, Math.Floor(Math.Log10(Math.Max(rawStep, 1))));
+        double normalized = rawStep / exponent;
+        double nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+        return Math.Max(FrequencyAxisStep, nice * exponent);
     }
 
     private static bool AreSameAxisMaximum(double current, double next)

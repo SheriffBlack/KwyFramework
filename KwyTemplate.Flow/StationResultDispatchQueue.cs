@@ -27,7 +27,19 @@ internal sealed class StationResultDispatchQueue
 
         await foreach (StationResultMessage message in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
-            await machine.ProcessStationResultAsync(message, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await machine.ProcessStationResultAsync(message, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                // 实时握手已与结果处理解耦；单颗数据异常不能终止整个消费者。
+                machine.ReportStationResultProcessingFailed(message, exception);
+            }
         }
     }
 
@@ -43,11 +55,13 @@ internal sealed class StationResultMessage
         TestStationModel station,
         IReadOnlyList<StationResultValue> values,
         bool isPass,
+        long resultGeneration,
         IReadOnlyList<CapturedStationDataDeal>? captures = null)
     {
         Station = station;
         Values = values;
         IsPass = isPass;
+        ResultGeneration = resultGeneration;
         this.captures = captures;
     }
 
@@ -57,14 +71,18 @@ internal sealed class StationResultMessage
 
     public bool IsPass { get; private set; }
 
-    public static StationResultMessage Create(TestStationModel station)
-        => CreateFromStation(station);
+    /// <summary>生产数据清空时递增；旧代次消息不得回写新工单的界面。</summary>
+    public long ResultGeneration { get; }
+
+    public static StationResultMessage Create(TestStationModel station, long resultGeneration)
+        => CreateFromStation(station, resultGeneration);
 
     public static StationResultMessage CreateDeferredHardware(
         TestStationModel station,
         bool hardwareResult,
-        IReadOnlyList<CapturedStationDataDeal> captures)
-        => new(station, [], hardwareResult, captures);
+        IReadOnlyList<CapturedStationDataDeal> captures,
+        long resultGeneration)
+        => new(station, [], hardwareResult, resultGeneration, captures);
 
     public void ApplyToStation()
     {
@@ -75,7 +93,7 @@ internal sealed class StationResultMessage
                 captured.Deal.ApplyCapture(captured.Capture, IsPass, Station);
             }
 
-            StationResultMessage resolved = CreateFromStation(Station);
+            StationResultMessage resolved = CreateFromStation(Station, ResultGeneration);
             Values = resolved.Values;
             IsPass = resolved.IsPass;
             return;
@@ -91,7 +109,7 @@ internal sealed class StationResultMessage
         }
     }
 
-    private static StationResultMessage CreateFromStation(TestStationModel station)
+    private static StationResultMessage CreateFromStation(TestStationModel station, long resultGeneration)
     {
         var values = new List<StationResultValue>();
         var testNames = new List<string>(station.OrderedTestNames);
@@ -118,7 +136,7 @@ internal sealed class StationResultMessage
         }
 
         bool isPass = station.TestJudges.Count == 0 || station.TestJudges.All(static pair => pair.Value);
-        return new StationResultMessage(station, values, isPass);
+        return new StationResultMessage(station, values, isPass, resultGeneration);
     }
 }
 

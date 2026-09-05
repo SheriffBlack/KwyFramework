@@ -44,6 +44,7 @@ public sealed class PropertyGroupModel : BindableBase
         set => SetProperty(ref hasGroupHeader, value);
     }
 
+
     public ObservableCollection<DynamicPropertyItem> Properties { get; } = new();
 
     public void RefreshLocalization()

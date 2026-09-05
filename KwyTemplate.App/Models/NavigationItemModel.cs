@@ -44,6 +44,11 @@ public class NavigationItemModel : BindableBase
     public string PermissionCode { get; set; } = string.Empty;
 
     /// <summary>
+    /// Presentation policy when the required permission is unavailable.
+    /// </summary>
+    public PermissionCheckMode PermissionMode { get; set; } = PermissionCheckMode.Hide;
+
+    /// <summary>
     /// Stable key used only by navigation button selected-state binding.
     /// </summary>
     public string NavigationKey => string.IsNullOrWhiteSpace(Parameter) ? ViewName : $"{ViewName}:{Parameter}";

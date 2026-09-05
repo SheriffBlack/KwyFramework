@@ -1,3 +1,4 @@
+using System.Buffers;
 using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
@@ -11,7 +12,7 @@ namespace Kwy.Device.Core.Instrument;
 /// </summary>
 public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
 {
-    private static readonly TimeSpan ProtocolDisposeTimeout = TimeSpan.FromSeconds(3);
+    private const int ResponseBufferSize = 4096;
     private readonly SemaphoreSlim executionSemaphore = new(1, 1);
 
     protected readonly ICommunicationClient protocol;
@@ -204,9 +205,16 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
 
     private async ValueTask<string> ReadResponseCoreAsync(CancellationToken cancellationToken)
     {
-        var buffer = new byte[4096];
-        var bytesReceived = await transport.ReadAsync(buffer, cancellationToken);
-        return bytesReceived <= 0 ? string.Empty : ParseResponse(buffer.AsSpan(0, bytesReceived));
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(ResponseBufferSize);
+        try
+        {
+            int bytesReceived = await transport.ReadAsync(buffer.AsMemory(0, ResponseBufferSize), cancellationToken);
+            return bytesReceived <= 0 ? string.Empty : ParseResponse(buffer.AsSpan(0, bytesReceived));
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     private async ValueTask ExecuteSerializedAsync(

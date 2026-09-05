@@ -39,13 +39,15 @@ internal static class CyntecMesFileParser
             TryGetString(bag, "TablePaperMatNo"),
             TryGetString(bag, "TopCoverMatNo"),
             TryGetString(bag, "ReelMatNo"));
+        int? blankQty = TryGetInt32(bag, "BlankQty");
         var tapeSetup = new MesWorkOrderTapeSetup(
             TryGetInt32(bag, "BeforeSpaceQty"),
             TryGetInt32(bag, "PackageQty"),
             TryGetInt32(bag, "AfterSpaceQty"),
             TryGetInt32(bag, "SampleQty"),
-            TryGetInt32(bag, "BlankQty"),
-            TryGetInt32(bag, "BlankQty"));
+            // Cyntec 只有 BlankQty；它同时对应“空格二”与“后不封膜”。
+            blankQty,
+            blankQty);
         int? standardSampleCheckInterval = TryGetInt32(bag, "StdPartsCheck");
 
         return new MesWorkOrderSetup(
@@ -174,15 +176,22 @@ internal static class CyntecMesFileParser
                 TryGetDouble(bag, "DCRMinValue"),
                 TryGetDouble(bag, "DCRMaxValue"),
                 dcrUnit,
-                dcrRange),
-            new(
+                dcrRange)
+        };
+
+        // DCR2 only exists when the customer file actually provides a second
+        // DCR parameter set.  Do not let the DCR1 unit/range fallback create a
+        // phantom DCR2 for single-DCR machines such as Machine_4_HAHH.
+        if (HasAnyValue(bag, "DCRMinValue2", "DCRMaxValue2", "DCRUnit2", "DCRRange2"))
+        {
+            items.Add(new(
                 "DCR2",
                 "DCR2",
                 TryGetDouble(bag, "DCRMinValue2"),
                 TryGetDouble(bag, "DCRMaxValue2"),
                 TryGetString(bag, "DCRUnit2") ?? dcrUnit,
-                TryGetString(bag, "DCRRange2") ?? dcrRange)
-        };
+                TryGetString(bag, "DCRRange2") ?? dcrRange));
+        }
 
         if (IsEnabled(bag, "ZEnable"))
         {
@@ -202,6 +211,20 @@ internal static class CyntecMesFileParser
         string? lcrRange = TryGetString(bag, "LCRRange");
         items.Add(new("Ls", "Ls", TryGetDouble(bag, "LMinValue"), TryGetDouble(bag, "LMaxValue"), TryGetString(bag, "LUnit"), lcrRange));
         items.Add(new("Rs", "Rs", TryGetDouble(bag, "RSMinValue"), TryGetDouble(bag, "RSMaxValue"), TryGetString(bag, "RSUnit"), lcrRange));
+
+        if (IsEnabled(bag, "LEnable2"))
+        {
+            // Second-frequency fields intentionally have their own IDs.  They
+            // must never overwrite the primary Ls/Rs values used by existing
+            // single-frequency recipes.
+            items.Add(new("Ls2", "Ls2", TryGetDouble(bag, "LMinValue2"), TryGetDouble(bag, "LMaxValue2"), TryGetString(bag, "LUnit2") ?? TryGetString(bag, "LUnit"), TryGetString(bag, "LCRRange2") ?? lcrRange));
+            items.Add(new("Rs2", "Rs2", TryGetDouble(bag, "RSMinValue2"), TryGetDouble(bag, "RSMaxValue2"), TryGetString(bag, "RSUnit2") ?? TryGetString(bag, "RSUnit"), TryGetString(bag, "LCRRange2") ?? lcrRange));
+
+            if (IsEnabled(bag, "QEnable"))
+            {
+                items.Add(new("Q2", "Q2", TryGetDouble(bag, "QMinValue2") ?? TryGetDouble(bag, "QMinValue"), TryGetDouble(bag, "QMaxValue2") ?? TryGetDouble(bag, "QMaxValue"), null, TryGetString(bag, "LCRRange2") ?? lcrRange));
+            }
+        }
 
         return items
             .Where(static item => item.LowerLimit.HasValue || item.UpperLimit.HasValue || !string.IsNullOrWhiteSpace(item.Unit) || !string.IsNullOrWhiteSpace(item.Range))
@@ -284,6 +307,9 @@ internal static class CyntecMesFileParser
             || value.Trim().Equals("TRUE", StringComparison.OrdinalIgnoreCase);
     private static string? TryGetString(MesParameterBag bag, string key)
         => bag.TryGetString(key, out string value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+
+    private static bool HasAnyValue(MesParameterBag bag, params string[] keys)
+        => keys.Any(key => TryGetString(bag, key) != null);
 
     private static int? TryGetInt32(MesParameterBag bag, string key)
         => bag.TryGetInt32(key, out int value) ? value : null;

@@ -5,6 +5,7 @@ using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.Instrument;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
+using KwyTemplate.App.Messages;
 using KwyTemplate.App.Runtime;
 using KwyTemplate.App.Services;
 using KwyTemplate.App.Models;
@@ -15,9 +16,10 @@ using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
 
 using KwyTemplate.Contracts.Localization;
+using Kwy.MVVM.Messaging;
 namespace KwyTemplate.App.ViewModels;
 
-public class CorrectionViewModel : BindableBase
+public class CorrectionViewModel : BindableBase, INavigationAware
 {
     private readonly IRegionManager regionManager;
     private readonly ICorrectionParameterProvider correctionParameterProvider;
@@ -26,6 +28,8 @@ public class CorrectionViewModel : BindableBase
     private readonly IAppNotificationService notificationService;
     private readonly ILocalizationService localizationService;
     private readonly MesConnectionStatus mesConnectionStatus;
+    private readonly StandardSampleState sampleState;
+    private readonly IDisposable stationLimitsAppliedSubscription;
     private AsyncDelegateCommand? ensureDefaultContentCommand;
     private AsyncDelegateCommand? executeOpenCorrectionCommand;
     private AsyncDelegateCommand? executeShortCorrectionCommand;
@@ -46,13 +50,13 @@ public class CorrectionViewModel : BindableBase
     private string lsCorrectionValue = string.Empty;
     private string rsCorrectionValue = string.Empty;
     private bool isCorrectionBusy;
+    private bool isRefreshingCorrectionParameters;
     private bool disposed;
-    private static readonly TimeSpan CorrectionReadTimeout = TimeSpan.FromSeconds(15);
-    private static readonly TimeSpan CorrectionReadRetryInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan OpenCorrectionExecuteDelay = TimeSpan.Zero;
     private static readonly TimeSpan ShortCorrectionExecuteDelay = TimeSpan.Zero;
-    private static readonly TimeSpan LoadCorrectionExecuteDelay = TimeSpan.FromMilliseconds(2000);
-    private static readonly TimeSpan LoadCorrectionEnableDelay = TimeSpan.FromMilliseconds(500);
+    // HIOKI driver waits for *OPC? after LOAD:EXECute; do not use a guessed delay here.
+    private static readonly TimeSpan LoadCorrectionExecuteDelay = TimeSpan.Zero;
+    private static readonly TimeSpan LoadCorrectionEnableDelay = TimeSpan.FromMilliseconds(1000);
 
     public CorrectionViewModel(
         IRegionManager regionManager,
@@ -61,7 +65,9 @@ public class CorrectionViewModel : BindableBase
         IMachineDeviceContext devices,
         IAppNotificationService notificationService,
         ILocalizationService localizationService,
-        MesConnectionStatus mesConnectionStatus)
+        IMessageBus messageBus,
+        MesConnectionStatus mesConnectionStatus,
+        StandardSampleState sampleState)
     {
         this.regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
         this.correctionParameterProvider = correctionParameterProvider ?? throw new ArgumentNullException(nameof(correctionParameterProvider));
@@ -70,13 +76,31 @@ public class CorrectionViewModel : BindableBase
         this.notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
         this.mesConnectionStatus = mesConnectionStatus ?? throw new ArgumentNullException(nameof(mesConnectionStatus));
+        this.sampleState = sampleState ?? throw new ArgumentNullException(nameof(sampleState));
+        ArgumentNullException.ThrowIfNull(messageBus);
         this.mesConnectionStatus.PropertyChanged += OnMesConnectionStatusChanged;
         this.correctionParameterProvider.ParametersChanged += OnCorrectionParametersChanged;
+        this.sampleState.Cleared += OnStandardSamplesCleared;
+        stationLimitsAppliedSubscription = messageBus.Subscribe<CorrectionViewModel, StationLimitsAppliedMessage>(
+            this,
+            // 启动自动下发同样会刷新工位上下限；只有 SetView 人工应用才覆盖校正页手工频率。
+            static (viewModel, message) => viewModel.RefreshCorrectionParametersFromStandardSample(
+                resetManualFrequency: message.SynchronizeCorrectionFrequency),
+            MessageSubscribeOptions<StationLimitsAppliedMessage>.OnUI);
         LoadCorrectionInstrumentOptions();
         RefreshCorrectionParametersFromStandardSample();
     }
 
     public AsyncDelegateCommand EnsureDefaultContentCommand => ensureDefaultContentCommand ??= new AsyncDelegateCommand(EnsureDefaultContentNavigatedAsync);
+
+    public bool IsNavigationTarget(NavigationContext navigationContext) => true;
+
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+    }
+
+    public void OnNavigatedTo(NavigationContext navigationContext)
+        => _ = ResetCheckCompletionForCorrectionAsync();
 
     public AsyncDelegateCommand ExecuteOpenCorrectionCommand => executeOpenCorrectionCommand ??= new AsyncDelegateCommand(ExecuteOpenCorrectionAsync, CanExecuteCorrection);
 
@@ -111,7 +135,13 @@ public class CorrectionViewModel : BindableBase
     public string Frequency
     {
         get => frequency;
-        set => SetProperty(ref frequency, value ?? string.Empty);
+        set
+        {
+            if (SetProperty(ref frequency, value ?? string.Empty) && !isRefreshingCorrectionParameters)
+            {
+                correctionParameterProvider.SetFrequencyOverride(frequency, FrequencyUnit);
+            }
+        }
     }
 
     public string FrequencyUnit
@@ -205,6 +235,23 @@ public class CorrectionViewModel : BindableBase
         }
     }
 
+    private async Task ResetCheckCompletionForCorrectionAsync()
+    {
+        try
+        {
+            // The machine controls whether entering a quality-check page resets the PLC flag.
+            // Machine_4_HAHH resets it; Machine_2_A keeps its existing completion state.
+            await machine.OnCheckViewEnteredAsync(DestroyToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch
+        {
+            // Do not block correction navigation when the PLC is unavailable.
+        }
+    }
+
     private bool CanExecuteCorrection()
         => !IsCorrectionBusy && FindCorrectionInstrument() != null;
 
@@ -217,7 +264,7 @@ public class CorrectionViewModel : BindableBase
             {
                 await instrument.ExecuteOpenCorrectionAsync(CreateCorrectionConditionRequest()).ConfigureAwait(false);
                 await Task.Delay(OpenCorrectionExecuteDelay).ConfigureAwait(false);
-                return await ReadCorrectionDataWithRetryAsync(instrument.ReadOpenCorrectionAsync).ConfigureAwait(false);
+                return await instrument.ReadOpenCorrectionAsync().ConfigureAwait(false);
             }).ConfigureAwait(false);
     }
 
@@ -229,7 +276,7 @@ public class CorrectionViewModel : BindableBase
             {
                 await instrument.ExecuteShortCorrectionAsync(CreateCorrectionConditionRequest()).ConfigureAwait(false);
                 await Task.Delay(ShortCorrectionExecuteDelay).ConfigureAwait(false);
-                return await ReadCorrectionDataWithRetryAsync(instrument.ReadShortCorrectionAsync).ConfigureAwait(false);
+                return await instrument.ReadShortCorrectionAsync().ConfigureAwait(false);
             }).ConfigureAwait(false);
     }
 
@@ -246,7 +293,7 @@ public class CorrectionViewModel : BindableBase
                     await Task.Delay(LoadCorrectionExecuteDelay).ConfigureAwait(false);
                     await instrument.EnableLoadCorrectionAsync().ConfigureAwait(false);
                     await Task.Delay(LoadCorrectionEnableDelay).ConfigureAwait(false);
-                    return await ReadCorrectionDataWithRetryAsync(instrument.ReadLoadCorrectionAsync).ConfigureAwait(false);
+                    return await instrument.ReadLoadCorrectionAsync().ConfigureAwait(false);
                 }
                 finally
                 {
@@ -289,33 +336,6 @@ public class CorrectionViewModel : BindableBase
         }
     }
 
-    private static async Task<InstrumentCorrectionData> ReadCorrectionDataWithRetryAsync(Func<CancellationToken, ValueTask<InstrumentCorrectionData>> readAsync)
-    {
-        using var timeoutCts = new CancellationTokenSource(CorrectionReadTimeout);
-        Exception? lastException = null;
-
-        while (!timeoutCts.IsCancellationRequested)
-        {
-            try
-            {
-                return await readAsync(timeoutCts.Token).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                lastException = ex;
-                try
-                {
-                    await Task.Delay(CorrectionReadRetryInterval, timeoutCts.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-            }
-        }
-
-        throw lastException ?? new TimeoutException("Instrument correction result read timed out.");
-    }
     private InstrumentCorrectionConditionRequest CreateCorrectionConditionRequest()
     {
         string frequencyUnit = FrequencyUnit;
@@ -400,8 +420,10 @@ public class CorrectionViewModel : BindableBase
         }
 
         disposed = true;
+        stationLimitsAppliedSubscription.Dispose();
         correctionParameterProvider.ParametersChanged -= OnCorrectionParametersChanged;
         mesConnectionStatus.PropertyChanged -= OnMesConnectionStatusChanged;
+        sampleState.Cleared -= OnStandardSamplesCleared;
         base.Dispose(disposing);
     }
 
@@ -415,6 +437,12 @@ public class CorrectionViewModel : BindableBase
     }
     private void OnCorrectionParametersChanged(object? sender, EventArgs e)
         => RefreshCorrectionParametersFromStandardSample();
+
+    private void OnStandardSamplesCleared(object? sender, EventArgs e)
+    {
+        LsCorrectionValue = string.Empty;
+        RsCorrectionValue = string.Empty;
+    }
 
     private void LoadCorrectionInstrumentOptions()
     {
@@ -453,17 +481,32 @@ public class CorrectionViewModel : BindableBase
             StationOperationDescriptor.Calibration,
             StringComparison.OrdinalIgnoreCase));
 
-    private void RefreshCorrectionParametersFromStandardSample()
+    private void RefreshCorrectionParametersFromStandardSample(bool resetManualFrequency = false)
     {
-        CorrectionParameterSnapshot snapshot = correctionParameterProvider.CreateSnapshot(GetCorrectionInstrumentConfig());
-        LsStandardValue = snapshot.LsStandardValue;
-        LsStandardUnit = snapshot.LsStandardUnit;
-        RsStandardValue = snapshot.RsStandardValue;
-        RsStandardUnit = snapshot.RsStandardUnit;
-        Frequency = snapshot.Frequency;
-        FrequencyUnit = snapshot.FrequencyUnit;
-        Voltage = snapshot.Voltage;
-        VoltageUnit = snapshot.VoltageUnit;
+        isRefreshingCorrectionParameters = true;
+        try
+        {
+            if (resetManualFrequency)
+            {
+                correctionParameterProvider.ClearFrequencyOverride();
+            }
+
+            CorrectionParameterSnapshot snapshot = correctionParameterProvider.CreateSnapshot(
+                GetCorrectionInstrumentConfig(),
+                preferInstrumentFrequency: mesConnectionStatus.State != MesConnectionState.Online);
+            LsStandardValue = snapshot.LsStandardValue;
+            LsStandardUnit = snapshot.LsStandardUnit;
+            RsStandardValue = snapshot.RsStandardValue;
+            RsStandardUnit = snapshot.RsStandardUnit;
+            Frequency = snapshot.Frequency;
+            FrequencyUnit = snapshot.FrequencyUnit;
+            Voltage = snapshot.Voltage;
+            VoltageUnit = snapshot.VoltageUnit;
+        }
+        finally
+        {
+            isRefreshingCorrectionParameters = false;
+        }
     }
 
     private object? GetCorrectionInstrumentConfig()

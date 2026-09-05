@@ -19,12 +19,16 @@ public sealed class BraidOptionsStore
 
     public BraidOptions Current { get; private set; } = new();
 
+    /// <summary>当前编带配置已成功保存并替换。</summary>
+    public event EventHandler? OptionsChanged;
+
     public BraidOptionsLoadResult LoadOrCreate()
     {
         if (!File.Exists(OptionsFilePath))
         {
             Current = new BraidOptions();
             JsonHelper.Write(OptionsFilePath, Current);
+            OptionsChanged?.Invoke(this, EventArgs.Empty);
             return new BraidOptionsLoadResult(Current, OptionsFilePath, true);
         }
 
@@ -37,6 +41,7 @@ public sealed class BraidOptionsStore
         ArgumentNullException.ThrowIfNull(options);
         await JsonHelper.WriteAsync(OptionsFilePath, options).ConfigureAwait(false);
         Current = options;
+        OptionsChanged?.Invoke(this, EventArgs.Empty);
     }
 }
 

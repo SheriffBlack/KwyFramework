@@ -88,8 +88,8 @@ public class AdexDcr :
         var config = GetConfig();
         string model = MapModel(config.Model);
         string mappedRange = MapRange(config.Range);
-        int lowerLimitRaw = ConvertEngineeringLimitToRaw(config.LowerLimitRaw, config.LowerLimitRawUnit, mappedRange);
-        int upperLimitRaw = ConvertEngineeringLimitToRaw(config.UpperLimitRaw, config.UpperLimitRawUnit, mappedRange);
+        int lowerLimitRaw = ConvertEngineeringLimitToRaw(config.LowerLimit, config.LowerLimitUnit, mappedRange);
+        int upperLimitRaw = ConvertEngineeringLimitToRaw(config.UpperLimit, config.UpperLimitUnit, mappedRange);
         var builder = new StringBuilder();
 
         builder.Append('F').Append(config.TestMode);
@@ -167,10 +167,10 @@ public class AdexDcr :
         var config = GetConfig();
         string mappedRange = MapRange(config.Range);
         limit = new InstrumentMeasurementLimit(
-            ConvertLimitToRangeUnit(config.LowerLimitRaw, config.LowerLimitRawUnit, mappedRange),
-            ConvertLimitToRangeUnit(config.UpperLimitRaw, config.UpperLimitRawUnit, mappedRange),
+            ConvertLimitToRangeUnit(config.LowerLimit, config.LowerLimitUnit, mappedRange),
+            ConvertLimitToRangeUnit(config.UpperLimit, config.UpperLimitUnit, mappedRange),
             GetEngineeringUnit(mappedRange));
-        return config.LowerLimitRaw > 0 || config.UpperLimitRaw > 0;
+        return config.LowerLimit > 0 || config.UpperLimit > 0;
     }
 
     /// <summary>
@@ -185,8 +185,8 @@ public class AdexDcr :
 
         var config = GetConfig();
         string mappedRange = MapRange(config.Range);
-        int expectedLow = ConvertEngineeringLimitToRaw(config.LowerLimitRaw, config.LowerLimitRawUnit, mappedRange);
-        int expectedHigh = ConvertEngineeringLimitToRaw(config.UpperLimitRaw, config.UpperLimitRawUnit, mappedRange);
+        int expectedLow = ConvertEngineeringLimitToRaw(config.LowerLimit, config.LowerLimitUnit, mappedRange);
+        int expectedHigh = ConvertEngineeringLimitToRaw(config.UpperLimit, config.UpperLimitUnit, mappedRange);
         string[] parts = parameterText.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 4)
         {

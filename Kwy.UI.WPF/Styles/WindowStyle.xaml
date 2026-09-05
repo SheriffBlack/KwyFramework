@@ -130,6 +130,8 @@
                                             CommandParameter="{Binding UserCommandParameter, RelativeSource={RelativeSource TemplatedParent}}"
                                             Content="{StaticResource IconContact}"
                                             FontSize="20"
+                                            Focusable="False"
+                                            IsTabStop="False"
                                             Style="{StaticResource KwyWindowButtonStyle}" />
                                         <Button
                                             x:Name="PART_MinimizeButton"

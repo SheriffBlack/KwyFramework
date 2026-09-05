@@ -28,11 +28,13 @@ public class Machine_2_A :
     IMachinePlcStopSignalMachine,
     IMachineProductionCounterResetMachine,
     IMachineProductionSummaryMachine,
+    IMachineElectricalTestCountMachine,
     IMachineBraidSetupMachine,
     IMachineWorkOrderStartSignalMachine
 {
     private const string NullText = "(NULL)";
     private static readonly TimeSpan ParameterCompareResultDelay = TimeSpan.FromMilliseconds(2500);
+    private static readonly TimeSpan ParameterCompareResultPulseDuration = TimeSpan.FromMilliseconds(200);
     private readonly object testRecordSync = new();
     private readonly IProductionRuntimeContext? productionContext;
     private readonly IProductionOutputOptions? productionOutputOptions;
@@ -44,12 +46,15 @@ public class Machine_2_A :
     private int parameterCompareWriteGate;
     private bool? previousParameterCompareSignal;
     private int systemDataReadGate;
+    private long electricalTestOkCount;
     private MesWorkOrderTapeSetup? currentTapeSetup;
     private string? currentWorkOrderNo;
     private string? forceBraidSignalWrittenWorkOrderNo;
     private readonly Queue<Machine2ATestOutputRecord> pendingTestRecords = new();
     private Machine2AStationStatisticsSnapshot? lastDcr1StatisticsSnapshot;
     private Machine2AStationStatisticsSnapshot? lastDcr2StatisticsSnapshot;
+
+    public uint ElectricalTestOkCount => unchecked((uint)Volatile.Read(ref electricalTestOkCount));
     private static readonly IReadOnlyDictionary<string, MachineExamineFlowDescriptor> ExamineFlows = new Dictionary<string, MachineExamineFlowDescriptor>(StringComparer.OrdinalIgnoreCase)
     {
         ["Standard"] = new(
@@ -354,8 +359,14 @@ public class Machine_2_A :
             }
 
             uint total = await ReadUInt32PointAsync(plc, PlcPoints.测试总量).ConfigureAwait(false);
-            await TryUpdateStationStatisticsAsync(plc, 1, "DCR1", total, PlcPoints.DCR1_NG数, PlcPoints.DCR1_CE数).ConfigureAwait(false);
-            await TryUpdateStationStatisticsAsync(plc, 2, "DCR2", total, PlcPoints.DCR2_NG数, PlcPoints.DCR2_CE数).ConfigureAwait(false);
+            UpdateElectricalTestOkCount(await ReadUInt32PointAsync(plc, PlcPoints.测试OK数).ConfigureAwait(false));
+            uint dcr1Ng = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_NG数).ConfigureAwait(false);
+            uint dcr1Ce = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_CE数).ConfigureAwait(false);
+            uint dcr2Ng = await ReadUInt32PointAsync(plc, PlcPoints.DCR2_NG数).ConfigureAwait(false);
+            uint dcr2Ce = await ReadUInt32PointAsync(plc, PlcPoints.DCR2_CE数).ConfigureAwait(false);
+
+            TryUpdateStationStatistics(1, "DCR1", total, dcr1Ng, dcr1Ce);
+            TryUpdateStationStatistics(2, "DCR2", SubtractPrecedingNgCounts(total, dcr1Ng), dcr2Ng, dcr2Ce);
         }
         catch (Exception ex)
         {
@@ -367,39 +378,30 @@ public class Machine_2_A :
         }
     }
 
-    private async Task TryUpdateStationStatisticsAsync(IPlcDevice plc, int stationId, string testName, uint total, PlcPoints ngPoint, PlcPoints cePoint)
+    private void TryUpdateStationStatistics(int stationId, string testName, uint total, uint ng, uint ce)
     {
-        try
+        var snapshot = new Machine2AStationStatisticsSnapshot(total, ng, ce);
+
+        if (stationId == 1)
         {
-            uint ng = await ReadUInt32PointAsync(plc, ngPoint).ConfigureAwait(false);
-            uint ce = await ReadUInt32PointAsync(plc, cePoint).ConfigureAwait(false);
-            var snapshot = new Machine2AStationStatisticsSnapshot(total, ng, ce);
-
-            if (stationId == 1)
+            if (snapshot.Equals(lastDcr1StatisticsSnapshot))
             {
-                if (snapshot.Equals(lastDcr1StatisticsSnapshot))
-                {
-                    return;
-                }
-
-                lastDcr1StatisticsSnapshot = snapshot;
-            }
-            else if (stationId == 2)
-            {
-                if (snapshot.Equals(lastDcr2StatisticsSnapshot))
-                {
-                    return;
-                }
-
-                lastDcr2StatisticsSnapshot = snapshot;
+                return;
             }
 
-            UpdateStationStatistics(stationId, testName, total, ng, ce);
+            lastDcr1StatisticsSnapshot = snapshot;
         }
-        catch (Exception ex)
+        else if (stationId == 2)
         {
-            Debug.WriteLine($"[Machine_2_A] Read {testName} statistics failed. NgPoint={ngPoint}, CePoint={cePoint}, Message={ex.Message}");
+            if (snapshot.Equals(lastDcr2StatisticsSnapshot))
+            {
+                return;
+            }
+
+            lastDcr2StatisticsSnapshot = snapshot;
         }
+
+        UpdateStationStatistics(stationId, testName, total, ng, ce);
     }
     private void UpdateStationStatistics(int stationId, string testName, uint total, uint ng, uint ce)
     {
@@ -413,6 +415,17 @@ public class Machine_2_A :
         double yield = total == 0 ? 0 : (double)ok / total;
         UpdateStatisticsRows(station, testName, total, ok, ng, yield);
     }
+
+    private void UpdateElectricalTestOkCount(uint value)
+    {
+        if (Interlocked.Exchange(ref electricalTestOkCount, value) != value)
+        {
+            RaiseTableChanged();
+        }
+    }
+
+    private static uint SubtractPrecedingNgCounts(uint total, ulong precedingNgCount)
+        => precedingNgCount >= total ? 0 : total - (uint)precedingNgCount;
 
     private async Task<uint> ReadUInt32PointAsync(IPlcDevice plc, PlcPoints point)
     {
@@ -528,8 +541,18 @@ public class Machine_2_A :
         }
 
         int channel = succeeded ? (int)PcToCard.参数对比_OK : (int)PcToCard.参数对比_NG;
-        ResetParameterCompareResultOutputs(ioCard);
         ioCard.WriteDoBit(channel, true);
+        try
+        {
+            await Task.Delay(ParameterCompareResultPulseDuration).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (ioCard.IsConnected)
+            {
+                ioCard.WriteDoBit(channel, false);
+            }
+        }
     }
 
     private void ResetParameterCompareResultOutputs()
@@ -562,13 +585,22 @@ public class Machine_2_A :
 
     public Task ResetWorkOrderStartSignalsAsync(CancellationToken cancellationToken = default)
         => WriteForceBraidNewWorkOrderSignalAsync(false, cancellationToken);
-    public override async Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+    public override Task ApplyWorkOrderRuntimeSetupAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(setup);
         currentTapeSetup = setup.TapeSetup;
-        await ApplyDcrInstrumentSetupAsync(setup.InstrumentSetups ?? [], cancellationToken).ConfigureAwait(false);
+        ConfigureDcrInstrumentSetup(setup.InstrumentSetups ?? []);
         RefreshStationLimitsFromInstrumentConfigs();
-        await WriteTapeSetupToPlcAsync(currentTapeSetup, cancellationToken).ConfigureAwait(false);
+        return Task.CompletedTask;
+    }
+
+    public override async Task<WorkOrderHardwareWriteResult> WriteWorkOrderSetupToHardwareAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+    {
+        var result = new WorkOrderHardwareWriteResult();
+        await TryApplyWorkOrderConfigAsync("DCR1", dcrMeter1, result, cancellationToken).ConfigureAwait(false);
+        await TryApplyWorkOrderConfigAsync("DCR2", dcrMeter2, result, cancellationToken).ConfigureAwait(false);
+        await TryWriteWorkOrderHardwareAsync("PLC 编带参数", () => WriteTapeSetupToPlcAsync(currentTapeSetup, cancellationToken), result).ConfigureAwait(false);
+        return result;
     }
 
     public async Task ApplyBraidSetupAsync(MesWorkOrderTapeSetup tapeSetup, CancellationToken cancellationToken = default)
@@ -577,20 +609,20 @@ public class Machine_2_A :
         currentTapeSetup = tapeSetup;
         await WriteTapeSetupToPlcAsync(currentTapeSetup, cancellationToken).ConfigureAwait(false);
     }
-    private async Task ApplyDcrInstrumentSetupAsync(IReadOnlyList<MesWorkOrderInstrumentSetup> instrumentSetups, CancellationToken cancellationToken)
+    private void ConfigureDcrInstrumentSetup(IReadOnlyList<MesWorkOrderInstrumentSetup> instrumentSetups)
     {
         MesWorkOrderInstrumentSetup? dcr1Setup = FindInstrumentSetup(instrumentSetups, "DCR1");
         MesWorkOrderInstrumentSetup? dcr2Setup = FindInstrumentSetup(instrumentSetups, "DCR2");
         SetStationTestLimit("DCR1", dcr1Setup?.LowerLimit, dcr1Setup?.UpperLimit, dcr1Setup?.Unit);
         SetStationTestLimit("DCR2", dcr2Setup?.LowerLimit, dcr2Setup?.UpperLimit, dcr2Setup?.Unit);
-        await ApplyAdexDcrSetupAsync(dcrMeter1, dcr1Setup, cancellationToken).ConfigureAwait(false);
-        await ApplyAdexDcrSetupAsync(dcrMeter2, dcr2Setup, cancellationToken).ConfigureAwait(false);
+        ConfigureAdexDcrSetup(dcrMeter1, dcr1Setup);
+        ConfigureAdexDcrSetup(dcrMeter2, dcr2Setup);
     }
 
     private static MesWorkOrderInstrumentSetup? FindInstrumentSetup(IReadOnlyList<MesWorkOrderInstrumentSetup> instrumentSetups, string parameterId)
         => instrumentSetups.FirstOrDefault(item => string.Equals(item.ParameterId, parameterId, StringComparison.OrdinalIgnoreCase));
 
-    private static async Task ApplyAdexDcrSetupAsync(IMeasurementInstrument? instrument, MesWorkOrderInstrumentSetup? setup, CancellationToken cancellationToken)
+    private static void ConfigureAdexDcrSetup(IMeasurementInstrument? instrument, MesWorkOrderInstrumentSetup? setup)
     {
         if (instrument == null || setup == null)
         {
@@ -609,24 +641,24 @@ public class Machine_2_A :
         string? unit = NormalizeAdexLimitUnit(setup.Unit);
         if (setup.LowerLimit.HasValue)
         {
-            config.LowerLimitRaw = setup.LowerLimit.Value;
+            config.LowerLimit = setup.LowerLimit.Value;
             if (!string.IsNullOrWhiteSpace(unit))
             {
-                config.LowerLimitRawUnit = unit;
+                config.LowerLimitUnit = unit;
             }
         }
 
         if (setup.UpperLimit.HasValue)
         {
-            config.UpperLimitRaw = setup.UpperLimit.Value;
+            config.UpperLimit = setup.UpperLimit.Value;
             if (!string.IsNullOrWhiteSpace(unit))
             {
-                config.UpperLimitRawUnit = unit;
+                config.UpperLimitUnit = unit;
             }
         }
 
-        await configurable.ApplyConfigAsync(cancellationToken).ConfigureAwait(false);
     }
+
 
     private async Task WriteTapeSetupToPlcAsync(MesWorkOrderTapeSetup? tapeSetup, CancellationToken cancellationToken)
     {
@@ -646,7 +678,7 @@ public class Machine_2_A :
         await WriteUInt32PointAsync(plc, PlcPoints.后空格, tapeSetup.AfterSpaceQty, cancellationToken).ConfigureAwait(false);
         await WriteUInt32PointAsync(plc, PlcPoints.样品, tapeSetup.SampleQty, cancellationToken).ConfigureAwait(false);
         await WriteUInt32PointAsync(plc, PlcPoints.样品后空带, tapeSetup.BlankQty, cancellationToken).ConfigureAwait(false);
-        await WriteUInt32PointAsync(plc, PlcPoints.后不封, tapeSetup.BackNoFilmQty, cancellationToken).ConfigureAwait(false);
+        await WriteUInt32PointAsync(plc, PlcPoints.后不封, tapeSetup.BlankQty, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task WriteUInt16PointAsync(IPlcDevice plc, PlcPoints point, int? value, CancellationToken cancellationToken)

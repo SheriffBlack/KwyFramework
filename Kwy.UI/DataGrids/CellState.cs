@@ -9,6 +9,15 @@ public class CellState : INotifyPropertyChanged
 {
     private object? value;
     private bool? judge;
+    private Action<Action>? propertyChangedDispatcher;
+
+    /// <summary>
+    /// Optional owner-provided dispatcher for property notifications.
+    /// The data model remains UI-framework independent while a WPF owner can
+    /// marshal notifications raised by a background production thread.
+    /// </summary>
+    public void SetPropertyChangedDispatcher(Action<Action>? dispatcher)
+        => propertyChangedDispatcher = dispatcher;
 
     public object? Value
     {
@@ -39,5 +48,21 @@ public class CellState : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected void OnPropertyChanged(string propertyName)
-        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    {
+        PropertyChangedEventHandler? handler = PropertyChanged;
+        if (handler == null)
+        {
+            return;
+        }
+
+        Action raise = () => handler(this, new PropertyChangedEventArgs(propertyName));
+        Action<Action>? dispatcher = propertyChangedDispatcher;
+        if (dispatcher == null)
+        {
+            raise();
+            return;
+        }
+
+        dispatcher(raise);
+    }
 }

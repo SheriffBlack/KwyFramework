@@ -64,12 +64,12 @@ public sealed class Machine_4_HAHH_DeviceCatalog : IDeviceCatalog
     }
 
     private DeviceDefinition CreateHioki3570(int index, byte primaryAddress)
-        => CreateHiokiLcr("Ind", index, $"HIOKI 3570 LCR {index}", primaryAddress, CreateDefaultIndHiokiLcrConfig);
+        => CreateHiokiLcr("Ind", index, $"HIOKI 3570 LCR {index}", primaryAddress, CreateDefaultIndHiokiLcrConfig, supportsDualFrequency: true);
 
     private DeviceDefinition CreateHioki3533(int index, byte primaryAddress)
         => CreateHiokiLcr("Pol", index, $"HIOKI 3533 LCR {index}", primaryAddress, CreateDefaultPolHiokiLcrConfig);
 
-    private DeviceDefinition CreateHiokiLcr(string model, int index, string deviceName, byte primaryAddress, Func<HiokiLcrConfig> createDefaultConfig)
+    private DeviceDefinition CreateHiokiLcr(string model, int index, string deviceName, byte primaryAddress, Func<HiokiLcrConfig> createDefaultConfig, bool supportsDualFrequency = false)
     {
         string deviceId = DeviceIds.Instrument(model, index);
         GpibConfig connectionConfig = configProvider.GetOrCreate(
@@ -85,7 +85,8 @@ public sealed class Machine_4_HAHH_DeviceCatalog : IDeviceCatalog
             deviceId,
             deviceName,
             connectionConfig,
-            parameterConfig);
+            parameterConfig,
+            supportsDualFrequency);
     }
 
     /// <summary>

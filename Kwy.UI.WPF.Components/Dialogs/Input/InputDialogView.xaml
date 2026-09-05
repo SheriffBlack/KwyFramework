@@ -49,6 +49,8 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBox
+                        x:Name="InputTextBox"
+                        kwyui:FocusHelper.IsInitialFocus="True"
                         Height="36"
                         VerticalContentAlignment="Center"
                         Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

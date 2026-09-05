@@ -20,6 +20,7 @@ public sealed class MesCyntecModule : IModule
         services.TryAddSingleton<IMesTrackService>(provider => provider.GetRequiredService<MesCyntecService>());
         services.TryAddSingleton<IMesWorkOrderService>(provider => provider.GetRequiredService<MesCyntecService>());
         services.TryAddSingleton<IMesStandardSampleService>(provider => provider.GetRequiredService<MesCyntecService>());
+        services.TryAddSingleton<IWorkOrderSetupFileParser, CyntecWorkOrderSetupFileParser>();
     }
 
     public void OnInitialized(IServiceProvider provider)

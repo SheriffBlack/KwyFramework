@@ -84,7 +84,12 @@ public static class ChartValuePushBehavior
         if (e.NewValue is ChartValueSample sample)
         {
             PushSample(d, sample);
+            return;
         }
+
+        // HomeView 清工单时会将 LatestSample 置空；样本集合也已清空，
+        // 此处主动通知两种图表移除历史散点和直方图柱。
+        ClearData(d);
     }
 
     private static void PushSample(DependencyObject d, ChartValueSample sample)

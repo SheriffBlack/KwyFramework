@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows;
 using KwyTemplate.App.Models;
 using KwyTemplate.Flow.Machines;
 
@@ -131,7 +132,21 @@ public sealed class StandardSampleExpirationMonitorFeature : IMachineRuntimeFeat
         if (expireTime < DateTime.Now)
         {
             await currentMachine.SetStandardSampleExpiredAsync(true, cancellationToken).ConfigureAwait(false);
+            // 标准件失效后，确认件不再具备本轮点检意义；二者共用状态，统一清空。
+            await RunOnUiAsync(sampleState.ClearAll).ConfigureAwait(false);
         }
+    }
+
+    private static Task RunOnUiAsync(Action action)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.CheckAccess())
+        {
+            action();
+            return Task.CompletedTask;
+        }
+
+        return dispatcher.InvokeAsync(action).Task;
     }
 
     private static TimeSpan GetDelayToNextMidnight(DateTimeOffset now)

@@ -8,6 +8,7 @@ namespace Kwy.UI.DataGrids;
 public class DisplayRowItem : INotifyPropertyChanged
 {
     private string rowName = string.Empty;
+    private Action<Action>? propertyChangedDispatcher;
 
     public string RowName
     {
@@ -31,6 +32,7 @@ public class DisplayRowItem : INotifyPropertyChanged
             if (!Cells.TryGetValue(key, out CellState? state))
             {
                 state = new CellState();
+                state.SetPropertyChangedDispatcher(propertyChangedDispatcher);
                 Cells[key] = state;
             }
 
@@ -57,6 +59,18 @@ public class DisplayRowItem : INotifyPropertyChanged
 
     public void UpdateJudge(string key, bool? judge)
         => this[key].Judge = judge;
+
+    /// <summary>
+    /// Applies an optional notification dispatcher to existing and future cells.
+    /// </summary>
+    public void SetCellPropertyChangedDispatcher(Action<Action>? dispatcher)
+    {
+        propertyChangedDispatcher = dispatcher;
+        foreach (CellState cell in Cells.Values)
+        {
+            cell.SetPropertyChangedDispatcher(dispatcher);
+        }
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

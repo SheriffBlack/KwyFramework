@@ -23,7 +23,7 @@
     <InformationalVersion>1.0.0.0</InformationalVersion>
   </PropertyGroup>
 
-  <Target Name="LoadAssemblyInfoFromProgramSettings" BeforeTargets="GenerateAssemblyInfo" Condition="'$(TargetFramework)' != ''">
+  <Target Name="LoadAssemblyInfoFromProgramSettings" BeforeTargets="GenerateAssemblyInfo" Condition="'$(8TargetFramework)' != ''">
     <ReadProgramSettingsFromJson ConfigFile="$(ProgramSettingsConfigFile)">
       <Output TaskParameter="AssemblyTitle" PropertyName="AssemblyTitle" />
       <Output TaskParameter="AssemblyProduct" PropertyName="AssemblyProduct" />

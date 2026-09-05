@@ -69,7 +69,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <RadioButton
-                                kwymvvm:Permission.Mode="Hide"
+                                kwymvvm:Permission.Mode="{Binding PermissionMode}"
                                 kwymvvm:Permission.Policy="{Binding PermissionCode}"
                                 Style="{StaticResource MainNavigationButtonStyle}" />
                         </DataTemplate>

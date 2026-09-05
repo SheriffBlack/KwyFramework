@@ -31,5 +31,7 @@ public class ViewNames
     public const string LogView = nameof(LogView);
 
     public const string CorrectionView = nameof(CorrectionView);
+
+    public const string ParameterDictView = nameof(ParameterDictView);
 }
 

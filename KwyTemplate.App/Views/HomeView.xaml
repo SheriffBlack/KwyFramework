@@ -260,20 +260,30 @@
                 Grid.Row="0"
                 Grid.Column="0"
                 BorderBrush="{DynamicResource ControlBorderBrush}"
-                BorderThickness="1,1,1,0"
-                Visibility="{Binding IsTrailingXMachineType, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <kwyui:KwyFormItem Label="{DynamicResource Home.Field.SpecialMachineOperation}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBox
-                            Width="140"
-                            IsReadOnly="True"
-                            Text="{Binding SpecialMachineLsLowerLimitText, Mode=OneWay}" />
+                BorderThickness="1,1,1,0">
+                <UniformGrid Columns="2">
+                    <kwyui:KwyFormItem Label="{DynamicResource Home.Field.SpecialMachineOperation}" 
+                        Visibility="{Binding IsTrailingXMachineType, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox
+                                Width="140"
+                                IsReadOnly="True"
+                                Text="{Binding SpecialMachineLsLowerLimitText, Mode=OneWay}" />
+                            <TextBlock
+                                Margin="10,0,0,0"
+                                VerticalAlignment="Center"
+                                Text="{Binding SpecialMachineLsUnit, Mode=OneWay}" />
+                        </StackPanel>
+                    </kwyui:KwyFormItem>
+
+                    <kwyui:KwyFormItem Label="{DynamicResource Home.Field.ElectricalTestOkCount}" DockPanel.Dock="Right">
                         <TextBlock
-                            Margin="10,0,0,0"
+                            Margin="0,4,0,0"
                             VerticalAlignment="Center"
-                            Text="{Binding SpecialMachineLsUnit, Mode=OneWay}" />
-                    </StackPanel>
-                </kwyui:KwyFormItem>
+                            Foreground="{DynamicResource ControlDisabledForegroundBrush}"
+                            Text="{Binding ElectricalTestOkCount, Mode=OneWay, StringFormat={}{0:D4}}" />
+                    </kwyui:KwyFormItem>
+                </UniformGrid>
             </Border>
 
             <DataGrid
@@ -479,6 +489,8 @@
             <Button
                 Height="60"
                 Command="{Binding MesConnectionCommand}"
+                Focusable="False"
+                IsTabStop="False"
                 Content="{Binding MesStatus.DisplayText}">
                 <Button.Style>
                     <Style BasedOn="{StaticResource ButtonContentHorizontalStyle}" TargetType="Button">

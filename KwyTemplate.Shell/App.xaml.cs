@@ -27,6 +27,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace KwyTemplate.Shell;
 
@@ -180,7 +181,28 @@ public partial class App : KwyApplication
         }
 
         CloseStartupWindow();
+        BringMainWindowToFrontAfterStartup();
         base.OnInitialized();
+    }
+
+    private void BringMainWindowToFrontAfterStartup()
+    {
+        Window? mainWindow = MainWindow;
+        if (mainWindow == null)
+        {
+            return;
+        }
+
+        // LoadView 是无 Owner 的置顶启动窗。关闭后 Windows 可能把前台交还给
+        // 启动程序的资源管理器；在同一 UI 消息循环中重新激活主窗即可恢复正确层级。
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+        {
+            if (mainWindow.IsVisible)
+            {
+                mainWindow.Activate();
+                mainWindow.Focus();
+            }
+        }));
     }
 
     private void WireViewCacheLog(IServiceProvider serviceProvider)

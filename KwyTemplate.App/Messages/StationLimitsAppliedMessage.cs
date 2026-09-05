@@ -1,7 +1,8 @@
 namespace KwyTemplate.App.Messages;
 
 /// <summary>
-/// 仪表参数应用完成消息。
-/// SetView 中本地仪表参数应用成功后发布，HomeView 据此把当前 TestLimits 刷新到表格和图表。
+/// 仪表参数更新完成消息。
+/// <paramref name="SynchronizeCorrectionFrequency" /> 仅由 SetView 的人工“应用”发布，
+/// 用于让校正页放弃临时手工频率并与新下发的仪表参数重新对齐。
 /// </summary>
-public sealed record StationLimitsAppliedMessage;
+public sealed record StationLimitsAppliedMessage(bool SynchronizeCorrectionFrequency = false);

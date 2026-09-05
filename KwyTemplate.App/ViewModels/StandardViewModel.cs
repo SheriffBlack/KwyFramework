@@ -27,6 +27,7 @@ public sealed class StandardViewModel : BindableBase
     private readonly IAppNotificationService notificationService;
     private readonly StandardSampleState sampleState;
     private readonly ILocalizationService localizationService;
+    private readonly StandardLimitAutoGenerationService standardLimitAutoGenerationService;
     private readonly IDisposable stationLimitsAppliedSubscription;
     private AsyncDelegateCommand? queryStandardCommand;
     private AsyncDelegateCommand? queryConfirmCommand;
@@ -41,6 +42,7 @@ public sealed class StandardViewModel : BindableBase
         IAppNotificationService notificationService,
         StandardSampleState sampleState,
         ILocalizationService localizationService,
+        StandardLimitAutoGenerationService standardLimitAutoGenerationService,
         IMessageBus messageBus)
     {
         this.mesStandardSampleService = mesStandardSampleService ?? throw new ArgumentNullException(nameof(mesStandardSampleService));
@@ -50,6 +52,7 @@ public sealed class StandardViewModel : BindableBase
         this.notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         this.sampleState = sampleState ?? throw new ArgumentNullException(nameof(sampleState));
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
+        this.standardLimitAutoGenerationService = standardLimitAutoGenerationService ?? throw new ArgumentNullException(nameof(standardLimitAutoGenerationService));
         ArgumentNullException.ThrowIfNull(messageBus);
         this.localizationService.LanguageChanged += OnLanguageChanged;
         stationLimitsAppliedSubscription = messageBus.Subscribe<StandardViewModel, StationLimitsAppliedMessage>(
@@ -60,6 +63,8 @@ public sealed class StandardViewModel : BindableBase
         EnsureLimitItems(ConfirmSample.LimitItems);
         StandardSample.LimitItems.CollectionChanged += OnLimitItemsChanged;
         ConfirmSample.LimitItems.CollectionChanged += OnLimitItemsChanged;
+        SubscribeLimitItems(StandardSample.LimitItems);
+        SubscribeLimitItems(ConfirmSample.LimitItems);
         StandardSample.PropertyChanged += OnSamplePanelPropertyChanged;
         ConfirmSample.PropertyChanged += OnSamplePanelPropertyChanged;
         this.mesConnectionStatus.PropertyChanged += (_, e) =>
@@ -447,9 +452,43 @@ public sealed class StandardViewModel : BindableBase
     private static bool IsMesAccepted<T>(MesResult<T> result)
         => result.Exchange?.ReturnCode is int returnCode ? returnCode == 0 : result.IsSuccess;
 
-    private static void OnLimitItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnLimitItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        // 占位订阅，确保共享集合生命周期与 ViewModel 一致，后续需要集合级联刷新可在这里收敛。
+        if (e.OldItems != null)
+        {
+            foreach (StandardSampleLimitItemModel item in e.OldItems.OfType<StandardSampleLimitItemModel>())
+            {
+                item.PropertyChanged -= OnLimitItemPropertyChanged;
+            }
+        }
+
+        if (e.NewItems != null)
+        {
+            foreach (StandardSampleLimitItemModel item in e.NewItems.OfType<StandardSampleLimitItemModel>())
+            {
+                item.PropertyChanged += OnLimitItemPropertyChanged;
+            }
+        }
+    }
+
+    private void SubscribeLimitItems(IEnumerable<StandardSampleLimitItemModel> items)
+    {
+        foreach (StandardSampleLimitItemModel item in items)
+        {
+            item.PropertyChanged += OnLimitItemPropertyChanged;
+        }
+    }
+
+    private void OnLimitItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (mesConnectionStatus.State == MesConnectionState.Online
+            || e.PropertyName != nameof(StandardSampleLimitItemModel.StandardValue)
+            || sender is not StandardSampleLimitItemModel item)
+        {
+            return;
+        }
+
+        standardLimitAutoGenerationService.TryApply(item);
     }
 
     protected override void Dispose(bool disposing)
@@ -465,8 +504,18 @@ public sealed class StandardViewModel : BindableBase
         localizationService.LanguageChanged -= OnLanguageChanged;
         StandardSample.LimitItems.CollectionChanged -= OnLimitItemsChanged;
         ConfirmSample.LimitItems.CollectionChanged -= OnLimitItemsChanged;
+        UnsubscribeLimitItems(StandardSample.LimitItems);
+        UnsubscribeLimitItems(ConfirmSample.LimitItems);
         StandardSample.PropertyChanged -= OnSamplePanelPropertyChanged;
         ConfirmSample.PropertyChanged -= OnSamplePanelPropertyChanged;
         base.Dispose(disposing);
+    }
+
+    private void UnsubscribeLimitItems(IEnumerable<StandardSampleLimitItemModel> items)
+    {
+        foreach (StandardSampleLimitItemModel item in items)
+        {
+            item.PropertyChanged -= OnLimitItemPropertyChanged;
+        }
     }
 }

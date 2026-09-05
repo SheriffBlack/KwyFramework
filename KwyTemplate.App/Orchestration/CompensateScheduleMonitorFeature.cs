@@ -20,11 +20,11 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
     private readonly ILocalizationService localizationService;
     private readonly IDisposable optionsChangedSubscription;
     private readonly object syncRoot = new();
-    private readonly HashSet<string> warnedExpiredWindowKeys = new(StringComparer.Ordinal);
     private MachineBase? machine;
     private CancellationTokenSource? stopCts;
     private Task? worker;
     private string? activeWindowKey;
+    private string? latestObservedExpiredWindowKey;
     private bool initialized;
     private bool configurationChanged;
     private bool disposed;
@@ -64,7 +64,7 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
             initialized = false;
             configurationChanged = false;
             activeWindowKey = null;
-            warnedExpiredWindowKeys.Clear();
+            latestObservedExpiredWindowKey = null;
             stopCts = new CancellationTokenSource();
             worker = MonitorLoopAsync(stopCts.Token);
         }
@@ -84,7 +84,7 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
             activeWindowKey = null;
             initialized = false;
             configurationChanged = false;
-            warnedExpiredWindowKeys.Clear();
+            latestObservedExpiredWindowKey = null;
         }
 
         if (cts == null)
@@ -151,13 +151,11 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
     {
         MachineBase? currentMachine;
         bool shouldResetForConfiguration;
-        bool isFirstEvaluation;
         lock (syncRoot)
         {
             currentMachine = machine;
             shouldResetForConfiguration = configurationChanged;
             configurationChanged = false;
-            isFirstEvaluation = !initialized;
         }
 
         if (currentMachine == null)
@@ -173,42 +171,33 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
         }
 
         CheckWindow? activeWindow = windows.FirstOrDefault(window => window.Contains(now));
-        if (!initialized || shouldResetForConfiguration)
-        {
-            // At application start trust the current PLC flag. This avoids clearing
-            // a check that was already completed before the PC was restarted.
-            initialized = true;
-            activeWindowKey = activeWindow?.Key;
-            if (shouldResetForConfiguration)
-            {
-                warnedExpiredWindowKeys.Clear();
-            }
-        }
-        else if (!string.Equals(activeWindowKey, activeWindow?.Key, StringComparison.Ordinal))
-        {
-            activeWindowKey = activeWindow?.Key;
-            if (activeWindow != null)
-            {
-                await currentMachine.SetCheckCompletedAsync(false, cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        // Startup intentionally trusts the PLC flag only. Application shutdown
-        // resets that flag, so historical windows must not create a second
-        // reminder when the program is opened again.
-        if (isFirstEvaluation || shouldResetForConfiguration)
-        {
-            return;
-        }
-
         CheckWindow? latestExpiredWindow = windows
             .Where(window => window.End <= now)
             .OrderByDescending(window => window.End)
             .FirstOrDefault();
-        if (latestExpiredWindow == null || warnedExpiredWindowKeys.Contains(latestExpiredWindow.Key))
+
+        if (!initialized || shouldResetForConfiguration)
+        {
+            // At application start trust the current PLC flag and establish the
+            // latest expired window as a baseline. A PC restart must not replay a
+            // reminder for a window that ended before this process was running.
+            initialized = true;
+            activeWindowKey = activeWindow?.Key;
+            latestObservedExpiredWindowKey = latestExpiredWindow?.Key;
+            return;
+        }
+        else if (!string.Equals(activeWindowKey, activeWindow?.Key, StringComparison.Ordinal))
+        {
+            activeWindowKey = activeWindow?.Key;
+        }
+
+        if (latestExpiredWindow == null
+            || string.Equals(latestObservedExpiredWindowKey, latestExpiredWindow.Key, StringComparison.Ordinal))
         {
             return;
         }
+
+        latestObservedExpiredWindowKey = latestExpiredWindow.Key;
 
         bool? isCompleted = await currentMachine.ReadCheckCompletedAsync(cancellationToken).ConfigureAwait(false);
         if (isCompleted is not false)
@@ -216,7 +205,9 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
             return;
         }
 
-        warnedExpiredWindowKeys.Add(latestExpiredWindow.Key);
+        // 逾期仍未完成时，明确保持 PLC 为未完成状态，避免 PLC 端残留状态
+        // 与本次排程判定不一致。
+        await currentMachine.SetCheckCompletedAsync(false, cancellationToken).ConfigureAwait(false);
 
         string start = latestExpiredWindow.Start.ToString("HH:mm", CultureInfo.InvariantCulture);
         string end = latestExpiredWindow.End.ToString("HH:mm", CultureInfo.InvariantCulture);
@@ -235,7 +226,7 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
         {
             initialized = false;
             activeWindowKey = null;
-            warnedExpiredWindowKeys.Clear();
+            latestObservedExpiredWindowKey = null;
         }
     }
 

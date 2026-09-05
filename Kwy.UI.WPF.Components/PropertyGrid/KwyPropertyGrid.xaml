@@ -35,6 +35,7 @@
                                     <ComboBox
                                         Width="{Binding EditorWidth}"
                                         HorizontalAlignment="Left"
+                                        IsEnabled="{Binding IsEnabled}"
                                         ItemsSource="{Binding ItemsSource}"
                                         SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </kwyui:KwyFormItem>
@@ -72,6 +73,7 @@
                                     <DatePicker
                                         Width="{Binding EditorWidth}"
                                         HorizontalAlignment="Left"
+                                        IsEnabled="{Binding IsEnabled}"
                                         SelectedDate="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </kwyui:KwyFormItem>
                             </DataTemplate>
@@ -86,6 +88,7 @@
                                 <kwyui:KwyFormItem Label="{Binding DisplayName}">
                                     <ToggleButton
                                         HorizontalAlignment="Left"
+                                        IsEnabled="{Binding IsEnabled}"
                                         helpers:ToggleSwitchHelper.IsSwitch="True"
                                         IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </kwyui:KwyFormItem>
@@ -101,6 +104,7 @@
                                 <kwyui:KwyFormItem Label="{Binding DisplayName}">
                                     <kwyui:KwyRadioButtonGroup
                                         ItemWidth="100"
+                                        IsEnabled="{Binding IsEnabled}"
                                         ItemsSource="{Binding ItemsSource}"
                                         Value="{Binding Value, Mode=TwoWay}" />
                                 </kwyui:KwyFormItem>
@@ -130,6 +134,7 @@
                                             Grid.Column="1"
                                             Margin="10,0,0,0"
                                             ItemWidth="80"
+                                            IsEnabled="{Binding IsEnabled}"
                                             ItemsSource="{Binding ItemsSource}"
                                             Value="{Binding UnitValue, Mode=TwoWay}" />
                                     </Grid>

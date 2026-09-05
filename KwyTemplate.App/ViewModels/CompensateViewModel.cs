@@ -34,6 +34,8 @@ public class CompensateViewModel : BindableBase, INavigationAware
     private readonly StandardSampleState sampleState;
     private readonly IAppNotificationService notificationService;
     private readonly IMesStandardSampleService mesStandardSampleService;
+    private readonly MesConnectionStatus mesConnectionStatus;
+    private readonly IProductionDataArchiveService productionDataArchiveService;
     private readonly IMessageBus messageBus;
     private readonly IProductionContext productionContext;
     private readonly ILocalizationService localizationService;
@@ -52,6 +54,8 @@ public class CompensateViewModel : BindableBase, INavigationAware
         StandardSampleState sampleState,
         IAppNotificationService notificationService,
         IMesStandardSampleService mesStandardSampleService,
+        MesConnectionStatus mesConnectionStatus,
+        IProductionDataArchiveService productionDataArchiveService,
         IProductionContext productionContext,
         IMessageBus messageBus,
         ILocalizationService localizationService)
@@ -61,6 +65,8 @@ public class CompensateViewModel : BindableBase, INavigationAware
         this.sampleState = sampleState ?? throw new ArgumentNullException(nameof(sampleState));
         this.notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         this.mesStandardSampleService = mesStandardSampleService ?? throw new ArgumentNullException(nameof(mesStandardSampleService));
+        this.mesConnectionStatus = mesConnectionStatus ?? throw new ArgumentNullException(nameof(mesConnectionStatus));
+        this.productionDataArchiveService = productionDataArchiveService ?? throw new ArgumentNullException(nameof(productionDataArchiveService));
         this.productionContext = productionContext ?? throw new ArgumentNullException(nameof(productionContext));
         this.messageBus = messageBus ?? throw new ArgumentNullException(nameof(messageBus));
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
@@ -487,11 +493,37 @@ public class CompensateViewModel : BindableBase, INavigationAware
             Time: completedAt,
             Measurements: measurements);
 
+        // Equipment is a local Cyntec contract file, not an MES API call. It
+        // must be written before the local ProductionData archive in both modes.
         MesResult equipmentSaveResult = await mesStandardSampleService.SaveStandardSampleCheckEquipmentAsync(request).ConfigureAwait(true);
         if (!equipmentSaveResult.IsSuccess)
         {
             await notificationService.ErrorAsync(localizationService.TF("Compensate.Message.LocalSaveFailed", "点检数据本地保存失败：{0}", equipmentSaveResult.Message), localizationService.T("Compensate.Title.CheckSaveFailed", "点检保存失败")).ConfigureAwait(true);
             return false;
+        }
+
+        try
+        {
+            await productionDataArchiveService.AppendCheckRecordAsync(
+                completedAt,
+                productionContext.WorkOrderNo,
+                BuildProductionDataCheckFields()).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await notificationService.WarningAsync(
+                localizationService.TF("Compensate.Message.ProductionDataSaveFailed", "点检本地记录保存失败：{0}", ex.Message),
+                localizationService.T("Compensate.Title.ProductionDataSaveFailed", "点检本地记录保存失败"),
+                writeLog: true).ConfigureAwait(true);
+        }
+
+        // Offline checking retains all local judging, Equipment file, archive,
+        // and PLC completion behavior, but does not call the MES API.
+        if (mesConnectionStatus.State != MesConnectionState.Online)
+        {
+            await machine.SetCheckCompletedAsync(true, DestroyToken).ConfigureAwait(true);
+            await ConfirmCheckStopSignalsCompletedAsync().ConfigureAwait(true);
+            return true;
         }
 
         MesResult result = await mesStandardSampleService.SaveStandardSampleCheckAsync(request).ConfigureAwait(true);
@@ -504,6 +536,54 @@ public class CompensateViewModel : BindableBase, INavigationAware
         await ConfirmCheckStopSignalsCompletedAsync().ConfigureAwait(true);
         return true;
     }
+    private IReadOnlyList<string> BuildProductionDataCheckFields()
+    {
+        return
+        [
+            ValueOrZero(sampleState.StandardSample.SampleCode),
+            FindCheckValue(true, "Ls"), FindCheckValue(true, "Rs"), FindCheckValue(true, "DCR1", "DCR"),
+            FindCheckValue(true, "Ls2"), FindCheckValue(true, "Rs2"), FindCheckValue(true, "Q", "Q2"),
+            ValueOrZero(sampleState.ConfirmSample.SampleCode),
+            FindCheckValue(false, "Ls"), FindCheckValue(false, "Rs"), FindCheckValue(false, "DCR1", "DCR"),
+            FindCheckValue(false, "Ls2"), FindCheckValue(false, "Rs2"), FindCheckValue(false, "Q", "Q2"),
+            GetPolaritySummary(1, forward: true), GetPolaritySummary(1, forward: false),
+            GetPolaritySummary(2, forward: true), GetPolaritySummary(2, forward: false)
+        ];
+    }
+
+    private string FindCheckValue(bool standard, params string[] parameterIds)
+    {
+        foreach (StationCheckItemModel item in CheckItems)
+        {
+            string source = standard ? item.StandardMeterType : item.ConfirmMeterType;
+            if (parameterIds.Any(parameterId => MatchesParameter(item.TestName, parameterId) || MatchesParameter(source, parameterId)))
+            {
+                return ValueOrZero(standard ? item.StandardMeasuredValue : item.ConfirmMeasuredValue);
+            }
+        }
+
+        return "0";
+    }
+
+    private string GetPolaritySummary(int stationId, bool forward)
+    {
+        PolarityCheckItemModel? item = PolarityCheckItems.FirstOrDefault(value => value.StationId == stationId);
+        bool flowPassed = (forward ? PolarityForwardCheckFlow : PolarityReverseCheckFlow)?.IsResultPassed == true;
+        bool hasMeasurement = (forward ? item?.ForwardZValues : item?.ReverseZValues)?.Any(value => !string.IsNullOrWhiteSpace(value)) == true;
+        return flowPassed && hasMeasurement ? "OK" : "0";
+    }
+
+    private static string ValueOrZero(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "0" : value;
+
+    private static bool MatchesParameter(string? value, string parameterId)
+        => string.Equals(NormalizeParameter(value), NormalizeParameter(parameterId), StringComparison.OrdinalIgnoreCase);
+
+    private static string NormalizeParameter(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : new string(value.Where(char.IsLetterOrDigit).ToArray());
+
     private async Task ConfirmCheckStopSignalsCompletedAsync()
     {
         if (machine is not IMachinePlcStopSignalMachine stopSignalMachine)

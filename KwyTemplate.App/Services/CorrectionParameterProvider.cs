@@ -12,6 +12,8 @@ public sealed class CorrectionParameterProvider : ICorrectionParameterProvider, 
 {
     private readonly StandardSampleState sampleState;
     private readonly HashSet<StandardSampleLimitItemModel> subscribedItems = [];
+    private string frequencyOverride = string.Empty;
+    private string frequencyUnitOverride = string.Empty;
     private bool disposed;
 
     public CorrectionParameterProvider(StandardSampleState sampleState)
@@ -23,20 +25,43 @@ public sealed class CorrectionParameterProvider : ICorrectionParameterProvider, 
 
     public event EventHandler? ParametersChanged;
 
-    public CorrectionParameterSnapshot CreateSnapshot(object? instrumentConfig)
+    public CorrectionParameterSnapshot CreateSnapshot(object? instrumentConfig, bool preferInstrumentFrequency = false)
     {
         StandardSampleLimitItemModel? lsItem = FindLimitItem("LS");
         StandardSampleLimitItemModel? rsItem = FindLimitItem("RS");
+        string instrumentFrequency = FormatNullableNumber(GetConfigDouble(instrumentConfig, "Frequency"));
+        string instrumentFrequencyUnit = GetConfigString(instrumentConfig, "FrequencyUnit");
+        string sampleFrequency = FirstNotEmpty(lsItem?.Frequency, rsItem?.Frequency);
+        string sampleFrequencyUnit = FirstNotEmpty(lsItem?.FrequencyUnit, rsItem?.FrequencyUnit);
+
+        string derivedFrequency = preferInstrumentFrequency
+            ? FirstNotEmpty(instrumentFrequency, sampleFrequency)
+            : FirstNotEmpty(sampleFrequency, instrumentFrequency);
+        string derivedFrequencyUnit = preferInstrumentFrequency
+            ? FirstNotEmpty(instrumentFrequencyUnit, sampleFrequencyUnit)
+            : FirstNotEmpty(sampleFrequencyUnit, instrumentFrequencyUnit);
 
         return new CorrectionParameterSnapshot(
             lsItem?.StandardValue ?? string.Empty,
             FirstNotEmpty(lsItem?.Unit, GetConfigLimitUnit(instrumentConfig, "LS")),
             rsItem?.StandardValue ?? string.Empty,
             FirstNotEmpty(rsItem?.Unit, GetConfigLimitUnit(instrumentConfig, "RS")),
-            FirstNotEmpty(lsItem?.Frequency, rsItem?.Frequency, FormatNullableNumber(GetConfigDouble(instrumentConfig, "Frequency"))),
-            FirstNotEmpty(lsItem?.FrequencyUnit, rsItem?.FrequencyUnit, GetConfigString(instrumentConfig, "FrequencyUnit")),
+            FirstNotEmpty(frequencyOverride, derivedFrequency),
+            FirstNotEmpty(frequencyUnitOverride, derivedFrequencyUnit),
             FirstNotEmpty(FormatNullableNumber(GetConfigDouble(instrumentConfig, "Voltage")), "1"),
             FirstNotEmpty(GetConfigString(instrumentConfig, "VoltageUnit"), "V"));
+    }
+
+    public void SetFrequencyOverride(string frequency, string frequencyUnit)
+    {
+        frequencyOverride = frequency?.Trim() ?? string.Empty;
+        frequencyUnitOverride = frequencyUnit?.Trim() ?? string.Empty;
+    }
+
+    public void ClearFrequencyOverride()
+    {
+        frequencyOverride = string.Empty;
+        frequencyUnitOverride = string.Empty;
     }
 
     public void Dispose()
@@ -105,12 +130,12 @@ public sealed class CorrectionParameterProvider : ICorrectionParameterProvider, 
 
         if (IsConfigParameter(config, "Parameter1DisplayName", parameterName))
         {
-            return FirstNotEmpty(GetConfigString(config, "Parameter1MinUnit"), GetConfigString(config, "Parameter1MaxUnit"));
+            return FirstNotEmpty(GetConfigString(config, "Parameter1LowerLimitUnit"), GetConfigString(config, "Parameter1UpperLimitUnit"));
         }
 
         if (IsConfigParameter(config, "Parameter3DisplayName", parameterName))
         {
-            return FirstNotEmpty(GetConfigString(config, "Parameter3MinUnit"), GetConfigString(config, "Parameter3MaxUnit"));
+            return FirstNotEmpty(GetConfigString(config, "Parameter3LowerLimitUnit"), GetConfigString(config, "Parameter3UpperLimitUnit"));
         }
 
         return string.Empty;

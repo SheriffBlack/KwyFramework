@@ -2,6 +2,8 @@
 using KwyTemplate.Contracts.Navigation;
 using KwyTemplate.Contracts.Security;
 
+using Kwy.MVVM.Core;
+
 namespace KwyTemplate.App.Models;
 
 /// <summary>
@@ -26,7 +28,7 @@ public sealed class NavigationConfigModel
             ViewName = ViewNames.CompensateView,
             DisplayText = "点检",
             LocalizationKey = "Nav.Compensate",
-            Icon = IconNames.IconCompensate
+            Icon = IconNames.IconCompensate,
         },
         new NavigationItemModel
         {
@@ -48,7 +50,8 @@ public sealed class NavigationConfigModel
             DisplayText = "系统",
             LocalizationKey = "Nav.System",
             Icon = IconNames.IconProcessing,
-            PermissionCode = PermissionCodes.Engineer
+            PermissionCode = PermissionCodes.Admin,
+            PermissionMode = PermissionCheckMode.Hide
         },
         new NavigationItemModel
         {
@@ -65,8 +68,20 @@ public sealed class NavigationConfigModel
     /// </summary>
     public Dictionary<string, List<NavigationItemModel>> SecondaryNavigationItems { get; set; } = new()
     {
-        [ViewNames.SetView] =
+        [ViewNames.SetView] = [],
+        [ViewNames.SystemView] =
         [
+            new NavigationItemModel
+            {
+                ViewName = ViewNames.ConnectView,
+                DisplayText = "连接配置",
+                LocalizationKey = "Nav.Connect"
+            },
+            new NavigationItemModel
+            {
+                DisplayText = "机种配置",
+                Parameter = "MachineProfile.Basic"
+            },
             new NavigationItemModel
             {
                 ViewName = ViewNames.DiView,
@@ -87,30 +102,6 @@ public sealed class NavigationConfigModel
                 DisplayText = "PLC 点位",
                 LocalizationKey = "Nav.PlcPoint",
                 PermissionCode = PermissionCodes.Admin
-            },
-        ],
-        [ViewNames.SystemView] =
-        [
-            new NavigationItemModel
-            {
-                ViewName = ViewNames.ConnectView,
-                DisplayText = "连接配置",
-                LocalizationKey = "Nav.Connect"
-            },
-            new NavigationItemModel
-            {
-                DisplayText = "机种配置",
-                Parameter = "MachineProfile.Basic"
-            },
-            new NavigationItemModel
-            {
-                DisplayText = "IO 点位设定",
-                Parameter = "MachineProfile.IoPoints"
-            },
-            new NavigationItemModel
-            {
-                DisplayText = "PLC 点位设定",
-                Parameter = "MachineProfile.PlcPoints"
             },
             new NavigationItemModel
             {

@@ -18,31 +18,6 @@ namespace KwyTemplate.Tests.Flow;
 public sealed class MachineRuntimeTests
 {
     [Fact]
-    public async Task PauseAsync_DoesNotChangeRunningStateOrRaiseRunningStateChanged()
-    {
-        var machine = new TestMachine(new FakeMachineDeviceContext());
-        int runningStateChangedCount = 0;
-        machine.RunningStateChanged += (_, _) => runningStateChangedCount++;
-
-        await machine.StartAsync();
-        Assert.True(machine.IsRunning);
-        Assert.Equal(1, machine.StartedCount);
-        Assert.Equal(1, runningStateChangedCount);
-
-        await machine.PauseAsync();
-        Assert.True(machine.IsRunning);
-        Assert.Equal(1, machine.PausedCount);
-        Assert.Equal(1, runningStateChangedCount);
-
-        await machine.StopAsync();
-        Assert.False(machine.IsRunning);
-        Assert.Equal(1, machine.StoppedCount);
-        Assert.Equal(2, runningStateChangedCount);
-
-        await machine.StopRuntimeAsync();
-    }
-
-    [Fact]
     public async Task SetStationEnabledAsync_UsesExplicitStationSwitchPointKeyForExternalStations()
     {
         var plc = new FakePlcDevice();
@@ -162,12 +137,10 @@ public sealed class MachineRuntimeTests
     private sealed class TestMachine(IMachineDeviceContext devices) : MachineBase(devices)
     {
         public int StartedCount { get; private set; }
-        public int PausedCount { get; private set; }
         public int StoppedCount { get; private set; }
         public override TriggerMode StationTriggerMode => TriggerMode.Programmatic;
         public override void InitTestStations() => TestStations = [];
         protected override Task OnTestStartedAsync(CancellationToken cancellationToken) { StartedCount++; return Task.CompletedTask; }
-        protected override Task OnTestPausedAsync(CancellationToken cancellationToken) { PausedCount++; return Task.CompletedTask; }
         protected override Task OnTestStoppedAsync(CancellationToken cancellationToken) { StoppedCount++; return Task.CompletedTask; }
     }
 

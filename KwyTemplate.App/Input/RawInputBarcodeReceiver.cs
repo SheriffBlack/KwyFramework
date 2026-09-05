@@ -21,6 +21,7 @@ public sealed class RawInputBarcodeReceiver : IRawInputBarcodeReceiver
     private readonly StringBuilder barcodeBuilder = new();
     private HwndSource? hwndSource;
     private DateTime lastKeystroke = DateTime.Now;
+    private DateTime suppressKeyboardInputUntil;
     private bool isShiftPressed;
     private bool disposed;
 
@@ -36,6 +37,15 @@ public sealed class RawInputBarcodeReceiver : IRawInputBarcodeReceiver
     public bool IsInitialized { get; private set; }
 
     public string? LastCode { get; private set; }
+
+    /// <summary>
+    /// 仅在最近仍持续收到扫码字符时视为扫码中。
+    /// 异常中断且未发送回车的半截条码，超过超时阈值后不能继续占用窗口快捷键。
+    /// </summary>
+    public bool IsScanInProgress => barcodeBuilder.Length > 0 && DateTime.Now - lastKeystroke <= options.KeystrokeTimeout;
+
+    public bool ShouldSuppressKeyboardInput
+        => IsScanInProgress || DateTime.Now <= suppressKeyboardInputUntil;
 
     public void Initialize(IntPtr hwnd)
     {
@@ -172,6 +182,7 @@ public sealed class RawInputBarcodeReceiver : IRawInputBarcodeReceiver
 
         string code = barcodeBuilder.ToString();
         barcodeBuilder.Clear();
+        suppressKeyboardInputUntil = DateTime.Now + options.PostScanKeyboardSuppression;
 
         if (options.TrimCode)
         {

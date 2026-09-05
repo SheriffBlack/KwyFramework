@@ -22,6 +22,7 @@ using KwyTemplate.Flow.Services;
 using KwyTemplate.MES.Abstract.Models;
 
 namespace KwyTemplate.Flow.Machines;
+
 public class Machine_4_HAHH : 
     MachineBase, 
     ICyntecReelScanMachine, 
@@ -29,12 +30,15 @@ public class Machine_4_HAHH :
     IMachinePlcStopSignalMachine,
     IMachineProductionCounterResetMachine,
     IMachineProductionSummaryMachine,
+    IMachineElectricalTestCountMachine,
     IMachineBraidSetupMachine,
     IMachineMarkPrintOptionsMachine,
-    IMachineWorkOrderStartSignalMachine
+    IMachineWorkOrderStartSignalMachine,
+    IInstrumentConfigurationGroupMachine
 {
     private const string NullText = "(NULL)";
     private static readonly TimeSpan ParameterCompareResultDelay = TimeSpan.FromMilliseconds(2500);
+    private static readonly TimeSpan ParameterCompareResultPulseDuration = TimeSpan.FromMilliseconds(200);
     private readonly IProductionRuntimeContext? productionContext;
     private readonly IProductionOutputOptions? productionOutputOptions;
     private readonly IProductionRecordWriter? productionRecordWriter;
@@ -50,6 +54,7 @@ public class Machine_4_HAHH :
     private int parameterCompareWriteGate;
     private bool? previousParameterCompareSignal;
     private int systemDataReadGate;
+    private long electricalTestOkCount;
     private MesWorkOrderTapeSetup? currentTapeSetup;
     private string? currentWorkOrderNo;
     private string? forceBraidSignalWrittenWorkOrderNo;
@@ -116,6 +121,8 @@ public class Machine_4_HAHH :
     }
 
     public override TriggerMode StationTriggerMode => TriggerMode.Polling;
+
+    public uint ElectricalTestOkCount => unchecked((uint)Volatile.Read(ref electricalTestOkCount));
 
     protected override bool ShouldApplyRealtimeStatisticsToTable => false;
 
@@ -491,19 +498,34 @@ public class Machine_4_HAHH :
         ];
     }
 
-    public override Task CompleteStationHandshakeAsync(TestStationModel station, bool isPass, CancellationToken cancellationToken = default)
+    internal override Task CompleteSoftwareStationHandshakeAsync(
+        TestStationModel station,
+        StationResultMessage message,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(station);
+        ArgumentNullException.ThrowIfNull(message);
 
         if (station.StationId == 4)
         {
-            WriteInductanceResultOutputs(station);
+            RecordInductanceResult(station, message.Values);
+            WriteInductanceResultOutputs(message.Values);
         }
 
-        return base.CompleteStationHandshakeAsync(station, isPass, cancellationToken);
+        return base.CompleteSoftwareStationHandshakeAsync(station, message, cancellationToken);
     }
 
-    private void WriteInductanceResultOutputs(TestStationModel station)
+    internal override void OnStationTestTriggered(TestStationModel station, bool triggerResult)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+
+        if (station.StationId == 3)
+        {
+            station.RecordMeasurementResult("DCR1", triggerResult);
+        }
+    }
+
+    private void WriteInductanceResultOutputs(IReadOnlyList<StationResultValue> values)
     {
         if (IoCard is not { IsConnected: true })
         {
@@ -513,9 +535,12 @@ public class Machine_4_HAHH :
         WriteDoBitSafe((int)PcToCard.Ls_OK, false);
         WriteDoBitSafe((int)PcToCard.Rs_OK, false);
 
-        WriteDoBitSafe((int)PcToCard.Ls_OK, station.TestJudges.TryGetValue("Ls", out bool lsOk) && lsOk);
-        WriteDoBitSafe((int)PcToCard.Rs_OK, station.TestJudges.TryGetValue("Rs", out bool rsOk) && rsOk);
+        WriteDoBitSafe((int)PcToCard.Ls_OK, GetJudge(values, "Ls"));
+        WriteDoBitSafe((int)PcToCard.Rs_OK, GetJudge(values, "Rs"));
     }
+
+    private static bool GetJudge(IReadOnlyList<StationResultValue> values, string testName)
+        => values.FirstOrDefault(value => string.Equals(value.TestName, testName, StringComparison.OrdinalIgnoreCase))?.Judge == true;
 
     private void WriteDoBitSafe(int channel, bool value)
     {
@@ -562,9 +587,29 @@ public class Machine_4_HAHH :
             }
 
             uint total = await ReadUInt32PointAsync(plc, PlcPoints.测试总量).ConfigureAwait(false);
-            await TryUpdateStationStatisticsAsync(plc, 3, "DCR1", total, PlcPoints.DCR1_NG数, PlcPoints.DCR1_CE数).ConfigureAwait(false);
-            await TryUpdateStationStatisticsAsync(plc, 4, "Ls", total, PlcPoints.LS_NG数, PlcPoints.IND_CE).ConfigureAwait(false);
-            await TryUpdateStationStatisticsAsync(plc, 4, "Rs", total, PlcPoints.RS_NG数, PlcPoints.IND_CE).ConfigureAwait(false);
+            UpdateElectricalTestOkCount(await ReadUInt32PointAsync(plc, PlcPoints.测试OK数).ConfigureAwait(false));
+            if (total == 0)
+            {
+                // 与后台工位结果消费者并发：使用原子写入，避免丢失或撕裂计数。
+                ResetMeasurementStatistics(3, 4);
+            }
+
+            uint dcrNg = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_NG数).ConfigureAwait(false);
+            uint dcrCe = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_CE数).ConfigureAwait(false);
+            uint lsNg = await ReadUInt32PointAsync(plc, PlcPoints.LS_NG数).ConfigureAwait(false);
+            uint rsNg = await ReadUInt32PointAsync(plc, PlcPoints.RS_NG数).ConfigureAwait(false);
+            uint indCe = await ReadUInt32PointAsync(plc, PlcPoints.IND_CE).ConfigureAwait(false);
+
+            TestMeasurementStatisticsSnapshot dcrStatistics = GetMeasurementStatistics(3, "DCR1");
+            uint dcrOk = dcrStatistics.OkCount;
+            uint dcrTestedTotal = dcrStatistics.TotalCount;
+            // 只有通过 DCR1 的料会到达电感工位，Ls、Rs 共用该实际到站数量。
+            uint indTestedTotal = dcrOk;
+            uint lsOk = GetMeasurementStatistics(4, "Ls").OkCount;
+            uint rsOk = GetMeasurementStatistics(4, "Rs").OkCount;
+            TryUpdateStationStatistics(3, "DCR1", dcrTestedTotal, dcrOk, dcrNg, dcrCe);
+            TryUpdateStationStatistics(4, "Ls", indTestedTotal, lsOk, lsNg, indCe);
+            TryUpdateStationStatistics(4, "Rs", indTestedTotal, rsOk, rsNg, indCe);
         }
         catch (Exception ex)
         {
@@ -576,35 +621,34 @@ public class Machine_4_HAHH :
         }
     }
 
-    private async Task TryUpdateStationStatisticsAsync(IPlcDevice plc, int stationId, string testName, uint total, PlcPoints ngPoint, PlcPoints? cePoint = null)
+    private void TryUpdateStationStatistics(int stationId, string testName, uint total, uint ok, uint ng, uint ce)
     {
         if (string.IsNullOrWhiteSpace(testName))
         {
             return;
         }
 
-        try
+        var snapshot = new Machine4HahhStationStatisticsSnapshot(total, ok, ng, ce);
+
+        if (lastStatisticsSnapshots.TryGetValue(testName, out Machine4HahhStationStatisticsSnapshot? lastSnapshot)
+            && snapshot.Equals(lastSnapshot))
         {
-            uint ng = await ReadUInt32PointAsync(plc, ngPoint).ConfigureAwait(false);
-            uint ce = cePoint.HasValue ? await ReadUInt32PointAsync(plc, cePoint.Value).ConfigureAwait(false) : 0;
-            var snapshot = new Machine4HahhStationStatisticsSnapshot(total, ng, ce);
-
-            if (lastStatisticsSnapshots.TryGetValue(testName, out Machine4HahhStationStatisticsSnapshot? lastSnapshot)
-                && snapshot.Equals(lastSnapshot))
-            {
-                return;
-            }
-
-            lastStatisticsSnapshots[testName] = snapshot;
-            UpdateStationStatistics(stationId, testName, total, ng, ce);
+            return;
         }
-        catch (Exception ex)
+
+        lastStatisticsSnapshots[testName] = snapshot;
+        UpdateStationStatistics(stationId, testName, total, ok, ng);
+    }
+
+    private void UpdateElectricalTestOkCount(uint value)
+    {
+        if (Interlocked.Exchange(ref electricalTestOkCount, value) != value)
         {
-            Debug.WriteLine($"[Machine_4_HAHH] Read station statistics failed. StationId={stationId}, TestName={testName}, NgPoint={ngPoint}, CePoint={cePoint}, Message={ex.Message}");
+            RaiseTableChanged();
         }
     }
 
-    private void UpdateStationStatistics(int stationId, string testName, uint total, uint ng, uint ce)
+    private void UpdateStationStatistics(int stationId, string testName, uint total, uint ok, uint ng)
     {
         TestStationModel? station = TestStations.FirstOrDefault(item => item.StationId == stationId);
         if (station == null)
@@ -612,9 +656,36 @@ public class Machine_4_HAHH :
             return;
         }
 
-        uint ok = total > ng + ce ? total - ng - ce : 0;
         double yield = total == 0 ? 0 : (double)ok / total;
         UpdateStatisticsRows(station, testName, total, ok, ng, yield);
+    }
+
+    private static void RecordInductanceResult(TestStationModel station, IReadOnlyList<StationResultValue> values)
+    {
+        foreach (StationResultValue value in values)
+        {
+            if (value.Judge.HasValue &&
+                (string.Equals(value.TestName, "Ls", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(value.TestName, "Rs", StringComparison.OrdinalIgnoreCase)))
+            {
+                station.RecordMeasurementResult(value.TestName, value.Judge.Value);
+            }
+        }
+    }
+
+    private TestMeasurementStatisticsSnapshot GetMeasurementStatistics(int stationId, string testName)
+    {
+        return TestStations.FirstOrDefault(station => station.StationId == stationId)
+            ?.GetMeasurementStatistics(testName)
+            ?? default;
+    }
+
+    private void ResetMeasurementStatistics(params int[] stationIds)
+    {
+        foreach (TestStationModel station in TestStations.Where(station => stationIds.Contains(station.StationId)))
+        {
+            station.ResetMeasurementStatistics();
+        }
     }
 
     private async Task<uint> ReadUInt32PointAsync(IPlcDevice plc, PlcPoints point)
@@ -724,8 +795,18 @@ public class Machine_4_HAHH :
         }
 
         int channel = succeeded ? (int)PcToCard.参数对比_OK : (int)PcToCard.参数对比_NG;
-        ResetParameterCompareResultOutputs(ioCard);
         ioCard.WriteDoBit(channel, true);
+        try
+        {
+            await Task.Delay(ParameterCompareResultPulseDuration).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (ioCard.IsConnected)
+            {
+                ioCard.WriteDoBit(channel, false);
+            }
+        }
     }
 
     private void ResetParameterCompareResultOutputs()
@@ -758,41 +839,80 @@ public class Machine_4_HAHH :
 
     public Task ResetWorkOrderStartSignalsAsync(CancellationToken cancellationToken = default)
         => WriteForceBraidNewWorkOrderSignalAsync(false, cancellationToken);
-    public override async Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+    public override Task ApplyWorkOrderRuntimeSetupAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(setup);
 
         IReadOnlyList<MesWorkOrderInstrumentSetup> instrumentSetups = setup.InstrumentSetups ?? [];
         bool zEnabled = IsSetupEnabled(setup, "ZEnable");
+        bool polarityStation1Enabled = IsPolarityStationEnabled(setup, 1, zEnabled);
+        bool polarityStation2Enabled = IsPolarityStationEnabled(setup, 2, zEnabled);
         bool qEnabled = IsSetupEnabled(setup, "QEnable");
         // The primary Ls/Rs set is mandatory for Machine_4_HAHH; LEnable2 only controls an optional second frequency set.
         bool lEnabled = true;
+        bool lSecondEnabled = IsSetupEnabled(setup, "LEnable2");
 
-        await SetPolarityStationsEnabledAsync(zEnabled, cancellationToken).ConfigureAwait(false);
-        SetPolarityCheckEnabled(zEnabled);
-        await ApplyPolarityInstrumentSetupAsync(polMeter1, FindInstrumentSetup(instrumentSetups, "Z1"), FindInstrumentSetup(instrumentSetups, "PHASE1"), zEnabled, cancellationToken).ConfigureAwait(false);
-        await ApplyPolarityInstrumentSetupAsync(polMeter2, FindInstrumentSetup(instrumentSetups, "Z2"), FindInstrumentSetup(instrumentSetups, "PHASE2"), zEnabled, cancellationToken).ConfigureAwait(false);
-        await ApplyAdexDcrSetupAsync(dcrMeter1, FindInstrumentSetup(instrumentSetups, "DCR1"), cancellationToken).ConfigureAwait(false);
-        await ApplyHiokiInductanceSetupAsync(
+        SetPolarityCheckEnabled(1, polarityStation1Enabled);
+        SetPolarityCheckEnabled(2, polarityStation2Enabled);
+        ConfigurePolarityInstrumentSetup(polMeter1, FindInstrumentSetup(instrumentSetups, "Z1"), FindInstrumentSetup(instrumentSetups, "PHASE1"), polarityStation1Enabled, setup, 1);
+        ConfigurePolarityInstrumentSetup(polMeter2, FindInstrumentSetup(instrumentSetups, "Z2"), FindInstrumentSetup(instrumentSetups, "PHASE2"), polarityStation2Enabled, setup, 2);
+        ConfigureAdexDcrSetup(dcrMeter1, FindInstrumentSetup(instrumentSetups, "DCR1"));
+        ConfigureHiokiInductanceSetup(
             indMeter1,
             FindInstrumentSetup(instrumentSetups, "Ls"),
             FindInstrumentSetup(instrumentSetups, "Rs"),
             FindInstrumentSetup(instrumentSetups, "Q"),
             setup,
             lEnabled,
+            lSecondEnabled,
             qEnabled,
-            cancellationToken).ConfigureAwait(false);
+            4);
 
         // Keep runtime Ls/Rs limits synchronized with the HIOKI 3570 work-order configuration.
         RefreshStationLimitsFromInstrumentConfigs();
 
         currentTapeSetup = setup.TapeSetup;
-        await WriteTapeSetupToPlcAsync(currentTapeSetup, cancellationToken).ConfigureAwait(false);
-
-        currentTapeSetup = setup.TapeSetup;
-        await WriteTapeSetupToPlcAsync(currentTapeSetup, cancellationToken).ConfigureAwait(false);
-
         ApplyStationLimits(instrumentSetups, zEnabled, lEnabled, qEnabled);
+        return Task.CompletedTask;
+    }
+
+    public override async Task<WorkOrderHardwareWriteResult> WriteWorkOrderSetupToHardwareAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+    {
+        var result = new WorkOrderHardwareWriteResult();
+        bool zEnabled = IsSetupEnabled(setup, "ZEnable");
+        bool polarityStation1Enabled = IsPolarityStationEnabled(setup, 1, zEnabled);
+        bool polarityStation2Enabled = IsPolarityStationEnabled(setup, 2, zEnabled);
+
+        await TryWriteWorkOrderHardwareAsync("极性工位启用", () => SetPolarityStationsEnabledAsync(polarityStation1Enabled, polarityStation2Enabled, cancellationToken), result).ConfigureAwait(false);
+        await TryApplyWorkOrderConfigAsync("HIOKI 极性 1", polMeter1, result, cancellationToken).ConfigureAwait(false);
+        await TryApplyWorkOrderConfigAsync("HIOKI 极性 2", polMeter2, result, cancellationToken).ConfigureAwait(false);
+        await TryApplyWorkOrderConfigAsync("DCR1", dcrMeter1, result, cancellationToken).ConfigureAwait(false);
+        await TryApplyWorkOrderConfigAsync("HIOKI 3570", indMeter1, result, cancellationToken).ConfigureAwait(false);
+        await TryWriteWorkOrderHardwareAsync("PLC 编带参数", () => WriteTapeSetupToPlcAsync(currentTapeSetup, cancellationToken), result).ConfigureAwait(false);
+        return result;
+    }
+
+    public IReadOnlyList<IConfigurableDevice> SynchronizeInstrumentConfigurationGroup(IConfigurableDevice editedDevice)
+    {
+        ArgumentNullException.ThrowIfNull(editedDevice);
+        // 两台极性仪表的启用状态独立维护；不能因应用其中一台而覆盖另一台。
+        return [editedDevice];
+    }
+
+    public async Task CompleteInstrumentConfigurationGroupApplyAsync(
+        IReadOnlyList<IConfigurableDevice> groupDevices,
+        CancellationToken cancellationToken = default)
+    {
+        if (!groupDevices.OfType<IDevice>().Any(device => IsPolarityInstrument(device.DeviceId)))
+        {
+            return;
+        }
+
+        bool polarityStation1Enabled = IsPolarityInstrumentEnabled(polMeter1);
+        bool polarityStation2Enabled = IsPolarityInstrumentEnabled(polMeter2);
+        await SetPolarityStationsEnabledAsync(polarityStation1Enabled, polarityStation2Enabled, cancellationToken).ConfigureAwait(false);
+        SetPolarityCheckEnabled(1, polarityStation1Enabled);
+        SetPolarityCheckEnabled(2, polarityStation2Enabled);
     }
 
     private void ApplyStationLimits(IReadOnlyList<MesWorkOrderInstrumentSetup> instrumentSetups, bool zEnabled, bool lEnabled, bool qEnabled)
@@ -822,17 +942,15 @@ public class Machine_4_HAHH :
         }
     }
 
-    private void SetPolarityCheckEnabled(bool isEnabled)
-    {
-        SetCheckOperationEnabled(1, isEnabled);
-        SetCheckOperationEnabled(2, isEnabled);
-    }
+    private void SetPolarityCheckEnabled(int stationId, bool isEnabled)
+        => SetCheckOperationEnabled(stationId, isEnabled);
 
-    private async Task SetPolarityStationsEnabledAsync(bool isEnabled, CancellationToken cancellationToken)
+    private async Task SetPolarityStationsEnabledAsync(bool station1Enabled, bool station2Enabled, CancellationToken cancellationToken)
     {
         foreach (TestStationModel station in TestStations.Where(static station => station.StationId is 1 or 2))
         {
-            await SetStationEnabledAsync(station, isEnabled, cancellationToken).ConfigureAwait(false);
+            bool enabled = station.StationId == 1 ? station1Enabled : station2Enabled;
+            await SetStationEnabledAsync(station, enabled, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -874,15 +992,40 @@ public class Machine_4_HAHH :
         => setup.Parameters.TryGetString(key, out string value)
             && value.Trim().Equals("Y", StringComparison.OrdinalIgnoreCase);
 
-    private static async Task ApplyPolarityInstrumentSetupAsync(
+    private static bool IsPolarityStationEnabled(MesWorkOrderSetup setup, int stationId, bool fallback)
+    {
+        string key = $"Polarity.Station{stationId}.Enabled";
+        return setup.Parameters.TryGetString(key, out string value)
+            ? value.Trim().Equals("Y", StringComparison.OrdinalIgnoreCase)
+            : fallback;
+    }
+
+    private static bool IsPolarityInstrumentEnabled(IMeasurementInstrument? instrument)
+        => instrument is IConfigurableDevice { DeviceParameter: HiokiLcrConfig config }
+           && !config.IsMeasurementDisabled;
+
+    private static bool IsPolarityInstrument(string deviceId)
+        => string.Equals(deviceId, DeviceIds.Instrument("Pol", 1), StringComparison.OrdinalIgnoreCase)
+           || string.Equals(deviceId, DeviceIds.Instrument("Pol", 2), StringComparison.OrdinalIgnoreCase);
+
+    private static void ConfigurePolarityInstrumentSetup(
         IMeasurementInstrument? instrument,
         MesWorkOrderInstrumentSetup? zSetup,
         MesWorkOrderInstrumentSetup? phaseSetup,
         bool isEnabled,
-        CancellationToken cancellationToken)
+        MesWorkOrderSetup setup,
+        int stationId)
     {
-        if (!isEnabled || instrument is not IConfigurableDevice configurable || configurable.DeviceParameter is not HiokiLcrConfig config)
+        if (instrument is not IConfigurableDevice configurable || configurable.DeviceParameter is not HiokiLcrConfig config)
         {
+            return;
+        }
+
+        if (!isEnabled)
+        {
+            ApplyHiokiRecipeSettings(config, setup, stationId);
+            // 通用 HIOKI 快照可能保留上一工单的 Z-θ；极性关闭时必须以工单开关为准。
+            config.LoadType = HiokiLcrLoadTypes.OffOff;
             return;
         }
 
@@ -894,18 +1037,22 @@ public class Machine_4_HAHH :
             config.Range = NormalizeHiokiRange(zSetup.Range);
         }
 
-        await configurable.ApplyConfigAsync(cancellationToken).ConfigureAwait(false);
+        ApplyHiokiRecipeSettings(config, setup, stationId);
+        // 极性工位的测量语义固定为 Z-θ，不能被快照中的其他负载类型覆盖。
+        config.LoadType = HiokiLcrLoadTypes.ZTheta;
+
     }
 
-    private static async Task ApplyHiokiInductanceSetupAsync(
+    private static void ConfigureHiokiInductanceSetup(
         IMeasurementInstrument? instrument,
         MesWorkOrderInstrumentSetup? lsSetup,
         MesWorkOrderInstrumentSetup? rsSetup,
         MesWorkOrderInstrumentSetup? qSetup,
         MesWorkOrderSetup setup,
         bool lEnabled,
+        bool lSecondEnabled,
         bool qEnabled,
-        CancellationToken cancellationToken)
+        int stationId)
     {
         if (!lEnabled)
         {
@@ -927,19 +1074,22 @@ public class Machine_4_HAHH :
             throw new InvalidOperationException("Primary Ls setup is missing from the parsed work-order data.");
         }
 
-        if (!qEnabled && rsSetup == null)
+        // With a dual-frequency recipe Q belongs to the second pass, so the
+        // primary pass remains Ls/Rs and still requires its Rs limits.
+        if ((!qEnabled || lSecondEnabled) && rsSetup == null)
         {
             throw new InvalidOperationException("Primary Rs setup is missing from the parsed work-order data.");
         }
 
-        if (qEnabled && qSetup == null)
+        if (qEnabled && !lSecondEnabled && qSetup == null)
         {
             throw new InvalidOperationException("Q is enabled, but its setup is missing from the parsed work-order data.");
         }
 
-        config.LoadType = qEnabled ? HiokiLcrLoadTypes.LsQ : HiokiLcrLoadTypes.LsRs;
+        bool primaryUsesQ = qEnabled && !lSecondEnabled;
+        config.LoadType = primaryUsesQ ? HiokiLcrLoadTypes.LsQ : HiokiLcrLoadTypes.LsRs;
         ApplyHiokiPrimaryLimit(config, lsSetup, lsSetup?.Unit ?? "μH");
-        ApplyHiokiSecondaryLimit(config, qEnabled ? qSetup : rsSetup, qEnabled ? string.Empty : rsSetup?.Unit ?? "mΩ");
+        ApplyHiokiSecondaryLimit(config, primaryUsesQ ? qSetup : rsSetup, primaryUsesQ ? string.Empty : rsSetup?.Unit ?? "mΩ");
         if (setup.Parameters.TryGetDouble("LFreq", out double frequency) && frequency > 0)
         {
             // Cyntec work-order LFreq is expressed in kHz (legacy MES contract).
@@ -955,10 +1105,146 @@ public class Machine_4_HAHH :
             config.Range = NormalizeHiokiRange(lsSetup.Range);
         }
 
-        await configurable.ApplyConfigAsync(cancellationToken).ConfigureAwait(false);
+        ApplyHiokiSecondFrequencySetup(
+            config,
+            FindInstrumentSetup(setup.InstrumentSetups ?? [], "Ls2"),
+            FindInstrumentSetup(setup.InstrumentSetups ?? [], "Rs2"),
+            FindInstrumentSetup(setup.InstrumentSetups ?? [], "Q2"),
+            setup,
+            lSecondEnabled,
+            qEnabled);
+
+        ApplyHiokiRecipeSettings(config, setup, stationId);
+
     }
 
-    private static async Task ApplyAdexDcrSetupAsync(IMeasurementInstrument? instrument, MesWorkOrderInstrumentSetup? setup, CancellationToken cancellationToken)
+    private static void ApplyHiokiRecipeSettings(HiokiLcrConfig config, MesWorkOrderSetup setup, int stationId)
+    {
+        string Key(string name) => HiokiLcrRecipeKeys.Get(stationId, name);
+
+        if (setup.Parameters.TryGetString(Key(HiokiLcrRecipeKeys.FrequencyMode), out string frequencyMode)
+            && config.SupportsDualFrequency)
+        {
+            config.FrequencyMode = frequencyMode;
+        }
+
+        if (setup.Parameters.TryGetString(Key(HiokiLcrRecipeKeys.LoadType), out string loadType))
+        {
+            config.LoadType = loadType;
+        }
+
+        if (setup.Parameters.TryGetDouble(Key(HiokiLcrRecipeKeys.Frequency), out double frequency))
+        {
+            config.Frequency = frequency;
+        }
+
+        if (setup.Parameters.TryGetString(Key(HiokiLcrRecipeKeys.FrequencyUnit), out string frequencyUnit))
+        {
+            config.FrequencyUnit = frequencyUnit;
+        }
+
+        if (setup.Parameters.TryGetDouble(Key(HiokiLcrRecipeKeys.Voltage), out double voltage))
+        {
+            config.Voltage = voltage;
+        }
+
+        if (setup.Parameters.TryGetString(Key(HiokiLcrRecipeKeys.VoltageUnit), out string voltageUnit))
+        {
+            config.VoltageUnit = voltageUnit;
+        }
+
+        if (setup.Parameters.TryGetDouble(Key(HiokiLcrRecipeKeys.Delay), out double delay))
+        {
+            config.Delay = delay;
+        }
+
+        if (setup.Parameters.TryGetString(Key(HiokiLcrRecipeKeys.Range), out string range))
+        {
+            config.Range = range;
+        }
+
+        if (setup.Parameters.TryGetString(Key(HiokiLcrRecipeKeys.Speed), out string speed))
+        {
+            config.Speed = speed;
+        }
+
+        if (setup.Parameters.TryGetString(Key(HiokiLcrRecipeKeys.SecondLoadType), out string secondLoadType))
+        {
+            config.SecondLoadType = secondLoadType;
+        }
+
+        if (setup.Parameters.TryGetDouble(Key(HiokiLcrRecipeKeys.Frequency2), out double frequency2))
+        {
+            config.Frequency2 = frequency2;
+        }
+
+        if (setup.Parameters.TryGetString(Key(HiokiLcrRecipeKeys.Frequency2Unit), out string frequency2Unit))
+        {
+            config.Frequency2Unit = frequency2Unit;
+        }
+    }
+
+    private static void ApplyHiokiSecondFrequencySetup(
+        HiokiLcrConfig config,
+        MesWorkOrderInstrumentSetup? lsSetup,
+        MesWorkOrderInstrumentSetup? rsSetup,
+        MesWorkOrderInstrumentSetup? qSetup,
+        MesWorkOrderSetup setup,
+        bool isEnabled,
+        bool qEnabled)
+    {
+        // A device capability decides whether the UI and recipe can expose the
+        // second pass.  A work order for another HIOKI model therefore cannot
+        // accidentally turn a single-frequency station into a dual one.
+        config.FrequencyMode = config.SupportsDualFrequency && isEnabled
+            ? HiokiLcrConfig.DualFrequency
+            : HiokiLcrConfig.SingleFrequency;
+        config.SecondFrequencyQEnabled = config.IsDualFrequencyEnabled && qEnabled;
+
+        if (!config.IsDualFrequencyEnabled)
+        {
+            return;
+        }
+
+        config.SecondLoadType = qEnabled ? HiokiLcrLoadTypes.LsQ : HiokiLcrLoadTypes.LsRs;
+        if (lsSetup != null)
+        {
+            ApplyHiokiSecondPrimaryLimit(config, lsSetup, lsSetup.Unit ?? "μH");
+        }
+
+        MesWorkOrderInstrumentSetup? secondParameter = qEnabled ? qSetup : rsSetup;
+        if (secondParameter != null)
+        {
+            ApplyHiokiSecondSecondaryLimit(config, secondParameter, qEnabled ? string.Empty : secondParameter.Unit ?? "mΩ");
+        }
+
+        if (setup.Parameters.TryGetDouble("LFreq2", out double frequency) && frequency > 0)
+        {
+            // Cyntec keeps both LFreq and LFreq2 in kHz.
+            config.Frequency2 = frequency / 1_000d;
+            config.Frequency2Unit = "MHz";
+        }
+    }
+
+    private static void ApplyHiokiSecondPrimaryLimit(HiokiLcrConfig config, MesWorkOrderInstrumentSetup setup, string fallbackUnit)
+    {
+        config.SecondParameter1LowerLimit = setup.LowerLimit ?? config.SecondParameter1LowerLimit;
+        config.SecondParameter1UpperLimit = setup.UpperLimit ?? config.SecondParameter1UpperLimit;
+        string unit = setup.Unit ?? fallbackUnit;
+        config.SecondParameter1LowerLimitUnit = unit;
+        config.SecondParameter1UpperLimitUnit = unit;
+    }
+
+    private static void ApplyHiokiSecondSecondaryLimit(HiokiLcrConfig config, MesWorkOrderInstrumentSetup setup, string fallbackUnit)
+    {
+        config.SecondParameter3LowerLimit = setup.LowerLimit ?? config.SecondParameter3LowerLimit;
+        config.SecondParameter3UpperLimit = setup.UpperLimit ?? config.SecondParameter3UpperLimit;
+        string unit = setup.Unit ?? fallbackUnit;
+        config.SecondParameter3LowerLimitUnit = unit;
+        config.SecondParameter3UpperLimitUnit = unit;
+    }
+
+    private static void ConfigureAdexDcrSetup(IMeasurementInstrument? instrument, MesWorkOrderInstrumentSetup? setup)
     {
         if (instrument == null || setup == null)
         {
@@ -978,24 +1264,24 @@ public class Machine_4_HAHH :
         string? unit = NormalizeAdexLimitUnit(setup.Unit);
         if (setup.LowerLimit.HasValue)
         {
-            config.LowerLimitRaw = setup.LowerLimit.Value;
+            config.LowerLimit = setup.LowerLimit.Value;
             if (!string.IsNullOrWhiteSpace(unit))
             {
-                config.LowerLimitRawUnit = unit;
+                config.LowerLimitUnit = unit;
             }
         }
 
         if (setup.UpperLimit.HasValue)
         {
-            config.UpperLimitRaw = setup.UpperLimit.Value;
+            config.UpperLimit = setup.UpperLimit.Value;
             if (!string.IsNullOrWhiteSpace(unit))
             {
-                config.UpperLimitRawUnit = unit;
+                config.UpperLimitUnit = unit;
             }
         }
 
-        await configurable.ApplyConfigAsync(cancellationToken).ConfigureAwait(false);
     }
+
 
     private static void ApplyHiokiPrimaryLimit(HiokiLcrConfig config, MesWorkOrderInstrumentSetup? setup, string defaultUnit)
     {
@@ -1008,17 +1294,17 @@ public class Machine_4_HAHH :
         // unit per measurement, so keep both edges synchronized even if an
         // individual limit value is absent in the source payload.
         string unit = string.IsNullOrWhiteSpace(setup.Unit) ? defaultUnit : setup.Unit;
-        config.Parameter1MinUnit = unit;
-        config.Parameter1MaxUnit = unit;
+        config.Parameter1LowerLimitUnit = unit;
+        config.Parameter1UpperLimitUnit = unit;
 
         if (setup?.LowerLimit.HasValue == true)
         {
-            config.Parameter1Min = setup.LowerLimit.Value;
+            config.Parameter1LowerLimit = setup.LowerLimit.Value;
         }
 
         if (setup?.UpperLimit.HasValue == true)
         {
-            config.Parameter1Max = setup.UpperLimit.Value;
+            config.Parameter1UpperLimit = setup.UpperLimit.Value;
         }
     }
 
@@ -1029,21 +1315,21 @@ public class Machine_4_HAHH :
             return;
         }
 
-        // See ApplyHiokiPrimaryLimit: Parameter3MaxUnit must not rely on the
-        // presence of Parameter3Max, otherwise the Rs upper limit can display
+        // See ApplyHiokiPrimaryLimit: Parameter3UpperLimitUnit must not rely on the
+        // presence of Parameter3UpperLimit, otherwise the Rs upper limit can display
         // or be sent without its mΩ unit after a work-order refresh.
         string unit = string.IsNullOrWhiteSpace(setup.Unit) ? defaultUnit : setup.Unit;
-        config.Parameter3MinUnit = unit;
-        config.Parameter3MaxUnit = unit;
+        config.Parameter3LowerLimitUnit = unit;
+        config.Parameter3UpperLimitUnit = unit;
 
         if (setup?.LowerLimit.HasValue == true)
         {
-            config.Parameter3Min = setup.LowerLimit.Value;
+            config.Parameter3LowerLimit = setup.LowerLimit.Value;
         }
 
         if (setup?.UpperLimit.HasValue == true)
         {
-            config.Parameter3Max = setup.UpperLimit.Value;
+            config.Parameter3UpperLimit = setup.UpperLimit.Value;
         }
     }
 
@@ -1111,7 +1397,7 @@ public class Machine_4_HAHH :
         await WriteUInt32PointAsync(plc, PlcPoints.后空格, tapeSetup.AfterSpaceQty, cancellationToken).ConfigureAwait(false);
         await WriteUInt32PointAsync(plc, PlcPoints.样品, tapeSetup.SampleQty, cancellationToken).ConfigureAwait(false);
         await WriteUInt32PointAsync(plc, PlcPoints.样品后空格, tapeSetup.BlankQty, cancellationToken).ConfigureAwait(false);
-        await WriteUInt32PointAsync(plc, PlcPoints.后不封, tapeSetup.BackNoFilmQty, cancellationToken).ConfigureAwait(false);
+        await WriteUInt32PointAsync(plc, PlcPoints.后不封, tapeSetup.BlankQty, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task WriteUInt16PointAsync(IPlcDevice plc, PlcPoints point, int? value, CancellationToken cancellationToken)
@@ -1270,14 +1556,10 @@ public class Machine_4_HAHH :
                 outputRecord.Ls = record.TestValue;
                 outputRecord.LsResult = record.Judge;
                 outputRecord.LsTestTime = DateTime.Now;
-                if (record.Judge == false)
-                {
-                    completedRecord = outputRecord;
-                }
-                else
-                {
-                    pendingTestRecords.Enqueue(outputRecord);
-                }
+                // Ls 与 Rs 来自同一台 HIOKI 3570 的同一次测量。
+                // 即使 Ls 为 NG，也必须等待 Rs 一并保存；只有前一独立工位 DCR1 NG
+                // 才代表后续工位未测试，允许以 (NULL) 补齐。
+                pendingTestRecords.Enqueue(outputRecord);
             }
             else if (string.Equals(record.Name, "Rs", StringComparison.OrdinalIgnoreCase))
             {
@@ -1682,7 +1964,7 @@ public class Machine_4_HAHH :
     }
 }
 
-internal sealed record Machine4HahhStationStatisticsSnapshot(uint Total, uint Ng, uint Ce);
+internal sealed record Machine4HahhStationStatisticsSnapshot(uint Total, uint Ok, uint Ng, uint Ce);
 
 internal struct Machine4HahhTestOutputRecord
 {

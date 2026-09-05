@@ -71,10 +71,14 @@ public sealed class CompositeDataDeal
 
     public async Task ExecuteMeasurementAsync(bool triggerResult, TestStationModel station, CancellationToken cancellationToken)
     {
+        // 触发时绑定本次生产代次。停止出站清屏后才消费到的旧消息会被丢弃，
+        // 不能重新写回 DataGrid 或图表。
+        long resultGeneration = machine.CurrentResultGeneration;
+
         if (station.StationIo.ResultSource == StationResultSource.Hardware && dispatchQueue != null)
         {
             IReadOnlyList<CapturedStationDataDeal> capturedMeasurements = await CaptureMeasurementAsync(station, cancellationToken).ConfigureAwait(false);
-            StationResultMessage deferredMessage = StationResultMessage.CreateDeferredHardware(station, triggerResult, capturedMeasurements);
+            StationResultMessage deferredMessage = StationResultMessage.CreateDeferredHardware(station, triggerResult, capturedMeasurements, resultGeneration);
             dispatchQueue.TryEnqueue(deferredMessage);
 
             if (TriggerMode != TriggerMode.Programmatic)
@@ -100,7 +104,7 @@ public sealed class CompositeDataDeal
             }
         }
 
-        StationResultMessage message = StationResultMessage.Create(station);
+        StationResultMessage message = StationResultMessage.Create(station, resultGeneration);
 
         // PLC/IO 握手必须先完成，后面的 UI、统计、保存都不能拖慢这条实时链路。
         if (dispatchQueue != null)
@@ -108,7 +112,7 @@ public sealed class CompositeDataDeal
             RestoreStationSnapshot(station, previousValues, previousJudges);
             if (TriggerMode != TriggerMode.Programmatic)
             {
-                await machine.CompleteStationHandshakeAsync(station, message.IsPass, cancellationToken).ConfigureAwait(false);
+                await machine.CompleteSoftwareStationHandshakeAsync(station, message, cancellationToken).ConfigureAwait(false);
             }
 
             dispatchQueue.TryEnqueue(message);
@@ -164,6 +168,7 @@ public sealed class CompositeDataDeal
                 bool triggerResult = station.StationIo.ResultSource == StationResultSource.Hardware
                     ? machine.ReadStationResult(station)
                     : true;
+                machine.OnStationTestTriggered(station, triggerResult);
                 ExecuteMeasurementAsync(triggerResult, station, cancellationToken).GetAwaiter().GetResult();
             }
 
@@ -179,6 +184,7 @@ public sealed class CompositeDataDeal
                 bool triggerResult = station.StationIo.ResultSource == StationResultSource.Hardware
                     ? machine.ReadStationResult(station)
                     : true;
+                machine.OnStationTestTriggered(station, triggerResult);
                 await ExecuteMeasurementAsync(triggerResult, station, cancellationToken).ConfigureAwait(false);
             }
 

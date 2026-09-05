@@ -1,5 +1,6 @@
 ﻿using Kwy.MVVM.Core;
 using Kwy.MVVM.Messaging;
+using Kwy.Device.Abstractions.Instrument;
 using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Components.Logging;
 using Kwy.UI.WPF.Components.Toasts;
@@ -29,6 +30,7 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
+using KwyTemplate.Contracts.Navigation;
 
 namespace KwyTemplate.App.ViewModels;
 
@@ -36,6 +38,7 @@ public sealed class HomeViewModel : BindableBase
 {
     private readonly MachineBase machine;
     private readonly IProductionContext productionContext;
+    private readonly IPrimaryNavigationState primaryNavigationState;
     private readonly ICyntecReelScanWorkflow reelScanWorkflow;
     private readonly MesConnectionStatus mesConnectionStatus;
     private readonly IMesConnection mesConnection;
@@ -44,7 +47,7 @@ public sealed class HomeViewModel : BindableBase
     private readonly IToastMessageService toastMessageService;
     private readonly IInputDialogService inputDialogService;
     private readonly ISecurityKeyChecker securityKeyChecker;
-    private readonly IPermissionService permissionService;
+    private readonly ICameraStartupOptionsDialogService cameraStartupOptionsDialogService;
     private readonly KwyLogService? logService;
     private readonly IMesTrackService mesTrackService;
     private readonly IMesWorkOrderService mesWorkOrderService;
@@ -52,11 +55,18 @@ public sealed class HomeViewModel : BindableBase
     private readonly MarkPrintOptionsStore markPrintOptionsStore;
     private readonly IProductionOutputOptions productionOutputOptions;
     private readonly IProductionRecordWriter productionRecordWriter;
+    private readonly IProductionDataArchiveService productionDataArchiveService;
     private readonly StationEnableStateStore stationEnableStateStore;
     private readonly StandardSampleState sampleState;
     private readonly IMessageBus messageBus;
     private readonly ILocalizationService localizationService;
+    private readonly LocalWorkOrderRecipeSession localWorkOrderRecipeSession;
+    private readonly LocalWorkOrderRecipeStore localWorkOrderRecipeStore;
+    private readonly LocalWorkOrderRecipeMapper localWorkOrderRecipeMapper;
+    private readonly ICorrectionParameterProvider correctionParameterProvider;
+    private readonly IMachineDeviceContext devices;
     private readonly IDisposable stationLimitsAppliedSubscription;
+    private readonly IDisposable localWorkOrderRecipeLoadedSubscription;
     private readonly object mesStateSyncRoot = new();
     private readonly ObservableCollection<IDataGridColumnDescriptor> partColumns = [];
     private readonly ObservableCollection<HomeChartTabModel> chartTabs = [];
@@ -68,8 +78,14 @@ public sealed class HomeViewModel : BindableBase
     private int chartLimitsSyncPending;
     private bool requiresLsLowerLimitOverride;
     private MesConnectionState lastMesConnectionState;
+    private TaskCompletionSource? mesConnectSuccessDialogCompletion;
     private int onlineWorkOrderRefreshPending;
-    private int offlineMaterialScanSequence;
+    // MES 从在线切到离线后，现有 Home 字段只保留展示；必须重新扫工单才允许加载本地机种配方。
+    private bool offlineWorkOrderRescanRequired;
+    // Home 在结束工单时会清空显示字段；该快照只用于判断下一次机种是否变化。
+    private string lastResolvedMachineType = string.Empty;
+    // X 机种 Ls 下限确认与工单号无关；同一机种在离线扫码顺序变化或启动重载时不应重复弹窗。
+    private string confirmedTrailingXMachineType = string.Empty;
     private string specialMachineLsLowerLimitText = string.Empty;
     private string specialMachineLsUnit = string.Empty;
     private AsyncDelegateCommand? mesConnectionCommand;
@@ -81,6 +97,7 @@ public sealed class HomeViewModel : BindableBase
         MachineBase machine,
         IMachineDeviceContext devices,
         IProductionContext productionContext,
+        IPrimaryNavigationState primaryNavigationState,
         ICyntecReelScanWorkflow reelScanWorkflow,
         MesConnectionStatus mesConnectionStatus,
         IMesConnection mesConnection,
@@ -89,7 +106,7 @@ public sealed class HomeViewModel : BindableBase
         IToastMessageService toastMessageService,
         IInputDialogService inputDialogService,
         ISecurityKeyChecker securityKeyChecker,
-        IPermissionService permissionService,
+        ICameraStartupOptionsDialogService cameraStartupOptionsDialogService,
         KwyLogService? logService,
         IMesTrackService mesTrackService,
         IMesWorkOrderService mesWorkOrderService,
@@ -97,14 +114,20 @@ public sealed class HomeViewModel : BindableBase
         MarkPrintOptionsStore markPrintOptionsStore,
         IProductionOutputOptions productionOutputOptions,
         IProductionRecordWriter productionRecordWriter,
+        IProductionDataArchiveService productionDataArchiveService,
         StationEnableStateStore stationEnableStateStore,
         StandardSampleState sampleState,
         IMessageBus messageBus,
-        ILocalizationService localizationService)
+        ILocalizationService localizationService,
+        LocalWorkOrderRecipeSession localWorkOrderRecipeSession,
+        LocalWorkOrderRecipeStore localWorkOrderRecipeStore,
+        LocalWorkOrderRecipeMapper localWorkOrderRecipeMapper,
+        ICorrectionParameterProvider correctionParameterProvider)
     {
         this.machine = machine ?? throw new ArgumentNullException(nameof(machine));
-        _ = devices ?? throw new ArgumentNullException(nameof(devices));
+        this.devices = devices ?? throw new ArgumentNullException(nameof(devices));
         this.productionContext = productionContext ?? throw new ArgumentNullException(nameof(productionContext));
+        this.primaryNavigationState = primaryNavigationState ?? throw new ArgumentNullException(nameof(primaryNavigationState));
         this.reelScanWorkflow = reelScanWorkflow ?? throw new ArgumentNullException(nameof(reelScanWorkflow));
         this.mesConnectionStatus = mesConnectionStatus ?? throw new ArgumentNullException(nameof(mesConnectionStatus));
         this.mesConnection = mesConnection ?? throw new ArgumentNullException(nameof(mesConnection));
@@ -114,21 +137,25 @@ public sealed class HomeViewModel : BindableBase
         this.toastMessageService = toastMessageService ?? throw new ArgumentNullException(nameof(toastMessageService));
         this.inputDialogService = inputDialogService ?? throw new ArgumentNullException(nameof(inputDialogService));
         this.securityKeyChecker = securityKeyChecker ?? throw new ArgumentNullException(nameof(securityKeyChecker));
-        this.permissionService = permissionService ?? throw new ArgumentNullException(nameof(permissionService));
+        this.cameraStartupOptionsDialogService = cameraStartupOptionsDialogService ?? throw new ArgumentNullException(nameof(cameraStartupOptionsDialogService));
         this.logService = logService;
         this.mesTrackService = mesTrackService ?? throw new ArgumentNullException(nameof(mesTrackService));
         this.mesWorkOrderService = mesWorkOrderService ?? throw new ArgumentNullException(nameof(mesWorkOrderService));
         this.braidOptionsStore = braidOptionsStore ?? throw new ArgumentNullException(nameof(braidOptionsStore));
+        this.braidOptionsStore.OptionsChanged += OnBraidOptionsChanged;
         this.markPrintOptionsStore = markPrintOptionsStore ?? throw new ArgumentNullException(nameof(markPrintOptionsStore));
         this.productionOutputOptions = productionOutputOptions ?? throw new ArgumentNullException(nameof(productionOutputOptions));
         this.productionRecordWriter = productionRecordWriter ?? throw new ArgumentNullException(nameof(productionRecordWriter));
+        this.productionDataArchiveService = productionDataArchiveService ?? throw new ArgumentNullException(nameof(productionDataArchiveService));
         this.stationEnableStateStore = stationEnableStateStore ?? throw new ArgumentNullException(nameof(stationEnableStateStore));
         this.sampleState = sampleState ?? throw new ArgumentNullException(nameof(sampleState));
         this.messageBus = messageBus;
         ArgumentNullException.ThrowIfNull(messageBus);
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
-
-
+        this.localWorkOrderRecipeSession = localWorkOrderRecipeSession ?? throw new ArgumentNullException(nameof(localWorkOrderRecipeSession));
+        this.localWorkOrderRecipeStore = localWorkOrderRecipeStore ?? throw new ArgumentNullException(nameof(localWorkOrderRecipeStore));
+        this.localWorkOrderRecipeMapper = localWorkOrderRecipeMapper ?? throw new ArgumentNullException(nameof(localWorkOrderRecipeMapper));
+        this.correctionParameterProvider = correctionParameterProvider ?? throw new ArgumentNullException(nameof(correctionParameterProvider));
         SyncColumns();
         SyncTapeParameterColumns();
         SyncChartTabs();
@@ -138,6 +165,7 @@ public sealed class HomeViewModel : BindableBase
 
         machine.TableChanged += OnMachineTableChanged;
         machine.StationResultPublished += OnStationResultPublished;
+        machine.StationResultProcessingFailed += OnStationResultProcessingFailed;
         machine.RunningStateChanged += OnMachineRunningStateChanged;
         this.productionContext.PropertyChanged += OnProductionContextPropertyChanged;
         this.rawInputBarcodeReceiver.BarcodeReceived += OnRawInputBarcodeReceived;
@@ -146,6 +174,10 @@ public sealed class HomeViewModel : BindableBase
         stationLimitsAppliedSubscription = messageBus.Subscribe<HomeViewModel, StationLimitsAppliedMessage>(
             this,
             static (viewModel, _) => viewModel.OnStationLimitsApplied());
+        localWorkOrderRecipeLoadedSubscription = messageBus.Subscribe<HomeViewModel, LocalWorkOrderRecipeLoadedMessage>(
+            this,
+            static (viewModel, message) => _ = viewModel.ApplyLocalWorkOrderRecipeAsync(message),
+            MessageSubscribeOptions<LocalWorkOrderRecipeLoadedMessage>.OnUI);
         _ = RefreshStationEnabledStatesForHomeAsync();
     }
 
@@ -160,6 +192,8 @@ public sealed class HomeViewModel : BindableBase
     public ObservableCollection<IDataGridColumnDescriptor> PartColumns => partColumns;
 
     public ObservableCollection<DisplayRowItem> PartRows => machine.PartRows;
+
+    public uint ElectricalTestOkCount => (machine as IMachineElectricalTestCountMachine)?.ElectricalTestOkCount ?? 0;
 
     public ObservableCollection<HomeChartTabModel> ChartTabs => chartTabs;
 
@@ -243,6 +277,12 @@ public sealed class HomeViewModel : BindableBase
 
     private async Task ConnectMesAsync()
     {
+        var successDialogCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (mesStateSyncRoot)
+        {
+            mesConnectSuccessDialogCompletion = successDialogCompletion;
+        }
+
         try
         {
             MesStatus.State = MesConnectionState.Connecting;
@@ -268,8 +308,19 @@ public sealed class HomeViewModel : BindableBase
             MesStatus.Message = ex.Message;
             await ShowErrorOnUiAsync(localizationService.TF("Home.Message.MesConnectException", "MES connect exception:\n{0}", ex.Message), localizationService.T("Home.Title.MesConnect", "MES Connect")).ConfigureAwait(false);
         }
+        finally
+        {
+            successDialogCompletion.TrySetResult();
+            lock (mesStateSyncRoot)
+            {
+                if (ReferenceEquals(mesConnectSuccessDialogCompletion, successDialogCompletion))
+                {
+                    mesConnectSuccessDialogCompletion = null;
+                }
+            }
+        }
     }
-
+    
     private async Task DisconnectMesAsync()
     {
         if (!securityKeyChecker.IsPresent())
@@ -277,14 +328,6 @@ public sealed class HomeViewModel : BindableBase
             await ShowWarningOnUiAsync(localizationService.T("Home.Message.MesDisconnectNoKey", "No permission to disconnect MES."), localizationService.T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
             return;
         }
-
-        if (!permissionService.HasPermission(PermissionCodes.Engineer))
-        {
-            await ShowWarningOnUiAsync(localizationService.T("Home.Message.MesDisconnectEngineerRequired", "MES disconnect requires engineer permission."), localizationService.T("Home.Title.MesDisconnect", "MES Disconnect")).ConfigureAwait(false);
-            return;
-        }
-
-        (permissionService as IPermissionUsageNotifier)?.NotifyPermissionUsed(PermissionCodes.Engineer);
 
         try
         {
@@ -326,6 +369,31 @@ public sealed class HomeViewModel : BindableBase
 
     private bool CanExecuteStop() => machine.IsRunning;
 
+    private IReadOnlyList<string> GetMissingStartupFields()
+    {
+        var missingFields = new List<string>();
+
+        AddIfEmpty(TablePaperCode, "Home.Field.TablePaper", "台纸");
+        AddIfEmpty(TopCoverCode, "Home.Field.TopCover", "上盖");
+        if (ShowReelMatNo)
+        {
+            AddIfEmpty(ReelMatNo, "Home.Field.ReelMatNo", "Reel批号");
+        }
+
+        AddIfEmpty(OperatorNo, "Home.Field.Operator", "操作员");
+        AddIfEmpty(EquipmentNo, "Home.Field.EquipmentNo", "机台号");
+        AddIfEmpty(MachineType, "Home.Field.MachineType", "机种");
+        return missingFields;
+
+        void AddIfEmpty(string value, string localizationKey, string fallback)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                missingFields.Add(localizationService.T(localizationKey, fallback));
+            }
+        }
+    }
+
     private async Task ExecuteStartAsync()
     {
         try
@@ -341,26 +409,75 @@ public sealed class HomeViewModel : BindableBase
                 return;
             }
 
+            IReadOnlyList<string> missingStartupFields = GetMissingStartupFields();
+            if (missingStartupFields.Count > 0)
+            {
+                await ShowWarningOnUiAsync(
+                    localizationService.TF(
+                        "Home.Message.StartRequiredFieldsMissing",
+                        "请先完成以下信息扫描：{0}",
+                        string.Join("、", missingStartupFields)),
+                    localizationService.T("Home.Action.Start", "Start")).ConfigureAwait(false);
+                return;
+            }
+
+            // 启动前始终按当前连接状态重新取得工单参数：在线取 MES，
+            // 离线只取同工单号的本地 JSON，避免沿用上一张工单留在内存中的配置。
+            string scannedTablePaperCode = TablePaperCode;
+            string scannedTopCoverCode = TopCoverCode;
+            string scannedMachineType = MachineType;
+            bool isMesOnline = mesConnection.State == MesConnectionState.Online;
+            if (isMesOnline
+                && !await RefreshCurrentWorkOrderSetupFromMesAsync(
+                    // 在线切换/扫码时已完成过 X 机种 Ls 下限输入的，启动前仅重新获取并下发参数；
+                    // PreserveTrailingXMachineTypeLsLowerLimit 会保留该人工输入值。只有仍处于
+                    // requiresLsLowerLimitOverride 状态时，下面的启动防呆才再次要求输入。
+                    promptTrailingXLowerLimit: false,
+                    previousMachineType: scannedMachineType).ConfigureAwait(false))
+            {
+                return;
+            }
+
+            if (!isMesOnline && offlineWorkOrderRescanRequired)
+            {
+                await ShowWarningOnUiAsync(
+                    localizationService.T(
+                        "Home.Message.OfflineWorkOrderRequired",
+                        "MES 离线时请先扫描工单，再扫描机种加载本地参数。"),
+                    localizationService.T("Home.Title.StartFailed", "启动失败")).ConfigureAwait(false);
+                return;
+            }
+
+            if (!isMesOnline
+                && !await RefreshCurrentWorkOrderSetupFromLocalRecipeAsync(scannedMachineType).ConfigureAwait(false))
+            {
+                return;
+            }
+
+            if (!await ValidateScannedMaterialsForCurrentWorkOrderAsync(
+                scannedTablePaperCode,
+                scannedTopCoverCode).ConfigureAwait(false))
+            {
+                return;
+            }
+
             if (requiresLsLowerLimitOverride)
             {
                 await ShowWarningOnUiAsync(
-                    localizationService.T("Home.Message.LsLowerLimitRequired", "该工单需要重新输入 Ls 下限后才能启动。"),
+                    localizationService.T("Home.Message.XMachineLsLowerLimitRequired", "X机种必须手动输入Ls下限。"),
                     localizationService.T("Home.Title.LsLowerLimit", "Ls 下限")).ConfigureAwait(false);
+
+                if (currentWorkOrderSetup != null)
+                {
+                    await ApplyTrailingXMachineTypeLsLowerLimitAsync(currentWorkOrderSetup).ConfigureAwait(false);
+                }
+
                 return;
             }
 
-            // Before MES track-in, retrieve the latest work-order setup and use
-            // the same parse/apply path as an Offline -> Online transition.
-            // Offline manual operation deliberately keeps its local settings.
-            if (mesConnection.State == MesConnectionState.Online
-                && !await RefreshCurrentWorkOrderSetupFromMesAsync().ConfigureAwait(false))
+            if (!await ValidateCorrectionFrequencyAsync().ConfigureAwait(false))
             {
                 return;
-            }
-
-            if (mesConnection.State != MesConnectionState.Online)
-            {
-                await ApplyOfflineSetViewParametersAsync().ConfigureAwait(false);
             }
 
             bool? isCheckCompleted = await machine.ReadCheckCompletedAsync(DestroyToken).ConfigureAwait(false);
@@ -372,14 +489,22 @@ public sealed class HomeViewModel : BindableBase
                 return;
             }
 
-            MesResult<MesTrackResult> trackInResult = await mesTrackService.TrackInAsync(
-                new MesTrackRequest(CreateMesContext(), GetCurrentUnitId(), WorkOrderNo),
-                DestroyToken).ConfigureAwait(false);
-
-            if (!IsMesAccepted(trackInResult))
+            if (!await ApplyCameraStartupOptionsAsync().ConfigureAwait(false))
             {
-            await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(localizationService.T("Home.Title.MesTrackIn", "MES Track In"), trackInResult), localizationService.T("Home.Title.MesTrackIn", "MES Track In")).ConfigureAwait(false);
                 return;
+            }
+
+            if (isMesOnline)
+            {
+                MesResult<MesTrackResult> trackInResult = await mesTrackService.TrackInAsync(
+                    new MesTrackRequest(CreateMesContext(), GetCurrentUnitId(), WorkOrderNo),
+                    DestroyToken).ConfigureAwait(false);
+
+                if (!IsMesAccepted(trackInResult))
+                {
+                    await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(localizationService.T("Home.Title.MesTrackIn", "MES Track In"), trackInResult), localizationService.T("Home.Title.MesTrackIn", "MES Track In")).ConfigureAwait(false);
+                    return;
+                }
             }
 
             if (machine is IMachineWorkOrderStartSignalMachine workOrderStartSignalMachine)
@@ -407,9 +532,14 @@ public sealed class HomeViewModel : BindableBase
                 return;
             }
 
-            bool shouldTrackOut = await ShowConfirmOnUiAsync(
-                localizationService.T("Home.Message.TrackOutConfirm", "Track out?"),
-                localizationService.T("Home.Title.MesTrackOut", "MES Track Out")).ConfigureAwait(false);
+            bool isMesOnline = mesConnection.State == MesConnectionState.Online;
+            bool shouldFinalize = await ShowConfirmOnUiAsync(
+                isMesOnline
+                    ? localizationService.T("Home.Message.TrackOutConfirm", "Track out?")
+                    : localizationService.T("Home.Message.OfflineEndWorkOrderConfirm", "End the current work order?"),
+                isMesOnline
+                    ? localizationService.T("Home.Title.MesTrackOut", "MES Track Out")
+                    : localizationService.T("Home.Title.OfflineEndWorkOrder", "End Work Order")).ConfigureAwait(false);
 
             await machine.StopAsync().ConfigureAwait(false);
             if (machine is IMachineWorkOrderStartSignalMachine workOrderStartSignalMachine)
@@ -417,7 +547,7 @@ public sealed class HomeViewModel : BindableBase
                 await workOrderStartSignalMachine.ResetWorkOrderStartSignalsAsync(DestroyToken).ConfigureAwait(false);
             }
 
-            if (!shouldTrackOut)
+            if (!shouldFinalize)
             {
                 return;
             }
@@ -427,25 +557,30 @@ public sealed class HomeViewModel : BindableBase
                 return;
             }
 
-            MesResult<MesTrackResult> trackOutResult = await mesTrackService.TrackOutAsync(
-                new MesTrackOutRequest(
-                    CreateMesContext(),
-                    GetCurrentUnitId(),
-                    WorkOrderNo,
-                    Passed: true,
-                    Measurements: BuildMeasurementResults()),
-                DestroyToken).ConfigureAwait(false);
-
-            if (trackOutResult.Exchange?.ReturnCode != 0)
+            if (isMesOnline)
             {
-                await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(localizationService.T("Home.Title.MesTrackOut", "MES Track Out"), trackOutResult), localizationService.T("Home.Title.MesTrackOut", "MES Track Out")).ConfigureAwait(false);
+                MesResult<MesTrackResult> trackOutResult = await mesTrackService.TrackOutAsync(
+                    new MesTrackOutRequest(
+                        CreateMesContext(),
+                        GetCurrentUnitId(),
+                        WorkOrderNo,
+                        Passed: true,
+                        Measurements: BuildMeasurementResults()),
+                    DestroyToken).ConfigureAwait(false);
+
+                if (trackOutResult.Exchange?.ReturnCode != 0)
+                {
+                    await ShowErrorOnUiAsync(MesFailureMessageFormatter.Format(localizationService.T("Home.Title.MesTrackOut", "MES Track Out"), trackOutResult), localizationService.T("Home.Title.MesTrackOut", "MES Track Out")).ConfigureAwait(false);
+                }
             }
 
             if (machine is IMachineProductionCounterResetMachine counterResetMachine)
             {
                 await counterResetMachine.ResetProductionCounterAsync(DestroyToken).ConfigureAwait(false);
             }
-            ClearForNewWorkOrderScan();
+            // 结束工单只清空 Home 的生产显示；标准件、确认件及点检结果
+            // 是否保留仅由下一次实际加载到的机种是否变化决定。
+            ClearForNewWorkOrderScan(clearSampleState: false);
         }
         catch (OperationCanceledException)
         {
@@ -479,6 +614,22 @@ public sealed class HomeViewModel : BindableBase
                 await summaryMachine.SaveProductionSummaryAsync(cancellationToken).ConfigureAwait(false);
             }
 
+            if (moved)
+            {
+                try
+                {
+                    await productionDataArchiveService.AppendProductionRecordAsync(
+                        BuildProductionDataArchiveRequest(Path.Combine(outputDirectory, fileName)),
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    await ShowWarningOnUiAsync(
+                        localizationService.TF("Home.Message.ProductionDataArchiveFailed", "本地生产记录保存失败：{0}", ex.Message),
+                        localizationService.T("Home.Title.ProductionDataArchiveFailed", "本地生产记录保存失败")).ConfigureAwait(false);
+                }
+            }
+
             if (!moved)
             {
                 logService?.Warn(localizationService.TF(
@@ -494,6 +645,75 @@ public sealed class HomeViewModel : BindableBase
             await ShowErrorOnUiAsync(localizationService.TF("Home.Message.ProductionDataSaveFailed", "Production data save failed:\n{0}", ex.Message), localizationService.T("Home.Title.ProductionDataSave", "Production Data Save")).ConfigureAwait(false);
             return false;
         }
+    }
+
+    private async Task<bool> ApplyCameraStartupOptionsAsync()
+    {
+        TestStationModel? cameraAStation = machine.TestStations.FirstOrDefault(station => station.StationId == 5 && station.IconKind == StationIconKind.Camera);
+        TestStationModel? cameraBStation = machine.TestStations.FirstOrDefault(station => station.StationId == 6 && station.IconKind == StationIconKind.Camera);
+        if (cameraAStation == null && cameraBStation == null)
+        {
+            return true;
+        }
+
+        CameraStartupOptions? options = securityKeyChecker.IsPresent()
+            ? await InvokeOnUiAsync(() => cameraStartupOptionsDialogService.ShowAsync(
+                cameraAStation?.IsEnabled ?? true,
+                cameraBStation?.IsEnabled ?? true)).ConfigureAwait(false)
+            : new CameraStartupOptions(true, true);
+        if (options == null)
+        {
+            return false;
+        }
+
+        if (cameraAStation != null)
+        {
+            await machine.SetStationEnabledAsync(cameraAStation, options.IsCameraAEnabled, DestroyToken).ConfigureAwait(false);
+        }
+
+        if (cameraBStation != null)
+        {
+            await machine.SetStationEnabledAsync(cameraBStation, options.IsCameraBEnabled, DestroyToken).ConfigureAwait(false);
+        }
+
+        logService?.Info(localizationService.TF(
+            "Home.Log.CameraStartupOptions",
+            "Camera startup options applied. A={0}, B={1}",
+            options.IsCameraAEnabled,
+            options.IsCameraBEnabled));
+        return true;
+    }
+
+    private ProductionDataArchiveRequest BuildProductionDataArchiveRequest(string sourceFilePath)
+        => new(
+            DateTimeOffset.Now,
+            WorkOrderNo,
+            OperatorNo,
+            machine.MachineId,
+            sourceFilePath,
+            [
+                BuildProductionMeasurementDefinition("Dcr", "DCR1", "DCR"),
+                BuildProductionMeasurementDefinition("Ls", "Ls"),
+                BuildProductionMeasurementDefinition("Rs", "Rs"),
+                BuildProductionMeasurementDefinition("H_Ls", "Ls2", "H_Ls"),
+                BuildProductionMeasurementDefinition("H_Q", "Q", "Q2", "H_Q")
+            ]);
+
+    private ProductionDataMeasurementDefinition BuildProductionMeasurementDefinition(string reportName, params string[] parameterIds)
+    {
+        StationMeasurementLimit? limit = machine.TestStations
+            .SelectMany(station => parameterIds.Select(parameterId => station.TestLimits.TryGetValue(parameterId, out StationMeasurementLimit? value) ? value : null))
+            .FirstOrDefault(value => value != null);
+        StandardSampleLimitItemModel? standardItem = sampleState.StandardSample.LimitItems
+            .FirstOrDefault(item => parameterIds.Any(parameterId => IsSameSampleLimit(item, parameterId)));
+        bool enabled = limit != null;
+        return new ProductionDataMeasurementDefinition(
+            reportName,
+            limit?.Unit ?? standardItem?.Unit ?? string.Empty,
+            standardItem?.StandardValue ?? string.Empty,
+            limit?.UpperLimit,
+            limit?.LowerLimit,
+            enabled);
     }
 
     private MesRequestContext CreateMesContext()
@@ -554,6 +774,27 @@ public sealed class HomeViewModel : BindableBase
             return;
         }
 
+        // Raw Input 使用后台接收，焦点位于原生弹窗时仍会收到键盘数据。
+        // 弹窗中的输入只能由弹窗自身处理，不能再被误当成主页盲扫。
+        if (HasActiveDialog())
+        {
+            logService?.Info(localizationService.TF(
+                "Home.Log.BlindScanIgnoredDialogActive",
+                "Blind scan ignored because a dialog is active: {0}",
+                value));
+            return;
+        }
+
+        if (!string.Equals(primaryNavigationState.CurrentView, ViewNames.HomeView, StringComparison.OrdinalIgnoreCase))
+        {
+            logService?.Info(localizationService.TF(
+                "Home.Log.BlindScanIgnoredNonHome",
+                "Blind scan ignored because the current page is {0}: {1}",
+                primaryNavigationState.CurrentView,
+                value));
+            return;
+        }
+
         logService?.Info(localizationService.TF("Home.Log.BlindScanContent", "Blind scan content: {0}", value));
 
         try
@@ -567,6 +808,14 @@ public sealed class HomeViewModel : BindableBase
         {
             await ShowErrorOnUiAsync(ex.Message, localizationService.T("Home.Title.BlindScan", "Blind Scan")).ConfigureAwait(false);
         }
+    }
+
+    private static bool HasActiveDialog()
+    {
+        Window? mainWindow = Application.Current?.MainWindow;
+        return Application.Current?.Windows
+            .OfType<Window>()
+            .Any(window => !ReferenceEquals(window, mainWindow) && window.IsVisible) == true;
     }
 
     private async Task ApplyRawBarcodeAsync(string value)
@@ -602,18 +851,53 @@ public sealed class HomeViewModel : BindableBase
                 OperatorNo = CleanOperatorBarcode(value);
                 break;
             case 12:
-                string previousMachineType = MachineType;
+                string previousMachineType = lastResolvedMachineType;
                 string workOrderNo = CleanWorkOrderBarcode(value);
                 ClearForNewWorkOrderScan(clearSampleState: false);
                 await ResetProductionCounterForNewWorkOrderAsync().ConfigureAwait(false);
                 WorkOrderNo = workOrderNo;
-                await LoadWorkOrderSetupAsync(workOrderNo, previousMachineType).ConfigureAwait(false);
+                if (mesConnection.State == MesConnectionState.Online)
+                {
+                    await LoadWorkOrderSetupAsync(workOrderNo, previousMachineType).ConfigureAwait(false);
+                }
+                else
+                {
+                    offlineWorkOrderRescanRequired = false;
+                    // 离线时固定为“工单 → 机种”的扫码顺序：工单号只作为本次生产记录，
+                    // 等机种条码到达后才按机种加载本地 JSON 并下发参数。
+                    logService?.Info(localizationService.T(
+                        "Home.Message.OfflineMachineTypeScanRequired",
+                        "工单已扫描，请继续扫描机种以加载本地参数。"));
+                }
                 break;
             case 18:
                 // 在线时机种只能由 MES 工单解析结果写入；离线时允许通过机种条码补录。
                 if (mesConnection.State != MesConnectionState.Online)
                 {
-                    MachineType = CleanRawBarcodeValue(value);
+                    if (offlineWorkOrderRescanRequired || string.IsNullOrWhiteSpace(WorkOrderNo))
+                    {
+                        await ShowWarningOnUiAsync(
+                            localizationService.T(
+                                "Home.Message.OfflineWorkOrderRequired",
+                                "MES 离线时请先扫描工单，再扫描机种加载本地参数。"),
+                            localizationService.T("ParameterDict.Title.Load", "加载参数字典")).ConfigureAwait(false);
+                        break;
+                    }
+
+                    string previousOfflineMachineType = lastResolvedMachineType;
+                    string scannedMachineType = CleanRawBarcodeValue(value);
+                    await HandleMachineTypeChangedAsync(previousOfflineMachineType, scannedMachineType).ConfigureAwait(false);
+
+                    MachineType = scannedMachineType;
+                    if (!string.IsNullOrWhiteSpace(scannedMachineType))
+                    {
+                        lastResolvedMachineType = scannedMachineType;
+                    }
+                    // 离线配方以机种为主键；工单号已经扫描后，扫到机种才加载并下发。
+                    await LoadOfflineWorkOrderRecipeAsync(
+                        WorkOrderNo,
+                        previousOfflineMachineType,
+                        scannedMachineType).ConfigureAwait(false);
                 }
                 break;
             case 76:
@@ -663,7 +947,6 @@ public sealed class HomeViewModel : BindableBase
         {
             machine.ClearDataGrid();
             WorkOrderNo = string.Empty;
-            Interlocked.Exchange(ref offlineMaterialScanSequence, 0);
             SpecialMachineLsLowerLimitText = string.Empty;
             SpecialMachineLsUnit = string.Empty;
             TablePaperCode = string.Empty;
@@ -679,6 +962,7 @@ public sealed class HomeViewModel : BindableBase
             productionContext.ReelScanState = ReelScanState.None;
             productionContext.IsResultGridDataEnabled = false;
             areStationLimitsVisible = false;
+            ClearChartSamples();
             ClearChartLimits();
             SyncTapeParameterRows(null);
             if (clearSampleState)
@@ -687,8 +971,20 @@ public sealed class HomeViewModel : BindableBase
             }
         });
 
-    private async Task LoadWorkOrderSetupAsync(string workOrderNo, string? previousMachineType = null)
+    private async Task LoadWorkOrderSetupAsync(
+        string workOrderNo,
+        string? previousMachineType = null)
     {
+        if (mesConnection.State != MesConnectionState.Online)
+        {
+            await LoadOfflineWorkOrderRecipeAsync(workOrderNo, previousMachineType, machineTypeOverride: null).ConfigureAwait(false);
+            return;
+        }
+
+        // 在线工单只以 MES 数据为准；不能让上一次离线编辑会话在下次断线时
+        // 重新覆盖刚从 MES 刷新的编带、编带字符等运行时参数。
+        localWorkOrderRecipeSession.Clear();
+
         MesResult<MesWorkOrderSetup> result = await mesWorkOrderService.GetWorkOrderSetupAsync(
             new MesWorkOrderRequest(CreateMesContext(), workOrderNo),
             DestroyToken).ConfigureAwait(false);
@@ -707,6 +1003,122 @@ public sealed class HomeViewModel : BindableBase
             applyTrailingXOverride: true).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// 离线盲扫按机种读取本地 JSON；工单号只用于本次生产记录，不再作为文件主键。
+    /// 下发仍复用在线工单的运行时配置与硬件写入两阶段链路。
+    /// </summary>
+    private async Task LoadOfflineWorkOrderRecipeAsync(
+        string workOrderNo,
+        string? previousMachineType,
+        string? machineTypeOverride)
+    {
+        string machineType = LocalWorkOrderRecipeStore.NormalizeMachineType(machineTypeOverride ?? MachineType);
+        if (string.IsNullOrWhiteSpace(machineType))
+        {
+            logService?.Info(localizationService.T(
+                "Home.Message.OfflineMachineTypeScanRequired",
+                "工单已扫描，请继续扫描机种以加载本地参数。"));
+            return;
+        }
+
+        LocalWorkOrderRecipe? recipe = localWorkOrderRecipeStore.Load(machineType);
+        if (recipe == null
+            || string.IsNullOrWhiteSpace(recipe.EquipmentType)
+            || !string.Equals(recipe.EquipmentType, machineType, StringComparison.OrdinalIgnoreCase))
+        {
+            await ShowErrorOnUiAsync(
+                localizationService.TF(
+                    "Home.Message.OfflineMachineRecipeNotFound",
+                    "离线机种配方 {0} 不存在，请先在参数字典中创建或导入。",
+                    machineType),
+                localizationService.T("ParameterDict.Title.Load", "加载参数字典")).ConfigureAwait(false);
+            return;
+        }
+
+        // 盲扫与参数字典手动加载必须使用同一份“实际文件路径”会话信息，
+        // 后续在 SetView 应用工位参数时才能写回该 JSON。
+        localWorkOrderRecipeSession.SetCurrent(recipe, localWorkOrderRecipeStore.GetFilePath(machineType));
+        MesWorkOrderSetup setup = localWorkOrderRecipeMapper.ToMesSetup(recipe) with
+        {
+            WorkOrderNo = workOrderNo,
+            EquipmentType = machineType
+        };
+
+        await ApplyWorkOrderSetupToMachineAsync(
+            setup,
+            previousMachineType,
+            workOrderNo,
+            showImportSuccessMessage: false,
+            // 离线时机种可由 18 位条码补录；工单在其之前或之后扫描时，
+            // 都必须执行同一套 X 机种 Ls 下限输入防呆。
+            applyTrailingXOverride: true).ConfigureAwait(false);
+
+        await CaptureAndSaveRecipeInstrumentConfigsAsync(recipe).ConfigureAwait(false);
+
+        RunOnUi(() => messageBus.Publish(new LocalWorkOrderRecipeAppliedMessage(recipe)));
+        await ShowMessageOnUiAsync(
+            localizationService.TF("ParameterDict.Message.LoadSucceeded", "本地机种配方 {0} 已加载。", machineType),
+            localizationService.T("ParameterDict.Title.Load", "加载参数字典")).ConfigureAwait(false);
+    }
+
+    private async Task ApplyLocalWorkOrderRecipeAsync(LocalWorkOrderRecipeLoadedMessage message)
+    {
+        if (mesConnectionStatus.State == MesConnectionState.Online)
+        {
+            await ShowWarningOnUiAsync(
+                localizationService.T("ParameterDict.Message.LoadMesOnlineBlocked", "MES 在线时禁止加载本地工单配方，请先断开 MES。"),
+                localizationService.T("ParameterDict.Title.Load", "加载参数字典")).ConfigureAwait(false);
+            return;
+        }
+
+        string previousMachineType = lastResolvedMachineType;
+        localWorkOrderRecipeSession.SetCurrent(message.Recipe, message.FilePath);
+        ClearForNewWorkOrderScan(clearSampleState: false);
+        await ResetProductionCounterForNewWorkOrderAsync().ConfigureAwait(false);
+        if (message.PrepareForEditing)
+        {
+            // A newly created recipe has no measurements yet.  Do not attempt
+            // to write an incomplete configuration to hardware; SetView now
+            // edits the current device configurations and persists each apply
+            // into this recipe.
+            currentWorkOrderSetup = message.Setup;
+            areStationLimitsVisible = true;
+            RunOnUi(() => messageBus.Publish(new LocalWorkOrderRecipeAppliedMessage(message.Recipe)));
+            await ShowMessageOnUiAsync(
+                localizationService.TF("ParameterDict.Message.NewEditReady", "本地机种配方 {0} 已创建，请在工位参数中编辑后点击应用保存。", message.Recipe.EquipmentType),
+                localizationService.T("ParameterDict.Title.New", "新建参数字典")).ConfigureAwait(false);
+            return;
+        }
+
+        await ApplyWorkOrderSetupToMachineAsync(
+            message.Setup,
+            previousMachineType,
+            WorkOrderNo,
+            showImportSuccessMessage: false,
+            applyTrailingXOverride: false).ConfigureAwait(false);
+        await CaptureAndSaveRecipeInstrumentConfigsAsync(message.Recipe).ConfigureAwait(false);
+        // 参数已经下发完成后立即通知 SetView 重绑当前工位。成功提示是模态框，
+        // 不能让它阻塞工位参数页的刷新与跳转。
+        RunOnUi(() => messageBus.Publish(new LocalWorkOrderRecipeAppliedMessage(message.Recipe)));
+        await ShowMessageOnUiAsync(
+            message.ShowImportSuccess
+                ? localizationService.TF("ParameterDict.Message.ImportSucceeded", "机种参数已导入到本地机种配方 {0}。", message.Recipe.EquipmentType)
+                : localizationService.TF("ParameterDict.Message.LoadSucceeded", "本地机种配方 {0} 已加载。", message.Recipe.EquipmentType),
+            message.ShowImportSuccess
+                ? localizationService.T("ParameterDict.Title.Import", "导入工单参数")
+                : localizationService.T("ParameterDict.Title.Load", "加载参数字典")).ConfigureAwait(false);
+    }
+
+    private Task CaptureAndSaveRecipeInstrumentConfigsAsync(LocalWorkOrderRecipe recipe)
+    {
+        localWorkOrderRecipeMapper.CaptureInstrumentConfigs(
+            recipe,
+            devices.Devices,
+            machine.TestStations.SelectMany(static station => station.InstrumentDeviceIds));
+        localWorkOrderRecipeMapper.RemoveRedundantRecipeData(recipe);
+        return localWorkOrderRecipeStore.SaveAsync(recipe, localWorkOrderRecipeSession.CurrentFilePath);
+    }
+
     private async Task ApplyWorkOrderSetupToMachineAsync(
         MesWorkOrderSetup setup,
         string? previousMachineType,
@@ -714,33 +1126,51 @@ public sealed class HomeViewModel : BindableBase
         bool showImportSuccessMessage,
         bool applyTrailingXOverride)
     {
+        setup = PreserveTrailingXMachineTypeLsLowerLimit(setup);
         currentWorkOrderSetup = setup;
         areStationLimitsVisible = true;
-        await machine.ApplyWorkOrderSetupAsync(setup, DestroyToken).ConfigureAwait(false);
+        // Phase 1 must always finish first: pages bind to these live configurations,
+        // even when a physical device or PLC is temporarily unavailable.
+        await machine.ApplyWorkOrderRuntimeSetupAsync(setup, DestroyToken).ConfigureAwait(false);
         await SaveBraidOptionsAsync(setup.TapeSetup).ConfigureAwait(false);
         await SaveMarkPrintOptionsAsync(setup).ConfigureAwait(false);
         RunOnUi(() =>
         {
-            machine.RefreshResultGrid();
-            SyncColumns();
-            SyncChartTabs();
+            if (machine.RefreshResultGridIfStructureChanged())
+            {
+                SyncColumns();
+                SyncChartTabs();
+            }
         });
         string newMachineType = GetWorkOrderMachineType(setup);
-        if (ShouldClearSampleStateForMachineTypeChange(previousMachineType, newMachineType))
+        await HandleMachineTypeChangedAsync(previousMachineType, newMachineType).ConfigureAwait(false);
+
+        if (!string.IsNullOrWhiteSpace(newMachineType))
         {
-            RunOnUi(ClearSampleState);
+            lastResolvedMachineType = newMachineType;
         }
         ApplyWorkOrderSetup(setup);
         productionContext.IsResultGridDataEnabled = true;
         SyncChartLimits();
         SyncTapeParameterRows(setup.TapeSetup);
 
+        WorkOrderHardwareWriteResult hardwareWriteResult = await machine
+            .WriteWorkOrderSetupToHardwareAsync(setup, DestroyToken)
+            .ConfigureAwait(false);
+        if (!hardwareWriteResult.IsSuccess)
+        {
+            string details = string.Join(Environment.NewLine, hardwareWriteResult.Failures.Select(item => $"{item.Target}: {item.Message}"));
+            await ShowWarningOnUiAsync(
+                localizationService.TF("Home.Message.WorkOrderHardwareWriteFailed", "Work-order parameters have refreshed, but one or more device writes failed:{0}{1}", Environment.NewLine, details),
+                localizationService.T("Home.Title.WorkOrderHardwareWriteFailed", "Parameter Write Warning")).ConfigureAwait(false);
+        }
+
         if (showImportSuccessMessage)
         {
             await ShowMessageOnUiAsync(localizationService.TF("Home.Message.WorkOrderImportSuccess", "Work order {0} imported.", workOrderNo), localizationService.T("Home.Title.WorkOrderImport", "Work Order Import")).ConfigureAwait(false);
         }
 
-        if (applyTrailingXOverride)
+        if (applyTrailingXOverride && !HasConfirmedTrailingXMachineLsLowerLimit(newMachineType))
         {
             await ApplyTrailingXMachineTypeLsLowerLimitAsync(setup).ConfigureAwait(false);
         }
@@ -754,19 +1184,31 @@ public sealed class HomeViewModel : BindableBase
     private async void OnMesConnectionStateChanged(object? sender, KwyTemplate.MES.Abstract.Events.MesStateChangedEventArgs e)
     {
         bool shouldRefresh;
-        bool shouldResetOfflineMaterialScanSequence;
+        bool shouldRequireOfflineWorkOrderRescan;
+        Task? waitForSuccessDialog;
         lock (mesStateSyncRoot)
         {
             shouldRefresh = lastMesConnectionState != MesConnectionState.Online
                 && e.State == MesConnectionState.Online;
-            shouldResetOfflineMaterialScanSequence = lastMesConnectionState == MesConnectionState.Online
+            shouldRequireOfflineWorkOrderRescan = lastMesConnectionState == MesConnectionState.Online
                 && e.State != MesConnectionState.Online;
+            waitForSuccessDialog = shouldRefresh ? mesConnectSuccessDialogCompletion?.Task : null;
             lastMesConnectionState = e.State;
         }
 
-        if (shouldResetOfflineMaterialScanSequence)
+        if (shouldRefresh)
         {
-            Interlocked.Exchange(ref offlineMaterialScanSequence, 0);
+            // MES 恢复在线后结束离线配方编辑会话。运行时参数已经由 MES 刷新，
+            // 后续单纯断开 MES 时仍保持这些值；只有再次扫描本地机种才重新进入离线配方。
+            localWorkOrderRecipeSession.Clear();
+        }
+
+        if (shouldRequireOfflineWorkOrderRescan)
+        {
+            // 点击断开 MES 不改变当前 Home 的展示和运行参数；只使下一次离线生产
+            // 必须重新执行“工单 → 机种”扫码，之后才加载本地 JSON。
+            offlineWorkOrderRescanRequired = true;
+            localWorkOrderRecipeSession.Clear();
         }
 
         if (!shouldRefresh || string.IsNullOrWhiteSpace(WorkOrderNo)
@@ -775,9 +1217,20 @@ public sealed class HomeViewModel : BindableBase
             return;
         }
 
+        // 先结束旧的离线编辑会话。DisconnectAsync 内部可能同步触发状态变更，
+        // 若等到状态事件才清理，SetView 第二次进入编带/编带字符页仍可能读到旧 JSON。
+        // 当前在线参数只保留在运行时；下一次离线必须重新扫码后才加载本地机种配方。
+        offlineWorkOrderRescanRequired = true;
+        localWorkOrderRecipeSession.Clear();
+
         try
         {
-            await RefreshCurrentWorkOrderSetupFromMesAsync().ConfigureAwait(false);
+            if (waitForSuccessDialog != null)
+            {
+                await waitForSuccessDialog.ConfigureAwait(false);
+            }
+
+            await RefreshCurrentWorkOrderSetupFromMesAsync(promptTrailingXLowerLimit: true).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -794,7 +1247,9 @@ public sealed class HomeViewModel : BindableBase
         }
     }
 
-    private async Task<bool> RefreshCurrentWorkOrderSetupFromMesAsync()
+    private async Task<bool> RefreshCurrentWorkOrderSetupFromMesAsync(
+        bool promptTrailingXLowerLimit = false,
+        string? previousMachineType = null)
     {
         string workOrderNo = WorkOrderNo.Trim();
         if (string.IsNullOrWhiteSpace(workOrderNo))
@@ -817,29 +1272,86 @@ public sealed class HomeViewModel : BindableBase
         MesWorkOrderSetup setup = PreserveTrailingXMachineTypeLsLowerLimit(result.Data);
         await ApplyWorkOrderSetupToMachineAsync(
             setup,
-            MachineType,
+            previousMachineType ?? lastResolvedMachineType,
             workOrderNo,
             showImportSuccessMessage: false,
-            applyTrailingXOverride: false).ConfigureAwait(false);
+            // 仅在 MES 从离线恢复在线时强制提示；启动前的工单刷新只复用
+            // 已成功输入的下限，不能再次弹窗干扰启动流程。
+            applyTrailingXOverride: promptTrailingXLowerLimit).ConfigureAwait(false);
         return true;
     }
 
-    private async Task ApplyOfflineSetViewParametersAsync()
+    /// <summary>
+    /// 离线启动前按当前机种强制重新读取本地配方，并复用在线工单的完整应用链路。
+    /// 本地文件缺失时不允许启动，避免错误沿用上一机种的内存参数。
+    /// </summary>
+    private async Task<bool> RefreshCurrentWorkOrderSetupFromLocalRecipeAsync(string? previousMachineType)
     {
-        await machine.ApplyStationInstrumentConfigsAsync(DestroyToken).ConfigureAwait(false);
-
-        if (machine is IMachineBraidSetupMachine braidMachine)
+        string workOrderNo = WorkOrderNo.Trim();
+        string machineType = LocalWorkOrderRecipeStore.NormalizeMachineType(MachineType);
+        LocalWorkOrderRecipe? recipe = string.IsNullOrWhiteSpace(machineType)
+            ? null
+            : localWorkOrderRecipeStore.Load(machineType);
+        if (recipe == null
+            || string.IsNullOrWhiteSpace(recipe.EquipmentType)
+            || !string.Equals(recipe.EquipmentType, machineType, StringComparison.OrdinalIgnoreCase))
         {
-            await braidMachine.ApplyBraidSetupAsync(braidOptionsStore.Current.ToTapeSetup(), DestroyToken).ConfigureAwait(false);
+            await ShowErrorOnUiAsync(
+                localizationService.TF(
+                    "Home.Message.OfflineMachineRecipeNotFound",
+                    "离线机种配方 {0} 不存在，请先在参数字典中创建或导入。",
+                    machineType),
+                localizationService.T("Home.Title.StartFailed", "启动失败")).ConfigureAwait(false);
+            return false;
         }
 
-        machine.RefreshStationLimitsFromInstrumentConfigs();
-        messageBus.Publish(new StationLimitsAppliedMessage());
+        localWorkOrderRecipeSession.SetCurrent(recipe, localWorkOrderRecipeStore.GetFilePath(machineType));
+        MesWorkOrderSetup setup = localWorkOrderRecipeMapper.ToMesSetup(recipe) with { WorkOrderNo = workOrderNo, EquipmentType = machineType };
+        await ApplyWorkOrderSetupToMachineAsync(
+            setup,
+            previousMachineType ?? lastResolvedMachineType,
+            workOrderNo,
+            showImportSuccessMessage: false,
+            applyTrailingXOverride: false).ConfigureAwait(false);
+        await CaptureAndSaveRecipeInstrumentConfigsAsync(recipe).ConfigureAwait(false);
+        messageBus.Publish(new LocalWorkOrderRecipeAppliedMessage(recipe));
+
+        return true;
+    }
+
+    private async Task<bool> ValidateScannedMaterialsForCurrentWorkOrderAsync(
+        string scannedTablePaperCode,
+        string scannedTopCoverCode)
+    {
+        MesWorkOrderMaterialRequirements? requirements = currentWorkOrderSetup?.MaterialRequirements;
+        bool isTablePaperMatched = requirements != null
+            && MaterialNoMatches(scannedTablePaperCode, requirements.TablePaperMatNo);
+        bool isTopCoverMatched = requirements != null
+            && MaterialNoMatches(scannedTopCoverCode, requirements.TopCoverMatNo);
+        if (isTablePaperMatched && isTopCoverMatched)
+        {
+            return true;
+        }
+
+        RunOnUi(() =>
+        {
+            TablePaperCode = string.Empty;
+            TopCoverCode = string.Empty;
+        });
+        await ShowWarningOnUiAsync(
+            localizationService.T(
+                "Home.Message.StartMaterialMismatch",
+                "台纸或上盖与当前工单不一致，已清空，请重新扫描。"),
+            localizationService.T("Home.Title.MaterialCheck", "物料校验")).ConfigureAwait(false);
+        return false;
     }
 
     private MesWorkOrderSetup PreserveTrailingXMachineTypeLsLowerLimit(MesWorkOrderSetup refreshedSetup)
     {
-        if (!IsTrailingXMachineType || requiresLsLowerLimitOverride || currentWorkOrderSetup == null)
+        string machineType = GetWorkOrderMachineType(refreshedSetup);
+        if (!HasConfirmedTrailingXMachineLsLowerLimit(machineType)
+            || requiresLsLowerLimitOverride
+            || currentWorkOrderSetup == null)
         {
             return refreshedSetup;
         }
@@ -864,19 +1376,30 @@ public sealed class HomeViewModel : BindableBase
     private async Task ApplyTrailingXMachineTypeLsLowerLimitAsync(MesWorkOrderSetup setup)
     {
         requiresLsLowerLimitOverride = false;
-        // X 机种以 MES 解析后写入 HomeView 的机种标识为准，而不是工单号。
+        // 在线工单以本次 MES setup 的机种为准；离线允许 18 位条码覆盖机种。
+        // 不依赖 UI 属性已完成刷新，避免在线导入时漏掉 X 机种防呆。
         string displayedMachineType = MachineType.Trim();
-        if (!displayedMachineType.EndsWith("X", StringComparison.OrdinalIgnoreCase))
+        string parsedMachineType = GetWorkOrderMachineType(setup);
+        bool isTrailingXMachineType = displayedMachineType.EndsWith("X", StringComparison.OrdinalIgnoreCase)
+            || parsedMachineType.EndsWith("X", StringComparison.OrdinalIgnoreCase);
+        if (!isTrailingXMachineType)
         {
+            confirmedTrailingXMachineType = string.Empty;
             SpecialMachineLsLowerLimitText = string.Empty;
             SpecialMachineLsUnit = string.Empty;
             return;
         }
 
+        if (HasConfirmedTrailingXMachineLsLowerLimit(parsedMachineType))
+        {
+            return;
+        }
+
         logService?.Info(localizationService.TF(
             "Home.Log.TrailingXMachineType",
-            "Trailing-X machine type detected. MachineType={0}",
-            displayedMachineType));
+            "Trailing-X machine type detected. DisplayedMachineType={0}, ParsedMachineType={1}",
+            displayedMachineType,
+            parsedMachineType));
 
         MesWorkOrderInstrumentSetup? lsSetup = setup.InstrumentSetups?.FirstOrDefault(item =>
             string.Equals(item.ParameterId, "Ls", StringComparison.OrdinalIgnoreCase));
@@ -921,17 +1444,31 @@ public sealed class HomeViewModel : BindableBase
             .ToArray();
         MesWorkOrderSetup overriddenSetup = setup with { InstrumentSetups = instrumentSetups };
 
-        await machine.ApplyWorkOrderSetupAsync(overriddenSetup, DestroyToken).ConfigureAwait(false);
+        await machine.ApplyWorkOrderRuntimeSetupAsync(overriddenSetup, DestroyToken).ConfigureAwait(false);
         currentWorkOrderSetup = overriddenSetup;
+        confirmedTrailingXMachineType = parsedMachineType;
         SpecialMachineLsLowerLimitText = lowerLimit.ToString("G29", CultureInfo.CurrentCulture);
         SpecialMachineLsUnit = lsSetup.Unit?.Trim() ?? string.Empty;
         RunOnUi(() =>
         {
-            machine.RefreshResultGrid();
-            SyncColumns();
-            SyncChartTabs();
+            if (machine.RefreshResultGridIfStructureChanged())
+            {
+                SyncColumns();
+                SyncChartTabs();
+            }
         });
         SyncChartLimits();
+
+        WorkOrderHardwareWriteResult hardwareWriteResult = await machine
+            .WriteWorkOrderSetupToHardwareAsync(overriddenSetup, DestroyToken)
+            .ConfigureAwait(false);
+        if (!hardwareWriteResult.IsSuccess)
+        {
+            string details = string.Join(Environment.NewLine, hardwareWriteResult.Failures.Select(item => $"{item.Target}: {item.Message}"));
+            await ShowWarningOnUiAsync(
+                localizationService.TF("Home.Message.WorkOrderHardwareWriteFailed", "Work-order parameters have refreshed, but one or more device writes failed:{0}{1}", Environment.NewLine, details),
+                localizationService.T("Home.Title.WorkOrderHardwareWriteFailed", "Parameter Write Warning")).ConfigureAwait(false);
+        }
     }
 
     private async Task SaveBraidOptionsAsync(MesWorkOrderTapeSetup? tapeSetup)
@@ -946,16 +1483,21 @@ public sealed class HomeViewModel : BindableBase
 
     private async Task SaveMarkPrintOptionsAsync(MesWorkOrderSetup setup)
     {
-        if (machine is not IMachineMarkPrintOptionsMachine markPrintMachine)
-        {
-            return;
-        }
-
         setup.Parameters.TryGetString("MarkPrintString", out string printString);
         await markPrintOptionsStore.SaveAsync(new MarkPrintOptions
         {
             PrintString = printString
         }).ConfigureAwait(false);
+
+        await ApplyMarkPrintStringAsync(printString).ConfigureAwait(false);
+    }
+
+    private async Task ApplyMarkPrintStringAsync(string? printString)
+    {
+        if (machine is not IMachineMarkPrintOptionsMachine markPrintMachine)
+        {
+            return;
+        }
 
         try
         {
@@ -982,22 +1524,8 @@ public sealed class HomeViewModel : BindableBase
             return;
         }
 
-        // 离线无法依据 MES 料号区分物料：按扫描顺序交替填充。
-        if (mesConnection.State != MesConnectionState.Online)
-        {
-            int sequence = Interlocked.Increment(ref offlineMaterialScanSequence);
-            if ((sequence & 1) == 1)
-            {
-                TablePaperCode = materialNo;
-            }
-            else
-            {
-                TopCoverCode = materialNo;
-            }
-
-            return;
-        }
-
+        // 在线、离线均使用当前已应用的工单/本地机种配方中的物料要求匹配。
+        // 离线参数已在扫描机种时加载到 currentWorkOrderSetup，不能再按扫码次数猜测台纸或上盖。
         MesWorkOrderMaterialRequirements? requirements = currentWorkOrderSetup?.MaterialRequirements;
         if (requirements == null)
         {
@@ -1069,7 +1597,7 @@ public sealed class HomeViewModel : BindableBase
     private static string CleanMaterialBarcode(string value)
     {
         string[] parts = value.Split('{');
-        return parts.Length > 0 ? parts[0].Trim() : CleanRawBarcodeValue(value);
+        return NormalizeMaterialNo(parts.Length > 0 ? parts[0] : value);
     }
 
     private static bool MaterialNoMatches(string materialNo, string? expectedMaterialNos)
@@ -1079,9 +1607,119 @@ public sealed class HomeViewModel : BindableBase
             return false;
         }
 
+        string actual = NormalizeMaterialNo(materialNo);
         return expectedMaterialNos
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Any(expected => string.Equals(materialNo, expected, StringComparison.OrdinalIgnoreCase));
+            .Select(NormalizeMaterialNo)
+            .Any(expected => string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeMaterialNo(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        string normalized = value.Normalize(NormalizationForm.FormKC);
+        return new string(normalized
+            .Where(static character => !char.IsControl(character)
+                && character is not '\u200B' and not '\uFEFF')
+            .ToArray())
+            .Trim();
+    }
+
+    /// <summary>
+    /// 校正页与 SetView 不各自维护频率：两者都从当前校正仪表配置和标准件状态派生。
+    /// 启动前按校正页相同的优先级重建其显示频率，再和即将下发的仪表频率比较。
+    /// </summary>
+    private async Task<bool> ValidateCorrectionFrequencyAsync()
+    {
+        object? instrumentConfig = GetCorrectionInstrumentConfig();
+        if (instrumentConfig == null)
+        {
+            return true;
+        }
+
+        CorrectionParameterSnapshot correction = correctionParameterProvider.CreateSnapshot(
+            instrumentConfig,
+            preferInstrumentFrequency: mesConnection.State != MesConnectionState.Online);
+
+        if (!TryGetInstrumentFrequency(instrumentConfig, out double instrumentFrequency, out string instrumentFrequencyUnit)
+            || !TryConvertFrequencyToHz(correction.Frequency, correction.FrequencyUnit, out double correctionFrequency)
+            || !TryConvertFrequencyToHz(instrumentFrequency, instrumentFrequencyUnit, out double setFrequency))
+        {
+            // 没有可比较的频率时保留原有启动流程；不会因空的可选频率误拦截生产。
+            return true;
+        }
+
+        if (Math.Abs(correctionFrequency - setFrequency) <= Math.Max(1e-9, Math.Abs(setFrequency) * 1e-9))
+        {
+            return true;
+        }
+
+        await ShowWarningOnUiAsync(
+            localizationService.TF(
+                "Home.Message.CorrectionFrequencyMismatch",
+                "电感设定频率（{0} {1}）与校正频率（{2} {3}）不一致，请确认后再启动。",
+                instrumentFrequency.ToString("0.##########", CultureInfo.InvariantCulture),
+                instrumentFrequencyUnit,
+                correction.Frequency,
+                correction.FrequencyUnit),
+            localizationService.T("Home.Title.StartFailed", "启动失败")).ConfigureAwait(false);
+        return false;
+    }
+
+    private object? GetCorrectionInstrumentConfig()
+    {
+        foreach (TestStationModel station in machine.TestStations.Where(static station => station.Operations.Any(static operation =>
+                     string.Equals(operation.Code, StationOperationDescriptor.Calibration, StringComparison.OrdinalIgnoreCase))))
+        {
+            foreach (string deviceId in station.InstrumentDeviceIds.Where(static id => !string.IsNullOrWhiteSpace(id)))
+            {
+                if (devices.TryGet(deviceId, out IInstrumentCorrection? instrument) && instrument != null)
+                {
+                    return instrument.DeviceParameter;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryGetInstrumentFrequency(object config, out double value, out string unit)
+    {
+        object? rawValue = config.GetType().GetProperty("Frequency")?.GetValue(config);
+        unit = config.GetType().GetProperty("FrequencyUnit")?.GetValue(config)?.ToString()?.Trim() ?? string.Empty;
+        value = 0;
+        return rawValue != null
+            && double.TryParse(rawValue.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out value)
+            && !string.IsNullOrWhiteSpace(unit);
+    }
+
+    private static bool TryConvertFrequencyToHz(string? value, string? unit, out double hertz)
+    {
+        hertz = 0;
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)
+            && TryConvertFrequencyToHz(number, unit, out hertz);
+    }
+
+    private static bool TryConvertFrequencyToHz(double value, string? unit, out double hertz)
+    {
+        hertz = value;
+        switch (unit?.Trim().ToUpperInvariant())
+        {
+            case "HZ":
+                return true;
+            case "KHZ":
+                hertz *= 1_000;
+                return true;
+            case "MHZ":
+                hertz *= 1_000_000;
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void ApplyWorkOrderSetup(MesWorkOrderSetup setup)
@@ -1100,6 +1738,27 @@ public sealed class HomeViewModel : BindableBase
         => !string.IsNullOrWhiteSpace(previousMachineType)
             && !string.IsNullOrWhiteSpace(newMachineType)
             && !string.Equals(previousMachineType.Trim(), newMachineType.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private async Task HandleMachineTypeChangedAsync(string? previousMachineType, string newMachineType)
+    {
+        if (!ShouldClearSampleStateForMachineTypeChange(previousMachineType, newMachineType))
+        {
+            return;
+        }
+
+        RunOnUi(ClearSampleState);
+        confirmedTrailingXMachineType = string.Empty;
+        requiresLsLowerLimitOverride = false;
+        SpecialMachineLsLowerLimitText = string.Empty;
+        SpecialMachineLsUnit = string.Empty;
+        await machine.SetCheckCompletedAsync(false, DestroyToken).ConfigureAwait(false);
+    }
+
+    private bool HasConfirmedTrailingXMachineLsLowerLimit(string? machineType)
+        => !string.IsNullOrWhiteSpace(machineType)
+            && machineType.EndsWith("X", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(SpecialMachineLsLowerLimitText)
+            && string.Equals(confirmedTrailingXMachineType, machineType, StringComparison.OrdinalIgnoreCase);
 
     private void ClearSampleState()
     {
@@ -1122,6 +1781,10 @@ public sealed class HomeViewModel : BindableBase
         SyncChartLimits();
         SyncTapeParameterRows(braidOptionsStore.Current.ToTapeSetup());
     }
+
+    private void OnBraidOptionsChanged(object? sender, EventArgs e)
+        => RunOnUi(() => SyncTapeParameterRows(braidOptionsStore.Current.ToTapeSetup()));
+
     private void SyncColumns()
         => RunOnUi(() =>
         {
@@ -1129,6 +1792,11 @@ public sealed class HomeViewModel : BindableBase
             foreach (IDataGridColumnDescriptor column in machine.PartColumns)
             {
                 partColumns.Add(column);
+            }
+
+            foreach (DisplayRowItem row in machine.PartRows)
+            {
+                row.SetCellPropertyChangedDispatcher(action => PostOnUi(action, DispatcherPriority.DataBind));
             }
         });
 
@@ -1141,7 +1809,18 @@ public sealed class HomeViewModel : BindableBase
             tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.AfterSpaceQty), localizationService.T("Braid.AfterSpaceQty", "After Space")));
             tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.SampleQty), localizationService.T("Braid.SampleQty", "Sample Qty")));
             tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.BlankQty), localizationService.T("Braid.BlankQty", "Blank Qty")));
-            tapeParameterColumns.Add(CreateTapeParameterColumn(nameof(TapeParameterRowModel.BackNoFilmQty), localizationService.T("Braid.BackNoFilmQty", "Back No Film")));
+            tapeParameterColumns.Add(new WpfDataGridColumnOptions
+            {
+                // “后不封膜”是 BlankQty 的第二个业务展示及 PLC 去向，
+                // 使用独立列标识，但直接绑定唯一的数据源。
+                ParameterId = "BackNoFilmQty",
+                DisplayName = localizationService.T("Braid.BackNoFilmQty", "Back No Film"),
+                BindingPath = nameof(TapeParameterRowModel.BlankQty),
+                ElementStyleKey = "TapeParameterCellTextBlockStyle",
+                CanUserSort = false,
+                CanUserResize = false,
+                CanUserReorder = false
+            });
         });
 
     private static IDataGridColumnDescriptor CreateTapeParameterColumn(string bindingPath, string displayName)
@@ -1352,8 +2031,7 @@ public sealed class HomeViewModel : BindableBase
                 PackageQty = FormatNullableInt(tapeSetup.PackageQty),
                 AfterSpaceQty = FormatNullableInt(tapeSetup.AfterSpaceQty),
                 SampleQty = FormatNullableInt(tapeSetup.SampleQty),
-                BlankQty = FormatNullableInt(tapeSetup.BlankQty),
-                BackNoFilmQty = FormatNullableInt(tapeSetup.BackNoFilmQty)
+                BlankQty = FormatNullableInt(tapeSetup.BlankQty)
             });
         });
     private void OnMachineRunningStateChanged(object? sender, EventArgs e)
@@ -1366,10 +2044,26 @@ public sealed class HomeViewModel : BindableBase
         stopCommand?.RaiseCanExecuteChanged();
     }
     private void OnMachineTableChanged(object? sender, EventArgs e)
-        => RequestChartLimitsSync();
+    {
+        PostOnUi(() => RaisePropertyChanged(nameof(ElectricalTestOkCount)));
+        RequestChartLimitsSync();
+    }
 
     private void OnStationResultPublished(object? sender, StationResultPublishedEventArgs e)
-        => PostOnUi(() => PushChartSamples(e), DispatcherPriority.Render);
+        => PostOnUi(() =>
+        {
+            if (e.ResultGeneration == machine.CurrentResultGeneration)
+            {
+                PushChartSamples(e);
+            }
+        }, DispatcherPriority.Render);
+
+    private void OnStationResultProcessingFailed(object? sender, StationResultProcessingFailedEventArgs e)
+        => logService?.Error(localizationService.TF(
+            "Home.Log.StationResultProcessingFailed",
+            "生产结果处理失败。工位：{0}，错误：{1}",
+            e.Station.StationName,
+            e.Exception.Message));
 
     private void OnStationLimitsApplied()
     {
@@ -1391,6 +2085,16 @@ public sealed class HomeViewModel : BindableBase
             SyncChartLimits();
         });
     }
+
+    private void ClearChartSamples()
+        => RunOnUi(() =>
+        {
+            chartSampleSequence = 0;
+            foreach (HomeChartTabModel tab in chartTabs)
+            {
+                tab.ClearSamples();
+            }
+        });
 
     private void PushChartSamples(StationResultPublishedEventArgs e)
     {
@@ -1544,14 +2248,17 @@ public sealed class HomeViewModel : BindableBase
         {
             machine.TableChanged -= OnMachineTableChanged;
             machine.StationResultPublished -= OnStationResultPublished;
+            machine.StationResultProcessingFailed -= OnStationResultProcessingFailed;
             machine.RunningStateChanged -= OnMachineRunningStateChanged;
             productionContext.PropertyChanged -= OnProductionContextPropertyChanged;
             rawInputBarcodeReceiver.BarcodeReceived -= OnRawInputBarcodeReceived;
             mesConnection.StateChanged -= OnMesConnectionStateChanged;
             localizationService.LanguageChanged -= OnLanguageChanged;
+            braidOptionsStore.OptionsChanged -= OnBraidOptionsChanged;
             sampleState.StandardSample.LimitItems.CollectionChanged -= OnStandardSampleLimitItemsChanged;
             DetachStandardSampleLimitItemHandlers(sampleState.StandardSample.LimitItems);
             stationLimitsAppliedSubscription.Dispose();
+            localWorkOrderRecipeLoadedSubscription.Dispose();
         }
 
         base.Dispose(disposing);

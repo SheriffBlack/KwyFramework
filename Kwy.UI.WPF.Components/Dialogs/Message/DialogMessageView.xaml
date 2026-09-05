@@ -49,16 +49,22 @@
             </Style.Triggers>
         </Style>
     </kwymvvm:Dialog.WindowStyle>
-    <Grid Width="460" Height="255">
-        <Grid.RowDefinitions>
-            <RowDefinition />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <!--  保持常规弹窗的最小高度；消息换行后由内容自动撑高。  -->
+    <Grid Width="460" MinHeight="255">
+        <!--
+            外层只负责最小高度；内层在最终高度内拉伸。
+            这样短消息仍保持原有的居中与底部按钮布局，长消息则可把窗口向下撑开。
+        -->
+        <Grid VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition />
-        </Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
         <!--  图标区域  -->
         <ContentPresenter
             Grid.Row="0"
@@ -96,11 +102,11 @@
             TextWrapping="Wrap" />
 
         <!--  按钮区域  -->
-        <DockPanel
-            Grid.Row="1"
-            Grid.ColumnSpan="2"
-            Margin="20,0,20,20"
-            HorizontalAlignment="Center">
+            <DockPanel
+                Grid.Row="1"
+                Grid.ColumnSpan="2"
+                Margin="20,0,20,20"
+                HorizontalAlignment="Center">
             <Button
                 Width="150"
                 Height="40"
@@ -114,7 +120,8 @@
                 Command="{Binding CancelCommand}"
                 Content="{DynamicResource Common.Cancel}"
                 Visibility="{Binding ShowCancelButton, Converter={StaticResource BooleanToVisibilityConverter}}" />
-        </DockPanel>
+            </DockPanel>
+        </Grid>
     </Grid>
 </UserControl>
 

@@ -12,8 +12,6 @@ public sealed class SystemViewModel : BindableBase, INavigationAware
 {
     private const string ProgramSettingsParameter = "ProgramSettings";
     private const string MachineProfileBasicParameter = "MachineProfile.Basic";
-    private const string MachineProfileIoPointsParameter = "MachineProfile.IoPoints";
-    private const string MachineProfilePlcPointsParameter = "MachineProfile.PlcPoints";
     private const string MachineProfileStationParameterPrefix = "MachineProfile.Station.";
 
     private readonly IRegionManager regionManager;
@@ -66,16 +64,8 @@ public sealed class SystemViewModel : BindableBase, INavigationAware
     public object? SelectedParameterSource
     {
         get => selectedParameterSource;
-        private set
-        {
-            if (SetProperty(ref selectedParameterSource, value))
-            {
-                RaisePropertyChanged(nameof(IsPointEditorVisible));
-            }
-        }
+        private set => SetProperty(ref selectedParameterSource, value);
     }
-
-    public bool IsPointEditorVisible => SelectedParameterSource is MachineIoPointsEditorModel or MachinePlcPointsEditorModel;
 
     public bool IsParameterEditorVisible
     {
@@ -181,16 +171,6 @@ public sealed class SystemViewModel : BindableBase, INavigationAware
             {
                 SelectedParameterHeader = "机种配置";
                 SelectedParameterSource = machineProfileSession.Basic;
-            }
-            else if (string.Equals(parameter, MachineProfileIoPointsParameter, StringComparison.OrdinalIgnoreCase))
-            {
-                SelectedParameterHeader = "IO 点位设定";
-                SelectedParameterSource = machineProfileSession.IoPoints;
-            }
-            else if (string.Equals(parameter, MachineProfilePlcPointsParameter, StringComparison.OrdinalIgnoreCase))
-            {
-                SelectedParameterHeader = "PLC 点位设定";
-                SelectedParameterSource = machineProfileSession.PlcPoints;
             }
             else if (int.TryParse(parameter[MachineProfileStationParameterPrefix.Length..], out int stationId))
             {
@@ -307,11 +287,11 @@ public sealed class SystemViewModel : BindableBase, INavigationAware
         }
     }
 
-    private bool CanApply() => SelectedParameterSource is ProgramSettingsModel or MachineBasicEditorModel or MachineStationEditorModel or MachineIoPointsEditorModel or MachinePlcPointsEditorModel;
+    private bool CanApply() => SelectedParameterSource is ProgramSettingsModel or MachineBasicEditorModel or MachineStationEditorModel;
 
     private async Task ExecuteApplyAsync()
     {
-        if (SelectedParameterSource is MachineBasicEditorModel or MachineStationEditorModel or MachineIoPointsEditorModel or MachinePlcPointsEditorModel)
+        if (SelectedParameterSource is MachineBasicEditorModel or MachineStationEditorModel)
         {
             if (machineProfileSession == null)
             {

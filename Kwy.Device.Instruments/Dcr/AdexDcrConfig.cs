@@ -52,10 +52,10 @@ public class AdexDcrConfig : IDeviceConfig
     [DisplayNameKey("Instrument.Limit.UpperValue")]
     [InputType(InputType.TextBoxWithRadioButton)]
     [ItemsSource("Ω", "mΩ", "μΩ")]
-    public double UpperLimitRaw { get; set; }
+    public double UpperLimit { get; set; }
 
     [Browsable(false)]
-    public string UpperLimitRawUnit { get; set; } = "mΩ";
+    public string UpperLimitUnit { get; set; } = "mΩ";
 
     [Category("判定设置")]
     [CategoryKey("Instrument.Category.Judgment")]
@@ -63,20 +63,20 @@ public class AdexDcrConfig : IDeviceConfig
     [DisplayNameKey("Instrument.Limit.LowerValue")]
     [InputType(InputType.TextBoxWithRadioButton)]
     [ItemsSource("Ω", "mΩ", "μΩ")]
-    public double LowerLimitRaw { get; set; }
+    public double LowerLimit { get; set; }
 
     [Browsable(false)]
-    public string LowerLimitRawUnit { get; set; } = "mΩ";
+    public string LowerLimitUnit { get; set; } = "mΩ";
 
     public bool Validate()
     {
-        if (LowerLimitRaw < 0 || UpperLimitRaw < 0)
+        if (LowerLimit < 0 || UpperLimit < 0)
         {
             return false;
         }
 
-        if (AdexDcr.ConvertLimitToOhms(UpperLimitRaw, UpperLimitRawUnit)
-            < AdexDcr.ConvertLimitToOhms(LowerLimitRaw, LowerLimitRawUnit))
+        if (AdexDcr.ConvertLimitToOhms(UpperLimit, UpperLimitUnit)
+            < AdexDcr.ConvertLimitToOhms(LowerLimit, LowerLimitUnit))
         {
             return false;
         }

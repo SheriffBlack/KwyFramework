@@ -39,9 +39,8 @@ public interface IPermissionService
 }
 
 /// <summary>
-/// Optional capability for permission services that track successful privileged-operation activity.
-/// Permission queries must remain side-effect free; callers invoke this only after an operation
-/// has been authorized for execution.
+/// 权限服务的可选功能，用于跟踪成功执行的特权操作活动。  
+/// 权限查询必须保持无副作用；调用者仅在操作已被授权执行后才调用此功能。
 /// </summary>
 public interface IPermissionUsageNotifier
 {

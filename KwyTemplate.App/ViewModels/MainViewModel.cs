@@ -3,9 +3,11 @@ using Kwy.MVVM.Regions;
 using Kwy.MVVM.WPF.Regions;
 using Kwy.UI;
 using KwyTemplate.App.Models;
+using KwyTemplate.App.Runtime;
 using KwyTemplate.App.Services;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Navigation;
+using KwyTemplate.Contracts.Security;
 using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
 using System.Windows.Threading;
@@ -19,6 +21,8 @@ public class MainViewModel : BindableBase, INavigationAware
     private readonly IPermissionService? permissionService;
     private readonly IAppNotificationService? notificationService;
     private readonly ILocalizationService localizationService;
+    private readonly IProductionContext productionContext;
+    private readonly IPrimaryNavigationState primaryNavigationState;
     private readonly NavigationConfigModel navigationConfig = new();
     private readonly Dispatcher dispatcher;
     private bool isInitialized;
@@ -29,15 +33,23 @@ public class MainViewModel : BindableBase, INavigationAware
         IRegionManager regionManager,
         MachineBase machine,
         ILocalizationService localizationService,
+        IProductionContext productionContext,
+        IPrimaryNavigationState primaryNavigationState,
         IPermissionService? permissionService = null,
         IAppNotificationService? notificationService = null)
     {
         this.regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
         this.machine = machine ?? throw new ArgumentNullException(nameof(machine));
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
+        this.productionContext = productionContext ?? throw new ArgumentNullException(nameof(productionContext));
+        this.primaryNavigationState = primaryNavigationState ?? throw new ArgumentNullException(nameof(primaryNavigationState));
         this.permissionService = permissionService;
         this.notificationService = notificationService;
         dispatcher = Dispatcher.CurrentDispatcher;
+        if (this.permissionService != null)
+        {
+            this.permissionService.PermissionsChanged += OnPermissionsChanged;
+        }
         this.localizationService.LanguageChanged += OnLanguageChanged;
         machine.RunningStateChanged += OnMachineRunningStateChanged;
         InitializeNavigationItems();
@@ -73,7 +85,9 @@ public class MainViewModel : BindableBase, INavigationAware
                 ViewName = ViewNames.CorrectionView,
                 DisplayText = localizationService.T("Nav.Correction", "校正"),
                 LocalizationKey = "Nav.Correction",
-                Icon = IconNames.IconCorrection
+                Icon = IconNames.IconCorrection,
+                PermissionCode = PermissionCodes.Engineer,
+                PermissionMode = PermissionCheckMode.Disable
             };
 
             int compensateIndex = items.FindIndex(item => item.ViewName == ViewNames.CompensateView);
@@ -107,13 +121,44 @@ public class MainViewModel : BindableBase, INavigationAware
         _ = dispatcher.InvokeAsync(RefreshNavigationAvailability);
     }
 
+    private void OnPermissionsChanged(object? sender, PermissionChangedEventArgs e)
+    {
+        if (dispatcher.CheckAccess())
+        {
+            RefreshNavigationAvailability();
+            RefreshNavigationPermissionPresentation();
+            return;
+        }
+
+        _ = dispatcher.InvokeAsync(() =>
+        {
+            RefreshNavigationAvailability();
+            RefreshNavigationPermissionPresentation();
+        });
+    }
+
+    private void RefreshNavigationPermissionPresentation()
+    {
+        // 导航按钮由 ItemsControl 缓存容器。权限会话从高级用户回退到操作员后，
+        // 重新提供列表以让每个按钮的 Permission.Mode 按当前权限重新求值。
+        // 只刷新显示，不改变当前 Region 或选中导航。
+        NavigationItems = NavigationItems.ToList();
+        RaisePropertyChanged(nameof(NavigationItems));
+    }
+
     private void RefreshNavigationAvailability()
     {
         bool isProductionRunning = machine.ProductionState == MachineProductionState.Running;
         foreach (NavigationItemModel item in NavigationItems)
         {
-            item.IsNavigationEnabled = !isProductionRunning
+            bool isAllowedWhileRunning = !isProductionRunning
                 || string.Equals(item.ViewName, ViewNames.HomeView, StringComparison.OrdinalIgnoreCase);
+            bool hasPermission = string.IsNullOrWhiteSpace(item.PermissionCode)
+                || permissionService?.HasPermission(item.PermissionCode) != false;
+
+            // 权限附加属性负责 Hide / 提示；此处同时绑定按钮可用状态，避免旧的
+            // ItemsControl 容器在高级会话过期后仍保留“可点击”的视觉状态。
+            item.IsNavigationEnabled = isAllowedWhileRunning && hasPermission;
         }
     }
 
@@ -160,6 +205,25 @@ public class MainViewModel : BindableBase, INavigationAware
 
         string previousView = SelectedView;
         string previousNavigationKey = SelectedNavigationKey;
+
+        if (string.Equals(item.ViewName, ViewNames.CompensateView, StringComparison.OrdinalIgnoreCase)
+            && (string.IsNullOrWhiteSpace(productionContext.OperatorNo)
+                || string.IsNullOrWhiteSpace(productionContext.EquipmentNo)))
+        {
+            RestoreNavigationSelection(previousView, previousNavigationKey);
+
+            if (notificationService != null)
+            {
+                await notificationService.WarningAsync(
+                    localizationService.T(
+                        "Compensate.Message.OperatorAndEquipmentRequired",
+                        "请先扫描操作员工号和机台号，再进入点检。"),
+                    localizationService.T("Nav.Compensate", "点检")).ConfigureAwait(false);
+            }
+
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(item.PermissionCode)
             && permissionService?.HasPermission(item.PermissionCode) == false)
         {
@@ -181,6 +245,7 @@ public class MainViewModel : BindableBase, INavigationAware
 
         SelectedView = item.ViewName;
         SelectedNavigationKey = item.NavigationKey;
+        primaryNavigationState.SetCurrentView(item.ViewName);
 
         var parameters = new NavigationParameters();
         if (!string.IsNullOrWhiteSpace(item.Parameter))

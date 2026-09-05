@@ -11,6 +11,4 @@ public sealed class TapeParameterRowModel
     public string? SampleQty { get; init; }
 
     public string? BlankQty { get; init; }
-
-    public string? BackNoFilmQty { get; init; }
 }

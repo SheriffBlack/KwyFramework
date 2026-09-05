@@ -19,6 +19,7 @@ public sealed class TestStationModel
 {
     private int totalCount;
     private int okCount;
+    private readonly ConcurrentDictionary<string, TestMeasurementStatistics> measurementStatistics = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// 工位编号，在当前机台内唯一。
@@ -156,12 +157,45 @@ public sealed class TestStationModel
     }
 
     /// <summary>
+    /// 记录指定测试项的一次实际测试结果。
+    /// 与工位级统计不同，多测试项工位可分别维护 Ls、Rs 等项目的计数。
+    /// </summary>
+    public void RecordMeasurementResult(string testName, bool isPass)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(testName);
+        measurementStatistics.GetOrAdd(testName, static _ => new TestMeasurementStatistics()).Record(isPass);
+    }
+
+    /// <summary>
+    /// 获取指定测试项的运行时统计快照；尚未测试时返回零值。
+    /// </summary>
+    public TestMeasurementStatisticsSnapshot GetMeasurementStatistics(string testName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(testName);
+        return measurementStatistics.TryGetValue(testName, out TestMeasurementStatistics? statistics)
+            ? statistics.CreateSnapshot()
+            : default;
+    }
+
+    /// <summary>
     /// 清空当前工位统计数据。
     /// </summary>
     public void ResetStatistics()
     {
         Interlocked.Exchange(ref totalCount, 0);
         Interlocked.Exchange(ref okCount, 0);
+        ResetMeasurementStatistics();
+    }
+
+    /// <summary>
+    /// 清空各测试项的运行时统计，不影响工位级统计。
+    /// </summary>
+    public void ResetMeasurementStatistics()
+    {
+        foreach (TestMeasurementStatistics statistics in measurementStatistics.Values)
+        {
+            statistics.Reset();
+        }
     }
 
     public void SetTestLimit(string testName, double? lowerLimit, double? upperLimit, string? unit = null)
@@ -169,6 +203,35 @@ public sealed class TestStationModel
         ArgumentException.ThrowIfNullOrWhiteSpace(testName);
 
         TestLimits[testName] = new StationMeasurementLimit(lowerLimit, upperLimit, unit);
+    }
+}
+
+/// <summary>单个测试项的线程安全统计快照。</summary>
+public readonly record struct TestMeasurementStatisticsSnapshot(uint TotalCount, uint OkCount);
+
+internal sealed class TestMeasurementStatistics
+{
+    private int totalCount;
+    private int okCount;
+
+    public void Record(bool isPass)
+    {
+        Interlocked.Increment(ref totalCount);
+        if (isPass)
+        {
+            Interlocked.Increment(ref okCount);
+        }
+    }
+
+    public TestMeasurementStatisticsSnapshot CreateSnapshot()
+        => new(
+            unchecked((uint)Math.Max(0, Volatile.Read(ref totalCount))),
+            unchecked((uint)Math.Max(0, Volatile.Read(ref okCount))));
+
+    public void Reset()
+    {
+        Interlocked.Exchange(ref totalCount, 0);
+        Interlocked.Exchange(ref okCount, 0);
     }
 }
 

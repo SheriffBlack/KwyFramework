@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 using Kwy.ComponentModel;
 using KwyTemplate.Contracts.Localization;
 
@@ -7,6 +8,7 @@ namespace KwyTemplate.App.Services;
 public sealed class ResourceDictionaryLocalizationService : ILocalizationService
 {
     private const string DictionaryMarkerKey = "KwyTemplate.Localization.Dictionary";
+    private int languageChangeVersion;
 
     private static readonly IReadOnlyDictionary<LanguageType, Uri> LanguageDictionaries = new Dictionary<LanguageType, Uri>
     {
@@ -30,6 +32,11 @@ public sealed class ResourceDictionaryLocalizationService : ILocalizationService
         var application = Application.Current;
         if (application == null)
         {
+            if (CurrentLanguage == languageType)
+            {
+                return;
+            }
+
             CurrentLanguage = languageType;
             LanguageChanged?.Invoke(this, languageType);
             PropertyMetadataLocalization.NotifyChanged();
@@ -38,6 +45,11 @@ public sealed class ResourceDictionaryLocalizationService : ILocalizationService
 
         void applyCore()
         {
+            if (CurrentLanguage == languageType)
+            {
+                return;
+            }
+
             var dictionaries = application.Resources.MergedDictionaries;
             ResourceDictionary? oldDictionary = dictionaries.FirstOrDefault(IsLocalizationDictionary);
             if (oldDictionary != null)
@@ -49,8 +61,20 @@ public sealed class ResourceDictionaryLocalizationService : ILocalizationService
             newDictionary[DictionaryMarkerKey] = true;
             dictionaries.Add(newDictionary);
             CurrentLanguage = languageType;
-            LanguageChanged?.Invoke(this, languageType);
-            PropertyMetadataLocalization.NotifyChanged();
+            int changeVersion = ++languageChangeVersion;
+
+            // 资源字典需立即替换，但订阅者包含表格列、导航和属性编辑器的刷新。
+            // 延后且合并这些显示刷新，避免一次语言切换独占 UI 消息循环。
+            _ = application.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (changeVersion != languageChangeVersion || CurrentLanguage != languageType)
+                {
+                    return;
+                }
+
+                LanguageChanged?.Invoke(this, languageType);
+                PropertyMetadataLocalization.NotifyChanged();
+            }));
         }
 
         if (application.Dispatcher.CheckAccess())

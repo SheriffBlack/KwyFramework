@@ -129,7 +129,6 @@ public sealed class PlcPointViewModel : BindableBase
     private void OnLanguageChanged(object? sender, LanguageType languageType)
     {
         SyncColumns();
-        LoadPoints();
     }
 
     private void LoadPoints()

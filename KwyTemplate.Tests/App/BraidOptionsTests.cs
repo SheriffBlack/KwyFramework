@@ -16,7 +16,6 @@ public sealed class BraidOptionsTests
         Assert.Equal(0, options.AfterSpaceQty);
         Assert.Equal(0, options.SampleQty);
         Assert.Equal(0, options.BlankQty);
-        Assert.Equal(0, options.BackNoFilmQty);
     }
 
     [Fact]
@@ -31,7 +30,8 @@ public sealed class BraidOptionsTests
         Assert.Equal(3, options.AfterSpaceQty);
         Assert.Equal(4, options.SampleQty);
         Assert.Equal(5, options.BlankQty);
-        Assert.Equal(6, options.BackNoFilmQty);
+        // 空格二与后不封膜共用 BlankQty；从 MES 导入时以后不封膜值不再单独维护。
+        Assert.Equal(5, options.BlankQty);
     }
 
     [Fact]
@@ -43,8 +43,7 @@ public sealed class BraidOptionsTests
             PackageQty = 20,
             AfterSpaceQty = 30,
             SampleQty = 40,
-            BlankQty = 50,
-            BackNoFilmQty = 60
+            BlankQty = 50
         };
 
         MesWorkOrderTapeSetup setup = options.ToTapeSetup();
@@ -54,6 +53,6 @@ public sealed class BraidOptionsTests
         Assert.Equal(30, setup.AfterSpaceQty);
         Assert.Equal(40, setup.SampleQty);
         Assert.Equal(50, setup.BlankQty);
-        Assert.Equal(60, setup.BackNoFilmQty);
+        Assert.Equal(50, setup.BackNoFilmQty);
     }
 }

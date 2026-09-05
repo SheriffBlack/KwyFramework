@@ -26,26 +26,34 @@ public sealed class ApplicationCloseGuard : IApplicationCloseGuard
 
     public async Task<bool> CanCloseAsync()
     {
-        if (machine.ProductionState == MachineProductionState.Stopped)
+        if (machine.ProductionState != MachineProductionState.Stopped)
         {
-            try
-            {
-                await machine.SetCheckCompletedAsync(false).ConfigureAwait(true);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                await dialogMessageService.ShowErrorAsync(
-                    localizationService.T("Shell.Message.ExitCheckResetFailed", "无法复位 PLC 点检完成信号，程序不能关闭。") + Environment.NewLine + ex.Message,
-                    localizationService.T("Shell.Title.ExitBlocked", "关闭程序")).ConfigureAwait(true);
-                return false;
-            }
+            await dialogMessageService.ShowWarningAsync(
+                localizationService.T("Shell.Message.ExitRequiresStopped", "程序非停止状态，禁止关闭"),
+                localizationService.T("Shell.Title.ExitBlocked", "关闭程序")).ConfigureAwait(true);
+            return false;
         }
 
-        await dialogMessageService.ShowWarningAsync(
-            localizationService.T("Shell.Message.ExitRequiresStopped", "程序非停止状态，禁止关闭"),
+        bool confirmed = await dialogMessageService.ShowConfirmAsync(
+            localizationService.T("Shell.Message.ExitConfirm", "确认关闭程序吗？"),
             localizationService.T("Shell.Title.ExitBlocked", "关闭程序")).ConfigureAwait(true);
-        return false;
+        if (!confirmed)
+        {
+            return false;
+        }
+
+        try
+        {
+            await machine.SetCheckCompletedAsync(false).ConfigureAwait(true);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await dialogMessageService.ShowErrorAsync(
+                localizationService.T("Shell.Message.ExitCheckResetFailed", "无法复位 PLC 点检完成信号，程序不能关闭。") + Environment.NewLine + ex.Message,
+                localizationService.T("Shell.Title.ExitBlocked", "关闭程序")).ConfigureAwait(true);
+            return false;
+        }
     }
 
 }
