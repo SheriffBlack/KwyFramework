@@ -486,6 +486,7 @@
     <sys:String x:Key="Compensate.Message.ScheduleCheckRequired">未在规定时间{0}~{1}内点检，请完成！</sys:String>
     <sys:String x:Key="Home.Field.SpecialMachineOperation">特殊机种作业</sys:String>
     <sys:String x:Key="Home.Field.ElectricalTestOkCount">电性合格数</sys:String>
+    <sys:String x:Key="Home.Field.MaterialInputCount">入料数</sys:String>
     <sys:String x:Key="Home.Log.RuntimeDataFileMissing">未找到生产运行数据文件：{0}</sys:String>
     <sys:String x:Key="Home.Log.BlindScanContent">盲扫内容：{0}</sys:String>
     <sys:String x:Key="Home.Log.BlindScanIgnoredDialogActive">当前存在弹窗，已忽略盲扫内容：{0}</sys:String>

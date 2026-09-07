@@ -30,7 +30,7 @@ public class Machine_4_HAHH :
     IMachinePlcStopSignalMachine,
     IMachineProductionCounterResetMachine,
     IMachineProductionSummaryMachine,
-    IMachineElectricalTestCountMachine,
+    IMachineProductionCountMachine,
     IMachineBraidSetupMachine,
     IMachineMarkPrintOptionsMachine,
     IMachineWorkOrderStartSignalMachine,
@@ -54,6 +54,7 @@ public class Machine_4_HAHH :
     private int parameterCompareWriteGate;
     private bool? previousParameterCompareSignal;
     private int systemDataReadGate;
+    private long materialInputCount;
     private long electricalTestOkCount;
     private MesWorkOrderTapeSetup? currentTapeSetup;
     private string? currentWorkOrderNo;
@@ -123,6 +124,8 @@ public class Machine_4_HAHH :
     public override TriggerMode StationTriggerMode => TriggerMode.Polling;
 
     public uint ElectricalTestOkCount => unchecked((uint)Volatile.Read(ref electricalTestOkCount));
+
+    public uint MaterialInputCount => unchecked((uint)Volatile.Read(ref materialInputCount));
 
     protected override bool ShouldApplyRealtimeStatisticsToTable => false;
 
@@ -587,6 +590,7 @@ public class Machine_4_HAHH :
             }
 
             uint total = await ReadUInt32PointAsync(plc, PlcPoints.测试总量).ConfigureAwait(false);
+            UpdateMaterialInputCount(total);
             UpdateElectricalTestOkCount(await ReadUInt32PointAsync(plc, PlcPoints.测试OK数).ConfigureAwait(false));
             if (total == 0)
             {
@@ -643,6 +647,14 @@ public class Machine_4_HAHH :
     private void UpdateElectricalTestOkCount(uint value)
     {
         if (Interlocked.Exchange(ref electricalTestOkCount, value) != value)
+        {
+            RaiseTableChanged();
+        }
+    }
+
+    private void UpdateMaterialInputCount(uint value)
+    {
+        if (Interlocked.Exchange(ref materialInputCount, value) != value)
         {
             RaiseTableChanged();
         }

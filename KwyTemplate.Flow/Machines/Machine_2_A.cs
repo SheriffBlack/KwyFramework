@@ -28,7 +28,7 @@ public class Machine_2_A :
     IMachinePlcStopSignalMachine,
     IMachineProductionCounterResetMachine,
     IMachineProductionSummaryMachine,
-    IMachineElectricalTestCountMachine,
+    IMachineProductionCountMachine,
     IMachineBraidSetupMachine,
     IMachineWorkOrderStartSignalMachine
 {
@@ -46,6 +46,7 @@ public class Machine_2_A :
     private int parameterCompareWriteGate;
     private bool? previousParameterCompareSignal;
     private int systemDataReadGate;
+    private long materialInputCount;
     private long electricalTestOkCount;
     private MesWorkOrderTapeSetup? currentTapeSetup;
     private string? currentWorkOrderNo;
@@ -55,6 +56,8 @@ public class Machine_2_A :
     private Machine2AStationStatisticsSnapshot? lastDcr2StatisticsSnapshot;
 
     public uint ElectricalTestOkCount => unchecked((uint)Volatile.Read(ref electricalTestOkCount));
+
+    public uint MaterialInputCount => unchecked((uint)Volatile.Read(ref materialInputCount));
     private static readonly IReadOnlyDictionary<string, MachineExamineFlowDescriptor> ExamineFlows = new Dictionary<string, MachineExamineFlowDescriptor>(StringComparer.OrdinalIgnoreCase)
     {
         ["Standard"] = new(
@@ -359,6 +362,7 @@ public class Machine_2_A :
             }
 
             uint total = await ReadUInt32PointAsync(plc, PlcPoints.测试总量).ConfigureAwait(false);
+            UpdateMaterialInputCount(total);
             UpdateElectricalTestOkCount(await ReadUInt32PointAsync(plc, PlcPoints.测试OK数).ConfigureAwait(false));
             uint dcr1Ng = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_NG数).ConfigureAwait(false);
             uint dcr1Ce = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_CE数).ConfigureAwait(false);
@@ -419,6 +423,14 @@ public class Machine_2_A :
     private void UpdateElectricalTestOkCount(uint value)
     {
         if (Interlocked.Exchange(ref electricalTestOkCount, value) != value)
+        {
+            RaiseTableChanged();
+        }
+    }
+
+    private void UpdateMaterialInputCount(uint value)
+    {
+        if (Interlocked.Exchange(ref materialInputCount, value) != value)
         {
             RaiseTableChanged();
         }

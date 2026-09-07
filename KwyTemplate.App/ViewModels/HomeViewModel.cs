@@ -193,7 +193,9 @@ public sealed class HomeViewModel : BindableBase
 
     public ObservableCollection<DisplayRowItem> PartRows => machine.PartRows;
 
-    public uint ElectricalTestOkCount => (machine as IMachineElectricalTestCountMachine)?.ElectricalTestOkCount ?? 0;
+    public uint ElectricalTestOkCount => (machine as IMachineProductionCountMachine)?.ElectricalTestOkCount ?? 0;
+
+    public uint MaterialInputCount => (machine as IMachineProductionCountMachine)?.MaterialInputCount ?? 0;
 
     public ObservableCollection<HomeChartTabModel> ChartTabs => chartTabs;
 
@@ -2045,7 +2047,11 @@ public sealed class HomeViewModel : BindableBase
     }
     private void OnMachineTableChanged(object? sender, EventArgs e)
     {
-        PostOnUi(() => RaisePropertyChanged(nameof(ElectricalTestOkCount)));
+        PostOnUi(() =>
+        {
+            RaisePropertyChanged(nameof(ElectricalTestOkCount));
+            RaisePropertyChanged(nameof(MaterialInputCount));
+        });
         RequestChartLimitsSync();
     }
 

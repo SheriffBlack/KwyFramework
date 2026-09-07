@@ -261,12 +261,17 @@
                 Grid.Column="0"
                 BorderBrush="{DynamicResource ControlBorderBrush}"
                 BorderThickness="1,1,1,0">
-                <UniformGrid Columns="2">
-                    <kwyui:KwyFormItem Label="{DynamicResource Home.Field.SpecialMachineOperation}" 
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <kwyui:KwyFormItem Grid.Column="0" Label="{DynamicResource Home.Field.SpecialMachineOperation}" 
                         Visibility="{Binding IsTrailingXMachineType, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Horizontal" Margin="-20,0,0,0">
                             <TextBox
-                                Width="140"
+                                Width="80"
                                 IsReadOnly="True"
                                 Text="{Binding SpecialMachineLsLowerLimitText, Mode=OneWay}" />
                             <TextBlock
@@ -275,15 +280,21 @@
                                 Text="{Binding SpecialMachineLsUnit, Mode=OneWay}" />
                         </StackPanel>
                     </kwyui:KwyFormItem>
-
-                    <kwyui:KwyFormItem Label="{DynamicResource Home.Field.ElectricalTestOkCount}" DockPanel.Dock="Right">
+                    <kwyui:KwyFormItem  Margin="20,0,0,0"  Grid.Column="1" Label="{DynamicResource Home.Field.MaterialInputCount}">
                         <TextBlock
-                            Margin="0,4,0,0"
+                            Margin="-20,4,0,0"
                             VerticalAlignment="Center"
                             Foreground="{DynamicResource ControlDisabledForegroundBrush}"
-                            Text="{Binding ElectricalTestOkCount, Mode=OneWay, StringFormat={}{0:D4}}" />
+                            Text="{Binding MaterialInputCount, Mode=OneWay}" />
                     </kwyui:KwyFormItem>
-                </UniformGrid>
+                    <kwyui:KwyFormItem  Grid.Column="2"  Label="{DynamicResource Home.Field.ElectricalTestOkCount}" >
+                        <TextBlock
+                            Margin="-20,4,0,0"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource ControlDisabledForegroundBrush}"
+                            Text="{Binding ElectricalTestOkCount, Mode=OneWay}" />
+                    </kwyui:KwyFormItem>
+                </Grid>
             </Border>
 
             <DataGrid
@@ -354,7 +365,7 @@
                             <Grid ClipToBounds="True">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="4" />
-                                    <ColumnDefinition Width="170" />
+                                    <ColumnDefinition Width="145" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="96" />
                                 </Grid.ColumnDefinitions>
