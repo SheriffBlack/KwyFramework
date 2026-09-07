@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.MVVM\Kwy.MVVM.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Security\KwyTemplate.Security.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="dog_net_windows">
+      <HintPath>DLL\dog_net_windows.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="DLL\api_dsp_windows.dll" Link="api_dsp_windows.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="DLL\api_dsp_windows_x64.dll" Link="api_dsp_windows_x64.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="DLL\dog_windows_3164560.dll" Link="dog_windows_3164560.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="DLL\dog_windows_x64_3164560.dll" Link="dog_windows_x64_3164560.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

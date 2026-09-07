@@ -1,0 +1,104 @@
+﻿<UserControl
+    x:Class="KwyTemplate.App.Views.MainView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers;assembly=Kwy.UI.WPF"
+    xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
+    xmlns:kwyui="http://schemas.kwy.com/ui"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:navigation="clr-namespace:KwyTemplate.Contracts.Navigation;assembly=KwyTemplate.Contracts"
+    d:DesignHeight="720"
+    d:DesignWidth="1280"
+    kwymvvm:ViewModelLocator.AutoWireViewModel="True"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <kwyui:StringEqualityConverter x:Key="StringEqualityConverter" />
+        <SolidColorBrush x:Key="HsyLogoBackgroundBrush" Color="#E60012" />
+
+        <Style
+            x:Key="MainNavigationButtonStyle"
+            BasedOn="{StaticResource RadioButtonContentHorizontalStyle}"
+            TargetType="{x:Type RadioButton}">
+            <Setter Property="Background" Value="{DynamicResource TransparentBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TransparentBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+            <Setter Property="Content" Value="{Binding DisplayText}" />
+            <Setter Property="helpers:IconHelper.Icon" Value="{Binding Path=Icon, Converter={kwyui:IconKeyToResourceConverter}}" />
+            <Setter Property="Command" Value="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+            <Setter Property="CommandParameter" Value="{Binding}" />
+            <Setter Property="GroupName" Value="MainNavigationGroup" />
+            <Setter Property="IsEnabled" Value="{Binding IsNavigationEnabled}" />
+            <Setter Property="IsChecked">
+                <Setter.Value>
+                    <MultiBinding Converter="{StaticResource StringEqualityConverter}" Mode="OneWay">
+                        <Binding Path="DataContext.SelectedNavigationKey" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                        <Binding Path="NavigationKey" />
+                    </MultiBinding>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <Border
+            Grid.Row="0"
+            Background="{DynamicResource MainNavigationBackgroundBrush}"
+            BorderBrush="{DynamicResource ControlBorderBrush}"
+            BorderThickness="0,0,0,0.7">
+            <Grid Height="64" Margin="12,0,12,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <ItemsControl
+                    Grid.Column="0"
+                    HorizontalContentAlignment="Stretch"
+                    ItemsSource="{Binding NavigationItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <RadioButton
+                                kwymvvm:Permission.Mode="{Binding PermissionMode}"
+                                kwymvvm:Permission.Policy="{Binding PermissionCode}"
+                                Style="{StaticResource MainNavigationButtonStyle}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Border
+                    Grid.Column="1"
+                    Height="52"
+                    MinWidth="96"
+                    Padding="10,6"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Background="{StaticResource HsyLogoBackgroundBrush}"
+                    BorderThickness="0"
+                    CornerRadius="3"
+                    Visibility="Collapsed">
+                    <Image
+                        RenderOptions.BitmapScalingMode="HighQuality"
+                        Source="{StaticResource ImgInfoHsy}"
+                        Stretch="Uniform"
+                        Visibility="Visible" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <ContentControl
+            Grid.Row="1"
+            Margin="10"
+            kwymvvm:RegionManager.RegionName="{x:Static navigation:RegionNames.MainRegion}" />
+    </Grid>
+</UserControl>

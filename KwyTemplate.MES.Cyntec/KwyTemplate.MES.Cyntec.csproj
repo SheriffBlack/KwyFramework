@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.MVVM\Kwy.MVVM.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
+    <ProjectReference Include="..\KwyTemplate.MES.Abstract\KwyTemplate.MES.Abstract.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="cyntec.Base">
+      <HintPath>DLL\cyntec.Base.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="cyntec.TcpTools">
+      <HintPath>DLL\cyntec.TcpTools.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="cyntec.Tools">
+      <HintPath>DLL\cyntec.Tools.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="System.Web.Extensions">
+      <HintPath>DLL\System.Web.Extensions.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="FileDemo\" />
+  </ItemGroup>
+</Project>

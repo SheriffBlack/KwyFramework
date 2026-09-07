@@ -1,0 +1,17 @@
+1,DCRMaxValue,4.032
+2,DCRMinValue,3.968
+3,DCRUnit,mΩ
+4,DCRRange,10mΩ
+5,DCRMaxValue2,4.034
+6,DCRMinValue2,3.966
+7,DCRUnit2,mΩ
+8,TablePaperMatNo,9120011966
+9,TopCoverMatNo,9120011377
+17.ReelMatNo,9120013620
+10,PackageQty,3003
+11,BeforeSpaceQty,105
+12,AfterSpaceQty,105
+13,BlankQty,5
+14,SampleQty,0
+15,MatGroupNo,WHTC
+16,StdPartsCheck,4

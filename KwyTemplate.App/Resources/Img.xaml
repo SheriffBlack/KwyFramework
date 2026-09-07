@@ -1,0 +1,13 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <BitmapImage x:Key="ImgLoad" UriSource="/KwyTemplate.App;component/Resources/ImgLoad.jpg" />
+
+
+
+    <BitmapImage x:Key="ImgLogoHsy" UriSource="/KwyTemplate.App;component/Resources/LogoHsy.png" />
+    <BitmapImage x:Key="ImgInfoHsy" UriSource="/KwyTemplate.App;component/Resources/InfoHsy.png" />
+
+    <BitmapImage x:Key="ImgLogoJdl" UriSource="/KwyTemplate.App;component/Resources/LogoJdl.png" />
+    <BitmapImage x:Key="ImgLogoTest" UriSource="/KwyTemplate.App;component/Resources/LogoTest.png" />
+
+</ResourceDictionary>

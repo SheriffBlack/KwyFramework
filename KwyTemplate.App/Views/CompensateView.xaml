@@ -1,0 +1,605 @@
+<UserControl
+    x:Class="KwyTemplate.App.Views.CompensateView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+    xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
+    xmlns:kwyui="http://schemas.kwy.com/ui"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:navigation="clr-namespace:KwyTemplate.Contracts.Navigation;assembly=KwyTemplate.Contracts"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style BasedOn="{StaticResource {x:Type TextBox}}" TargetType="TextBox">
+            <Setter Property="FontSize" Value="20" />
+        </Style>
+    </UserControl.Resources>
+
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding EnsureDefaultContentCommand}" />
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+
+        <ContentControl
+            Grid.ColumnSpan="2"
+            Margin="0"
+            kwymvvm:RegionManager.RegionName="{x:Static navigation:RegionNames.CompensateRegion}" />
+
+        <kwyui:KwyFormItem
+            Grid.Row="1"
+            Grid.ColumnSpan="2"
+            Width="Auto"
+            Label="{DynamicResource Compensate.Flow.Label}">
+            <Grid HorizontalAlignment="Left">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ItemsControl Grid.Column="0" ItemsSource="{Binding CheckFlowItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                            <!--  横向排布  -->
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox
+                                Margin="0,0,50,0"
+                                Content="{Binding DisplayName}"
+                                IsChecked="{Binding IsCompleted, Mode=OneWay}"
+                                IsHitTestVisible="False"
+                                Style="{StaticResource CheckBoxCircleStyle}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button
+                    Grid.Column="1"
+                    Margin="12,0,0,0"
+                    Command="{Binding ExecuteCheckCommand}"
+                    Content="{DynamicResource Compensate.Action.Check}" />
+            </Grid>
+        </kwyui:KwyFormItem>
+
+        <GroupBox
+            Grid.Row="2"
+            Grid.Column="0"
+            Margin="0,0,6,0"
+            Header="{DynamicResource Compensate.Header.StandardSample}">
+            <Grid HorizontalAlignment="Left">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel
+                    Grid.Column="0"
+                    Margin="50,0,50,0"
+                    HorizontalAlignment="Right">
+                    <TextBlock
+                        Margin="0,20,0,20"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="{DynamicResource Compensate.Field.UpperLimit}" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="{DynamicResource Compensate.Field.LowerLimit}" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="{DynamicResource Compensate.Field.TestValue}" />
+                </StackPanel>
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding CheckItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                            <!--  横向排布  -->
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="30,0,50,0">
+                                <TextBlock
+                                    Margin="0,20,0,20"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Text="{Binding DisplayName}" />
+                                <TextBox
+                                    Width="100"
+                                    Margin="0,12,0,12"
+                                    IsReadOnly="True"
+                                    Text="{Binding StandardUpperLimit, Mode=OneWay}" />
+                                <TextBox
+                                    Width="100"
+                                    Margin="0,12,0,12"
+                                    IsReadOnly="True"
+                                    Text="{Binding StandardLowerLimit, Mode=OneWay}" />
+                                <TextBox
+                                    Width="100"
+                                    Margin="0,12,0,12"
+                                    IsReadOnly="True"
+                                    Text="{Binding StandardMeasuredValue, Mode=OneWay}">
+                                    <TextBox.Style>
+                                        <Style BasedOn="{StaticResource {x:Type TextBox}}" TargetType="TextBox">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding StandardMeasuredValueOutOfRange}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource StatusErrorBackgroundBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock
+                    Grid.Column="2"
+                    Margin="50"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    FontSize="40"
+                    FontWeight="Bold"
+                    Text="{Binding CheckFlowItems[0].ResultText}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CheckFlowItems[0].IsResultPassed}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+
+
+        </GroupBox>
+        <GroupBox
+            Grid.Row="2"
+            Grid.Column="1"
+            Margin="6,0,0,0"
+            Header="{DynamicResource Compensate.Header.ConfirmSample}">
+            <Grid HorizontalAlignment="Left">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel
+                    Grid.Column="0"
+                    Margin="50,0,50,0"
+                    HorizontalAlignment="Right">
+                    <TextBlock
+                        Margin="0,20,0,20"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="{DynamicResource Compensate.Field.UpperLimit}" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="{DynamicResource Compensate.Field.LowerLimit}" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="{DynamicResource Compensate.Field.TestValue}" />
+                </StackPanel>
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding CheckItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                            <!--  横向排布  -->
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="30,0,50,0">
+                                <TextBlock
+                                    Margin="0,20,0,20"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Text="{Binding DisplayName}" />
+                                <TextBox
+                                    Width="100"
+                                    Margin="0,12,0,12"
+                                    IsReadOnly="True"
+                                    Text="{Binding ConfirmUpperLimit, Mode=OneWay}" />
+                                <TextBox
+                                    Width="100"
+                                    Margin="0,12,0,12"
+                                    IsReadOnly="True"
+                                    Text="{Binding ConfirmLowerLimit, Mode=OneWay}" />
+                                <TextBox
+                                    Width="100"
+                                    Margin="0,12,0,12"
+                                    IsReadOnly="True"
+                                    Text="{Binding ConfirmMeasuredValue, Mode=OneWay}">
+                                    <TextBox.Style>
+                                        <Style BasedOn="{StaticResource {x:Type TextBox}}" TargetType="TextBox">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ConfirmMeasuredValueOutOfRange}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource StatusErrorBackgroundBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock
+                    Grid.Column="2"
+                    Margin="50"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    FontSize="40"
+                    FontWeight="Bold"
+                    Text="{Binding CheckFlowItems[1].ResultText}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CheckFlowItems[1].IsResultPassed}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+
+        </GroupBox>
+        <GroupBox
+            Grid.Row="3"
+            Grid.Column="0"
+            Margin="0,0,6,0"
+            Header="{DynamicResource Compensate.Header.PolarityForward}"
+            Visibility="{Binding PolarityCheckVisibility}">
+            <Grid HorizontalAlignment="Left">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel
+                    Grid.Column="0"
+                    Margin="70,0,50,0"
+                    HorizontalAlignment="Right">
+                    <TextBlock
+                        Margin="0,20,0,20"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#1" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#2" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#3" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#4" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#5" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#6" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#7" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#8" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#9" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#10" />
+                </StackPanel>
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding PolarityCheckItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="30,0,50,0">
+                                <TextBlock
+                                    Margin="0,20,0,20"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Text="{Binding DisplayName}" />
+                                <ItemsControl ItemsSource="{Binding ForwardZValues}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Vertical" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBox
+                                                Width="100"
+                                                Margin="0,12,0,12"
+                                                IsReadOnly="True"
+                                                Text="{Binding Mode=OneWay}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock
+                    Grid.Column="2"
+                    Margin="50"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    FontSize="40"
+                    FontWeight="Bold"
+                    Text="{Binding PolarityForwardCheckFlow.ResultText}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PolarityForwardCheckFlow.IsResultPassed}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </GroupBox>
+        <GroupBox
+            Grid.Row="3"
+            Grid.Column="1"
+            Margin="6,0,0,0"
+            Header="{DynamicResource Compensate.Header.PolarityReverse}"
+            Visibility="{Binding PolarityCheckVisibility}">
+            <Grid HorizontalAlignment="Left">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel
+                    Grid.Column="0"
+                    Margin="70,0,50,0"
+                    HorizontalAlignment="Right">
+                    <TextBlock
+                        Margin="0,20,0,20"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#1" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#2" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#3" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#4" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#5" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#6" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#7" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#8" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#9" />
+                    <TextBlock
+                        Height="28.4"
+                        Margin="0,12,0,12"
+                        HorizontalAlignment="Right"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Text="#10" />
+                </StackPanel>
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding PolarityCheckItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="30,0,50,0">
+                                <TextBlock
+                                    Margin="0,20,0,20"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Text="{Binding DisplayName}" />
+                                <ItemsControl ItemsSource="{Binding ReverseZValues}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Vertical" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBox
+                                                Width="100"
+                                                Margin="0,12,0,12"
+                                                IsReadOnly="True"
+                                                Text="{Binding Mode=OneWay}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock
+                    Grid.Column="2"
+                    Margin="50"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    FontSize="40"
+                    FontWeight="Bold"
+                    Text="{Binding PolarityReverseCheckFlow.ResultText}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PolarityReverseCheckFlow.IsResultPassed}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </GroupBox>
+    </Grid>
+</UserControl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

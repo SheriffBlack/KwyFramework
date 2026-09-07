@@ -1,0 +1,215 @@
+<UserControl
+    x:Class="KwyTemplate.App.Views.StandardView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
+    xmlns:kwyui="http://schemas.kwy.com/ui"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    kwymvvm:ViewModelLocator.AutoWireViewModel="True"
+    mc:Ignorable="d">
+    <Grid Margin="0,0,0,20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <GroupBox
+            Grid.Column="0"
+            Margin="0,0,6,0"
+            Grid.IsSharedSizeScope="True"
+            Header="{DynamicResource Standard.Header.StandardSample}">
+            <StackPanel DataContext="{Binding StandardSample}">
+                <kwyui:KwyFormItem Label="{DynamicResource Standard.Field.Code}">
+                    <Grid HorizontalAlignment="Left">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            Grid.Column="0"
+                            Width="327"
+                            Text="{Binding SampleCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=5}" />
+                        <Button
+                            Grid.Column="1"
+                            Height="28.4"
+                            Margin="60,0,0,0"
+                            Command="{Binding DataContext.QueryStandardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Content="{DynamicResource Standard.Action.Query}" />
+                    </Grid>
+                </kwyui:KwyFormItem>
+                <kwyui:KwyFormItem Label="{DynamicResource Standard.Field.ValidPeriod}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox
+                            Width="235"
+                            IsReadOnly="True"
+                            Text="{Binding IssueDate}" />
+                        <TextBlock
+                            Margin="25,0"
+                            VerticalAlignment="Center"
+                            Text="~" />
+                        <TextBox
+                            Width="235"
+                            IsReadOnly="True"
+                            Text="{Binding ExpireDate}" />
+                    </StackPanel>
+                </kwyui:KwyFormItem>
+                <ItemsControl HorizontalAlignment="Left" ItemsSource="{Binding LimitItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <kwyui:KwyFormItem Label="{Binding LimitTitle}">
+                                <Grid Margin="0,0,0,4" HorizontalAlignment="Left">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="72" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="72" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox
+                                        Grid.Column="0"
+                                        IsReadOnly="{Binding DataContext.AreLimitTextBoxesReadOnly, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Text="{Binding LowerLimit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Text="~" />
+                                    <TextBox
+                                        Grid.Column="2"
+                                        IsReadOnly="{Binding DataContext.AreLimitTextBoxesReadOnly, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Text="{Binding UpperLimit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding Unit}" />
+                                    <TextBlock
+                                        Grid.Column="4"
+                                        Margin="26,0,8,0"
+                                        VerticalAlignment="Center"
+                                        Text="{DynamicResource Standard.Field.StandardValue}" />
+                                    <TextBox
+                                        Grid.Column="5"
+                                        VerticalAlignment="Center"
+                                        IsReadOnly="{Binding DataContext.AreLimitTextBoxesReadOnly, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Text="{Binding StandardValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock
+                                        Grid.Column="6"
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding Unit}" />
+                                </Grid>
+                            </kwyui:KwyFormItem>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock
+                    Margin="8,4,0,0"
+                    Foreground="Gray"
+                    Text="{Binding StatusMessage}" />
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox
+            Grid.Column="1"
+            Margin="6,0,0,0"
+            Grid.IsSharedSizeScope="True"
+            Header="{DynamicResource Standard.Header.ConfirmSample}">
+            <StackPanel DataContext="{Binding ConfirmSample}">
+                <kwyui:KwyFormItem Label="{DynamicResource Standard.Field.Code}">
+                    <Grid HorizontalAlignment="Left">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox
+                            Grid.Column="0"
+                            Width="327"
+                            Text="{Binding SampleCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=5}" />
+                        <Button
+                            Grid.Column="1"
+                            Height="28.4"
+                            Margin="60,0,0,0"
+                            Command="{Binding DataContext.QueryConfirmCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Content="{DynamicResource Standard.Action.Query}" />
+                    </Grid>
+                </kwyui:KwyFormItem>
+                <kwyui:KwyFormItem Label="{DynamicResource Standard.Field.ValidPeriod}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox
+                            Width="235"
+                            IsReadOnly="True"
+                            Text="{Binding IssueDate}" />
+                        <TextBlock
+                            Margin="25,0"
+                            VerticalAlignment="Center"
+                            Text="~" />
+                        <TextBox
+                            Width="235"
+                            IsReadOnly="True"
+                            Text="{Binding ExpireDate}" />
+                    </StackPanel>
+                </kwyui:KwyFormItem>
+                <ItemsControl HorizontalAlignment="Left" ItemsSource="{Binding LimitItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <kwyui:KwyFormItem Label="{Binding LimitTitle}">
+                                <Grid Margin="0,0,0,4" HorizontalAlignment="Left">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="72" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="72" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox
+                                        Grid.Column="0"
+                                        IsReadOnly="{Binding DataContext.AreLimitTextBoxesReadOnly, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Text="{Binding LowerLimit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Text="~" />
+                                    <TextBox
+                                        Grid.Column="2"
+                                        IsReadOnly="{Binding DataContext.AreLimitTextBoxesReadOnly, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Text="{Binding UpperLimit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding Unit}" />
+                                    <TextBlock
+                                        Grid.Column="4"
+                                        Margin="26,0,8,0"
+                                        VerticalAlignment="Center"
+                                        Text="{DynamicResource Standard.Field.StandardValue}" />
+                                    <TextBox
+                                        Grid.Column="5"
+                                        VerticalAlignment="Center"
+                                        IsReadOnly="{Binding DataContext.AreLimitTextBoxesReadOnly, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Text="{Binding StandardValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock
+                                        Grid.Column="6"
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding Unit}" />
+                                </Grid>
+                            </kwyui:KwyFormItem>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock
+                    Margin="8,4,0,0"
+                    Foreground="Gray"
+                    Text="{Binding StatusMessage}" />
+            </StackPanel>
+        </GroupBox>
+    </Grid>
+</UserControl>
