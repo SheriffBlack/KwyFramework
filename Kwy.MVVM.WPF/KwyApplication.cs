@@ -196,7 +196,7 @@ public abstract class KwyApplication : Application
 
     /// <summary>
     /// 配置模块目录。子类可重载以在此处手动使用 AddModule() 登记各类需加载的外部模块。
-    /// 比如：moduleCatalog.AddModule<SettingsModule>();
+    /// 比如：<c>moduleCatalog.AddModule&lt;SettingsModule&gt;();</c>
     /// </summary>
     protected virtual void ConfigureModuleCatalog(Modularity.IModuleCatalog moduleCatalog)
     {

@@ -1,4 +1,16 @@
 <Solution>
+  <Folder Name="/KwyTemplate/">
+    <Project Path="KwyTemplate.App/KwyTemplate.App.csproj" Id="6c2128f6-47c3-4ea3-8957-f7279c5a8179" />
+    <Project Path="KwyTemplate.Contracts/KwyTemplate.Contracts.csproj" Id="11dc8409-0ef1-4531-9cd9-8275cd01b217" />
+    <Project Path="KwyTemplate.Device/KwyTemplate.Device.csproj" Id="da527744-348b-47b7-9fc3-bb9d377f8644" />
+    <Project Path="KwyTemplate.Flow/KwyTemplate.Flow.csproj" Id="bef960d7-2aa4-4cb5-bf9a-7df2cb83415d" />
+    <Project Path="KwyTemplate.MES.Abstract/KwyTemplate.MES.Abstract.csproj" Id="84950b9f-12ae-4ed1-96f3-e1ba64375d0e" />
+    <Project Path="KwyTemplate.MES.Cyntec/KwyTemplate.MES.Cyntec.csproj" Id="9f43a11c-a94c-4636-bce3-913332d8d7eb" />
+    <Project Path="KwyTemplate.Security.SuperDog/KwyTemplate.Security.SuperDog.csproj" />
+    <Project Path="KwyTemplate.Security/KwyTemplate.Security.csproj" Id="23b46b31-e57f-4153-89f0-e052f93e6bf7" />
+    <Project Path="KwyTemplate.Shell/KwyTemplate.Shell.csproj" />
+    <Project Path="KwyTemplate.Tests/KwyTemplate.Tests.csproj" />
+  </Folder>
   <Folder Name="/Tools/">
     <Project Path="Kwy.Packaging/Kwy.Packaging.csproj" />
   </Folder>

@@ -1,5 +1,8 @@
 # Kwy.MVVM
 
+[![NuGet](https://img.shields.io/nuget/v/Kwy.MVVM.svg)](https://www.nuget.org/packages/Kwy.MVVM)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE-MVVM.md)
+
 `Kwy.MVVM` 是 Kwy 系列的 UI 无关 MVVM 核心库。它只提供命令、通知、导航参数、全局消息总线、依赖注入入口和权限抽象，不引用 WPF、WinUI、MAUI 等具体 UI 平台。
 
 平台相关能力放在对应平台项目中，例如：
@@ -358,3 +361,9 @@ if (!result.Succeeded)
 - `.NET 8.0+`
 - `Microsoft.Extensions.DependencyInjection`
 - `CommunityToolkit.Mvvm`
+
+## 版本与许可证
+
+当前公共 API 仍处于 `0.x` 阶段，可能在次要版本中调整。生产项目建议锁定具体包版本。
+
+本项目由 Kwy 发布，Copyright © 2026 Kwy，基于 [MIT License](../LICENSE-MVVM.md) 开源。

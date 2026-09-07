@@ -52,7 +52,13 @@ function Get-RelativePath([string]$path) {
 }
 
 function Read-ProjectXml([string]$path) {
-    [xml](Get-Content -LiteralPath $path -Raw)
+    try {
+        return [xml](Get-Content -LiteralPath $path -Raw)
+    }
+    catch {
+        Write-Warning "Skipping project with invalid XML: $(Get-RelativePath $path)"
+        return $null
+    }
 }
 
 function Test-IsExplicitFalse($value) {
@@ -69,14 +75,15 @@ function Test-IsPackableProject([System.IO.FileInfo]$projectFile) {
     if ($name -eq "KwyAppDemo") { return $false }
 
     $xml = Read-ProjectXml $projectFile.FullName
+    if ($null -eq $xml) { return $false }
     $isPackable = @($xml.Project.PropertyGroup | ForEach-Object { $_.IsPackable } | Where-Object { $_ }) | Select-Object -First 1
-    if (Test-IsExplicitFalse $isPackable) { return $false }
-    return $true
+    return $isPackable -and $isPackable.ToString().Equals("true", [StringComparison]::OrdinalIgnoreCase)
 }
 
 function Get-ProjectReferences([string]$projectPath) {
     $projectDir = Split-Path -Parent $projectPath
     $xml = Read-ProjectXml $projectPath
+    if ($null -eq $xml) { return @() }
     $refs = New-Object System.Collections.Generic.List[string]
     foreach ($itemGroup in @($xml.Project.ItemGroup)) {
         foreach ($ref in @($itemGroup.ProjectReference)) {
@@ -241,9 +248,12 @@ if ($DryRun) {
 New-Item -ItemType Directory -Force -Path $outputFullPath | Out-Null
 
 if (-not $NoBuild) {
-    Write-Step "Building solution ($Configuration)"
-    dotnet build $slnPath -c $Configuration -m:1 -p:RunKwyPackaging=false -p:GeneratePackageOnBuild=false -p:NuGetAudit=false "-p:NoWarn=NU1900%3BNU5128" @debugPackageProperties -v $DotNetVerbosity
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Step "Building selected package projects ($Configuration)"
+    foreach ($projectPath in $orderedProjects) {
+        Write-Host "Building $(Get-RelativePath $projectPath)..." -ForegroundColor Cyan
+        dotnet build $projectPath -c $Configuration -p:RunKwyPackaging=false -p:GeneratePackageOnBuild=false -p:NuGetAudit=false "-p:NoWarn=NU1900%3BNU5128" @debugPackageProperties -v $DotNetVerbosity
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
 }
 
 Write-Step "Packing NuGet packages"

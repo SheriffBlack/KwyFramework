@@ -1,5 +1,8 @@
 # Kwy.MVVM.WPF
 
+[![NuGet](https://img.shields.io/nuget/v/Kwy.MVVM.WPF.svg)](https://www.nuget.org/packages/Kwy.MVVM.WPF)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE-MVVM.md)
+
 `Kwy.MVVM.WPF` 是 Kwy MVVM 在 WPF 平台上的实现层。它负责把 `Kwy.MVVM` 的核心抽象接入 WPF 的依赖属性、视觉树、窗口、Region 和应用启动流程。
 
 核心原则：
@@ -109,3 +112,9 @@ PermissionsChanged?.Invoke(this, new PermissionChangedEventArgs());
 - `Kwy.MVVM`
 - `Microsoft.Extensions.DependencyInjection`
 - `.NET 8.0-windows+`
+
+## 版本与许可证
+
+当前公共 API 仍处于 `0.x` 阶段，可能在次要版本中调整。生产项目建议锁定具体包版本。
+
+本项目由 Kwy 发布，Copyright © 2026 Kwy，基于 [MIT License](../LICENSE-MVVM.md) 开源。

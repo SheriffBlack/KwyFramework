@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\eng\Kwy.UI.WPF.Version.props" />
+
   <PropertyGroup>
     <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <Nullable>enable</Nullable>

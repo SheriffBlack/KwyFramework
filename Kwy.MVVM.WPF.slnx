@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Tests/">
+    <Project Path="Kwy.MVVM.Tests/Kwy.MVVM.Tests.csproj" />
+    <Project Path="Kwy.MVVM.WPF.Tests/Kwy.MVVM.WPF.Tests.csproj" />
+  </Folder>
+  <Project Path="Kwy.MVVM/Kwy.MVVM.csproj" />
+  <Project Path="Kwy.MVVM.WPF/Kwy.MVVM.WPF.csproj" />
+</Solution>

@@ -1,10 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\eng\Kwy.UI.WPF.Version.props" />
+
   <PropertyGroup>
     <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

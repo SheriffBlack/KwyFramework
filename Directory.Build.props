@@ -12,6 +12,9 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- Packages are private by default. Public NuGet packages must opt in explicitly. -->
+    <IsPackable Condition="'$(IsPackable)' == ''">false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)README.md')">

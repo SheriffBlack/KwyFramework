@@ -1,14 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\eng\Kwy.MVVM.Version.props" />
+
   <PropertyGroup>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackageId>Kwy.MVVM</PackageId>
+    <Title>Kwy MVVM</Title>
+    <Authors>Kwy</Authors>
+    <Company>Kwy</Company>
+    <Copyright>Copyright © 2026 Kwy</Copyright>
+    <Description>Lightweight, UI-independent MVVM infrastructure for .NET, including commands, messaging, modularity, navigation, dialogs, and authorization abstractions.</Description>
+    <PackageTags>mvvm;dotnet;messaging;navigation;modularity;dependency-injection</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/SheriffBlack/KwyFramework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SheriffBlack/KwyFramework.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="..\README.md" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE-MVVM.md" Pack="true" PackagePath="\" Link="LICENSE-MVVM.md" />
   </ItemGroup>
 
 </Project>

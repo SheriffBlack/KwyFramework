@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Kwy.UI/Kwy.UI.csproj" />
+  <Project Path="Kwy.UI.WPF/Kwy.UI.WPF.csproj" />
+</Solution>

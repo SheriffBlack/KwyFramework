@@ -19,7 +19,7 @@ public class DialogParameters : ParametersBase, IDialogParameters
     }
 
     /// <summary>
-    /// 通过查询字符串初始化参数 (如: "message=hello&icon=Warning")
+    /// 通过查询字符串初始化参数（如 <c>message=hello&amp;icon=Warning</c>）。
     /// </summary>
     public DialogParameters(string query) : base(query) { }
 }
