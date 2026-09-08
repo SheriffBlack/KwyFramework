@@ -9,6 +9,7 @@ namespace Kwy.UI.WPF.Controls.Helpers;
 /// 而无需继承或额外封装控件。
 ///
 /// 用法：
+/// <code><![CDATA[
 ///   <!-- 最简单：为原生 ToggleButton 套上开关外观 -->
 ///   <ToggleButton IsChecked="{Binding EnableOVC}"
 ///                 helpers:ToggleSwitchHelper.IsSwitch="True" />
@@ -23,6 +24,7 @@ namespace Kwy.UI.WPF.Controls.Helpers;
 ///   <ToggleButton IsChecked="{Binding EnableOVC}"
 ///                 helpers:ToggleSwitchHelper.StyleKey="ToggleButtonSwitchBottomContentStyle"
 ///                 Content="OVC" />
+/// ]]></code>
 /// </summary>
 public static class ToggleSwitchHelper
 {

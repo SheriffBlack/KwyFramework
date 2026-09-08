@@ -3,7 +3,7 @@ using System.Windows.Data;
 
 namespace Kwy.UI.WPF.Converters;
 
-public class EnumToBoolConverter : IValueConverter
+public sealed class EnumToBoolConverter : IValueConverter
 {
     // 将枚举值转换为 bool（是否与参数匹配）
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -26,8 +26,18 @@ public class EnumToBoolConverter : IValueConverter
     // 将 bool 转换为枚举值（选中时返回参数，未选中时不处理）
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value == null || parameter == null)
+        if (value is not bool isChecked || parameter == null)
             return Binding.DoNothing;
-        return (bool)value ? parameter : Binding.DoNothing;
+        if (!isChecked)
+            return Binding.DoNothing;
+
+        if (targetType.IsEnum && parameter is string enumName)
+        {
+            return Enum.TryParse(targetType, enumName, true, out object? parsed)
+                ? parsed
+                : Binding.DoNothing;
+        }
+
+        return targetType.IsInstanceOfType(parameter) ? parameter : Binding.DoNothing;
     }
 }

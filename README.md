@@ -283,4 +283,16 @@ Kwy 正在持续开发中。
 
 ## 许可证
 
-许可证信息后续补充。
+Kwy 采用按项目分范围授权的方式。
+
+目前，以下 MVVM 项目由 Kwy 发布，并基于 [MIT License](LICENSE-MVVM.md) 开源：
+
+- `Kwy.MVVM`
+- `Kwy.MVVM.WPF`
+- `Kwy.MVVM.Tests`
+- `Kwy.MVVM.WPF.Tests`
+- `Kwy.MVVM.WPF.slnx`
+
+Copyright © 2026 Kwy。
+
+除非对应项目或目录中另有明确的许可证声明，仓库中的其他项目和文件暂不因上述 MIT 授权而获得使用、修改或再分发许可。

@@ -8,6 +8,17 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>true</IsPackable>
+    <PackageId>Kwy.UI.WPF</PackageId>
+    <Title>Kwy UI for WPF</Title>
+    <Description>Lightweight WPF controls, styles, themes, behaviors, converters, and platform services.</Description>
+    <PackageTags>kwy;wpf;ui;controls;themes;behaviors</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/SheriffBlack/KwyFramework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SheriffBlack/KwyFramework.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Copyright>Copyright © 2026 Kwy</Copyright>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

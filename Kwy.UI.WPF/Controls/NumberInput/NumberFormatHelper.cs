@@ -1,5 +1,3 @@
-using Kwy.UI.WPF.Behaviors;
-using Kwy.UI.WPF.Converters;
 using Microsoft.Xaml.Behaviors;
 using System.Globalization;
 using System.Text;
@@ -7,7 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 
-namespace Kwy.UI.WPF.Controls.Helpers;
+namespace Kwy.UI.WPF.Controls.NumberInput;
 
 /*
  <TextBlock

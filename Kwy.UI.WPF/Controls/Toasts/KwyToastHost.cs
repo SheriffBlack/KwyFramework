@@ -11,6 +11,7 @@ public class KwyToastHost : ItemsControl
 {
     private static readonly object SyncRoot = new();
     private static readonly List<WeakReference<KwyToastHost>> Hosts = new();
+    private readonly Dictionary<KwyToast, CancellationTokenSource> pendingRemovals = new();
 
     public static event EventHandler<KwyToastHost>? Registered;
 
@@ -19,6 +20,7 @@ public class KwyToastHost : ItemsControl
     public KwyToastHost()
     {
         DefaultStyleKey = typeof(KwyToastHost);
+        Loaded += OnHostLoaded;
         Unloaded += OnHostUnloaded;
     }
 
@@ -82,7 +84,7 @@ public class KwyToastHost : ItemsControl
 
         Items.Add(toast);
         TrimOverflow();
-        _ = RemoveAfterDelayAsync(toast, duration ?? Duration);
+        ScheduleRemoval(toast, duration ?? Duration);
     }
 
     public void Clear()
@@ -93,6 +95,7 @@ public class KwyToastHost : ItemsControl
             return;
         }
 
+        CancelPendingRemovals();
         Items.Clear();
     }
 
@@ -102,9 +105,8 @@ public class KwyToastHost : ItemsControl
     protected override DependencyObject GetContainerForItemOverride()
         => new KwyToast();
 
-    protected override void OnInitialized(EventArgs e)
+    private void OnHostLoaded(object sender, RoutedEventArgs e)
     {
-        base.OnInitialized(e);
         AddRegisteredHost(this);
         Registered?.Invoke(this, this);
     }
@@ -143,15 +145,29 @@ public class KwyToastHost : ItemsControl
         }
     }
 
-    private async Task RemoveAfterDelayAsync(KwyToast toast, TimeSpan duration)
+    private void ScheduleRemoval(KwyToast toast, TimeSpan duration)
     {
         if (duration <= TimeSpan.Zero)
         {
             return;
         }
 
-        await Task.Delay(duration).ConfigureAwait(false);
-        await Dispatcher.InvokeAsync(() => Remove(toast));
+        var cancellation = new CancellationTokenSource();
+        pendingRemovals[toast] = cancellation;
+        _ = RemoveAfterDelayAsync(toast, duration, cancellation.Token);
+    }
+
+    private async Task RemoveAfterDelayAsync(KwyToast toast, TimeSpan duration, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(duration, cancellationToken).ConfigureAwait(false);
+            await Dispatcher.InvokeAsync(() => Remove(toast), System.Windows.Threading.DispatcherPriority.Normal, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // The toast was cleared or the host left the visual tree.
+        }
     }
 
     private void Remove(KwyToast toast)
@@ -160,12 +176,29 @@ public class KwyToastHost : ItemsControl
         {
             Items.Remove(toast);
         }
+
+        if (pendingRemovals.Remove(toast, out CancellationTokenSource? cancellation))
+        {
+            cancellation.Dispose();
+        }
     }
 
     private void OnHostUnloaded(object sender, RoutedEventArgs e)
     {
+        CancelPendingRemovals();
         RemoveRegisteredHost(this);
         Unregistered?.Invoke(this, this);
+    }
+
+    private void CancelPendingRemovals()
+    {
+        foreach (CancellationTokenSource cancellation in pendingRemovals.Values)
+        {
+            cancellation.Cancel();
+            cancellation.Dispose();
+        }
+
+        pendingRemovals.Clear();
     }
 
     private static void AddRegisteredHost(KwyToastHost host)

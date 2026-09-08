@@ -220,7 +220,7 @@ public static class DataGridColumnsHelper
         if (!string.Equals(descriptor.ParameterId, nameof(DisplayRowItem.RowName), StringComparison.OrdinalIgnoreCase)
             && !string.IsNullOrWhiteSpace(descriptor.ParameterId))
         {
-            Style cellStyle = CreateDynamicCellStyle(dataGrid, descriptor.ParameterId);
+            Style cellStyle = CreateDynamicCellStyle(dataGrid);
             cellStyle.Seal();
             column.CellStyle = cellStyle;
         }
@@ -248,17 +248,11 @@ public static class DataGridColumnsHelper
 
         return column;
     }
-    private static Style CreateDynamicCellStyle(DataGrid dataGrid, string parameterId)
+    private static Style CreateDynamicCellStyle(DataGrid dataGrid)
     {
         var cellStyle = new Style(typeof(DataGridCell), ResolveBaseCellStyle(dataGrid));
         cellStyle.Setters.Add(new Setter(DataGridCell.BorderBrushProperty, System.Windows.Media.Brushes.Transparent));
         cellStyle.Setters.Add(new Setter(DataGridCell.BorderThicknessProperty, new Thickness(0)));
-        cellStyle.Setters.Add(new Setter(
-            DataGridCell.BackgroundProperty,
-            new Binding($"Item[{parameterId}].Judge")
-            {
-                Converter = Kwy.UI.WPF.Converters.JudgeToBrushConverter.Instance
-            }));
         return cellStyle;
     }
 

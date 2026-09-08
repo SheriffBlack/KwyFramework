@@ -1,6 +1,6 @@
 ﻿namespace Kwy.UI;
 
-public class IconNames
+public static class IconNames
 {
     // Segoe Fluent
     public const string IconCamera = "IconCamera";

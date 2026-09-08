@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -12,7 +11,6 @@ namespace Kwy.UI.WPF.Converters;
 /// </summary>
 public class IconKeyToResourceConverter : MarkupExtension, IValueConverter
 {
-    private static readonly ConcurrentDictionary<string, object> resourceCache = new();
     private static IconKeyToResourceConverter? instance;
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -22,17 +20,11 @@ public class IconKeyToResourceConverter : MarkupExtension, IValueConverter
             return null;
         }
 
-        if (resourceCache.TryGetValue(iconKey, out var cachedResource))
-        {
-            return cachedResource;
-        }
-
         try
         {
             var resource = Application.Current?.TryFindResource(iconKey);
             if (resource != null)
             {
-                resourceCache.TryAdd(iconKey, resource);
                 return resource;
             }
         }
@@ -46,7 +38,7 @@ public class IconKeyToResourceConverter : MarkupExtension, IValueConverter
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return Binding.DoNothing;
     }
 
     public override object ProvideValue(IServiceProvider serviceProvider)

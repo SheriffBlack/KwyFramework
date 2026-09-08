@@ -11,6 +11,7 @@ namespace Kwy.UI.WPF.Controls.Helpers;
 /// 提供自动滚动、交替行色、自定义样式等能力，无需继承 ListBox。
 ///
 /// 用法：
+/// <code><![CDATA[
 ///   <!-- 最基础：交替行 + 主题 ItemContainerStyle -->
 ///   <ListBox ItemsSource="{Binding Logs}"
 ///            helpers:ListBoxHelper.UseTheme="True"
@@ -33,6 +34,7 @@ namespace Kwy.UI.WPF.Controls.Helpers;
 ///           </ListBox.ItemTemplate>
 ///       </ListBox>
 ///   </controls:KwyFormItem>
+/// ]]></code>
 /// </summary>
 public static class ListBoxHelper
 {

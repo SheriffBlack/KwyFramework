@@ -6,7 +6,7 @@ using Kwy.MVVM.Regions;
 using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Controls.Helpers;
 using Kwy.UI.WPF.Components.Dialogs;
-using Kwy.UI.WPF.Services.FileDialogs;
+using Kwy.UI.Services.FileDialogs;
 using Kwy.MVVM.Messaging;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.App.Messages;

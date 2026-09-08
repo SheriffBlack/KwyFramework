@@ -7,20 +7,20 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Markup;
 
-namespace Kwy.UI.WPF.Converters;
+namespace Kwy.UI.WPF.Internal.Converters;
 
 /// <summary>
 /// ComboBox 图标转换器
 /// 优先从 SelectedItem 获取图标，如果没有则使用 ComboBox 自身的图标
 /// </summary>
-public class ComboBoxIconConverter : MarkupExtension, IMultiValueConverter
+public sealed class ComboBoxIconConverter : MarkupExtension, IMultiValueConverter
 {
     private static ComboBoxIconConverter? instance;
-    private static readonly ConcurrentDictionary<Type, PropertyInfo?> propertyCache = new();
+    private static readonly ConcurrentDictionary<(Type Type, string Path), PropertyInfo?> propertyCache = new();
 
     public object? Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
-        if (values == null || values.Length < 3)
+        if (values == null || values.Length < 4)
         {
             return null;
         }
@@ -57,12 +57,14 @@ public class ComboBoxIconConverter : MarkupExtension, IMultiValueConverter
                 }
             }
 
-            // 如果找不到容器（容器可能还没生成），尝试从数据对象直接获取 Icon 属性
-            if (selectedItem != null && !(selectedItem is ComboBoxItem))
+            if (selectedItem is not ComboBoxItem
+                && values[3] is string iconMemberPath
+                && !string.IsNullOrWhiteSpace(iconMemberPath))
             {
-                // 🌟 性能优化：通过缓存获取 Icon 属性
                 var type = selectedItem.GetType();
-                var iconProperty = propertyCache.GetOrAdd(type, t => t.GetProperty("Icon"));
+                var iconProperty = propertyCache.GetOrAdd(
+                    (type, iconMemberPath),
+                    key => key.Type.GetProperty(key.Path));
 
                 if (iconProperty != null)
                 {
@@ -102,7 +104,7 @@ public class ComboBoxIconConverter : MarkupExtension, IMultiValueConverter
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return targetTypes.Select(static _ => Binding.DoNothing).ToArray();
     }
 
     public override object ProvideValue(IServiceProvider serviceProvider)

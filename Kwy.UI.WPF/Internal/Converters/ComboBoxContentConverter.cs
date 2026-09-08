@@ -6,13 +6,13 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Markup;
 
-namespace Kwy.UI.WPF.Converters;
+namespace Kwy.UI.WPF.Internal.Converters;
 
 /// <summary>
 /// ComboBox 内容转换器
 /// 从 SelectedItem 获取对应的 ComboBoxItem 的 Content
 /// </summary>
-public class ComboBoxContentConverter : MarkupExtension, IMultiValueConverter
+public sealed class ComboBoxContentConverter : MarkupExtension, IMultiValueConverter
 {
     private static ComboBoxContentConverter? instance;
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> propertyCache = new();
@@ -26,7 +26,7 @@ public class ComboBoxContentConverter : MarkupExtension, IMultiValueConverter
 
     public object? Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
-        if (values == null || values.Length < 2)
+        if (values == null || values.Length < 3)
         {
             return null;
         }
@@ -65,27 +65,17 @@ public class ComboBoxContentConverter : MarkupExtension, IMultiValueConverter
             return container.Content;
         }
 
-        // 如果找不到容器（容器可能还没生成），尝试从数据对象直接获取 Language 属性
-        if (selectedItem != null)
+        if (values[2] is string displayMemberPath && !string.IsNullOrWhiteSpace(displayMemberPath))
         {
-            // 尝试获取 Language 属性
-            var languageValue = GetCachedPropertyValue(selectedItem, "Language");
-            if (languageValue != null) return languageValue;
-
-            // 尝试获取 Content 属性
-            var contentValue = GetCachedPropertyValue(selectedItem, "Content");
-            if (contentValue != null) return contentValue;
-
-            // 最后尝试 ToString()
-            return selectedItem.ToString();
+            return GetCachedPropertyValue(selectedItem, displayMemberPath);
         }
 
-        return null;
+        return selectedItem.ToString();
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return targetTypes.Select(static _ => Binding.DoNothing).ToArray();
     }
 
     public override object ProvideValue(IServiceProvider serviceProvider)

@@ -1,14 +1,14 @@
 ﻿using Microsoft.Xaml.Behaviors;
 using System.Windows.Controls;
 using System.Windows.Input;
-using static Kwy.UI.WPF.Controls.Helpers.NumberFormatHelper;
+using static Kwy.UI.WPF.Controls.NumberInput.NumberFormatHelper;
 
-namespace Kwy.UI.WPF.Behaviors;
+namespace Kwy.UI.WPF.Controls.NumberInput;
 
 /// <summary>
 /// TextBox Text 数字格式化行为 1000000 -> 1,000,000 / 1_000_000
 /// </summary>
-public class NumericFormatBehavior : Behavior<TextBox>
+internal sealed class NumericFormatBehavior : Behavior<TextBox>
 {
     public INumberFormatService? FormatService { get; set; }
 

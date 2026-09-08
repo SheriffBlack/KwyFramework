@@ -8,7 +8,7 @@ namespace Kwy.UI.WPF.Converters;
 /// 参考 MahApps 的实现：使用 bool 控制 RowDefinition/GridLength。
 /// true -> TrueLength；false -> FalseLength（默认 0）。
 /// </summary>
-public class BooleanToGridLengthConverter : IValueConverter
+public sealed class BooleanToGridLengthConverter : IValueConverter
 {
     public GridLength TrueLength { get; set; } = new GridLength(2);
     public GridLength FalseLength { get; set; } = new GridLength(0);

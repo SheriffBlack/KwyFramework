@@ -1,4 +1,4 @@
-namespace Kwy.UI.WPF.Services.FileDialogs;
+namespace Kwy.UI.Services.FileDialogs;
 
 /// <summary>
 /// Provides WPF file and folder dialog operations.

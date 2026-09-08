@@ -190,19 +190,6 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(null));
 
-    public new object? Icon
-    {
-        get => GetValue(IconProperty);
-        set => SetValue(IconProperty, value);
-    }
-
-    public new static readonly DependencyProperty IconProperty =
-        DependencyProperty.Register(
-            nameof(Icon),
-            typeof(object),
-            typeof(KwyWindow),
-            new FrameworkPropertyMetadata(null));
-
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);

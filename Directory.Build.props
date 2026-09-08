@@ -3,8 +3,6 @@
     <Authors>Kwy</Authors>
     <Company>Kwy</Company>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <NuGetAudit>false</NuGetAudit>
-    <NoWarn>$(NoWarn);NU1900;NU5128</NoWarn>
 
     <!-- NuGet debug support: generate portable PDB and .snupkg symbol packages. -->
     <DebugType>portable</DebugType>

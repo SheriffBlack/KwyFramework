@@ -7,7 +7,7 @@ namespace Kwy.UI.WPF.Converters;
 /// 字符串相等性转换器
 /// 用于将SelectedView与导航项的ViewName进行比较
 /// </summary>
-public class StringEqualityConverter : IMultiValueConverter
+public sealed class StringEqualityConverter : IMultiValueConverter
 {
     public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
@@ -33,12 +33,6 @@ public class StringEqualityConverter : IMultiValueConverter
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
     {
-        // 🌟 完善回写逻辑：如果按钮被选中 (true)，则将参数 (标识值) 发送回第一个绑定源 (ViewModel)
-        if (value is bool isChecked && isChecked)
-        {
-            return new object[] { parameter, Binding.DoNothing };
-        }
-        
-        return new object[] { Binding.DoNothing, Binding.DoNothing };
+        return targetTypes.Select(static _ => Binding.DoNothing).ToArray();
     }
 }

@@ -51,7 +51,7 @@ public class KwyKeyboardHelper
     /// <summary>
     /// 检查键盘大小写状态
     /// </summary>
-    /// <param name="nVirtKey"></param>
+    /// <param name="pbKeyState">Receives the state of all virtual keys.</param>
     /// <returns></returns>
     [DllImport("user32.dll", EntryPoint = "GetKeyboardState")]
     internal static extern int GetKeyboardState(byte[] pbKeyState);

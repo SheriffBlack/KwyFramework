@@ -6,6 +6,13 @@ using System.Windows.Input;
 
 namespace Kwy.UI.WPF.Controls;
 
+public enum KeyboardLayout
+{
+    Qwerty,
+    Azerty,
+    Qwertz
+}
+
 [TemplatePart(Name = "PART_KeysRoot", Type = typeof(Grid))]
 public class KwyKeyboard : Control
 {
@@ -160,15 +167,6 @@ public class KwyKeyboard : Control
         DependencyProperty.Register("CornerRadius", typeof(CornerRadius), typeof(KwyKeyboard));
 
     /// <summary>
-    /// 获取或设置键盘控件的内边距
-    /// </summary>
-    public new Thickness Padding
-    {
-        get { return (Thickness)GetValue(PaddingProperty); }
-        set { SetValue(PaddingProperty, value); }
-    }
-
-    /// <summary>
     /// 获取或设置是否开启大写锁定
     /// </summary>
     public bool IsCapsLock
@@ -210,38 +208,24 @@ public class KwyKeyboard : Control
             new PropertyMetadata(null, OnTargetInputChanged));
 
     /// <summary>
-    /// 获取或设置绑定的输入控件类型
-    /// <para>支持的值：TextBox、PasswordBox、RichTextBox</para>
-    /// </summary>
-    public string TargetInputType
-    {
-        get { return (string)GetValue(TargetInputTypeProperty); }
-        set { SetValue(TargetInputTypeProperty, value); }
-    }
-
-    /// <summary>
-    /// 标识 TargetInputType 依赖属性
-    /// </summary>
-    public static readonly DependencyProperty TargetInputTypeProperty =
-        DependencyProperty.Register("TargetInputType", typeof(string), typeof(KwyKeyboard),
-            new PropertyMetadata("TextBox", OnTargetInputTypeChanged));
-
-    /// <summary>
     /// 获取或设置键盘布局类型
     /// <para>支持的值：QWERTY、AZERTY、QWERTZ</para>
     /// </summary>
-    public string KeyboardLayoutType
+    public KeyboardLayout KeyboardLayout
     {
-        get { return (string)GetValue(KeyboardLayoutTypeProperty); }
-        set { SetValue(KeyboardLayoutTypeProperty, value); }
+        get => (KeyboardLayout)GetValue(KeyboardLayoutProperty);
+        set => SetValue(KeyboardLayoutProperty, value);
     }
 
     /// <summary>
-    /// 标识 KeyboardLayoutType 依赖属性
+    /// 标识 KeyboardLayout 依赖属性
     /// </summary>
-    public static readonly DependencyProperty KeyboardLayoutTypeProperty =
-        DependencyProperty.Register("KeyboardLayoutType", typeof(string), typeof(KwyKeyboard),
-            new PropertyMetadata("QWERTY", OnKeyboardLayoutTypeChanged));
+    public static readonly DependencyProperty KeyboardLayoutProperty =
+        DependencyProperty.Register(
+            nameof(KeyboardLayout),
+            typeof(KeyboardLayout),
+            typeof(KwyKeyboard),
+            new PropertyMetadata(KeyboardLayout.Qwerty, OnKeyboardLayoutChanged));
 
     /// <summary>
     /// TargetInput 属性变化时的回调函数
@@ -252,17 +236,9 @@ public class KwyKeyboard : Control
     }
 
     /// <summary>
-    /// TargetInputType 属性变化时的回调函数
+    /// KeyboardLayout 属性变化时的回调函数
     /// </summary>
-    private static void OnTargetInputTypeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        // 可以在这里添加输入控件类型变化时的处理逻辑
-    }
-
-    /// <summary>
-    /// KeyboardLayoutType 属性变化时的回调函数
-    /// </summary>
-    private static void OnKeyboardLayoutTypeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnKeyboardLayoutChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         // 可以在这里添加键盘布局变化时的处理逻辑
         // 例如：重新加载键盘布局、更新按键位置等
@@ -339,7 +315,6 @@ public class KwyKeyboard : Control
                 focusedElement is RichTextBox)
             {
                 TargetInput = focusedElement;
-                TargetInputType = focusedElement.GetType().Name;
             }
         }
     }

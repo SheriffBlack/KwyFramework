@@ -1,7 +1,7 @@
 ﻿<ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:convert="clr-namespace:Kwy.UI.WPF.Converters"
+    xmlns:internalConverters="clr-namespace:Kwy.UI.WPF.Internal.Converters"
     xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers"
     xmlns:system="clr-namespace:System;assembly=netstandard">
 
@@ -13,8 +13,8 @@
     </ResourceDictionary.MergedDictionaries>
 
     <!--  转换器资源  -->
-    <convert:ComboBoxIconConverter x:Key="ComboBoxIconConverter" />
-    <convert:ComboBoxContentConverter x:Key="ComboBoxContentConverter" />
+    <internalConverters:ComboBoxIconConverter x:Key="ComboBoxIconConverter" />
+    <internalConverters:ComboBoxContentConverter x:Key="ComboBoxContentConverter" />
 
     <!--  通用 ComboBox 模板 (支持图标)  -->
     <ControlTemplate x:Key="SharedComboBoxTemplate" TargetType="ComboBox">
@@ -51,6 +51,7 @@
                             <Binding Path="SelectedItem" RelativeSource="{RelativeSource AncestorType={x:Type ComboBox}}" />
                             <Binding Path="(helpers:IconHelper.Icon)" RelativeSource="{RelativeSource AncestorType={x:Type ComboBox}}" />
                             <Binding RelativeSource="{RelativeSource AncestorType={x:Type ComboBox}}" />
+                            <Binding Path="(helpers:ComboBoxHelper.IconMemberPath)" RelativeSource="{RelativeSource AncestorType={x:Type ComboBox}}" />
                         </MultiBinding>
                     </ContentPresenter.Content>
                     <ContentPresenter.Resources>
@@ -98,6 +99,7 @@
                         <MultiBinding Converter="{StaticResource ComboBoxContentConverter}" UpdateSourceTrigger="PropertyChanged">
                             <Binding Path="SelectedItem" RelativeSource="{RelativeSource AncestorType={x:Type ComboBox}}" />
                             <Binding RelativeSource="{RelativeSource AncestorType={x:Type ComboBox}}" />
+                            <Binding Path="DisplayMemberPath" RelativeSource="{RelativeSource AncestorType={x:Type ComboBox}}" />
                         </MultiBinding>
                     </ContentPresenter.Content>
                 </ContentPresenter>

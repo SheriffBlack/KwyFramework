@@ -34,13 +34,19 @@ public enum LegendStyle
 [Localizability(LocalizationCategory.None, Readability = Readability.Unreadable)]
 public class KwyLegend : System.Windows.Controls.ContentControl
 {
+    static KwyLegend()
+    {
+        DefaultStyleKeyProperty.OverrideMetadata(
+            typeof(KwyLegend),
+            new FrameworkPropertyMetadata(typeof(KwyLegend)));
+    }
     /// <summary>
     /// 分隔线颜色
     /// </summary>
     [Bindable(true)]
-    public Brush LineColor
+    public Brush? LineColor
     {
-        get { return (Brush)GetValue(LineColorProperty); }
+        get { return (Brush?)GetValue(LineColorProperty); }
         set { SetValue(LineColorProperty, value); }
     }
 
@@ -78,9 +84,9 @@ public class KwyLegend : System.Windows.Controls.ContentControl
     /// 标题
     /// </summary>
     [Bindable(true)]
-    public object Header
+    public object? Header
     {
-        get { return (string)GetValue(HeaderProperty); }
+        get { return GetValue(HeaderProperty); }
         set { SetValue(HeaderProperty, value); }
     }
 

@@ -16,14 +16,6 @@ public class KwyPercent : Control
         DefaultStyleKeyProperty.OverrideMetadata(typeof(KwyPercent), new FrameworkPropertyMetadata(typeof(KwyPercent)));
     }
 
-    public KwyPercent()
-    {
-        // 默认尺寸，对应原 UserControl 的 Width/Height
-        // 注意：在实际使用中通常由外部布局决定，这里只是默认建议
-        Width = 105;
-        Height = 250;
-    }
-
     #region Dependency Properties (Input)
 
     public static readonly DependencyProperty TotalProperty = DependencyProperty.Register(
@@ -125,11 +117,8 @@ public class KwyPercent : Control
 
     private void UpdateVisuals()
     {
-        // 1. 更新文本逻辑 (原 UserControl 代码逻辑移植 [cite: 7, 8])
-        // Percentage Logic
         PercentageText = Total <= 0 ? "0%" : $"{(double)Current / Total * 100:F2}%";
 
-        // Count Logic [cite: 8]
         if (Total >= 1000)
         {
             CurrentCountText = $"{Current} \n/ {Total}";
@@ -142,7 +131,6 @@ public class KwyPercent : Control
         // Tooltip Logic
         ComputedTooltipText = $"{PercentageText}\n{Current} / {Total}";
 
-        // 2. 更新高度逻辑 (原 UserControl 代码逻辑移植 [cite: 3])
         if (indicator != null)
         {
             // 注意：在 Customcontrol 中，我们通常基于控件本身的 ActualHeight 计算
@@ -152,9 +140,7 @@ public class KwyPercent : Control
             // 考虑到 BorderThickness (2)，为了精确可以减去边框宽度，或者在 Template 中处理
             // 这里为了简单直接使用 ActualHeight，因为 TemplateBinding 通常会自动处理 Padding
 
-            double percentage = Total <= 0 ? 0 : (double)Current / Total;
-            // 限制最大高度不超过 100%
-            if (percentage > 1) percentage = 1;
+            double percentage = Total <= 0 ? 0 : Math.Clamp((double)Current / Total, 0, 1);
 
             indicator.Height = percentage * containerHeight;
         }

@@ -2,6 +2,12 @@
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/WindowButtonStyle.xaml" />
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/WindowStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyFormItemStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyRadioButtonGroupStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyKeyboardStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyLegendStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyNumberBoxStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyPercentStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyToastStyle.xaml" />
     </ResourceDictionary.MergedDictionaries>
-
 </ResourceDictionary>

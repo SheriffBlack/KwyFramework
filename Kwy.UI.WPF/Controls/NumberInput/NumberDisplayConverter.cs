@@ -1,13 +1,13 @@
 using System.Globalization;
 using System.Windows.Data;
-using static Kwy.UI.WPF.Controls.Helpers.NumberFormatHelper;
+using static Kwy.UI.WPF.Controls.NumberInput.NumberFormatHelper;
 
-namespace Kwy.UI.WPF.Converters;
+namespace Kwy.UI.WPF.Controls.NumberInput;
 
 /// <summary>
 /// TextBlock 用的 Converter（只显示）
 /// </summary>
-public class NumberDisplayConverter : IValueConverter
+internal sealed class NumberDisplayConverter : IValueConverter
 {
     public INumberFormatService? FormatService { get; set; }
 

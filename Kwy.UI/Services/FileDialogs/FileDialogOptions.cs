@@ -1,4 +1,4 @@
-namespace Kwy.UI.WPF.Services.FileDialogs;
+namespace Kwy.UI.Services.FileDialogs;
 
 /// <summary>
 /// Base options shared by WPF file dialogs.

@@ -12,6 +12,7 @@ namespace Kwy.UI.WPF.Controls.Helpers;
 /// Icon 图标、IsEditable 等能力的快捷绑定支持。
 ///
 /// 用法：
+/// <code><![CDATA[
 ///   <!-- 最简单的下拉框，带主题样式 -->
 ///   <ComboBox ItemsSource="{Binding Speeds}"
 ///             SelectedItem="{Binding CurrentSpeed}" />
@@ -28,9 +29,27 @@ namespace Kwy.UI.WPF.Controls.Helpers;
 ///                 IsEditable="True"
 ///                 helpers:ComboBoxHelper.StyleKey="DefaultComboBoxStyle" />
 ///   </controls:KwyFormItem>
+/// ]]></code>
 /// </summary>
 public static class ComboBoxHelper
 {
+    /// <summary>
+    /// 获取用于从所选项目中获取图标的显式属性路径。
+    /// 空值将禁用模型属性的查找。
+    /// </summary>
+    public static readonly DependencyProperty IconMemberPathProperty =
+        DependencyProperty.RegisterAttached(
+            "IconMemberPath",
+            typeof(string),
+            typeof(ComboBoxHelper),
+            new PropertyMetadata(string.Empty));
+
+    public static string GetIconMemberPath(DependencyObject obj)
+        => (string)obj.GetValue(IconMemberPathProperty);
+
+    public static void SetIconMemberPath(DependencyObject obj, string value)
+        => obj.SetValue(IconMemberPathProperty, value);
+
     // ── StyleKey ─────────────────────────────────────────────────────────
     /// <summary>
     /// 指定要应用的 ComboBox 样式资源键。
