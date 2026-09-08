@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -29,16 +28,16 @@ public class KwyNumberBox : Control
             new FrameworkPropertyMetadata(typeof(KwyNumberBox)));
     }
 
-    public object? Value
+    public double? Value
     {
-        get => GetValue(ValueProperty);
+        get => (double?)GetValue(ValueProperty);
         set => SetValue(ValueProperty, value);
     }
 
     public static readonly DependencyProperty ValueProperty =
         DependencyProperty.Register(
             nameof(Value),
-            typeof(object),
+            typeof(double?),
             typeof(KwyNumberBox),
             new FrameworkPropertyMetadata(
                 null,
@@ -155,7 +154,9 @@ public class KwyNumberBox : Control
     }
 
     private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((KwyNumberBox)d).CoerceCurrentValue();
+    {
+        ((KwyNumberBox)d).CoerceCurrentValue();
+    }
 
     private void CoerceCurrentValue()
     {
@@ -165,7 +166,7 @@ public class KwyNumberBox : Control
             return;
         }
 
-        if (TryReadDouble(Value, out double number))
+        if (Value is double number)
         {
             double normalized = NormalizeNumber(number);
             if (Math.Abs(normalized - number) > double.Epsilon)
@@ -227,7 +228,7 @@ public class KwyNumberBox : Control
         }
         else if (e.Key == Key.Enter)
         {
-            CommitText();
+            FinalizeText();
             e.Handled = true;
         }
     }
@@ -239,7 +240,7 @@ public class KwyNumberBox : Control
             return;
         }
 
-        double current = TryReadDouble(Value, out double value) ? value : 0;
+        double current = Value ?? 0;
         double next = current + direction * SmallChange;
         Value = NormalizeNumber(next);
         UpdateTextFromValue();
@@ -308,8 +309,19 @@ public class KwyNumberBox : Control
 
     private void OnLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        CommitText();
+        FinalizeText();
         UpdateTextFromValue();
+    }
+
+    private void FinalizeText()
+    {
+        if (textBox != null && string.IsNullOrWhiteSpace(textBox.Text))
+        {
+            Value = null;
+            return;
+        }
+
+        CommitText();
     }
 
     private void CommitText()
@@ -320,9 +332,8 @@ public class KwyNumberBox : Control
         }
 
         string text = textBox.Text;
-        if (string.IsNullOrWhiteSpace(text) || text == "-" || text == "." || text == "-.")
+        if (IsIntermediateEditingText(text))
         {
-            Value = null;
             return;
         }
 
@@ -332,6 +343,17 @@ public class KwyNumberBox : Control
         }
 
         Value = NormalizeNumber(parsed);
+    }
+
+    private bool IsIntermediateEditingText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || text == "-")
+        {
+            return true;
+        }
+
+        string separator = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+        return !IsInteger && (text == separator || text == $"-{separator}" || text.EndsWith(separator, StringComparison.Ordinal));
     }
 
     private void UpdateTextFromValue()
@@ -360,9 +382,9 @@ public class KwyNumberBox : Control
         }
     }
 
-    private string FormatValue(object? value)
+    private string FormatValue(double? value)
     {
-        if (!TryReadDouble(value, out double number))
+        if (value is not double number)
         {
             return string.Empty;
         }
@@ -387,52 +409,6 @@ public class KwyNumberBox : Control
         }
 
         return IsInteger ? Math.Round(number) : number;
-    }
-
-    private static bool TryReadDouble(object? value, out double number)
-    {
-        number = 0;
-        if (value == null)
-        {
-            return false;
-        }
-
-        if (value is JsonElement element)
-        {
-            if (element.ValueKind == JsonValueKind.Number)
-            {
-                return element.TryGetDouble(out number);
-            }
-
-            if (element.ValueKind == JsonValueKind.String)
-            {
-                value = element.GetString();
-            }
-        }
-
-        return value switch
-        {
-            null => false,
-            byte v => Set(v, out number),
-            sbyte v => Set(v, out number),
-            short v => Set(v, out number),
-            ushort v => Set(v, out number),
-            int v => Set(v, out number),
-            uint v => Set(v, out number),
-            long v => Set(v, out number),
-            ulong v => Set(v, out number),
-            float v => Set(v, out number),
-            double v => Set(v, out number),
-            decimal v => Set((double)v, out number),
-            string text => TryParseDouble(text, out number),
-            { } other => TryParseDouble(other.ToString() ?? string.Empty, out number)
-        };
-    }
-
-    private static bool Set(double value, out double number)
-    {
-        number = value;
-        return true;
     }
 
     private static bool TryParseDouble(string text, out double value)

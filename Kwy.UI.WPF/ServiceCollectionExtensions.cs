@@ -1,5 +1,7 @@
 using Kwy.UI.Services.FileDialogs;
+using Kwy.UI.Threading;
 using Kwy.UI.WPF.Services.FileDialogs;
+using Kwy.UI.WPF.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -18,6 +20,8 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.TryAddSingleton<IFileDialogService, WpfFileDialogService>();
+        services.TryAddSingleton<IUiDispatcher>(_ => new WpfUiDispatcher(System.Windows.Application.Current?.Dispatcher
+            ?? System.Windows.Threading.Dispatcher.CurrentDispatcher));
 
         return services;
     }

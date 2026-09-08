@@ -8,7 +8,13 @@ namespace Kwy.UI.DataGrids;
 public class DisplayRowItem : INotifyPropertyChanged
 {
     private string rowName = string.Empty;
-    private Action<Action>? propertyChangedDispatcher;
+    private readonly Dictionary<string, CellState> cells = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IReadOnlyDictionary<string, CellState> readOnlyCells;
+
+    public DisplayRowItem()
+    {
+        readOnlyCells = new System.Collections.ObjectModel.ReadOnlyDictionary<string, CellState>(cells);
+    }
 
     public string RowName
     {
@@ -23,22 +29,10 @@ public class DisplayRowItem : INotifyPropertyChanged
         }
     }
 
-    public Dictionary<string, CellState> Cells { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyDictionary<string, CellState> Cells => readOnlyCells;
 
-    public CellState this[string key]
-    {
-        get
-        {
-            if (!Cells.TryGetValue(key, out CellState? state))
-            {
-                state = new CellState();
-                state.SetPropertyChangedDispatcher(propertyChangedDispatcher);
-                Cells[key] = state;
-            }
-
-            return state;
-        }
-    }
+    public CellState? this[string key]
+        => cells.TryGetValue(key, out CellState? state) ? state : null;
 
     public static DisplayRowItem CreateRow(object? rowName, params (string Key, object? Value)[] values)
     {
@@ -51,26 +45,30 @@ public class DisplayRowItem : INotifyPropertyChanged
         return row;
     }
 
-    public CellState? GetCell(string parameterId)
-        => Cells.TryGetValue(parameterId, out CellState? state) ? state : null;
+    public CellState? GetCell(string key)
+        => cells.TryGetValue(key, out CellState? state) ? state : null;
+
+    public CellState GetOrAddCell(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        if (!cells.TryGetValue(key, out CellState? state))
+        {
+            state = new CellState();
+            cells.Add(key, state);
+        }
+
+        return state;
+    }
 
     public void UpdateCell(string key, object? value)
-        => this[key].Value = value;
+        => GetOrAddCell(key).Value = value;
 
-    public void UpdateJudge(string key, bool? judge)
-        => this[key].Judge = judge;
+    public void UpdateVisualState(string key, CellValidationState visualState)
+        => GetOrAddCell(key).VisualState = visualState;
 
-    /// <summary>
-    /// Applies an optional notification dispatcher to existing and future cells.
-    /// </summary>
-    public void SetCellPropertyChangedDispatcher(Action<Action>? dispatcher)
-    {
-        propertyChangedDispatcher = dispatcher;
-        foreach (CellState cell in Cells.Values)
-        {
-            cell.SetPropertyChangedDispatcher(dispatcher);
-        }
-    }
+    public bool RemoveCell(string key) => cells.Remove(key);
+
+    public void ClearCells() => cells.Clear();
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

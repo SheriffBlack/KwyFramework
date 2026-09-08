@@ -1026,13 +1026,13 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         PartRows.Clear();
         partRowMap.Clear();
 
-        PartColumns.Add(new DataGridColumnDescriptor { ParameterId = "RowName", DisplayName = T("Flow.Grid.Project", "项目") });
+        PartColumns.Add(new DataGridColumnDescriptor { Key = "RowName", DisplayName = T("Flow.Grid.Project", "项目") });
         foreach (TestStationModel station in TestStations)
         {
             foreach (string testName in station.OrderedTestNames)
             {
                 string key = CreateCellKey(station.StationId, testName);
-                PartColumns.Add(new DataGridColumnDescriptor { ParameterId = key, DisplayName = testName });
+                PartColumns.Add(new DataGridColumnDescriptor { Key = key, DisplayName = testName });
             }
         }
 
@@ -1096,7 +1096,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         foreach (string testName in station.OrderedTestNames)
         {
             string key = CreateCellKey(station.StationId, testName);
-            row.UpdateJudge(key, station.TestJudges.TryGetValue(testName, out bool ok) ? ok : null);
+            row.UpdateVisualState(key, ToCellValidationState(station.TestJudges.TryGetValue(testName, out bool ok) ? ok : null));
         }
 
         RaiseTableChanged();
@@ -1147,7 +1147,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             foreach (CellState cell in row.Cells.Values)
             {
                 cell.Value = null;
-                cell.Judge = null;
+                cell.VisualState = CellValidationState.None;
             }
         }
 
@@ -1358,7 +1358,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         {
             string key = CreateCellKey(station.StationId, value.TestName);
             SetCellValue(testValueRow, key, value.Value.ToString("F4", CultureInfo.InvariantCulture));
-            testValueRow.UpdateJudge(key, value.Judge);
+            testValueRow.UpdateVisualState(key, ToCellValidationState(value.Judge));
 
             if (applyRealtimeStatistics)
             {
@@ -1475,7 +1475,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         partRowMap[key] = row;
         foreach (DataGridColumnDescriptor column in PartColumns.Skip(1))
         {
-            SetCellValue(row, column.ParameterId, defaultValue);
+            SetCellValue(row, column.Key, defaultValue);
         }
 
         PartRows.Add(row);
@@ -1497,6 +1497,14 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         row.UpdateCell(parameterId, value);
     }
 
+    private static CellValidationState ToCellValidationState(bool? result)
+        => result switch
+        {
+            true => CellValidationState.Success,
+            false => CellValidationState.Error,
+            null => CellValidationState.None
+        };
+
     private string ToRowDisplayName(string key)
         => key switch
         {
@@ -1515,7 +1523,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     private void RefreshResultGridLocalization()
     {
         DataGridColumnDescriptor? rowNameColumn = PartColumns.FirstOrDefault(static column =>
-            string.Equals(column.ParameterId, "RowName", StringComparison.OrdinalIgnoreCase));
+            string.Equals(column.Key, "RowName", StringComparison.OrdinalIgnoreCase));
         if (rowNameColumn != null)
         {
             rowNameColumn.DisplayName = T("Flow.Grid.Project", "项目");
@@ -1556,7 +1564,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             .. TestStations.SelectMany(station => station.OrderedTestNames.Select(testName => CreateCellKey(station.StationId, testName)))
         ];
         bool structureChanged = !PartColumns
-            .Select(static column => column.ParameterId)
+            .Select(static column => column.Key)
             .SequenceEqual(expectedColumnIds, StringComparer.OrdinalIgnoreCase);
 
         if (structureChanged)

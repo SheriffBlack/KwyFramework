@@ -5,7 +5,7 @@
 /// </summary>
 public class DataGridColumnDescriptor : IDataGridColumnDescriptor
 {
-    public string ParameterId { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
 
     public string DisplayName { get; set; } = string.Empty;
 }

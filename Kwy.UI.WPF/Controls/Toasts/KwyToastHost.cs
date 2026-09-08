@@ -141,7 +141,14 @@ public class KwyToastHost : ItemsControl
 
         while (Items.Count > MaxItems)
         {
-            Items.RemoveAt(0);
+            if (Items[0] is KwyToast toast)
+            {
+                Remove(toast);
+            }
+            else
+            {
+                Items.RemoveAt(0);
+            }
         }
     }
 

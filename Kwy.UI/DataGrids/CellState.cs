@@ -8,16 +8,7 @@ namespace Kwy.UI.DataGrids;
 public class CellState : INotifyPropertyChanged
 {
     private object? value;
-    private bool? judge;
-    private Action<Action>? propertyChangedDispatcher;
-
-    /// <summary>
-    /// Optional owner-provided dispatcher for property notifications.
-    /// The data model remains UI-framework independent while a WPF owner can
-    /// marshal notifications raised by a background production thread.
-    /// </summary>
-    public void SetPropertyChangedDispatcher(Action<Action>? dispatcher)
-        => propertyChangedDispatcher = dispatcher;
+    private CellValidationState visualState;
 
     public object? Value
     {
@@ -32,15 +23,15 @@ public class CellState : INotifyPropertyChanged
         }
     }
 
-    public bool? Judge
+    public CellValidationState VisualState
     {
-        get => judge;
+        get => visualState;
         set
         {
-            if (judge != value)
+            if (visualState != value)
             {
-                judge = value;
-                OnPropertyChanged(nameof(Judge));
+                visualState = value;
+                OnPropertyChanged(nameof(VisualState));
             }
         }
     }
@@ -49,20 +40,6 @@ public class CellState : INotifyPropertyChanged
 
     protected void OnPropertyChanged(string propertyName)
     {
-        PropertyChangedEventHandler? handler = PropertyChanged;
-        if (handler == null)
-        {
-            return;
-        }
-
-        Action raise = () => handler(this, new PropertyChangedEventArgs(propertyName));
-        Action<Action>? dispatcher = propertyChangedDispatcher;
-        if (dispatcher == null)
-        {
-            raise();
-            return;
-        }
-
-        dispatcher(raise);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

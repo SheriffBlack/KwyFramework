@@ -1796,10 +1796,6 @@ public sealed class HomeViewModel : BindableBase
                 partColumns.Add(column);
             }
 
-            foreach (DisplayRowItem row in machine.PartRows)
-            {
-                row.SetCellPropertyChangedDispatcher(action => PostOnUi(action, DispatcherPriority.DataBind));
-            }
         });
 
     private void SyncTapeParameterColumns()
@@ -1815,7 +1811,7 @@ public sealed class HomeViewModel : BindableBase
             {
                 // “后不封膜”是 BlankQty 的第二个业务展示及 PLC 去向，
                 // 使用独立列标识，但直接绑定唯一的数据源。
-                ParameterId = "BackNoFilmQty",
+                Key = "BackNoFilmQty",
                 DisplayName = localizationService.T("Braid.BackNoFilmQty", "Back No Film"),
                 BindingPath = nameof(TapeParameterRowModel.BlankQty),
                 ElementStyleKey = "TapeParameterCellTextBlockStyle",
@@ -1828,7 +1824,7 @@ public sealed class HomeViewModel : BindableBase
     private static IDataGridColumnDescriptor CreateTapeParameterColumn(string bindingPath, string displayName)
         => new WpfDataGridColumnOptions
         {
-            ParameterId = bindingPath,
+            Key = bindingPath,
             DisplayName = displayName,
             BindingPath = bindingPath,
             ElementStyleKey = "TapeParameterCellTextBlockStyle",

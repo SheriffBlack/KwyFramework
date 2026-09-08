@@ -1,7 +1,6 @@
 using Kwy.UI.DataGrids;
 using Kwy.UI.Enums;
 using System.Collections.Specialized;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -14,11 +13,11 @@ namespace Kwy.UI.WPF.Controls.Helpers;
 /// </summary>
 public static class DataGridColumnsHelper
 {
-    private static readonly ConditionalWeakTable<DataGrid, WeakReference<INotifyCollectionChanged>> dataGridToCollectionMap = new();
-
-    private static readonly ConditionalWeakTable<INotifyCollectionChanged, WeakReference<DataGrid>> collectionToDataGridMap = new();
-
-    private static readonly ConditionalWeakTable<DataGrid, object> initializedDataGrids = new();
+    private static readonly DependencyProperty SubscribedCollectionProperty =
+        DependencyProperty.RegisterAttached(
+            "SubscribedCollection",
+            typeof(INotifyCollectionChanged),
+            typeof(DataGridColumnsHelper));
 
     public static readonly DependencyProperty ColumnsSourceProperty =
         DependencyProperty.RegisterAttached(
@@ -82,7 +81,6 @@ public static class DataGridColumnsHelper
             return;
         }
 
-        initializedDataGrids.Remove(dataGrid);
         UpdateColumns(dataGrid);
     }
 
@@ -93,53 +91,29 @@ public static class DataGridColumnsHelper
             return;
         }
 
-        if (e.OldValue is INotifyCollectionChanged oldCollection)
+        if (dataGrid.GetValue(SubscribedCollectionProperty) is INotifyCollectionChanged oldCollection)
         {
-            oldCollection.CollectionChanged -= OnColumnsCollectionChanged;
-            dataGridToCollectionMap.Remove(dataGrid);
-            collectionToDataGridMap.Remove(oldCollection);
+            CollectionChangedEventManager.RemoveHandler(oldCollection, dataGrid.OnColumnsCollectionChanged);
+            dataGrid.ClearValue(SubscribedCollectionProperty);
         }
 
         if (e.NewValue is INotifyCollectionChanged newCollection)
         {
-            newCollection.CollectionChanged += OnColumnsCollectionChanged;
-
-            dataGridToCollectionMap.Remove(dataGrid);
-            dataGridToCollectionMap.Add(dataGrid, new WeakReference<INotifyCollectionChanged>(newCollection));
-
-            collectionToDataGridMap.Remove(newCollection);
-            collectionToDataGridMap.Add(newCollection, new WeakReference<DataGrid>(dataGrid));
+            CollectionChangedEventManager.AddHandler(newCollection, dataGrid.OnColumnsCollectionChanged);
+            dataGrid.SetValue(SubscribedCollectionProperty, newCollection);
         }
 
-        initializedDataGrids.Remove(dataGrid);
         UpdateColumns(dataGrid);
     }
 
-    private static void OnColumnsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private static void OnColumnsCollectionChanged(this DataGrid dataGrid, object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (sender is not INotifyCollectionChanged collection)
-        {
-            return;
-        }
-
-        if (!collectionToDataGridMap.TryGetValue(collection, out WeakReference<DataGrid>? dataGridRef))
-        {
-            return;
-        }
-
-        if (!dataGridRef.TryGetTarget(out DataGrid? dataGrid))
-        {
-            collectionToDataGridMap.Remove(collection);
-            return;
-        }
-
-        Application.Current.Dispatcher.BeginInvoke(
+        dataGrid.Dispatcher.BeginInvoke(
             System.Windows.Threading.DispatcherPriority.Loaded,
             new Action(() =>
             {
-                if (ReferenceEquals(GetColumnsSource(dataGrid), collection))
+                if (ReferenceEquals(GetColumnsSource(dataGrid), sender))
                 {
-                    initializedDataGrids.Remove(dataGrid);
                     UpdateColumns(dataGrid);
                 }
             }));
@@ -155,12 +129,6 @@ public static class DataGridColumnsHelper
         }
 
         IReadOnlyList<IDataGridColumnDescriptor> columnList = columns as IReadOnlyList<IDataGridColumnDescriptor> ?? columns.ToList();
-        int expectedColumnCount = columnList.Count + (GetShowRowHeaderColumn(dataGrid) ? 1 : 0);
-        if (initializedDataGrids.TryGetValue(dataGrid, out _) && dataGrid.Columns.Count == expectedColumnCount)
-        {
-            return;
-        }
-
         dataGrid.Columns.Clear();
 
         if (GetShowRowHeaderColumn(dataGrid))
@@ -173,9 +141,6 @@ public static class DataGridColumnsHelper
         {
             dataGrid.Columns.Add(CreateColumn(dataGrid, column));
         }
-
-        initializedDataGrids.Remove(dataGrid);
-        initializedDataGrids.Add(dataGrid, new object());
     }
 
     private static DataGridColumn CreateDefaultRowHeaderColumn(DataGrid dataGrid)
@@ -217,8 +182,8 @@ public static class DataGridColumnsHelper
             StringFormat = options.StringFormat
         };
 
-        if (!string.Equals(descriptor.ParameterId, nameof(DisplayRowItem.RowName), StringComparison.OrdinalIgnoreCase)
-            && !string.IsNullOrWhiteSpace(descriptor.ParameterId))
+        if (!string.Equals(descriptor.Key, nameof(DisplayRowItem.RowName), StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(descriptor.Key))
         {
             Style cellStyle = CreateDynamicCellStyle(dataGrid);
             cellStyle.Seal();
@@ -230,7 +195,7 @@ public static class DataGridColumnsHelper
             case DataGridTextColumn textColumn:
                 textColumn.Binding = binding;
                 ApplyElementStyle(dataGrid, textColumn, options);
-                ApplyEditingElementStyle(textColumn, options);
+                ApplyEditingElementStyle(dataGrid, textColumn, options);
                 break;
 
             case DataGridCheckBoxColumn checkBoxColumn:
@@ -264,7 +229,7 @@ public static class DataGridColumnsHelper
         }
 
         return dataGrid.TryFindResource("ModernDataGridCellStyle") as Style
-            ?? Application.Current.TryFindResource("ModernDataGridCellStyle") as Style;
+            ?? Application.Current?.TryFindResource("ModernDataGridCellStyle") as Style;
     }
     private static string CreateBindingPath(IDataGridColumnDescriptor descriptor)
     {
@@ -273,9 +238,9 @@ public static class DataGridColumnsHelper
             return options.BindingPath;
         }
 
-        return string.Equals(descriptor.ParameterId, nameof(DisplayRowItem.RowName), StringComparison.OrdinalIgnoreCase)
+        return string.Equals(descriptor.Key, nameof(DisplayRowItem.RowName), StringComparison.OrdinalIgnoreCase)
             ? nameof(DisplayRowItem.RowName)
-            : $"Item[{descriptor.ParameterId}].Value";
+            : $"Item[{descriptor.Key}].Value";
     }
 
     private static void ApplyElementStyle(DataGrid dataGrid, DataGridTextColumn textColumn, WpfDataGridColumnOptions? options)
@@ -288,7 +253,7 @@ public static class DataGridColumnsHelper
 
         string? styleKey = options?.ElementStyleKey ?? GetDefaultElementStyleKey(dataGrid);
         if (!string.IsNullOrEmpty(styleKey)
-            && (dataGrid.TryFindResource(styleKey) ?? Application.Current.TryFindResource(styleKey)) is Style style)
+            && (dataGrid.TryFindResource(styleKey) ?? Application.Current?.TryFindResource(styleKey)) is Style style)
         {
             textColumn.ElementStyle = style;
             return;
@@ -302,7 +267,7 @@ public static class DataGridColumnsHelper
         }
     }
 
-    private static void ApplyEditingElementStyle(DataGridTextColumn textColumn, WpfDataGridColumnOptions options)
+    private static void ApplyEditingElementStyle(DataGrid dataGrid, DataGridTextColumn textColumn, WpfDataGridColumnOptions options)
     {
         if (options.EditingElementStyle != null)
         {
@@ -311,7 +276,8 @@ public static class DataGridColumnsHelper
         }
 
         if (!string.IsNullOrEmpty(options.EditingElementStyleKey)
-            && Application.Current.TryFindResource(options.EditingElementStyleKey) is Style style)
+            && (dataGrid.TryFindResource(options.EditingElementStyleKey)
+                ?? Application.Current?.TryFindResource(options.EditingElementStyleKey)) is Style style)
         {
             textColumn.EditingElementStyle = style;
         }

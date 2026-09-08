@@ -7,7 +7,7 @@ namespace Kwy.UI.DataGrids;
 /// </summary>
 public interface IDataGridColumnDescriptor
 {
-    string ParameterId { get; }
+    string Key { get; }
 
     string DisplayName { get; }
 }

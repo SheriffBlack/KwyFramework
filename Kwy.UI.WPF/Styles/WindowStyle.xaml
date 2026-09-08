@@ -129,8 +129,8 @@
                                             Command="{Binding UserCommand, RelativeSource={RelativeSource TemplatedParent}}"
                                             CommandParameter="{Binding UserCommandParameter, RelativeSource={RelativeSource TemplatedParent}}"
                                             Content="{StaticResource IconContact}"
-                                            FontSize="20"
                                             Focusable="False"
+                                            FontSize="20"
                                             IsTabStop="False"
                                             Style="{StaticResource KwyWindowButtonStyle}" />
                                         <Button
