@@ -36,6 +36,10 @@ public sealed class PublicApiTests
         Assert.Contains(definitions, definition =>
             definition.XmlNamespace == "http://schemas.kwy.com/ui"
             && definition.ClrNamespace == "Kwy.UI.WPF.Controls.NumberInput");
+
+        Assert.Contains(definitions, definition =>
+            definition.XmlNamespace == "http://schemas.kwy.com/ui"
+            && definition.ClrNamespace == "Kwy.UI.WPF.Input");
     }
 
     [Fact]

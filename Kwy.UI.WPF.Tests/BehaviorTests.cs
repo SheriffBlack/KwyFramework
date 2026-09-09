@@ -1,6 +1,7 @@
 using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Controls;
 using Kwy.UI.WPF.Controls.Helpers;
+using Kwy.UI.WPF.Input;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Reflection;
@@ -8,6 +9,7 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Xunit;
 
@@ -15,6 +17,101 @@ namespace Kwy.UI.WPF.Tests;
 
 public sealed class BehaviorTests
 {
+    [Fact]
+    public void TextBoxKeyboardTarget_ReplacesSelectionAndEditsWithoutSystemInput()
+        => RunInSta(() =>
+        {
+            var textBox = new TextBox { Text = "abcd" };
+            textBox.Select(1, 2);
+            var target = new TextBoxKeyboardInputTarget(textBox);
+
+            target.HandleKey(KeyInput(Key.X), KeyboardLayout.Qwerty);
+            Assert.Equal("axd", textBox.Text);
+            Assert.Equal(2, textBox.CaretIndex);
+
+            target.HandleKey(KeyInput(Key.Back), KeyboardLayout.Qwerty);
+            Assert.Equal("ad", textBox.Text);
+        });
+
+    [Fact]
+    public void TextBoxKeyboardTarget_AppliesShiftCapsAndLayout()
+        => RunInSta(() =>
+        {
+            var textBox = new TextBox();
+            var target = new TextBoxKeyboardInputTarget(textBox);
+
+            target.HandleKey(KeyInput(Key.A, shift: true), KeyboardLayout.Qwerty);
+            target.HandleKey(KeyInput(Key.B, capsLock: true), KeyboardLayout.Qwerty);
+            target.HandleKey(KeyInput(Key.Q), KeyboardLayout.Azerty);
+
+            Assert.Equal("ABa", textBox.Text);
+        });
+
+    [Fact]
+    public void TextBoxKeyboardTarget_ReportsCommitAndCancel()
+        => RunInSta(() =>
+        {
+            var target = new TextBoxKeyboardInputTarget(new TextBox());
+
+            Assert.Equal(KeyboardInputResult.Commit, target.HandleKey(KeyInput(Key.Enter), KeyboardLayout.Qwerty));
+            Assert.Equal(KeyboardInputResult.Cancel, target.HandleKey(KeyInput(Key.Escape), KeyboardLayout.Qwerty));
+        });
+
+    [Fact]
+    public void NumericKeyboardTarget_UsesSeparateSignsAndEnforcesDecimalPlaces()
+        => RunInSta(() =>
+        {
+            var textBox = new TextBox { Text = "12.3" };
+            textBox.CaretIndex = textBox.Text.Length;
+            var target = new TextBoxKeyboardInputTarget(
+                textBox,
+                new NumericKeyboardOptions(AllowDecimal: true, AllowNegative: true, DecimalPlaces: 2));
+
+            target.HandleKey(KeyInput(Key.Subtract), KeyboardLayout.Qwerty);
+            Assert.Equal("-12.3", textBox.Text);
+
+            target.HandleKey(KeyInput(Key.Add), KeyboardLayout.Qwerty);
+            Assert.Equal("+12.3", textBox.Text);
+
+            target.HandleKey(KeyInput(Key.D4), KeyboardLayout.Qwerty);
+            Assert.Equal("+12.34", textBox.Text);
+            target.HandleKey(KeyInput(Key.D5), KeyboardLayout.Qwerty);
+            Assert.Equal("+12.34", textBox.Text);
+        });
+
+    [Fact]
+    public void IntegerKeyboardTarget_RejectsDecimalInput()
+        => RunInSta(() =>
+        {
+            var textBox = new TextBox();
+            var target = new TextBoxKeyboardInputTarget(
+                textBox,
+                new NumericKeyboardOptions(AllowDecimal: false, AllowNegative: false));
+
+            target.HandleKey(KeyInput(Key.D1), KeyboardLayout.Qwerty);
+            target.HandleKey(KeyInput(Key.Decimal), KeyboardLayout.Qwerty);
+            target.HandleKey(KeyInput(Key.D5), KeyboardLayout.Qwerty);
+            target.HandleKey(KeyInput(Key.Subtract), KeyboardLayout.Qwerty);
+
+            Assert.Equal("15", textBox.Text);
+        });
+
+    [Fact]
+    public void SoftKeyboardService_AcceptsTextBoxAndNumberBoxHosts()
+        => RunInSta(() =>
+        {
+            var textBox = new TextBox();
+            var numberBox = new KwyNumberBox();
+
+            SoftKeyboardService.SetIsEnabled(textBox, true);
+            SoftKeyboardService.SetMode(textBox, SoftKeyboardMode.Numeric);
+            SoftKeyboardService.SetIsEnabled(numberBox, true);
+
+            Assert.True(SoftKeyboardService.GetIsEnabled(textBox));
+            Assert.Equal(SoftKeyboardMode.Numeric, SoftKeyboardService.GetMode(textBox));
+            Assert.True(SoftKeyboardService.GetIsEnabled(numberBox));
+        });
+
     [Fact]
     public void DynamicRow_ReadDoesNotCreateCell_AndCellsAreReadOnly()
     {
@@ -217,10 +314,24 @@ public sealed class BehaviorTests
             var toastHost = new KwyToastHost { Resources = resources };
             toastHost.ApplyTemplate();
             Assert.NotNull(toastHost.Template);
+
+            var numericKeyboard = new KwyKeyboard
+            {
+                Resources = resources,
+                Mode = SoftKeyboardMode.Numeric
+            };
+            numericKeyboard.ApplyTemplate();
+            var numericPanel = (Grid?)numericKeyboard.Template.FindName("PART_NumericKeysRoot", numericKeyboard);
+            Assert.NotNull(numericPanel);
+            Assert.Contains(numericPanel.Children.OfType<Button>(), button => Equals(button.Content, "+"));
+            Assert.Contains(numericPanel.Children.OfType<Button>(), button => Equals(button.Content, "−"));
         });
 
     private static DataGridColumnDescriptor Column(string id)
         => new() { Key = id, Header = id, BindingPath = id };
+
+    private static KeyboardKeyInvokedEventArgs KeyInput(Key key, bool shift = false, bool capsLock = false)
+        => new(KwyKeyboard.KeyInvokedEvent, key, shift, false, false, capsLock);
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static WeakReference CreateAndReleaseDataGrid(ObservableCollection<IDataGridColumnDescriptor> columns)

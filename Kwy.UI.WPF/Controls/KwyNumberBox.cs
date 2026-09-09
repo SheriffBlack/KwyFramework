@@ -21,6 +21,8 @@ public class KwyNumberBox : Control
     private bool isUpdatingText;
     private bool isCoercingValue;
 
+    internal TextBox? Editor => textBox;
+
     static KwyNumberBox()
     {
         DefaultStyleKeyProperty.OverrideMetadata(

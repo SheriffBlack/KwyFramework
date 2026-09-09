@@ -3,6 +3,69 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Kwy.UI.WPF.Controls">
 
+    <Style x:Key="KwyNumericKeyButtonBaseStyle" TargetType="Button">
+        <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Margin" Value="3" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border
+                        x:Name="border"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="4">
+                        <ContentPresenter
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource ControlHoverBackgroundBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource ControlPressedBackgroundBrush}" />
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ControlPressedBackgroundBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="KwyNumericKeyButtonStyle" BasedOn="{StaticResource KwyNumericKeyButtonBaseStyle}" TargetType="Button" />
+
+    <Style x:Key="KwyNumericOperatorButtonStyle" BasedOn="{StaticResource KwyNumericKeyButtonBaseStyle}" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource ControlFocusedBorderBrush}" />
+    </Style>
+
+    <Style x:Key="KwyNumericActionButtonStyle" BasedOn="{StaticResource KwyNumericKeyButtonBaseStyle}" TargetType="Button">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <Style x:Key="KwyNumericEnterButtonStyle" BasedOn="{StaticResource KwyNumericKeyButtonBaseStyle}" TargetType="Button">
+        <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlFocusedBorderBrush}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+
     <Style x:Key="DefaultKwyKeyboardStyle" TargetType="{x:Type controls:KwyKeyboard}">
         <Setter Property="Padding" Value="5" />
         <Setter Property="Focusable" Value="False" />
@@ -11,6 +74,10 @@
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="NumericKeyButtonStyle" Value="{StaticResource KwyNumericKeyButtonStyle}" />
+        <Setter Property="NumericOperatorButtonStyle" Value="{StaticResource KwyNumericOperatorButtonStyle}" />
+        <Setter Property="NumericActionButtonStyle" Value="{StaticResource KwyNumericActionButtonStyle}" />
+        <Setter Property="NumericEnterButtonStyle" Value="{StaticResource KwyNumericEnterButtonStyle}" />
 
         <!--  功能键样式 (Shift, Alt, Ctrl)  -->
         <Setter Property="ExtendButtonStyle">
@@ -164,6 +231,19 @@
                         CornerRadius="{TemplateBinding CornerRadius}"
                         Focusable="{TemplateBinding Focusable}">
                         <Grid x:Name="PART_KeysRoot" Focusable="{TemplateBinding Focusable}">
+                            <Grid.Resources>
+                                <Style TargetType="ItemsControl">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Mode, RelativeSource={RelativeSource AncestorType=controls:KwyKeyboard}}" Value="Numeric">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Mode, RelativeSource={RelativeSource AncestorType=controls:KwyKeyboard}}" Value="Integer">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Resources>
                             <Grid.RowDefinitions>
                                 <RowDefinition />
                                 <RowDefinition />
@@ -1687,8 +1767,61 @@
                                     </Grid>
                                 </ToggleButton>
                             </ItemsControl>
+                            <Grid
+                                x:Name="PART_NumericKeysRoot"
+                                Grid.RowSpan="5"
+                                Margin="2"
+                                Visibility="Collapsed">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="54" />
+                                    <RowDefinition Height="54" />
+                                    <RowDefinition Height="54" />
+                                    <RowDefinition Height="54" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="0.9*" />
+                                    <ColumnDefinition Width="1.2*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Button Grid.Row="0" Grid.Column="0" CommandParameter="{Binding Source={x:Static Key.D7}}" Content="7" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button Grid.Row="0" Grid.Column="1" CommandParameter="{Binding Source={x:Static Key.D8}}" Content="8" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button Grid.Row="0" Grid.Column="2" CommandParameter="{Binding Source={x:Static Key.D9}}" Content="9" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button Grid.Row="0" Grid.Column="3" CommandParameter="{Binding Source={x:Static Key.Add}}" Content="+" Style="{TemplateBinding NumericOperatorButtonStyle}" />
+                                <Button Grid.Row="0" Grid.Column="4" CommandParameter="{Binding Source={x:Static Key.Back}}" Content="⌫" Style="{TemplateBinding NumericActionButtonStyle}" />
+
+                                <Button Grid.Row="1" Grid.Column="0" CommandParameter="{Binding Source={x:Static Key.D4}}" Content="4" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button Grid.Row="1" Grid.Column="1" CommandParameter="{Binding Source={x:Static Key.D5}}" Content="5" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button Grid.Row="1" Grid.Column="2" CommandParameter="{Binding Source={x:Static Key.D6}}" Content="6" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button x:Name="PART_NegativeKey" Grid.Row="1" Grid.Column="3" CommandParameter="{Binding Source={x:Static Key.Subtract}}" Content="−" Style="{TemplateBinding NumericOperatorButtonStyle}" />
+                                <Button Grid.Row="1" Grid.Column="4" CommandParameter="{Binding Source={x:Static Key.Clear}}" Content="Clear" Style="{TemplateBinding NumericActionButtonStyle}" />
+
+                                <Button Grid.Row="2" Grid.Column="0" CommandParameter="{Binding Source={x:Static Key.D1}}" Content="1" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button Grid.Row="2" Grid.Column="1" CommandParameter="{Binding Source={x:Static Key.D2}}" Content="2" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button Grid.Row="2" Grid.Column="2" CommandParameter="{Binding Source={x:Static Key.D3}}" Content="3" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button x:Name="PART_DecimalKey" Grid.Row="2" Grid.Column="3" CommandParameter="{Binding Source={x:Static Key.Decimal}}" Content="{Binding DecimalSeparator, RelativeSource={RelativeSource TemplatedParent}}" Style="{TemplateBinding NumericOperatorButtonStyle}" />
+                                <Button Grid.Row="2" Grid.RowSpan="2" Grid.Column="4" CommandParameter="{Binding Source={x:Static Key.Enter}}" Content="Enter" Style="{TemplateBinding NumericEnterButtonStyle}" />
+
+                                <Button Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" CommandParameter="{Binding Source={x:Static Key.D0}}" Content="0" Style="{TemplateBinding NumericKeyButtonStyle}" />
+                                <Button Grid.Row="3" Grid.Column="2" CommandParameter="{Binding Source={x:Static Key.Delete}}" Content="Del" Style="{TemplateBinding NumericActionButtonStyle}" />
+                                <Button Grid.Row="3" Grid.Column="3" CommandParameter="{Binding Source={x:Static Key.Escape}}" Content="Esc" Style="{TemplateBinding NumericActionButtonStyle}" />
+                            </Grid>
                         </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Mode" Value="Numeric">
+                            <Setter TargetName="PART_NumericKeysRoot" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="Mode" Value="Integer">
+                            <Setter TargetName="PART_NumericKeysRoot" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="PART_DecimalKey" Property="IsEnabled" Value="False" />
+                        </Trigger>
+                        <Trigger Property="AllowNegative" Value="False">
+                            <Setter TargetName="PART_NegativeKey" Property="IsEnabled" Value="False" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

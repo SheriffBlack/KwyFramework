@@ -8,6 +8,10 @@ using Kwy.MVVM.WPF.Mvvm;
 using Kwy.MVVM.WPF.Regions;
 using Kwy.UI.WPF.Components;
 using Kwy.UI.WPF.Components.Logging;
+using Kwy.UI.Services.FileDialogs;
+using Kwy.UI.Threading;
+using Kwy.UI.WPF.Services.FileDialogs;
+using Kwy.UI.WPF.Threading;
 using KwyTemplate.App;
 using KwyTemplate.App.Services;
 using KwyTemplate.App.Views;
@@ -151,6 +155,8 @@ public partial class App : KwyApplication
 
     protected override void RegisterTypes(IServiceCollection services)
     {
+        services.AddSingleton<IFileDialogService, WpfFileDialogService>();
+        services.AddSingleton<IUiDispatcher>(_ => new WpfUiDispatcher(Dispatcher));
         services.AddKwyWpfComponents();
         services.AddKwySerilogLogging(options =>
         {

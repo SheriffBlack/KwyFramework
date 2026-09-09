@@ -19,7 +19,6 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddKwyWpfServices();
         services.AddSingleton<KwyLogService>();
         services.AddSingleton<IDialogMessageService, DialogMessageService>();
         services.AddSingleton<IInputDialogService, InputDialogService>();

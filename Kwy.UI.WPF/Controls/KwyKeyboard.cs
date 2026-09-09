@@ -1,8 +1,8 @@
-using Kwy.UI.WPF.Input;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace Kwy.UI.WPF.Controls;
 
@@ -14,6 +14,7 @@ public enum KeyboardLayout
 }
 
 [TemplatePart(Name = "PART_KeysRoot", Type = typeof(Grid))]
+[TemplatePart(Name = "PART_NumericKeysRoot", Type = typeof(Grid))]
 public class KwyKeyboard : Control
 {
     static KwyKeyboard()
@@ -27,6 +28,77 @@ public class KwyKeyboard : Control
     /// 存储键盘控件按钮主容器
     /// </summary>
     private Grid? keysRoot;
+
+    public SoftKeyboardMode Mode
+    {
+        get => (SoftKeyboardMode)GetValue(ModeProperty);
+        set => SetValue(ModeProperty, value);
+    }
+
+    public static readonly DependencyProperty ModeProperty = DependencyProperty.Register(
+        nameof(Mode),
+        typeof(SoftKeyboardMode),
+        typeof(KwyKeyboard),
+        new PropertyMetadata(SoftKeyboardMode.Full));
+
+    public bool AllowNegative
+    {
+        get => (bool)GetValue(AllowNegativeProperty);
+        set => SetValue(AllowNegativeProperty, value);
+    }
+
+    public static readonly DependencyProperty AllowNegativeProperty = DependencyProperty.Register(
+        nameof(AllowNegative), typeof(bool), typeof(KwyKeyboard), new PropertyMetadata(true));
+
+    public Style? NumericKeyButtonStyle
+    {
+        get => (Style?)GetValue(NumericKeyButtonStyleProperty);
+        set => SetValue(NumericKeyButtonStyleProperty, value);
+    }
+
+    public static readonly DependencyProperty NumericKeyButtonStyleProperty = DependencyProperty.Register(
+        nameof(NumericKeyButtonStyle), typeof(Style), typeof(KwyKeyboard));
+
+    public Style? NumericOperatorButtonStyle
+    {
+        get => (Style?)GetValue(NumericOperatorButtonStyleProperty);
+        set => SetValue(NumericOperatorButtonStyleProperty, value);
+    }
+
+    public static readonly DependencyProperty NumericOperatorButtonStyleProperty = DependencyProperty.Register(
+        nameof(NumericOperatorButtonStyle), typeof(Style), typeof(KwyKeyboard));
+
+    public Style? NumericActionButtonStyle
+    {
+        get => (Style?)GetValue(NumericActionButtonStyleProperty);
+        set => SetValue(NumericActionButtonStyleProperty, value);
+    }
+
+    public static readonly DependencyProperty NumericActionButtonStyleProperty = DependencyProperty.Register(
+        nameof(NumericActionButtonStyle), typeof(Style), typeof(KwyKeyboard));
+
+    public Style? NumericEnterButtonStyle
+    {
+        get => (Style?)GetValue(NumericEnterButtonStyleProperty);
+        set => SetValue(NumericEnterButtonStyleProperty, value);
+    }
+
+    public static readonly DependencyProperty NumericEnterButtonStyleProperty = DependencyProperty.Register(
+        nameof(NumericEnterButtonStyle), typeof(Style), typeof(KwyKeyboard));
+
+    public string DecimalSeparator => System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+
+    public static readonly RoutedEvent KeyInvokedEvent = EventManager.RegisterRoutedEvent(
+        nameof(KeyInvoked),
+        RoutingStrategy.Bubble,
+        typeof(EventHandler<KeyboardKeyInvokedEventArgs>),
+        typeof(KwyKeyboard));
+
+    public event EventHandler<KeyboardKeyInvokedEventArgs> KeyInvoked
+    {
+        add => AddHandler(KeyInvokedEvent, value);
+        remove => RemoveHandler(KeyInvokedEvent, value);
+    }
 
     /// <summary>
     /// 获取或设置默认键盘按钮的样式
@@ -191,23 +263,6 @@ public class KwyKeyboard : Control
     }
 
     /// <summary>
-    /// 获取或设置绑定的输入控件
-    /// <para>设置后，虚拟键盘的输入将自动发送到该控件</para>
-    /// </summary>
-    public UIElement? TargetInput
-    {
-        get { return (UIElement?)GetValue(TargetInputProperty); }
-        set { SetValue(TargetInputProperty, value); }
-    }
-
-    /// <summary>
-    /// 标识 TargetInput 依赖属性
-    /// </summary>
-    public static readonly DependencyProperty TargetInputProperty =
-        DependencyProperty.Register("TargetInput", typeof(UIElement), typeof(KwyKeyboard),
-            new PropertyMetadata(null, OnTargetInputChanged));
-
-    /// <summary>
     /// 获取或设置键盘布局类型
     /// <para>支持的值：QWERTY、AZERTY、QWERTZ</para>
     /// </summary>
@@ -226,14 +281,6 @@ public class KwyKeyboard : Control
             typeof(KeyboardLayout),
             typeof(KwyKeyboard),
             new PropertyMetadata(KeyboardLayout.Qwerty, OnKeyboardLayoutChanged));
-
-    /// <summary>
-    /// TargetInput 属性变化时的回调函数
-    /// </summary>
-    private static void OnTargetInputChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        // 可以在这里添加输入控件变化时的处理逻辑
-    }
 
     /// <summary>
     /// KeyboardLayout 属性变化时的回调函数
@@ -287,46 +334,7 @@ public class KwyKeyboard : Control
         Loaded -= LayKeyboard_Loaded;
         if (keysRoot != null)
         {
-            IsCapsLock = KeyboardSimulator.IsCapsLockEnabled;
             AddOrRemoveKeyButtonEvent(true);
-        }
-
-        // 自动选择当前焦点的输入控件
-        AutoSelectTargetInput();
-    }
-
-    /// <summary>
-    /// 自动选择当前焦点的输入控件
-    /// </summary>
-    private void AutoSelectTargetInput()
-    {
-        if (TargetInput != null)
-        {
-            return;
-        }
-
-        // 获取当前具有焦点的元素
-        var focusedElement = Keyboard.FocusedElement as UIElement;
-        if (focusedElement != null)
-        {
-            // 检查是否是输入控件类型
-            if (focusedElement is TextBox ||
-                focusedElement is PasswordBox ||
-                focusedElement is RichTextBox)
-            {
-                TargetInput = focusedElement;
-            }
-        }
-    }
-
-    /// <summary>
-    /// 确保目标输入控件获得焦点
-    /// </summary>
-    private void EnsureTargetInputFocus()
-    {
-        if (TargetInput != null && TargetInput.Focusable)
-        {
-            Keyboard.Focus(TargetInput);
         }
     }
 
@@ -337,20 +345,34 @@ public class KwyKeyboard : Control
     private void AddOrRemoveKeyButtonEvent(bool isAdd)
     {
         if (keysRoot == null) return;
-        var itemsControls = keysRoot.Children.OfType<ItemsControl>();
-        foreach (var itemsControl in itemsControls)
+        foreach (var button in EnumerateButtons(keysRoot))
         {
-            foreach (var button in itemsControl.Items.OfType<ButtonBase>())
+            if (isAdd)
             {
-                if (isAdd)
-                {
-                    button.Click -= Button_Click;
-                    button.Click += Button_Click;
-                }
-                else
-                {
-                    button.Click -= Button_Click;
-                }
+                button.Click -= Button_Click;
+                button.Click += Button_Click;
+            }
+            else
+            {
+                button.Click -= Button_Click;
+            }
+        }
+    }
+
+    private static IEnumerable<ButtonBase> EnumerateButtons(DependencyObject root)
+    {
+        int childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (int index = 0; index < childCount; index++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, index);
+            if (child is ButtonBase button)
+            {
+                yield return button;
+            }
+
+            foreach (ButtonBase descendant in EnumerateButtons(child))
+            {
+                yield return descendant;
             }
         }
     }
@@ -366,9 +388,6 @@ public class KwyKeyboard : Control
         {
             if (button.CommandParameter != null && button.CommandParameter is Key key)
             {
-                // 确保目标输入控件获得焦点
-                EnsureTargetInputFocus();
-
                 if (key == Key.RightShift)
                 {
                     IsShiftExtend = !IsShiftExtend;
@@ -392,38 +411,21 @@ public class KwyKeyboard : Control
                     // 处理Caps Lock键
                     if (key == Key.CapsLock)
                     {
-                        // 触发实际的Caps Lock键事件
-                        KeyboardSimulator.SendKey(key);
-                        // 刷新Caps Lock状态，确保与系统状态同步
-                        IsCapsLock = KeyboardSimulator.IsCapsLockEnabled;
+                        IsCapsLock = !IsCapsLock;
                         return;
                     }
 
-                    if (IsShiftExtend)
-                    {
-                        KeyboardSimulator.SendChord([Key.RightShift], key);
-                        IsShiftExtend = false;
-                        IsAltExtend = false;
-                        IsCtrlExtend = false;
-                        return;
-                    }
-                    if (IsAltExtend)
-                    {
-                        KeyboardSimulator.SendChord([Key.RightAlt], key);
-                        IsShiftExtend = false;
-                        IsAltExtend = false;
-                        IsCtrlExtend = false;
-                        return;
-                    }
-                    if (IsCtrlExtend)
-                    {
-                        KeyboardSimulator.SendChord([Key.RightCtrl], key);
-                        IsShiftExtend = false;
-                        IsAltExtend = false;
-                        IsCtrlExtend = false;
-                        return;
-                    }
-                    KeyboardSimulator.SendKey(key);
+                    RaiseEvent(new KeyboardKeyInvokedEventArgs(
+                        KeyInvokedEvent,
+                        key,
+                        IsShiftExtend,
+                        IsCtrlExtend,
+                        IsAltExtend,
+                        IsCapsLock));
+
+                    IsShiftExtend = false;
+                    IsAltExtend = false;
+                    IsCtrlExtend = false;
                 }
             }
         }
