@@ -33,7 +33,7 @@ public static class DataGridColumnsHelper
         => (IEnumerable<IDataGridColumnDescriptor>?)element.GetValue(ColumnsSourceProperty);
 
     /// <summary>
-    /// 行标题列配置。一般可直接把 RowName 放在 ColumnsSource 中，并关闭 ShowRowHeaderColumn。
+    /// 行标题列配置。也可直接将标题列放入 ColumnsSource，并关闭 ShowRowHeaderColumn。
     /// </summary>
     public static readonly DependencyProperty RowHeaderColumnProperty =
         DependencyProperty.RegisterAttached(
@@ -53,7 +53,7 @@ public static class DataGridColumnsHelper
             "ShowRowHeaderColumn",
             typeof(bool),
             typeof(DataGridColumnsHelper),
-            new PropertyMetadata(true, OnColumnOptionsChanged));
+            new PropertyMetadata(false, OnColumnOptionsChanged));
 
     public static void SetShowRowHeaderColumn(DependencyObject element, bool value)
         => element.SetValue(ShowRowHeaderColumnProperty, value);
@@ -61,12 +61,25 @@ public static class DataGridColumnsHelper
     public static bool GetShowRowHeaderColumn(DependencyObject element)
         => (bool)element.GetValue(ShowRowHeaderColumnProperty);
 
+    public static readonly DependencyProperty RowHeaderBindingPathProperty =
+        DependencyProperty.RegisterAttached(
+            "RowHeaderBindingPath",
+            typeof(string),
+            typeof(DataGridColumnsHelper),
+            new PropertyMetadata(".", OnColumnOptionsChanged));
+
+    public static void SetRowHeaderBindingPath(DependencyObject element, string value)
+        => element.SetValue(RowHeaderBindingPathProperty, value);
+
+    public static string GetRowHeaderBindingPath(DependencyObject element)
+        => (string)element.GetValue(RowHeaderBindingPathProperty);
+
     public static readonly DependencyProperty DefaultElementStyleKeyProperty =
         DependencyProperty.RegisterAttached(
             "DefaultElementStyleKey",
             typeof(string),
             typeof(DataGridColumnsHelper),
-            new PropertyMetadata("DataGridCellTextBlockStyle"));
+            new PropertyMetadata(KwyResourceKeys.DataGridCellTextBlockStyle));
 
     public static void SetDefaultElementStyleKey(DependencyObject element, string value)
         => element.SetValue(DefaultElementStyleKeyProperty, value);
@@ -150,7 +163,7 @@ public static class DataGridColumnsHelper
             Header = string.Empty,
             Width = DataGridLength.Auto,
             IsReadOnly = true,
-            Binding = new Binding(nameof(DisplayRowItem.RowName))
+            Binding = new Binding(GetRowHeaderBindingPath(dataGrid))
         };
         ApplyElementStyle(dataGrid, column, null);
         return column;
@@ -167,14 +180,14 @@ public static class DataGridColumnsHelper
             _ => new DataGridTextColumn()
         };
 
-        column.Header = descriptor.DisplayName;
+        column.Header = descriptor.Header;
         column.Width = options.Width;
         column.IsReadOnly = options.IsReadOnly;
         column.CanUserSort = options.CanUserSort;
         column.CanUserResize = options.CanUserResize;
         column.CanUserReorder = options.CanUserReorder;
 
-        var binding = new Binding(CreateBindingPath(descriptor))
+        var binding = new Binding(descriptor.BindingPath)
         {
             Mode = options.IsReadOnly ? BindingMode.OneWay : BindingMode.TwoWay,
             Converter = options.Converter,
@@ -182,8 +195,7 @@ public static class DataGridColumnsHelper
             StringFormat = options.StringFormat
         };
 
-        if (!string.Equals(descriptor.Key, nameof(DisplayRowItem.RowName), StringComparison.OrdinalIgnoreCase)
-            && !string.IsNullOrWhiteSpace(descriptor.Key))
+        if (!string.IsNullOrWhiteSpace(descriptor.Key))
         {
             Style cellStyle = CreateDynamicCellStyle(dataGrid);
             cellStyle.Seal();
@@ -228,21 +240,9 @@ public static class DataGridColumnsHelper
             return dataGrid.CellStyle;
         }
 
-        return dataGrid.TryFindResource("ModernDataGridCellStyle") as Style
-            ?? Application.Current?.TryFindResource("ModernDataGridCellStyle") as Style;
+        return dataGrid.TryFindResource(KwyResourceKeys.ModernDataGridCellStyle) as Style
+            ?? Application.Current?.TryFindResource(KwyResourceKeys.ModernDataGridCellStyle) as Style;
     }
-    private static string CreateBindingPath(IDataGridColumnDescriptor descriptor)
-    {
-        if (descriptor is WpfDataGridColumnOptions options && !string.IsNullOrWhiteSpace(options.BindingPath))
-        {
-            return options.BindingPath;
-        }
-
-        return string.Equals(descriptor.Key, nameof(DisplayRowItem.RowName), StringComparison.OrdinalIgnoreCase)
-            ? nameof(DisplayRowItem.RowName)
-            : $"Item[{descriptor.Key}].Value";
-    }
-
     private static void ApplyElementStyle(DataGrid dataGrid, DataGridTextColumn textColumn, WpfDataGridColumnOptions? options)
     {
         if (options?.ElementStyle != null)

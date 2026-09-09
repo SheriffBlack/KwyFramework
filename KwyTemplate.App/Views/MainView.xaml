@@ -13,7 +13,7 @@
     kwymvvm:ViewModelLocator.AutoWireViewModel="True"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <kwyui:StringEqualityConverter x:Key="StringEqualityConverter" />
+        <kwyui:EqualityConverter x:Key="EqualityConverter" />
         <SolidColorBrush x:Key="HsyLogoBackgroundBrush" Color="#E60012" />
 
         <Style
@@ -31,7 +31,7 @@
             <Setter Property="IsEnabled" Value="{Binding IsNavigationEnabled}" />
             <Setter Property="IsChecked">
                 <Setter.Value>
-                    <MultiBinding Converter="{StaticResource StringEqualityConverter}" Mode="OneWay">
+                    <MultiBinding Converter="{StaticResource EqualityConverter}" Mode="OneWay">
                         <Binding Path="DataContext.SelectedNavigationKey" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                         <Binding Path="NavigationKey" />
                     </MultiBinding>

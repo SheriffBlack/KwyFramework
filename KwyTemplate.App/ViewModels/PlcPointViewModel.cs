@@ -91,7 +91,7 @@ public sealed class PlcPointViewModel : BindableBase
         columns.Add(new WpfDataGridColumnOptions
         {
             Key = nameof(PlcPointModel.ValueText),
-            DisplayName = localizationService?.T("PlcPoint.Column.RealTimeValue", "实时值") ?? "实时值",
+            Header = localizationService?.T("PlcPoint.Column.RealTimeValue", "实时值") ?? "实时值",
             BindingPath = nameof(PlcPointModel.ValueText),
             Width = new DataGridLength(120),
             ElementStyleKey = "PlcPointValueTextBlockStyle",
@@ -103,7 +103,7 @@ public sealed class PlcPointViewModel : BindableBase
         {
             // 模板列不参与测值判定着色；留空可保持与原静态 DataGridTemplateColumn 相同的单元格布局。
             Key = string.Empty,
-            DisplayName = localizationService?.T("PlcPoint.Column.WriteControl", "控制写入") ?? "控制写入",
+            Header = localizationService?.T("PlcPoint.Column.WriteControl", "控制写入") ?? "控制写入",
             ColumnType = DataGridColumnType.Template,
             Width = new DataGridLength(1, DataGridLengthUnitType.Star),
             CellTemplateKey = "PlcPointWriteControlTemplate",
@@ -117,7 +117,7 @@ public sealed class PlcPointViewModel : BindableBase
         => new WpfDataGridColumnOptions
         {
             Key = bindingPath,
-            DisplayName = displayName,
+            Header = displayName,
             BindingPath = bindingPath,
             Width = new DataGridLength(width),
             ElementStyleKey = "CenterAlignedTextBlock",

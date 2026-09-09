@@ -1026,13 +1026,18 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         PartRows.Clear();
         partRowMap.Clear();
 
-        PartColumns.Add(new DataGridColumnDescriptor { Key = "RowName", DisplayName = T("Flow.Grid.Project", "项目") });
+        PartColumns.Add(new DataGridColumnDescriptor
+        {
+            Key = "RowName",
+            Header = T("Flow.Grid.Project", "项目"),
+            BindingPath = nameof(DisplayRowItem.RowName)
+        });
         foreach (TestStationModel station in TestStations)
         {
             foreach (string testName in station.OrderedTestNames)
             {
                 string key = CreateCellKey(station.StationId, testName);
-                PartColumns.Add(new DataGridColumnDescriptor { Key = key, DisplayName = testName });
+                PartColumns.Add(new DynamicCellColumnDescriptor(key, testName));
             }
         }
 
@@ -1526,7 +1531,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             string.Equals(column.Key, "RowName", StringComparison.OrdinalIgnoreCase));
         if (rowNameColumn != null)
         {
-            rowNameColumn.DisplayName = T("Flow.Grid.Project", "项目");
+            rowNameColumn.Header = T("Flow.Grid.Project", "项目");
             int index = PartColumns.IndexOf(rowNameColumn);
             if (index >= 0)
             {

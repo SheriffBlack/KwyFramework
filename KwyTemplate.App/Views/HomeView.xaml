@@ -13,7 +13,7 @@
     mc:Ignorable="d">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        <kwyui:StringEqualityConverter x:Key="StringEqualityConverter" />
+        <kwyui:EqualityConverter x:Key="EqualityConverter" />
         <Style
             x:Key="ReelScanFormItemStyle"
             BasedOn="{StaticResource {x:Type kwyui:KwyFormItem}}"
@@ -184,7 +184,7 @@
                             <Style.Triggers>
                                 <DataTrigger Value="True">
                                     <DataTrigger.Binding>
-                                        <MultiBinding Converter="{StaticResource StringEqualityConverter}">
+                                        <MultiBinding Converter="{StaticResource EqualityConverter}">
                                             <Binding Path="ParameterId" />
                                             <Binding ElementName="ChartTabSelector" Path="SelectedItem.ParameterId" />
                                         </MultiBinding>

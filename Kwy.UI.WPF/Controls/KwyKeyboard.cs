@@ -1,4 +1,4 @@
-using Kwy.UI.WPF.Controls.Helpers;
+using Kwy.UI.WPF.Input;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -287,7 +287,7 @@ public class KwyKeyboard : Control
         Loaded -= LayKeyboard_Loaded;
         if (keysRoot != null)
         {
-            IsCapsLock = KwyKeyboardHelper.CapsLockStatus;
+            IsCapsLock = KeyboardSimulator.IsCapsLockEnabled;
             AddOrRemoveKeyButtonEvent(true);
         }
 
@@ -393,15 +393,15 @@ public class KwyKeyboard : Control
                     if (key == Key.CapsLock)
                     {
                         // 触发实际的Caps Lock键事件
-                        KwyKeyboardHelper.Keyboard_Event(key);
+                        KeyboardSimulator.SendKey(key);
                         // 刷新Caps Lock状态，确保与系统状态同步
-                        IsCapsLock = KwyKeyboardHelper.CapsLockStatus;
+                        IsCapsLock = KeyboardSimulator.IsCapsLockEnabled;
                         return;
                     }
 
                     if (IsShiftExtend)
                     {
-                        KwyKeyboardHelper.Keyboard_Event(new Key[] { key }, Key.RightShift);
+                        KeyboardSimulator.SendChord([Key.RightShift], key);
                         IsShiftExtend = false;
                         IsAltExtend = false;
                         IsCtrlExtend = false;
@@ -409,7 +409,7 @@ public class KwyKeyboard : Control
                     }
                     if (IsAltExtend)
                     {
-                        KwyKeyboardHelper.Keyboard_Event(new Key[] { key }, Key.RightAlt);
+                        KeyboardSimulator.SendChord([Key.RightAlt], key);
                         IsShiftExtend = false;
                         IsAltExtend = false;
                         IsCtrlExtend = false;
@@ -417,13 +417,13 @@ public class KwyKeyboard : Control
                     }
                     if (IsCtrlExtend)
                     {
-                        KwyKeyboardHelper.Keyboard_Event(new Key[] { key }, Key.RightCtrl);
+                        KeyboardSimulator.SendChord([Key.RightCtrl], key);
                         IsShiftExtend = false;
                         IsAltExtend = false;
                         IsCtrlExtend = false;
                         return;
                     }
-                    KwyKeyboardHelper.Keyboard_Event(key);
+                    KeyboardSimulator.SendKey(key);
                 }
             }
         }

@@ -9,5 +9,7 @@ public interface IDataGridColumnDescriptor
 {
     string Key { get; }
 
-    string DisplayName { get; }
+    object? Header { get; }
+
+    string BindingPath { get; }
 }

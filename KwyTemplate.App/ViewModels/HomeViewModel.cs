@@ -1812,7 +1812,7 @@ public sealed class HomeViewModel : BindableBase
                 // “后不封膜”是 BlankQty 的第二个业务展示及 PLC 去向，
                 // 使用独立列标识，但直接绑定唯一的数据源。
                 Key = "BackNoFilmQty",
-                DisplayName = localizationService.T("Braid.BackNoFilmQty", "Back No Film"),
+                Header = localizationService.T("Braid.BackNoFilmQty", "Back No Film"),
                 BindingPath = nameof(TapeParameterRowModel.BlankQty),
                 ElementStyleKey = "TapeParameterCellTextBlockStyle",
                 CanUserSort = false,
@@ -1825,7 +1825,7 @@ public sealed class HomeViewModel : BindableBase
         => new WpfDataGridColumnOptions
         {
             Key = bindingPath,
-            DisplayName = displayName,
+            Header = displayName,
             BindingPath = bindingPath,
             ElementStyleKey = "TapeParameterCellTextBlockStyle",
             CanUserSort = false,

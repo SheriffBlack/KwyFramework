@@ -13,8 +13,6 @@ public class WpfDataGridColumnOptions : DataGridColumnDescriptor
 {
     internal static WpfDataGridColumnOptions Default { get; } = new();
 
-    public string? BindingPath { get; set; }
-
     public DataGridLength Width { get; set; } = new(1, DataGridLengthUnitType.Star);
 
     public DataGridColumnType ColumnType { get; set; } = DataGridColumnType.Text;
@@ -35,7 +33,7 @@ public class WpfDataGridColumnOptions : DataGridColumnDescriptor
 
     public bool CanUserReorder { get; set; } = true;
 
-    public string? ElementStyleKey { get; set; } = "DataGridCellTextBlockStyle";
+    public string? ElementStyleKey { get; set; } = KwyResourceKeys.DataGridCellTextBlockStyle;
 
     public Style? ElementStyle { get; set; }
 

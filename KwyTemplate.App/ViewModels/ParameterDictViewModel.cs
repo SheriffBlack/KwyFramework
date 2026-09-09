@@ -155,7 +155,7 @@ internal sealed class ParameterDictViewModel : BindableBase, INavigationAware
         columns.Add(new WpfDataGridColumnOptions
         {
             Key = "ModifyTime",
-            DisplayName = localizationService.T("ParameterDict.Column.ModifiedTime", "修改时间"),
+            Header = localizationService.T("ParameterDict.Column.ModifiedTime", "修改时间"),
             BindingPath = "ModifyTime",
             StringFormat = "yyyy-MM-dd HH:mm",
             Width = new DataGridLength(400),
@@ -170,7 +170,7 @@ internal sealed class ParameterDictViewModel : BindableBase, INavigationAware
         => new WpfDataGridColumnOptions
         {
             Key = bindingPath,
-            DisplayName = displayName,
+            Header = displayName,
             BindingPath = bindingPath,
             Width = width,
             CanUserSort = false,

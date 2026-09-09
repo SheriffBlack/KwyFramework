@@ -13,7 +13,7 @@
     kwymvvm:ViewModelLocator.AutoWireViewModel="True"
     mc:Ignorable="d">
     <UserControl.Resources>
-        <kwyui:StringEqualityConverter x:Key="StringEqualityConverter" />
+        <kwyui:EqualityConverter x:Key="EqualityConverter" />
 
         <Style
             x:Key="SecondaryNavigationButtonStyle"
@@ -30,7 +30,7 @@
             <Setter Property="CommandParameter" Value="{Binding}" />
             <Setter Property="IsChecked">
                 <Setter.Value>
-                    <MultiBinding Converter="{StaticResource StringEqualityConverter}" Mode="OneWay">
+                    <MultiBinding Converter="{StaticResource EqualityConverter}" Mode="OneWay">
                         <Binding Path="DataContext.SelectedNavigationKey" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                         <Binding Path="NavigationKey" />
                     </MultiBinding>

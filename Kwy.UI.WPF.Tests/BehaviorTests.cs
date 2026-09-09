@@ -46,8 +46,8 @@ public sealed class BehaviorTests
             columns.Add(Column("B"));
             DrainDispatcher();
 
-            Assert.Equal(3, first.Columns.Count);
-            Assert.Equal(3, second.Columns.Count);
+            Assert.Equal(2, first.Columns.Count);
+            Assert.Equal(2, second.Columns.Count);
         });
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class BehaviorTests
             oldColumns.Add(Column("Old"));
             newColumns.Add(Column("New"));
             DrainDispatcher();
-            Assert.Equal(3, dataGrid.Columns.Count);
+            Assert.Equal(2, dataGrid.Columns.Count);
 
             DataGridColumnsHelper.SetColumnsSource(dataGrid, null);
             newColumns.Add(Column("Detached"));
@@ -80,7 +80,7 @@ public sealed class BehaviorTests
             DataGridColumnsHelper.SetColumnsSource(
                 dataGrid,
                 new ObservableCollection<IDataGridColumnDescriptor> { Column("A") });
-            Assert.Equal(2, dataGrid.Columns.Count);
+            Assert.Single(dataGrid.Columns);
         });
 
     [Fact]
@@ -220,7 +220,7 @@ public sealed class BehaviorTests
         });
 
     private static DataGridColumnDescriptor Column(string id)
-        => new() { Key = id, DisplayName = id };
+        => new() { Key = id, Header = id, BindingPath = id };
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static WeakReference CreateAndReleaseDataGrid(ObservableCollection<IDataGridColumnDescriptor> columns)

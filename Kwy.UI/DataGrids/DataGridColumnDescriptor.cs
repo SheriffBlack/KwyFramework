@@ -7,5 +7,7 @@ public class DataGridColumnDescriptor : IDataGridColumnDescriptor
 {
     public string Key { get; set; } = string.Empty;
 
-    public string DisplayName { get; set; } = string.Empty;
+    public object? Header { get; set; }
+
+    public string BindingPath { get; set; } = string.Empty;
 }

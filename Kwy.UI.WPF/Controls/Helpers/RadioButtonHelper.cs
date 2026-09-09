@@ -41,7 +41,7 @@ public class RadioButtonHelper
         {
             var binding = new MultiBinding
             {
-                Converter = new StringEqualityConverter(),
+                Converter = new EqualityConverter(),
                 ConverterParameter = radioButton.Content,
                 Mode = BindingMode.TwoWay,
             };

@@ -9,7 +9,7 @@
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/TextBlockStyle.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <converters:StringEqualityConverter x:Key="StringEqualityConverter" />
+    <converters:EqualityConverter x:Key="EqualityConverter" />
 
     <Style
         x:Key="DefaultRadioButtonStyle"
