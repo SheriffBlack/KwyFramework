@@ -48,7 +48,7 @@
 
         <Border
             Grid.Row="0"
-            Background="{DynamicResource MainNavigationBackgroundBrush}"
+            Background="{DynamicResource NavigationBackgroundBrush}"
             BorderBrush="{DynamicResource ControlBorderBrush}"
             BorderThickness="0,0,0,0.7">
             <Grid Height="64" Margin="12,0,12,0">

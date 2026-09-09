@@ -136,16 +136,16 @@ public static class ListBoxHelper
     public static readonly DependencyProperty StyleKeyProperty =
         DependencyProperty.RegisterAttached(
             "StyleKey",
-            typeof(string),
+            typeof(object),
             typeof(ListBoxHelper),
             new PropertyMetadata(null, OnStyleKeyChanged));
 
-    public static string? GetStyleKey(DependencyObject obj) => (string?)obj.GetValue(StyleKeyProperty);
-    public static void SetStyleKey(DependencyObject obj, string? value) => obj.SetValue(StyleKeyProperty, value);
+    public static object? GetStyleKey(DependencyObject obj) => obj.GetValue(StyleKeyProperty);
+    public static void SetStyleKey(DependencyObject obj, object? value) => obj.SetValue(StyleKeyProperty, value);
 
     private static void OnStyleKeyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not ListBox lb || e.NewValue is not string key) return;
+        if (d is not ListBox lb || e.NewValue is not object key) return;
         if (lb.IsLoaded) DoApplyStyle(lb, key);
         else
         {
@@ -159,10 +159,10 @@ public static class ListBoxHelper
         if (sender is not ListBox lb) return;
         lb.Loaded -= OnStyleLoaded;
         var key = GetStyleKey(lb);
-        if (!string.IsNullOrEmpty(key)) DoApplyStyle(lb, key!);
+        if (key != null) DoApplyStyle(lb, key);
     }
 
-    private static void DoApplyStyle(ListBox lb, string key)
+    private static void DoApplyStyle(ListBox lb, object key)
     {
         var style = lb.TryFindResource(key) as Style
                  ?? Application.Current?.TryFindResource(key) as Style;

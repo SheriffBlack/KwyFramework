@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Automation.Peers;
 
 namespace Kwy.UI.WPF.Controls;
 
@@ -19,7 +20,6 @@ public class KwyNumberBox : Control
     private RepeatButton? increaseButton;
     private RepeatButton? decreaseButton;
     private bool isUpdatingText;
-    private bool isCoercingValue;
 
     internal TextBox? Editor => textBox;
 
@@ -44,7 +44,9 @@ public class KwyNumberBox : Control
             new FrameworkPropertyMetadata(
                 null,
                 FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
-                OnValueChanged));
+                OnValueChanged,
+                CoerceValue),
+            IsNullableFiniteNumber);
 
     public double SmallChange
     {
@@ -57,7 +59,8 @@ public class KwyNumberBox : Control
             nameof(SmallChange),
             typeof(double),
             typeof(KwyNumberBox),
-            new PropertyMetadata(1.0));
+            new PropertyMetadata(1.0),
+            IsPositiveFiniteNumber);
 
     public bool IsInteger
     {
@@ -70,7 +73,7 @@ public class KwyNumberBox : Control
             nameof(IsInteger),
             typeof(bool),
             typeof(KwyNumberBox),
-            new PropertyMetadata(false, OnValueChanged));
+            new PropertyMetadata(false, OnNumberFormatChanged));
 
     public bool IsReadOnly
     {
@@ -96,7 +99,8 @@ public class KwyNumberBox : Control
             nameof(Minimum),
             typeof(double?),
             typeof(KwyNumberBox),
-            new PropertyMetadata(null, OnValueChanged));
+            new PropertyMetadata(null, OnMinimumChanged),
+            IsNullableFiniteNumber);
 
     public double? Maximum
     {
@@ -109,7 +113,8 @@ public class KwyNumberBox : Control
             nameof(Maximum),
             typeof(double?),
             typeof(KwyNumberBox),
-            new PropertyMetadata(null, OnValueChanged));
+            new PropertyMetadata(null, OnMaximumChanged, CoerceMaximum),
+            IsNullableFiniteNumber);
 
     public int DecimalPlaces
     {
@@ -122,7 +127,8 @@ public class KwyNumberBox : Control
             nameof(DecimalPlaces),
             typeof(int),
             typeof(KwyNumberBox),
-            new PropertyMetadata(3, OnValueChanged));
+            new PropertyMetadata(3, OnNumberFormatChanged),
+            value => value is int places && places is >= 0 and <= 15);
 
     public override void OnApplyTemplate()
     {
@@ -155,38 +161,51 @@ public class KwyNumberBox : Control
         UpdateTextFromValue();
     }
 
+    protected override AutomationPeer OnCreateAutomationPeer()
+        => new KwyNumberBoxAutomationPeer(this);
+
     private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        ((KwyNumberBox)d).CoerceCurrentValue();
+        ((KwyNumberBox)d).UpdateTextFromValue();
     }
 
-    private void CoerceCurrentValue()
+    private static void OnNumberFormatChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (isCoercingValue)
-        {
-            UpdateTextFromValue();
-            return;
-        }
-
-        if (Value is double number)
-        {
-            double normalized = NormalizeNumber(number);
-            if (Math.Abs(normalized - number) > double.Epsilon)
-            {
-                isCoercingValue = true;
-                try
-                {
-                    Value = normalized;
-                }
-                finally
-                {
-                    isCoercingValue = false;
-                }
-            }
-        }
-
-        UpdateTextFromValue();
+        d.CoerceValue(ValueProperty);
+        ((KwyNumberBox)d).UpdateTextFromValue();
     }
+
+    private static void OnMinimumChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        d.CoerceValue(MaximumProperty);
+        d.CoerceValue(ValueProperty);
+        ((KwyNumberBox)d).UpdateTextFromValue();
+    }
+
+    private static void OnMaximumChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        d.CoerceValue(ValueProperty);
+        ((KwyNumberBox)d).UpdateTextFromValue();
+    }
+
+    private static object? CoerceValue(DependencyObject d, object? baseValue)
+        => baseValue is double number ? ((KwyNumberBox)d).NormalizeNumber(number) : null;
+
+    private static object? CoerceMaximum(DependencyObject d, object? baseValue)
+    {
+        if (baseValue is not double maximum || ((KwyNumberBox)d).Minimum is not double minimum)
+        {
+            return baseValue;
+        }
+
+        return Math.Max(minimum, maximum);
+    }
+
+    private static bool IsNullableFiniteNumber(object? value)
+        => value is null || value is double number && double.IsFinite(number);
+
+    private static bool IsPositiveFiniteNumber(object value)
+        => value is double number && double.IsFinite(number) && number > 0d;
 
     private void DetachTemplateParts()
     {

@@ -28,7 +28,7 @@ public sealed class ConfigurableMachine : MachineBase
         IoSnapshotPollingIntervalMs = profile.IoSnapshotPollingIntervalMs;
         BindDevices();
         InitTestStations();
-        BuildDataGrid();
+        BuildResultTable();
     }
 
     public override string MachineId => profile.MachineId;
@@ -94,7 +94,7 @@ public sealed class ConfigurableMachine : MachineBase
                 ? iconKind
                 : StationIconKind.Station,
             IsEnabled = source.IsEnabled,
-            ShowInResultGrid = source.ShowInResultGrid,
+            IncludeInResultSummary = source.IncludeInResultSummary,
             UseInstrumentConfigTestNames = source.UseInstrumentConfigTestNames,
             InstrumentDeviceIds = source.InstrumentDeviceIds.ToList(),
             OrderedTestNames = source.TestNames.ToList(),

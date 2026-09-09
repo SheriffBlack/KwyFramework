@@ -7,18 +7,27 @@
     xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
     xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
     xmlns:kwyui="http://schemas.kwy.com/ui"
+    xmlns:kwycomponents="http://schemas.kwy.com/ui/components"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:navigation="clr-namespace:KwyTemplate.Contracts.Navigation;assembly=KwyTemplate.Contracts"
     Title="{Binding AppTitle}"
     kwymvvm:ViewModelLocator.AutoWireViewModel="True"
     Icon="{StaticResource ImgLogoTest}"
-    ShowUserButton="True"
-    UserCommand="{Binding SwitchUserCommand}"
     WindowState="Maximized"
     mc:Ignorable="d">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     </Window.Resources>
+
+    <kwyui:KwyWindow.TitleBarRightContent>
+        <Button
+            Command="{Binding SwitchUserCommand}"
+            Content="{StaticResource IconContact}"
+            Focusable="False"
+            FontSize="20"
+            IsTabStop="False"
+            Style="{StaticResource KwyWindowButtonStyle}" />
+    </kwyui:KwyWindow.TitleBarRightContent>
 
     <kwyui:KwyWindow.TitleBarContent>
         <StackPanel Orientation="Horizontal">
@@ -108,11 +117,11 @@
                         <Ellipse.Style>
                             <Style BasedOn="{StaticResource DefaultEllipseStyle}" TargetType="Ellipse">
                                 <!--  默认断开状态：浅红色  -->
-                                <Setter Property="Fill" Value="{StaticResource DisconnectBrush}" />
+                                <Setter Property="Fill" Value="{StaticResource ErrorBrush}" />
                                 <Style.Triggers>
                                     <!--  连接成功状态：亮绿色  -->
                                     <DataTrigger Binding="{Binding IsMainPlcConnected}" Value="True">
-                                        <Setter Property="Fill" Value="{StaticResource ConnectBrush}" />
+                                        <Setter Property="Fill" Value="{StaticResource SuccessBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -217,9 +226,9 @@
         <kwyui:KwyToastHost
             Grid.RowSpan="2"
             Margin="12"
+            kwycomponents:ToastHostRegistration.Token="RootToast"
             MaxItems="5"
-            Placement="TopRight"
-            Token="RootToast" />
+            Placement="TopRight" />
     </Grid>
 </kwyui:KwyWindow>
 

@@ -5,12 +5,12 @@ using System.Globalization;
 
 namespace Kwy.UI.WPF.Input;
 
-public sealed class TextBoxKeyboardInputTarget : IKeyboardInputTarget
+public sealed class TextBoxKeyboardInputAdapter : IKeyboardInputAdapter
 {
     private readonly TextBox textBox;
     private readonly NumericKeyboardOptions? numericOptions;
 
-    public TextBoxKeyboardInputTarget(TextBox textBox, NumericKeyboardOptions? numericOptions = null)
+    public TextBoxKeyboardInputAdapter(TextBox textBox, NumericKeyboardOptions? numericOptions = null)
     {
         this.textBox = textBox ?? throw new ArgumentNullException(nameof(textBox));
         this.numericOptions = numericOptions;

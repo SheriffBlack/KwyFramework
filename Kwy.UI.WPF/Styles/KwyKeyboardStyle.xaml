@@ -1790,23 +1790,23 @@
                                 <Button Grid.Row="0" Grid.Column="1" CommandParameter="{Binding Source={x:Static Key.D8}}" Content="8" Style="{TemplateBinding NumericKeyButtonStyle}" />
                                 <Button Grid.Row="0" Grid.Column="2" CommandParameter="{Binding Source={x:Static Key.D9}}" Content="9" Style="{TemplateBinding NumericKeyButtonStyle}" />
                                 <Button Grid.Row="0" Grid.Column="3" CommandParameter="{Binding Source={x:Static Key.Add}}" Content="+" Style="{TemplateBinding NumericOperatorButtonStyle}" />
-                                <Button Grid.Row="0" Grid.Column="4" CommandParameter="{Binding Source={x:Static Key.Back}}" Content="⌫" Style="{TemplateBinding NumericActionButtonStyle}" />
+                                <Button Grid.Row="0" Grid.Column="4" CommandParameter="{Binding Source={x:Static Key.Back}}" Content="{TemplateBinding BackspaceKeyContent}" Style="{TemplateBinding NumericActionButtonStyle}" />
 
                                 <Button Grid.Row="1" Grid.Column="0" CommandParameter="{Binding Source={x:Static Key.D4}}" Content="4" Style="{TemplateBinding NumericKeyButtonStyle}" />
                                 <Button Grid.Row="1" Grid.Column="1" CommandParameter="{Binding Source={x:Static Key.D5}}" Content="5" Style="{TemplateBinding NumericKeyButtonStyle}" />
                                 <Button Grid.Row="1" Grid.Column="2" CommandParameter="{Binding Source={x:Static Key.D6}}" Content="6" Style="{TemplateBinding NumericKeyButtonStyle}" />
                                 <Button x:Name="PART_NegativeKey" Grid.Row="1" Grid.Column="3" CommandParameter="{Binding Source={x:Static Key.Subtract}}" Content="−" Style="{TemplateBinding NumericOperatorButtonStyle}" />
-                                <Button Grid.Row="1" Grid.Column="4" CommandParameter="{Binding Source={x:Static Key.Clear}}" Content="Clear" Style="{TemplateBinding NumericActionButtonStyle}" />
+                                <Button Grid.Row="1" Grid.Column="4" CommandParameter="{Binding Source={x:Static Key.Clear}}" Content="{TemplateBinding ClearKeyContent}" Style="{TemplateBinding NumericActionButtonStyle}" />
 
                                 <Button Grid.Row="2" Grid.Column="0" CommandParameter="{Binding Source={x:Static Key.D1}}" Content="1" Style="{TemplateBinding NumericKeyButtonStyle}" />
                                 <Button Grid.Row="2" Grid.Column="1" CommandParameter="{Binding Source={x:Static Key.D2}}" Content="2" Style="{TemplateBinding NumericKeyButtonStyle}" />
                                 <Button Grid.Row="2" Grid.Column="2" CommandParameter="{Binding Source={x:Static Key.D3}}" Content="3" Style="{TemplateBinding NumericKeyButtonStyle}" />
                                 <Button x:Name="PART_DecimalKey" Grid.Row="2" Grid.Column="3" CommandParameter="{Binding Source={x:Static Key.Decimal}}" Content="{Binding DecimalSeparator, RelativeSource={RelativeSource TemplatedParent}}" Style="{TemplateBinding NumericOperatorButtonStyle}" />
-                                <Button Grid.Row="2" Grid.RowSpan="2" Grid.Column="4" CommandParameter="{Binding Source={x:Static Key.Enter}}" Content="Enter" Style="{TemplateBinding NumericEnterButtonStyle}" />
+                                <Button Grid.Row="2" Grid.RowSpan="2" Grid.Column="4" CommandParameter="{Binding Source={x:Static Key.Enter}}" Content="{TemplateBinding EnterKeyContent}" Style="{TemplateBinding NumericEnterButtonStyle}" />
 
                                 <Button Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" CommandParameter="{Binding Source={x:Static Key.D0}}" Content="0" Style="{TemplateBinding NumericKeyButtonStyle}" />
-                                <Button Grid.Row="3" Grid.Column="2" CommandParameter="{Binding Source={x:Static Key.Delete}}" Content="Del" Style="{TemplateBinding NumericActionButtonStyle}" />
-                                <Button Grid.Row="3" Grid.Column="3" CommandParameter="{Binding Source={x:Static Key.Escape}}" Content="Esc" Style="{TemplateBinding NumericActionButtonStyle}" />
+                                <Button Grid.Row="3" Grid.Column="2" CommandParameter="{Binding Source={x:Static Key.Delete}}" Content="{TemplateBinding DeleteKeyContent}" Style="{TemplateBinding NumericActionButtonStyle}" />
+                                <Button Grid.Row="3" Grid.Column="3" CommandParameter="{Binding Source={x:Static Key.Escape}}" Content="{TemplateBinding EscapeKeyContent}" Style="{TemplateBinding NumericActionButtonStyle}" />
                             </Grid>
                         </Grid>
                     </Border>

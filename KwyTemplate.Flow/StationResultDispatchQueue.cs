@@ -113,7 +113,7 @@ internal sealed class StationResultMessage
     {
         var values = new List<StationResultValue>();
         var testNames = new List<string>(station.OrderedTestNames);
-        if (station.ShowInResultGrid)
+        if (station.IncludeInResultSummary)
         {
             foreach (string testName in station.TestValues.Keys)
             {

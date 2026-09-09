@@ -11,7 +11,6 @@ using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Flow.Common;
 using KwyTemplate.Flow.DataDeals;
-using Kwy.UI.DataGrids;
 using KwyTemplate.Flow.Models;
 using KwyTemplate.MES.Abstract.Models;
 
@@ -30,7 +29,9 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     private StationResultDispatchQueue? stationResultDispatchQueue;
     private Task? stationResultDispatchTask;
     private readonly Dictionary<string, MachinePlcPointDefinition> plcPointMap = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, DisplayRowItem> partRowMap = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, MachineResultRow> resultRowMap = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<MachineResultColumn> resultColumns = [];
+    private readonly List<MachineResultRow> resultRows = [];
     private readonly ILocalizationService? localizationService;
     private readonly object ioSnapshotSync = new();
     private CancellationTokenSource? runningCts;
@@ -98,13 +99,9 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
     public IReadOnlyList<TestStationModel> Stations => TestStations;
 
-    public ObservableCollection<DataGridColumnDescriptor> PartColumns { get; } = [];
+    public IReadOnlyList<MachineResultColumn> ResultColumns => resultColumns;
 
-    public ObservableCollection<DisplayRowItem> PartRows { get; } = [];
-
-    IReadOnlyCollection<DataGridColumnDescriptor> IMachineResultProvider.PartColumns => PartColumns;
-
-    IReadOnlyCollection<DisplayRowItem> IMachineResultProvider.PartRows => PartRows;
+    public IReadOnlyList<MachineResultRow> ResultRows => resultRows;
 
     public ObservableCollection<MachinePlcPointDefinition> PlcPointDefinitions { get; } = [];
 
@@ -119,7 +116,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     /// </summary>
     public event Func<CancellationToken, Task>? ExternalStartRequested;
 
-    public event EventHandler? TableChanged;
+    public event EventHandler? ResultTableChanged;
 
     public event EventHandler<StationResultPublishedEventArgs>? StationResultPublished;
 
@@ -489,7 +486,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     }
 
     /// <summary>
-    /// 将测试上下限写入工位模型，供 PC 判定、DataGrid 和图表共用。
+    /// 将测试上下限写入工位模型，供 PC 判定和结果消费端共用。
     /// </summary>
     /// <summary>
     /// 当 MES 或本地配置更新参数时，子类可调用该方法同步软件判定上下限。
@@ -565,7 +562,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         }
 
         UpdateLimitRows();
-        RaiseTableChanged();
+        RaiseResultTableChanged();
     }
 
     /// <summary>
@@ -588,7 +585,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
     protected void UpdateLimitRows()
     {
-        DisplayRowItem row = GetRow("Limits");
+        MachineResultRow row = GetResultRow("Limits");
         foreach (TestStationModel station in TestStations)
         {
             foreach (string testName in station.OrderedTestNames)
@@ -596,7 +593,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
                 string key = CreateCellKey(station.StationId, testName);
                 if (station.TestLimits.TryGetValue(testName, out StationMeasurementLimit? limit))
                 {
-                    SetCellValue(row, key, FormatLimitText(limit));
+                    SetResultCellValue(row, key, FormatLimitText(limit));
                 }
             }
         }
@@ -1018,43 +1015,38 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         }
     }
 
-    protected void BuildDataGrid()
+    protected void BuildResultTable()
     {
-        RefreshResultGridTestNames();
+        RefreshResultTableTestNames();
 
-        PartColumns.Clear();
-        PartRows.Clear();
-        partRowMap.Clear();
+        resultColumns.Clear();
+        resultRows.Clear();
+        resultRowMap.Clear();
 
-        PartColumns.Add(new DataGridColumnDescriptor
-        {
-            Key = "RowName",
-            Header = T("Flow.Grid.Project", "项目"),
-            BindingPath = nameof(DisplayRowItem.RowName)
-        });
+        resultColumns.Add(new MachineResultColumn("RowName", T("Flow.Grid.Project", "项目")));
         foreach (TestStationModel station in TestStations)
         {
             foreach (string testName in station.OrderedTestNames)
             {
                 string key = CreateCellKey(station.StationId, testName);
-                PartColumns.Add(new DynamicCellColumnDescriptor(key, testName));
+                resultColumns.Add(new MachineResultColumn(key, testName));
             }
         }
 
-        AddRow("Limits", T("Flow.Grid.Limits", "上下限"), null);
-        AddRow("TestValue", T("Flow.Grid.TestValue", "测试值"), null);
-        AddRow("Total", T("Flow.Grid.Total", "总数"), null);
-        AddRow("Ok", T("Flow.Grid.Ok", "OK数"), null);
-        AddRow("Ng", T("Flow.Grid.Ng", "NG数"), null);
-        AddRow("Yield", T("Flow.Grid.Yield", "良率"), null);
-        RaiseTableChanged();
+        AddResultRow("Limits", T("Flow.Grid.Limits", "上下限"), null);
+        AddResultRow("TestValue", T("Flow.Grid.TestValue", "测试值"), null);
+        AddResultRow("Total", T("Flow.Grid.Total", "总数"), null);
+        AddResultRow("Ok", T("Flow.Grid.Ok", "OK数"), null);
+        AddResultRow("Ng", T("Flow.Grid.Ng", "NG数"), null);
+        AddResultRow("Yield", T("Flow.Grid.Yield", "良率"), null);
+        RaiseResultTableChanged();
     }
 
-    private void RefreshResultGridTestNames()
+    private void RefreshResultTableTestNames()
     {
         foreach (TestStationModel station in TestStations)
         {
-            if (!station.ShowInResultGrid)
+            if (!station.IncludeInResultSummary)
             {
                 station.OrderedTestNames = [];
                 continue;
@@ -1085,26 +1077,26 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     }
     public void UpdateTestValues(TestStationModel station)
     {
-        DisplayRowItem row = GetRow("TestValue");
+        MachineResultRow row = GetResultRow("TestValue");
         foreach (string testName in station.OrderedTestNames)
         {
             string key = CreateCellKey(station.StationId, testName);
-            SetCellValue(row, key, station.TestValues.TryGetValue(testName, out double value) ? value.ToString("F4") : null);
+            SetResultCellValue(row, key, station.TestValues.TryGetValue(testName, out double value) ? value.ToString("F4") : null);
         }
 
-        RaiseTableChanged();
+        RaiseResultTableChanged();
     }
 
     public void UpdateTestResults(TestStationModel station)
     {
-        DisplayRowItem row = GetRow("TestValue");
+        MachineResultRow row = GetResultRow("TestValue");
         foreach (string testName in station.OrderedTestNames)
         {
             string key = CreateCellKey(station.StationId, testName);
-            row.UpdateVisualState(key, ToCellValidationState(station.TestJudges.TryGetValue(testName, out bool ok) ? ok : null));
+            row.GetOrAddCell(key).State = ToMachineResultCellState(station.TestJudges.TryGetValue(testName, out bool ok) ? ok : null);
         }
 
-        RaiseTableChanged();
+        RaiseResultTableChanged();
     }
 
     public void UpdateStatistics(TestStationModel station, bool isPass)
@@ -1114,13 +1106,13 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         foreach (string testName in station.OrderedTestNames)
         {
             string key = CreateCellKey(station.StationId, testName);
-            SetCellValue(GetRow("Total"), key, station.TotalCount.ToString());
-            SetCellValue(GetRow("Ok"), key, station.OkCount.ToString());
-            SetCellValue(GetRow("Ng"), key, station.NgCount.ToString());
-            SetCellValue(GetRow("Yield"), key, station.YieldRate.ToString("P2"));
+            SetResultCellValue(GetResultRow("Total"), key, station.TotalCount.ToString());
+            SetResultCellValue(GetResultRow("Ok"), key, station.OkCount.ToString());
+            SetResultCellValue(GetResultRow("Ng"), key, station.NgCount.ToString());
+            SetResultCellValue(GetResultRow("Yield"), key, station.YieldRate.ToString("P2"));
         }
 
-        RaiseTableChanged();
+        RaiseResultTableChanged();
     }
 
     protected void UpdateStatisticsRows(TestStationModel station, string testName, uint totalCount, uint okCount, uint ngCount, double yieldRate)
@@ -1130,13 +1122,13 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
         string key = CreateCellKey(station.StationId, testName);
 
-        SetCellValue(GetRow("Total"), key, totalCount.ToString(CultureInfo.InvariantCulture));
-        SetCellValue(GetRow("Ok"), key, okCount.ToString(CultureInfo.InvariantCulture));
-        SetCellValue(GetRow("Ng"), key, ngCount.ToString(CultureInfo.InvariantCulture));
-        SetCellValue(GetRow("Yield"), key, yieldRate.ToString("P2", CultureInfo.InvariantCulture));
-        RaiseTableChanged();
+        SetResultCellValue(GetResultRow("Total"), key, totalCount.ToString(CultureInfo.InvariantCulture));
+        SetResultCellValue(GetResultRow("Ok"), key, okCount.ToString(CultureInfo.InvariantCulture));
+        SetResultCellValue(GetResultRow("Ng"), key, ngCount.ToString(CultureInfo.InvariantCulture));
+        SetResultCellValue(GetResultRow("Yield"), key, yieldRate.ToString("P2", CultureInfo.InvariantCulture));
+        RaiseResultTableChanged();
     }
-    public void ClearDataGrid()
+    public void ClearResultData()
     {
         // 使已经进入后台队列、但尚未消费的旧工位结果失效。
         Interlocked.Increment(ref resultGeneration);
@@ -1147,16 +1139,16 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             station.ResetStatistics();
         }
 
-        foreach (DisplayRowItem row in PartRows)
+        foreach (MachineResultRow row in ResultRows)
         {
-            foreach (CellState cell in row.Cells.Values)
+            foreach (MachineResultCell cell in row.Cells.Values)
             {
                 cell.Value = null;
-                cell.VisualState = CellValidationState.None;
+                cell.State = MachineResultCellState.None;
             }
         }
 
-        RaiseTableChanged();
+        RaiseResultTableChanged();
     }
 
     protected virtual void ReadSystemData()
@@ -1321,7 +1313,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             return;
         }
 
-        ApplyStationResultToTable(message);
+        ApplyStationResultToReadModel(message);
         RaiseStationResultPublished(message);
 
         foreach (StationResultValue value in message.Values)
@@ -1344,7 +1336,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
     protected virtual bool ShouldApplyRealtimeStatisticsToTable => true;
 
-    private void ApplyStationResultToTable(StationResultMessage message)
+    private void ApplyStationResultToReadModel(StationResultMessage message)
     {
         TestStationModel station = message.Station;
         bool applyRealtimeStatistics = ShouldApplyRealtimeStatisticsToTable;
@@ -1353,28 +1345,28 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             station.AccumulateResult(message.IsPass);
         }
 
-        DisplayRowItem testValueRow = GetRow("TestValue");
-        DisplayRowItem? totalRow = applyRealtimeStatistics ? GetRow("Total") : null;
-        DisplayRowItem? okRow = applyRealtimeStatistics ? GetRow("Ok") : null;
-        DisplayRowItem? ngRow = applyRealtimeStatistics ? GetRow("Ng") : null;
-        DisplayRowItem? yieldRow = applyRealtimeStatistics ? GetRow("Yield") : null;
+        MachineResultRow testValueRow = GetResultRow("TestValue");
+        MachineResultRow? totalRow = applyRealtimeStatistics ? GetResultRow("Total") : null;
+        MachineResultRow? okRow = applyRealtimeStatistics ? GetResultRow("Ok") : null;
+        MachineResultRow? ngRow = applyRealtimeStatistics ? GetResultRow("Ng") : null;
+        MachineResultRow? yieldRow = applyRealtimeStatistics ? GetResultRow("Yield") : null;
 
         foreach (StationResultValue value in message.Values)
         {
             string key = CreateCellKey(station.StationId, value.TestName);
-            SetCellValue(testValueRow, key, value.Value.ToString("F4", CultureInfo.InvariantCulture));
-            testValueRow.UpdateVisualState(key, ToCellValidationState(value.Judge));
+            SetResultCellValue(testValueRow, key, value.Value.ToString("F4", CultureInfo.InvariantCulture));
+            testValueRow.GetOrAddCell(key).State = ToMachineResultCellState(value.Judge);
 
             if (applyRealtimeStatistics)
             {
-                SetCellValue(totalRow!, key, station.TotalCount.ToString(CultureInfo.InvariantCulture));
-                SetCellValue(okRow!, key, station.OkCount.ToString(CultureInfo.InvariantCulture));
-                SetCellValue(ngRow!, key, station.NgCount.ToString(CultureInfo.InvariantCulture));
-                SetCellValue(yieldRow!, key, station.YieldRate.ToString("P2", CultureInfo.InvariantCulture));
+                SetResultCellValue(totalRow!, key, station.TotalCount.ToString(CultureInfo.InvariantCulture));
+                SetResultCellValue(okRow!, key, station.OkCount.ToString(CultureInfo.InvariantCulture));
+                SetResultCellValue(ngRow!, key, station.NgCount.ToString(CultureInfo.InvariantCulture));
+                SetResultCellValue(yieldRow!, key, station.YieldRate.ToString("P2", CultureInfo.InvariantCulture));
             }
         }
 
-        RaiseTableChanged();
+        RaiseResultTableChanged();
     }
     protected virtual Task OnTestStartedAsync(CancellationToken cancellationToken)
         => Task.CompletedTask;
@@ -1385,8 +1377,8 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     protected static string CreateCellKey(int stationId, string testName)
         => $"S{stationId}_{testName}";
 
-    protected void RaiseTableChanged()
-        => TableChanged?.Invoke(this, EventArgs.Empty);
+    protected void RaiseResultTableChanged()
+        => ResultTableChanged?.Invoke(this, EventArgs.Empty);
 
     private void RaiseStationResultPublished(StationResultMessage message)
     {
@@ -1474,40 +1466,37 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         }
     }
 
-    private void AddRow(string key, string name, object? defaultValue)
+    private void AddResultRow(string key, string name, object? defaultValue)
     {
-        var row = new DisplayRowItem { RowName = name };
-        partRowMap[key] = row;
-        foreach (DataGridColumnDescriptor column in PartColumns.Skip(1))
+        var row = new MachineResultRow(key, name);
+        resultRowMap[key] = row;
+        foreach (MachineResultColumn column in ResultColumns.Skip(1))
         {
-            SetCellValue(row, column.Key, defaultValue);
+            SetResultCellValue(row, column.Key, defaultValue);
         }
 
-        PartRows.Add(row);
+        resultRows.Add(row);
     }
 
-    private DisplayRowItem GetRow(string key)
+    private MachineResultRow GetResultRow(string key)
     {
-        if (partRowMap.TryGetValue(key, out DisplayRowItem? row))
+        if (resultRowMap.TryGetValue(key, out MachineResultRow? row))
         {
             return row;
         }
 
-        return PartRows.First(item => string.Equals(item.RowName, key, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(item.RowName, ToRowDisplayName(key), StringComparison.OrdinalIgnoreCase));
+        return ResultRows.First(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static void SetCellValue(DisplayRowItem row, string parameterId, object? value)
-    {
-        row.UpdateCell(parameterId, value);
-    }
+    private static void SetResultCellValue(MachineResultRow row, string key, object? value)
+        => row.GetOrAddCell(key).Value = value;
 
-    private static CellValidationState ToCellValidationState(bool? result)
+    private static MachineResultCellState ToMachineResultCellState(bool? result)
         => result switch
         {
-            true => CellValidationState.Success,
-            false => CellValidationState.Error,
-            null => CellValidationState.None
+            true => MachineResultCellState.Success,
+            false => MachineResultCellState.Error,
+            null => MachineResultCellState.None
         };
 
     private string ToRowDisplayName(string key)
@@ -1523,36 +1512,30 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         };
 
     private void OnLanguageChanged(object? sender, LanguageType languageType)
-        => RefreshResultGridLocalization();
+        => RefreshResultTableLocalization();
 
-    private void RefreshResultGridLocalization()
+    private void RefreshResultTableLocalization()
     {
-        DataGridColumnDescriptor? rowNameColumn = PartColumns.FirstOrDefault(static column =>
+        MachineResultColumn? rowNameColumn = ResultColumns.FirstOrDefault(static column =>
             string.Equals(column.Key, "RowName", StringComparison.OrdinalIgnoreCase));
         if (rowNameColumn != null)
         {
             rowNameColumn.Header = T("Flow.Grid.Project", "项目");
-            int index = PartColumns.IndexOf(rowNameColumn);
-            if (index >= 0)
-            {
-                PartColumns.RemoveAt(index);
-                PartColumns.Insert(index, rowNameColumn);
-            }
         }
 
-        foreach ((string key, DisplayRowItem row) in partRowMap)
+        foreach ((string key, MachineResultRow row) in resultRowMap)
         {
-            row.RowName = ToRowDisplayName(key);
+            row.DisplayName = ToRowDisplayName(key);
         }
 
-        RaiseTableChanged();
+        RaiseResultTableChanged();
     }
 
-    public void RefreshResultGrid()
+    public void RefreshResultTable()
     {
-        BuildDataGrid();
+        BuildResultTable();
         UpdateLimitRows();
-        RaiseTableChanged();
+        RaiseResultTableChanged();
     }
 
     /// <summary>
@@ -1560,25 +1543,25 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     /// 这样同一机种的参数更新不会替换“测试值/统计”行，避免 UI 闪烁。
     /// </summary>
     /// <returns>是否因测试列结构变化而重建了结果表。</returns>
-    public bool RefreshResultGridIfStructureChanged()
+    public bool RefreshResultTableIfStructureChanged()
     {
-        RefreshResultGridTestNames();
+        RefreshResultTableTestNames();
         string[] expectedColumnIds =
         [
             "RowName",
             .. TestStations.SelectMany(station => station.OrderedTestNames.Select(testName => CreateCellKey(station.StationId, testName)))
         ];
-        bool structureChanged = !PartColumns
+        bool structureChanged = !ResultColumns
             .Select(static column => column.Key)
             .SequenceEqual(expectedColumnIds, StringComparer.OrdinalIgnoreCase);
 
         if (structureChanged)
         {
-            BuildDataGrid();
+            BuildResultTable();
         }
 
         UpdateLimitRows();
-        RaiseTableChanged();
+        RaiseResultTableChanged();
         return structureChanged;
     }
 

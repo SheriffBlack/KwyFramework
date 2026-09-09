@@ -233,7 +233,7 @@ public class CompensateViewModel : BindableBase, INavigationAware
     {
         CheckItems.Clear();
 
-        foreach (TestStationModel station in machine.TestStations.Where(static station => station.ShowInResultGrid).Where(HasStationCheckOperation))
+        foreach (TestStationModel station in machine.TestStations.Where(static station => station.IncludeInResultSummary).Where(HasStationCheckOperation))
         {
             foreach (string testName in GetStationCheckItemNames(station))
             {

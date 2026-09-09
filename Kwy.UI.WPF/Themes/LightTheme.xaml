@@ -19,7 +19,7 @@
     <Color x:Key="WatermarkColor">#80000000</Color>
     <Color x:Key="ControlSelectedBackgroundColor">#DCEBFF</Color>
     <Color x:Key="ControlSelectedForegroundColor">#0F2742</Color>
-    <Color x:Key="MainNavigationBackgroundColor">#EEF4FA</Color>
+    <Color x:Key="NavigationBackgroundColor">#EEF4FA</Color>
     <Color x:Key="SegmentColor">#696969</Color>
     <Color x:Key="SWSlotColor">#334455</Color>
     <Color x:Key="ControlBackgroundColor">#FFFFFF</Color>
@@ -42,7 +42,7 @@
     <SolidColorBrush x:Key="WatermarkBrush" Color="{DynamicResource WatermarkColor}" />
     <SolidColorBrush x:Key="ControlSelectedBackgroundBrush" Color="{DynamicResource ControlSelectedBackgroundColor}" />
     <SolidColorBrush x:Key="ControlSelectedForegroundBrush" Color="{DynamicResource ControlSelectedForegroundColor}" />
-    <SolidColorBrush x:Key="MainNavigationBackgroundBrush" Color="{DynamicResource MainNavigationBackgroundColor}" />
+    <SolidColorBrush x:Key="NavigationBackgroundBrush" Color="{DynamicResource NavigationBackgroundColor}" />
     <SolidColorBrush x:Key="SegmentBrush" Color="{DynamicResource SegmentColor}" />
     <SolidColorBrush x:Key="SWSlotBrush" Color="{DynamicResource SWSlotColor}" />
     <SolidColorBrush x:Key="ControlBackgroundBrush" Color="{DynamicResource ControlBackgroundColor}" />

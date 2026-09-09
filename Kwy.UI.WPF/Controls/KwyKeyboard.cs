@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Automation.Peers;
 
 namespace Kwy.UI.WPF.Controls;
 
@@ -28,6 +29,12 @@ public class KwyKeyboard : Control
     /// 存储键盘控件按钮主容器
     /// </summary>
     private Grid? keysRoot;
+
+    public KwyKeyboard()
+    {
+        Loaded += OnKeyboardLoaded;
+        Unloaded += OnKeyboardUnloaded;
+    }
 
     public SoftKeyboardMode Mode
     {
@@ -87,6 +94,51 @@ public class KwyKeyboard : Control
         nameof(NumericEnterButtonStyle), typeof(Style), typeof(KwyKeyboard));
 
     public string DecimalSeparator => System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+
+    public object BackspaceKeyContent
+    {
+        get => GetValue(BackspaceKeyContentProperty);
+        set => SetValue(BackspaceKeyContentProperty, value);
+    }
+
+    public static readonly DependencyProperty BackspaceKeyContentProperty = DependencyProperty.Register(
+        nameof(BackspaceKeyContent), typeof(object), typeof(KwyKeyboard), new PropertyMetadata("⌫"));
+
+    public object ClearKeyContent
+    {
+        get => GetValue(ClearKeyContentProperty);
+        set => SetValue(ClearKeyContentProperty, value);
+    }
+
+    public static readonly DependencyProperty ClearKeyContentProperty = DependencyProperty.Register(
+        nameof(ClearKeyContent), typeof(object), typeof(KwyKeyboard), new PropertyMetadata("Clear"));
+
+    public object DeleteKeyContent
+    {
+        get => GetValue(DeleteKeyContentProperty);
+        set => SetValue(DeleteKeyContentProperty, value);
+    }
+
+    public static readonly DependencyProperty DeleteKeyContentProperty = DependencyProperty.Register(
+        nameof(DeleteKeyContent), typeof(object), typeof(KwyKeyboard), new PropertyMetadata("Del"));
+
+    public object EnterKeyContent
+    {
+        get => GetValue(EnterKeyContentProperty);
+        set => SetValue(EnterKeyContentProperty, value);
+    }
+
+    public static readonly DependencyProperty EnterKeyContentProperty = DependencyProperty.Register(
+        nameof(EnterKeyContent), typeof(object), typeof(KwyKeyboard), new PropertyMetadata("Enter"));
+
+    public object EscapeKeyContent
+    {
+        get => GetValue(EscapeKeyContentProperty);
+        set => SetValue(EscapeKeyContentProperty, value);
+    }
+
+    public static readonly DependencyProperty EscapeKeyContentProperty = DependencyProperty.Register(
+        nameof(EscapeKeyContent), typeof(object), typeof(KwyKeyboard), new PropertyMetadata("Esc"));
 
     public static readonly RoutedEvent KeyInvokedEvent = EventManager.RegisterRoutedEvent(
         nameof(KeyInvoked),
@@ -280,63 +332,37 @@ public class KwyKeyboard : Control
             nameof(KeyboardLayout),
             typeof(KeyboardLayout),
             typeof(KwyKeyboard),
-            new PropertyMetadata(KeyboardLayout.Qwerty, OnKeyboardLayoutChanged));
-
-    /// <summary>
-    /// KeyboardLayout 属性变化时的回调函数
-    /// </summary>
-    private static void OnKeyboardLayoutChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        // 可以在这里添加键盘布局变化时的处理逻辑
-        // 例如：重新加载键盘布局、更新按键位置等
-        var keyboard = d as KwyKeyboard;
-        if (keyboard != null && keyboard.keysRoot != null)
-        {
-            // 移除旧的按键事件
-            keyboard.AddOrRemoveKeyButtonEvent(false);
-            // 可以在这里添加重新加载键盘布局的逻辑
-            // 重新添加按键事件
-            keyboard.AddOrRemoveKeyButtonEvent(true);
-        }
-    }
+            new PropertyMetadata(KeyboardLayout.Qwerty));
 
     public override void OnApplyTemplate()
     {
+        AddOrRemoveKeyButtonEvent(false);
         base.OnApplyTemplate();
         keysRoot = GetTemplateChild("PART_KeysRoot") as Grid;
-        Loaded -= LayKeyboard_Loaded;
-        Loaded += LayKeyboard_Loaded;
-        Unloaded -= LayKeyboard_Unloaded;
-        Unloaded += LayKeyboard_Unloaded;
+        if (IsLoaded)
+        {
+            AddOrRemoveKeyButtonEvent(true);
+        }
     }
+
+    protected override AutomationPeer OnCreateAutomationPeer()
+        => new KwyKeyboardAutomationPeer(this);
 
     /// <summary>
     /// 初始化给添加按钮点击事件
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void LayKeyboard_Unloaded(object sender, RoutedEventArgs e)
-    {
-        Unloaded -= LayKeyboard_Unloaded;
-        if (keysRoot != null)
-        {
-            AddOrRemoveKeyButtonEvent(false);
-        }
-    }
+    private void OnKeyboardUnloaded(object sender, RoutedEventArgs e)
+        => AddOrRemoveKeyButtonEvent(false);
 
     /// <summary>
     /// 关闭时删除按钮点击事件
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void LayKeyboard_Loaded(object sender, RoutedEventArgs e)
-    {
-        Loaded -= LayKeyboard_Loaded;
-        if (keysRoot != null)
-        {
-            AddOrRemoveKeyButtonEvent(true);
-        }
-    }
+    private void OnKeyboardLoaded(object sender, RoutedEventArgs e)
+        => AddOrRemoveKeyButtonEvent(true);
 
     /// <summary>
     /// 给模拟键盘按钮新增或删除事件

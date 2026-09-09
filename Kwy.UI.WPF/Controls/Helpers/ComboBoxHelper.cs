@@ -2,7 +2,6 @@ using System.Collections;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 
 namespace Kwy.UI.WPF.Controls.Helpers;
 
@@ -58,16 +57,16 @@ public static class ComboBoxHelper
     public static readonly DependencyProperty StyleKeyProperty =
         DependencyProperty.RegisterAttached(
             "StyleKey",
-            typeof(string),
+            typeof(object),
             typeof(ComboBoxHelper),
             new PropertyMetadata(KwyResourceKeys.DefaultComboBoxStyle, OnStyleKeyChanged));
 
-    public static string GetStyleKey(DependencyObject obj) => (string)obj.GetValue(StyleKeyProperty);
-    public static void SetStyleKey(DependencyObject obj, string value) => obj.SetValue(StyleKeyProperty, value);
+    public static object GetStyleKey(DependencyObject obj) => obj.GetValue(StyleKeyProperty);
+    public static void SetStyleKey(DependencyObject obj, object value) => obj.SetValue(StyleKeyProperty, value);
 
     private static void OnStyleKeyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is ComboBox cb && e.NewValue is string key)
+        if (d is ComboBox cb && e.NewValue is object key)
             ApplyStyle(cb, key);
     }
 
@@ -89,29 +88,27 @@ public static class ComboBoxHelper
     {
         if (d is not ComboBox cb || !(bool)e.NewValue) return;
         ApplyAutoStyle(cb);
+    }
 
-        // 监听 Icon 属性变化（设置 Icon 可能在 AutoStyle 之后）
-        cb.SetBinding(IconHelper.IconProperty, new Binding
+    internal static void OnIconChanged(ComboBox comboBox)
+    {
+        if (GetAutoStyle(comboBox))
         {
-            Source = cb,
-            Path   = new PropertyPath(IconHelper.IconProperty),
-            Mode   = BindingMode.OneWay
-        });
+            ApplyAutoStyle(comboBox);
+        }
     }
 
     private static void ApplyAutoStyle(ComboBox cb)
     {
         var icon = IconHelper.GetIcon(cb);
-        string key = icon != null ? KwyResourceKeys.IconComboBoxStyle : KwyResourceKeys.DefaultComboBoxStyle;
+        object key = icon != null ? KwyResourceKeys.IconComboBoxStyle : KwyResourceKeys.DefaultComboBoxStyle;
         ApplyStyle(cb, key);
     }
 
     // ── 内部工具 ─────────────────────────────────────────────────────────
 
-    private static void ApplyStyle(ComboBox cb, string key)
+    private static void ApplyStyle(ComboBox cb, object key)
     {
-        if (string.IsNullOrWhiteSpace(key)) return;
-
         if (cb.IsLoaded)
         {
             DoApply(cb, key);
@@ -130,7 +127,7 @@ public static class ComboBoxHelper
         DoApply(cb, GetStyleKey(cb));
     }
 
-    private static void DoApply(ComboBox cb, string key)
+    private static void DoApply(ComboBox cb, object key)
     {
         var style = cb.TryFindResource(key) as Style
                  ?? Application.Current?.TryFindResource(key) as Style;

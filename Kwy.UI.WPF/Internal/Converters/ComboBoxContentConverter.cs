@@ -12,7 +12,7 @@ namespace Kwy.UI.WPF.Internal.Converters;
 /// ComboBox 内容转换器
 /// 从 SelectedItem 获取对应的 ComboBoxItem 的 Content
 /// </summary>
-public sealed class ComboBoxContentConverter : MarkupExtension, IMultiValueConverter
+internal sealed class ComboBoxContentConverter : MarkupExtension, IMultiValueConverter
 {
     private static ComboBoxContentConverter? instance;
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> propertyCache = new();

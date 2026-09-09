@@ -125,44 +125,31 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(true));
 
-    public bool ShowUserButton
+    public object? TitleBarRightContent
     {
-        get => (bool)GetValue(ShowUserButtonProperty);
-        set => SetValue(ShowUserButtonProperty, value);
+        get => GetValue(TitleBarRightContentProperty);
+        set => SetValue(TitleBarRightContentProperty, value);
     }
 
-    public static readonly DependencyProperty ShowUserButtonProperty =
+    public static readonly DependencyProperty TitleBarRightContentProperty =
         DependencyProperty.Register(
-            nameof(ShowUserButton),
-            typeof(bool),
-            typeof(KwyWindow),
-            new FrameworkPropertyMetadata(false));
-
-    public ICommand? UserCommand
-    {
-        get => (ICommand?)GetValue(UserCommandProperty);
-        set => SetValue(UserCommandProperty, value);
-    }
-
-    public static readonly DependencyProperty UserCommandProperty =
-        DependencyProperty.Register(
-            nameof(UserCommand),
-            typeof(ICommand),
-            typeof(KwyWindow),
-            new FrameworkPropertyMetadata(null));
-
-    public object? UserCommandParameter
-    {
-        get => GetValue(UserCommandParameterProperty);
-        set => SetValue(UserCommandParameterProperty, value);
-    }
-
-    public static readonly DependencyProperty UserCommandParameterProperty =
-        DependencyProperty.Register(
-            nameof(UserCommandParameter),
+            nameof(TitleBarRightContent),
             typeof(object),
             typeof(KwyWindow),
-            new FrameworkPropertyMetadata(null));
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
+    public DataTemplate? TitleBarRightContentTemplate
+    {
+        get => (DataTemplate?)GetValue(TitleBarRightContentTemplateProperty);
+        set => SetValue(TitleBarRightContentTemplateProperty, value);
+    }
+
+    public static readonly DependencyProperty TitleBarRightContentTemplateProperty =
+        DependencyProperty.Register(
+            nameof(TitleBarRightContentTemplate),
+            typeof(DataTemplate),
+            typeof(KwyWindow),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsMeasure));
 
     public double TitleBarHeight
     {

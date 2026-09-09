@@ -124,15 +124,10 @@
                                         VerticalAlignment="Stretch"
                                         Background="Transparent"
                                         Orientation="Horizontal">
-                                        <Button
-                                            x:Name="PART_UserButton"
-                                            Command="{Binding UserCommand, RelativeSource={RelativeSource TemplatedParent}}"
-                                            CommandParameter="{Binding UserCommandParameter, RelativeSource={RelativeSource TemplatedParent}}"
-                                            Content="{StaticResource IconContact}"
-                                            Focusable="False"
-                                            FontSize="20"
-                                            IsTabStop="False"
-                                            Style="{StaticResource KwyWindowButtonStyle}" />
+                                        <ContentPresenter
+                                            x:Name="PART_TitleBarRightContent"
+                                            Content="{TemplateBinding TitleBarRightContent}"
+                                            ContentTemplate="{TemplateBinding TitleBarRightContentTemplate}" />
                                         <Button
                                             x:Name="PART_MinimizeButton"
                                             Content="{StaticResource IconMin}"
@@ -204,8 +199,8 @@
                         <Trigger Property="controls:KwyWindow.ShowCloseButton" Value="False">
                             <Setter TargetName="PART_CloseButton" Property="Visibility" Value="Collapsed" />
                         </Trigger>
-                        <Trigger Property="controls:KwyWindow.ShowUserButton" Value="False">
-                            <Setter TargetName="PART_UserButton" Property="Visibility" Value="Collapsed" />
+                        <Trigger Property="controls:KwyWindow.TitleBarRightContent" Value="{x:Null}">
+                            <Setter TargetName="PART_TitleBarRightContent" Property="Visibility" Value="Collapsed" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

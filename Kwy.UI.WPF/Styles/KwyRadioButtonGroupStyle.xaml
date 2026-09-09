@@ -1,94 +1,54 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="clr-namespace:Kwy.UI.WPF.Controls"
-    xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers">
+    xmlns:controls="clr-namespace:Kwy.UI.WPF.Controls">
 
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/RadioButtonStyle.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <!--  ── 矩阵模式中的列容器模板 (ColumnGroup -> StackPanel of RadioButtons) ──  -->
-    <DataTemplate x:Key="ColumnGroupTemplate">
-        <ItemsControl ItemsSource="{Binding Items}" Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <RadioButton
-                        Margin="0,4,25,4"
-                        VerticalAlignment="Center"
-                        helpers:RadioButtonHelper.BindTo="{Binding Tag.Value, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                        Content="{Binding}"
-                        FontSize="18"
-                        GroupName="{Binding Tag.RadioButtonGroupName, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                        Style="{StaticResource DefaultRadioButtonStyle}" />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel VerticalAlignment="Top" Orientation="Vertical" />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-        </ItemsControl>
-    </DataTemplate>
-
-    <!--  ── 普通模式：单项 RadioButton 模板 ──────────────────────────────  -->
-    <DataTemplate x:Key="SingleItemTemplate">
-        <RadioButton
-            Margin="0,4,25,4"
-            VerticalAlignment="Center"
-            helpers:RadioButtonHelper.BindTo="{Binding Tag.Value, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-            Content="{Binding}"
-            FontSize="18"
-            GroupName="{Binding Tag.RadioButtonGroupName, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-            Style="{StaticResource DefaultRadioButtonStyle}" />
-    </DataTemplate>
-
-    <!--  ── KwyRadioButtonGroup 主样式 ──────────────────────────────────  -->
-    <Style TargetType="{x:Type controls:KwyRadioButtonGroup}">
+    <Style x:Key="KwyRadioButtonGroupItemStyle" TargetType="ListBoxItem">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="0" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Template">
             <Setter.Value>
-                <ControlTemplate TargetType="{x:Type controls:KwyRadioButtonGroup}">
-                    <!--
-                        🔥 核心修复：
-                        直接在这里绑定到 EffectiveItemsSource。
-                        这会绕过外部对 ItemsSource 赋值的优先级问题，确保内部渲染始终使用解析后的数据。
-                    -->
-                    <ItemsControl
-                        x:Name="PART_InternalItemsControl"
-                        DataContext="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                        ItemsSource="{Binding EffectiveItemsSource}"
-                        Tag="{Binding}">
-                        <ItemsControl.Style>
-                            <Style TargetType="ItemsControl">
-                                <Setter Property="ItemTemplate" Value="{StaticResource SingleItemTemplate}" />
-                                <Setter Property="ItemsPanel">
-                                    <Setter.Value>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel Orientation="{Binding DataContext.Orientation, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
-                                        </ItemsPanelTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding HasColumns}" Value="True">
-                                        <Setter Property="ItemTemplate" Value="{StaticResource ColumnGroupTemplate}" />
-                                        <Setter Property="ItemsPanel">
-                                            <Setter.Value>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" />
-                                                </ItemsPanelTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ItemsControl.Style>
-                    </ItemsControl>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <RadioButton
+                        Width="{Binding ItemWidth, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}"
+                        Margin="0,4,25,4"
+                        VerticalAlignment="Center"
+                        Content="{TemplateBinding Content}"
+                        ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                        IsChecked="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                        Style="{StaticResource DefaultRadioButtonStyle}" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
+    <Style TargetType="{x:Type controls:KwyRadioButtonGroup}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource KwyRadioButtonGroupItemStyle}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <WrapPanel Orientation="{Binding Orientation, RelativeSource={RelativeSource AncestorType=controls:KwyRadioButtonGroup}}" />
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type controls:KwyRadioButtonGroup}">
+                    <ItemsPresenter />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

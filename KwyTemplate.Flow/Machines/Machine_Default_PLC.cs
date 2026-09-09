@@ -23,7 +23,7 @@ public sealed class Machine_Default_PLC : MachineBase
     {
         BindDevices();
         InitTestStations();
-        BuildDataGrid();
+        BuildResultTable();
     }
 
     public bool IsGreenLightOn { get; private set; }

@@ -7,6 +7,7 @@ namespace Kwy.UI.DataGrids;
 /// </summary>
 public class DisplayRowItem : INotifyPropertyChanged
 {
+    private const string IndexerPropertyName = "Item[]";
     private string rowName = string.Empty;
     private readonly Dictionary<string, CellState> cells = new(StringComparer.OrdinalIgnoreCase);
     private readonly IReadOnlyDictionary<string, CellState> readOnlyCells;
@@ -55,6 +56,7 @@ public class DisplayRowItem : INotifyPropertyChanged
         {
             state = new CellState();
             cells.Add(key, state);
+            OnCellStructureChanged();
         }
 
         return state;
@@ -66,12 +68,36 @@ public class DisplayRowItem : INotifyPropertyChanged
     public void UpdateVisualState(string key, CellValidationState visualState)
         => GetOrAddCell(key).VisualState = visualState;
 
-    public bool RemoveCell(string key) => cells.Remove(key);
+    public bool RemoveCell(string key)
+    {
+        bool removed = cells.Remove(key);
+        if (removed)
+        {
+            OnCellStructureChanged();
+        }
 
-    public void ClearCells() => cells.Clear();
+        return removed;
+    }
+
+    public void ClearCells()
+    {
+        if (cells.Count == 0)
+        {
+            return;
+        }
+
+        cells.Clear();
+        OnCellStructureChanged();
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected virtual void OnPropertyChanged(string propertyName)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    private void OnCellStructureChanged()
+    {
+        OnPropertyChanged(IndexerPropertyName);
+        OnPropertyChanged(nameof(Cells));
+    }
 }

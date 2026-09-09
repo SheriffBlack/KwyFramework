@@ -106,7 +106,7 @@
                     <TextBlock
                         FontSize="36"
                         FontWeight="SemiBold"
-                        Foreground="{StaticResource WhilteBrush}"
+                        Foreground="{StaticResource WhiteBrush}"
                         Text="v3.0.1" />
                 </Border>
             </StackPanel>

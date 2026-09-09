@@ -77,15 +77,15 @@ public static class DataGridColumnsHelper
     public static readonly DependencyProperty DefaultElementStyleKeyProperty =
         DependencyProperty.RegisterAttached(
             "DefaultElementStyleKey",
-            typeof(string),
+            typeof(object),
             typeof(DataGridColumnsHelper),
             new PropertyMetadata(KwyResourceKeys.DataGridCellTextBlockStyle));
 
-    public static void SetDefaultElementStyleKey(DependencyObject element, string value)
+    public static void SetDefaultElementStyleKey(DependencyObject element, object value)
         => element.SetValue(DefaultElementStyleKeyProperty, value);
 
-    public static string GetDefaultElementStyleKey(DependencyObject element)
-        => (string)element.GetValue(DefaultElementStyleKeyProperty);
+    public static object GetDefaultElementStyleKey(DependencyObject element)
+        => element.GetValue(DefaultElementStyleKeyProperty);
 
     private static void OnColumnOptionsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -218,7 +218,7 @@ public static class DataGridColumnsHelper
                 comboBoxColumn.SelectedItemBinding = binding;
                 break;
 
-            case DataGridTemplateColumn templateColumn when !string.IsNullOrWhiteSpace(options.CellTemplateKey):
+            case DataGridTemplateColumn templateColumn when options.CellTemplateKey != null:
                 templateColumn.CellTemplate = dataGrid.TryFindResource(options.CellTemplateKey) as DataTemplate;
                 break;
         }
@@ -251,8 +251,8 @@ public static class DataGridColumnsHelper
             return;
         }
 
-        string? styleKey = options?.ElementStyleKey ?? GetDefaultElementStyleKey(dataGrid);
-        if (!string.IsNullOrEmpty(styleKey)
+        object? styleKey = options?.ElementStyleKey ?? GetDefaultElementStyleKey(dataGrid);
+        if (styleKey != null
             && (dataGrid.TryFindResource(styleKey) ?? Application.Current?.TryFindResource(styleKey)) is Style style)
         {
             textColumn.ElementStyle = style;
@@ -275,7 +275,7 @@ public static class DataGridColumnsHelper
             return;
         }
 
-        if (!string.IsNullOrEmpty(options.EditingElementStyleKey)
+        if (options.EditingElementStyleKey != null
             && (dataGrid.TryFindResource(options.EditingElementStyleKey)
                 ?? Application.Current?.TryFindResource(options.EditingElementStyleKey)) is Style style)
         {

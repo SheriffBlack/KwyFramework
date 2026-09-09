@@ -9,29 +9,13 @@ namespace Kwy.UI.WPF.Controls;
 /// </summary>
 public class KwyToastHost : ItemsControl
 {
-    private static readonly object SyncRoot = new();
-    private static readonly List<WeakReference<KwyToastHost>> Hosts = new();
     private readonly Dictionary<KwyToast, CancellationTokenSource> pendingRemovals = new();
-
-    public static event EventHandler<KwyToastHost>? Registered;
-
-    public static event EventHandler<KwyToastHost>? Unregistered;
 
     public KwyToastHost()
     {
         DefaultStyleKey = typeof(KwyToastHost);
-        Loaded += OnHostLoaded;
         Unloaded += OnHostUnloaded;
     }
-
-    public string? Token
-    {
-        get => (string?)GetValue(TokenProperty);
-        set => SetValue(TokenProperty, value);
-    }
-
-    public static readonly DependencyProperty TokenProperty =
-        DependencyProperty.Register(nameof(Token), typeof(string), typeof(KwyToastHost), new PropertyMetadata("RootToast"));
 
     public TimeSpan Duration
     {
@@ -105,33 +89,6 @@ public class KwyToastHost : ItemsControl
     protected override DependencyObject GetContainerForItemOverride()
         => new KwyToast();
 
-    private void OnHostLoaded(object sender, RoutedEventArgs e)
-    {
-        AddRegisteredHost(this);
-        Registered?.Invoke(this, this);
-    }
-
-    public static IReadOnlyList<KwyToastHost> GetRegisteredHosts()
-    {
-        lock (SyncRoot)
-        {
-            var hosts = new List<KwyToastHost>(Hosts.Count);
-            for (int i = Hosts.Count - 1; i >= 0; i--)
-            {
-                if (Hosts[i].TryGetTarget(out var host))
-                {
-                    hosts.Add(host);
-                }
-                else
-                {
-                    Hosts.RemoveAt(i);
-                }
-            }
-
-            return hosts;
-        }
-    }
-
     private void TrimOverflow()
     {
         if (MaxItems <= 0)
@@ -191,11 +148,7 @@ public class KwyToastHost : ItemsControl
     }
 
     private void OnHostUnloaded(object sender, RoutedEventArgs e)
-    {
-        CancelPendingRemovals();
-        RemoveRegisteredHost(this);
-        Unregistered?.Invoke(this, this);
-    }
+        => CancelPendingRemovals();
 
     private void CancelPendingRemovals()
     {
@@ -206,41 +159,5 @@ public class KwyToastHost : ItemsControl
         }
 
         pendingRemovals.Clear();
-    }
-
-    private static void AddRegisteredHost(KwyToastHost host)
-    {
-        lock (SyncRoot)
-        {
-            for (int i = Hosts.Count - 1; i >= 0; i--)
-            {
-                if (!Hosts[i].TryGetTarget(out var current))
-                {
-                    Hosts.RemoveAt(i);
-                    continue;
-                }
-
-                if (ReferenceEquals(current, host))
-                {
-                    return;
-                }
-            }
-
-            Hosts.Add(new WeakReference<KwyToastHost>(host));
-        }
-    }
-
-    private static void RemoveRegisteredHost(KwyToastHost host)
-    {
-        lock (SyncRoot)
-        {
-            for (int i = Hosts.Count - 1; i >= 0; i--)
-            {
-                if (!Hosts[i].TryGetTarget(out var current) || ReferenceEquals(current, host))
-                {
-                    Hosts.RemoveAt(i);
-                }
-            }
-        }
     }
 }

@@ -33,16 +33,16 @@ public class WpfDataGridColumnOptions : DataGridColumnDescriptor
 
     public bool CanUserReorder { get; set; } = true;
 
-    public string? ElementStyleKey { get; set; } = KwyResourceKeys.DataGridCellTextBlockStyle;
+    public object? ElementStyleKey { get; set; } = KwyResourceKeys.DataGridCellTextBlockStyle;
 
     public Style? ElementStyle { get; set; }
 
-    public string? EditingElementStyleKey { get; set; }
+    public object? EditingElementStyleKey { get; set; }
 
     public Style? EditingElementStyle { get; set; }
 
     /// <summary>
     /// Template 列单元格模板的资源键。
     /// </summary>
-    public string? CellTemplateKey { get; set; }
+    public object? CellTemplateKey { get; set; }
 }

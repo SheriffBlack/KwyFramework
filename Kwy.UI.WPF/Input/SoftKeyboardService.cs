@@ -178,7 +178,7 @@ public static class SoftKeyboardService
 
     private sealed class KeyboardSession : IDisposable
     {
-        private readonly TextBoxKeyboardInputTarget target;
+        private readonly TextBoxKeyboardInputAdapter target;
         private readonly TextBox textBox;
         private readonly KwyKeyboard keyboard;
         private string originalText;
@@ -188,7 +188,7 @@ public static class SoftKeyboardService
             this.textBox = textBox;
             this.keyboard = keyboard;
             Popup = popup;
-            target = new TextBoxKeyboardInputTarget(textBox, numericOptions);
+            target = new TextBoxKeyboardInputAdapter(textBox, numericOptions);
             originalText = textBox.Text;
         }
 

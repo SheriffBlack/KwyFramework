@@ -88,9 +88,9 @@ public sealed class TestStationModel
     public List<string> OrderedTestNames { get; set; } = [];
 
     /// <summary>
-    /// 是否显示到 HomeView 结果表。关闭后该工位仍可参与 IO/流程，但不生成 DataGrid 测试列。
+    /// 是否将该工位包含在生产结果摘要中。
     /// </summary>
-    public bool ShowInResultGrid { get; set; } = true;
+    public bool IncludeInResultSummary { get; set; } = true;
 
     /// <summary>
     /// Generate test item names from instrument configuration, such as HIOKI LCR LoadType.

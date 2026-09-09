@@ -301,7 +301,7 @@ public sealed class StandardViewModel : BindableBase
             return null;
         }
 
-        foreach (TestStationModel station in machine.TestStations.Where(static station => station.ShowInResultGrid))
+        foreach (TestStationModel station in machine.TestStations.Where(static station => station.IncludeInResultSummary))
         {
             foreach (KeyValuePair<string, StationMeasurementLimit> pair in station.TestLimits)
             {
@@ -327,7 +327,7 @@ public sealed class StandardViewModel : BindableBase
     private IEnumerable<string> GetMachineCheckTestNames()
     {
         HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
-        foreach (TestStationModel station in machine.TestStations.Where(static station => station.ShowInResultGrid).Where(HasStationCheckOperation))
+        foreach (TestStationModel station in machine.TestStations.Where(static station => station.IncludeInResultSummary).Where(HasStationCheckOperation))
         {
             foreach (string testName in station.OrderedTestNames)
             {

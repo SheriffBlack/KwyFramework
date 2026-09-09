@@ -1,7 +1,9 @@
-namespace Kwy.UI.DataGrids;
+using Kwy.UI.DataGrids;
+
+namespace Kwy.UI.WPF.Controls.Helpers;
 
 /// <summary>
-/// Column descriptor for a value stored in a <see cref="DisplayRowItem"/> cell.
+/// WPF column descriptor for a value stored in a <see cref="DisplayRowItem"/> indexer cell.
 /// </summary>
 public sealed class DynamicCellColumnDescriptor : DataGridColumnDescriptor
 {
@@ -10,6 +12,6 @@ public sealed class DynamicCellColumnDescriptor : DataGridColumnDescriptor
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         Key = key;
         Header = header;
-        BindingPath = $"Item[{key}].Value";
+        BindingPath = $"[{key}].Value";
     }
 }

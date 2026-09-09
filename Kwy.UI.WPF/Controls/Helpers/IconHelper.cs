@@ -16,7 +16,15 @@ public static class IconHelper
             "Icon",
             typeof(object),
             typeof(IconHelper),
-            new PropertyMetadata(null));
+            new PropertyMetadata(null, OnIconChanged));
+
+    private static void OnIconChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is System.Windows.Controls.ComboBox comboBox)
+        {
+            ComboBoxHelper.OnIconChanged(comboBox);
+        }
+    }
 
     /// <summary>
     /// 获取图标

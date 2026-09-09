@@ -2,27 +2,30 @@ using Microsoft.Xaml.Behaviors;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace Kwy.UI.WPF.Behaviors;
 
 /// <summary>
-/// 将拖入的文件路径写入目标控件数据上下文中的属性。
+/// Validates dropped files and exposes them through a routed event or command.
 /// </summary>
-public class FileDropBehavior : Behavior<FrameworkElement>
+public sealed class FileDropBehavior : Behavior<FrameworkElement>
 {
-    public string? TargetPropertyPath
+    public ICommand? DropCommand
     {
-        get => (string?)GetValue(TargetPropertyPathProperty);
-        set => SetValue(TargetPropertyPathProperty, value);
+        get => (ICommand?)GetValue(DropCommandProperty);
+        set => SetValue(DropCommandProperty, value);
     }
 
-    public static readonly DependencyProperty TargetPropertyPathProperty =
+    public static readonly DependencyProperty DropCommandProperty =
         DependencyProperty.Register(
-            nameof(TargetPropertyPath),
-            typeof(string),
+            nameof(DropCommand),
+            typeof(ICommand),
             typeof(FileDropBehavior),
             new PropertyMetadata(null));
+
+    public event EventHandler<FilesDroppedEventArgs>? FilesDropped;
 
     public string? AllowedExtensions
     {
@@ -63,16 +66,16 @@ public class FileDropBehavior : Behavior<FrameworkElement>
             typeof(FileDropBehavior),
             new PropertyMetadata(false));
 
-    public string? DropEffectStyleKey
+    public object? DropEffectStyleKey
     {
-        get => (string?)GetValue(DropEffectStyleKeyProperty);
+        get => GetValue(DropEffectStyleKeyProperty);
         set => SetValue(DropEffectStyleKeyProperty, value);
     }
 
     public static readonly DependencyProperty DropEffectStyleKeyProperty =
         DependencyProperty.Register(
             nameof(DropEffectStyleKey),
-            typeof(string),
+            typeof(object),
             typeof(FileDropBehavior),
             new PropertyMetadata(null));
 
@@ -141,11 +144,12 @@ public class FileDropBehavior : Behavior<FrameworkElement>
             return;
         }
 
-        string filePath = AllowMultipleFiles
-            ? string.Join(";", files)
-            : files[0];
-
-        SetTargetProperty(filePath);
+        IReadOnlyList<string> paths = Array.AsReadOnly(files);
+        FilesDropped?.Invoke(this, new FilesDroppedEventArgs(paths));
+        if (DropCommand?.CanExecute(paths) == true)
+        {
+            DropCommand.Execute(paths);
+        }
     }
 
     private bool TryGetFiles(DragEventArgs e, out string[] files)
@@ -204,21 +208,6 @@ public class FileDropBehavior : Behavior<FrameworkElement>
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
-    private void SetTargetProperty(string filePath)
-    {
-        if (string.IsNullOrWhiteSpace(TargetPropertyPath)
-            || AssociatedObject.DataContext is not object dataContext)
-        {
-            return;
-        }
-
-        var property = dataContext.GetType().GetProperty(TargetPropertyPath);
-        if (property?.CanWrite == true)
-        {
-            property.SetValue(dataContext, filePath);
-        }
-    }
-
     private void UpdateVisualFeedback(bool isDragging)
     {
         if (AssociatedObject is not Control control)
@@ -237,7 +226,7 @@ public class FileDropBehavior : Behavior<FrameworkElement>
                 visualFeedbackActive = true;
             }
 
-            if (!string.IsNullOrWhiteSpace(DropEffectStyleKey)
+            if (DropEffectStyleKey != null
                 && (control.TryFindResource(DropEffectStyleKey) as Style
                     ?? Application.Current?.TryFindResource(DropEffectStyleKey) as Style) is Style style)
             {
@@ -267,4 +256,14 @@ public class FileDropBehavior : Behavior<FrameworkElement>
         originalBorderThickness = default;
         visualFeedbackActive = false;
     }
+}
+
+public sealed class FilesDroppedEventArgs : EventArgs
+{
+    public FilesDroppedEventArgs(IReadOnlyList<string> paths)
+    {
+        Paths = paths ?? throw new ArgumentNullException(nameof(paths));
+    }
+
+    public IReadOnlyList<string> Paths { get; }
 }

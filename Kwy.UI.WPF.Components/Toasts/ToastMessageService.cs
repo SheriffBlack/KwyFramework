@@ -13,10 +13,10 @@ internal sealed class ToastMessageService : IToastMessageService, IDisposable
 
     public ToastMessageService()
     {
-        KwyToastHost.Registered += OnHostRegistered;
-        KwyToastHost.Unregistered += OnHostUnregistered;
+        ToastHostRegistration.Registered += OnHostRegistered;
+        ToastHostRegistration.Unregistered += OnHostUnregistered;
 
-        foreach (var host in KwyToastHost.GetRegisteredHosts())
+        foreach (var host in ToastHostRegistration.GetRegisteredHosts())
         {
             RegisterHost(host);
         }
@@ -75,8 +75,8 @@ internal sealed class ToastMessageService : IToastMessageService, IDisposable
         }
 
         disposed = true;
-        KwyToastHost.Registered -= OnHostRegistered;
-        KwyToastHost.Unregistered -= OnHostUnregistered;
+        ToastHostRegistration.Registered -= OnHostRegistered;
+        ToastHostRegistration.Unregistered -= OnHostUnregistered;
         hosts.Clear();
     }
 
@@ -85,15 +85,12 @@ internal sealed class ToastMessageService : IToastMessageService, IDisposable
 
     private void OnHostUnregistered(object? sender, KwyToastHost host)
     {
-        string token = NormalizeToken(host.Token);
-        if (!hosts.TryGetValue(token, out var reference))
+        foreach ((string token, WeakReference<KwyToastHost> reference) in hosts.ToArray())
         {
-            return;
-        }
-
-        if (!reference.TryGetTarget(out var current) || ReferenceEquals(current, host))
-        {
-            hosts.TryRemove(token, out _);
+            if (!reference.TryGetTarget(out var current) || ReferenceEquals(current, host))
+            {
+                hosts.TryRemove(token, out _);
+            }
         }
     }
 
@@ -115,7 +112,7 @@ internal sealed class ToastMessageService : IToastMessageService, IDisposable
         => string.IsNullOrWhiteSpace(token) ? ToastTokens.Root : token;
 
     private void RegisterHost(KwyToastHost host)
-        => hosts[NormalizeToken(host.Token)] = new WeakReference<KwyToastHost>(host);
+        => hosts[NormalizeToken(ToastHostRegistration.GetToken(host))] = new WeakReference<KwyToastHost>(host);
 
     private static object? ResolveIcon(DialogMessageIcon icon)
     {

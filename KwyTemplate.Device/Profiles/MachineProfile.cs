@@ -37,7 +37,7 @@ public sealed class MachineStationProfile
     public string StationName { get; set; } = string.Empty;
     public string IconKind { get; set; } = "Station";
     public bool IsEnabled { get; set; } = true;
-    public bool ShowInResultGrid { get; set; } = true;
+    public bool IncludeInResultSummary { get; set; } = true;
     public bool UseInstrumentConfigTestNames { get; set; }
     public List<string> InstrumentDeviceIds { get; set; } = [];
     public List<string> TestNames { get; set; } = [];

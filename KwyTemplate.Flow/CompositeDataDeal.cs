@@ -72,7 +72,7 @@ public sealed class CompositeDataDeal
     public async Task ExecuteMeasurementAsync(bool triggerResult, TestStationModel station, CancellationToken cancellationToken)
     {
         // 触发时绑定本次生产代次。停止出站清屏后才消费到的旧消息会被丢弃，
-        // 不能重新写回 DataGrid 或图表。
+        // 不能重新写回实时结果状态或其消费端。
         long resultGeneration = machine.CurrentResultGeneration;
 
         if (station.StationIo.ResultSource == StationResultSource.Hardware && dispatchQueue != null)

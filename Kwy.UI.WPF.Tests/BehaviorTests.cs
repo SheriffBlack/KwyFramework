@@ -2,6 +2,7 @@ using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Controls;
 using Kwy.UI.WPF.Controls.Helpers;
 using Kwy.UI.WPF.Input;
+using Kwy.UI.WPF.Themes;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Reflection;
@@ -10,6 +11,8 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Threading;
 using Xunit;
 
@@ -18,12 +21,111 @@ namespace Kwy.UI.WPF.Tests;
 public sealed class BehaviorTests
 {
     [Fact]
-    public void TextBoxKeyboardTarget_ReplacesSelectionAndEditsWithoutSystemInput()
+    public void ThemeManager_ReplacesExistingThemeDictionary()
+        => RunInSta(() =>
+        {
+            var resources = new ResourceDictionary();
+            resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri(
+                    "pack://application:,,,/Kwy.UI.WPF;component/Themes/LightTheme.xaml",
+                    UriKind.Absolute)
+            });
+
+            KwyThemeManager.ApplyTheme(resources, KwyTheme.Dark);
+
+            Assert.Single(resources.MergedDictionaries);
+            Assert.EndsWith("DarkTheme.xaml", resources.MergedDictionaries[0].Source.OriginalString);
+            Assert.NotNull(resources["ControlBackgroundBrush"]);
+        });
+
+    [Fact]
+    public void Keyboard_ReattachesButtonEventsAfterReload()
+        => RunInSta(() =>
+        {
+            var resources = new ResourceDictionary
+            {
+                Source = new Uri(
+                    "pack://application:,,,/Kwy.UI.WPF;component/Themes/LightTheme.xaml",
+                    UriKind.Absolute)
+            };
+            resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri(
+                    "pack://application:,,,/Kwy.UI.WPF;component/Themes/Generic.xaml",
+                    UriKind.Absolute)
+            });
+            var keyboard = new KwyKeyboard { Resources = resources, Mode = SoftKeyboardMode.Numeric };
+            keyboard.ApplyTemplate();
+            var panel = (Grid)keyboard.Template.FindName("PART_NumericKeysRoot", keyboard)!;
+            var seven = panel.Children.OfType<Button>().Single(button => Equals(button.Content, "7"));
+            int invocations = 0;
+            keyboard.KeyInvoked += (_, _) => invocations++;
+
+            Invoke(keyboard, "OnKeyboardLoaded", keyboard, new RoutedEventArgs());
+            seven.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Invoke(keyboard, "OnKeyboardUnloaded", keyboard, new RoutedEventArgs());
+            seven.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Invoke(keyboard, "OnKeyboardLoaded", keyboard, new RoutedEventArgs());
+            seven.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal(2, invocations);
+        });
+
+    [Fact]
+    public void NumberBoxAutomationPeer_ExposesRangeValuePattern()
+        => RunInSta(() =>
+        {
+            var numberBox = new KwyNumberBox { Minimum = 0, Maximum = 10, Value = 2 };
+            AutomationPeer peer = UIElementAutomationPeer.CreatePeerForElement(numberBox)!;
+            var range = Assert.IsAssignableFrom<IRangeValueProvider>(peer.GetPattern(PatternInterface.RangeValue));
+
+            range.SetValue(7);
+
+            Assert.Equal(7, numberBox.Value);
+            Assert.Equal(0, range.Minimum);
+            Assert.Equal(10, range.Maximum);
+        });
+
+    [Fact]
+    public void RadioButtonGroup_PreservesItemsAndSynchronizesSelectedValue()
+        => RunInSta(() =>
+        {
+            var first = new Choice(1, "First");
+            var second = new Choice(2, "Second");
+            var group = new KwyRadioButtonGroup
+            {
+                ItemsSource = new[] { first, second },
+                SelectedValuePath = nameof(Choice.Key),
+                Value = 2
+            };
+
+            Assert.Same(second, group.SelectedItem);
+            group.SelectedItem = first;
+            Assert.Equal(1, group.Value);
+        });
+
+    [Fact]
+    public void Percent_ExposesNormalizedStateWithoutFormattingInControlCode()
+        => RunInSta(() =>
+        {
+            var percent = new KwyPercent { Total = 80, Current = 20 };
+            Assert.Equal(0.25, percent.Percentage);
+
+            percent.Current = 100;
+            Assert.Equal(1, percent.Percentage);
+
+            percent.Total = 0;
+            Assert.Equal(0, percent.Percentage);
+        });
+
+    [Fact]
+    public void TextBoxKeyboardAdapter_ReplacesSelectionAndEditsWithoutSystemInput()
         => RunInSta(() =>
         {
             var textBox = new TextBox { Text = "abcd" };
             textBox.Select(1, 2);
-            var target = new TextBoxKeyboardInputTarget(textBox);
+            var target = new TextBoxKeyboardInputAdapter(textBox);
 
             target.HandleKey(KeyInput(Key.X), KeyboardLayout.Qwerty);
             Assert.Equal("axd", textBox.Text);
@@ -34,11 +136,11 @@ public sealed class BehaviorTests
         });
 
     [Fact]
-    public void TextBoxKeyboardTarget_AppliesShiftCapsAndLayout()
+    public void TextBoxKeyboardAdapter_AppliesShiftCapsAndLayout()
         => RunInSta(() =>
         {
             var textBox = new TextBox();
-            var target = new TextBoxKeyboardInputTarget(textBox);
+            var target = new TextBoxKeyboardInputAdapter(textBox);
 
             target.HandleKey(KeyInput(Key.A, shift: true), KeyboardLayout.Qwerty);
             target.HandleKey(KeyInput(Key.B, capsLock: true), KeyboardLayout.Qwerty);
@@ -48,10 +150,10 @@ public sealed class BehaviorTests
         });
 
     [Fact]
-    public void TextBoxKeyboardTarget_ReportsCommitAndCancel()
+    public void TextBoxKeyboardAdapter_ReportsCommitAndCancel()
         => RunInSta(() =>
         {
-            var target = new TextBoxKeyboardInputTarget(new TextBox());
+            var target = new TextBoxKeyboardInputAdapter(new TextBox());
 
             Assert.Equal(KeyboardInputResult.Commit, target.HandleKey(KeyInput(Key.Enter), KeyboardLayout.Qwerty));
             Assert.Equal(KeyboardInputResult.Cancel, target.HandleKey(KeyInput(Key.Escape), KeyboardLayout.Qwerty));
@@ -63,7 +165,7 @@ public sealed class BehaviorTests
         {
             var textBox = new TextBox { Text = "12.3" };
             textBox.CaretIndex = textBox.Text.Length;
-            var target = new TextBoxKeyboardInputTarget(
+            var target = new TextBoxKeyboardInputAdapter(
                 textBox,
                 new NumericKeyboardOptions(AllowDecimal: true, AllowNegative: true, DecimalPlaces: 2));
 
@@ -84,7 +186,7 @@ public sealed class BehaviorTests
         => RunInSta(() =>
         {
             var textBox = new TextBox();
-            var target = new TextBoxKeyboardInputTarget(
+            var target = new TextBoxKeyboardInputAdapter(
                 textBox,
                 new NumericKeyboardOptions(AllowDecimal: false, AllowNegative: false));
 
@@ -116,6 +218,8 @@ public sealed class BehaviorTests
     public void DynamicRow_ReadDoesNotCreateCell_AndCellsAreReadOnly()
     {
         var row = new DisplayRowItem();
+        var changedProperties = new List<string?>();
+        row.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName);
 
         Assert.Null(row["missing"]);
         Assert.Empty(row.Cells);
@@ -128,6 +232,21 @@ public sealed class BehaviorTests
         Assert.IsAssignableFrom<IReadOnlyDictionary<string, CellState>>(row.Cells);
         Assert.Throws<NotSupportedException>(() =>
             ((IDictionary<string, CellState>)row.Cells).Add("blocked", new CellState()));
+        Assert.Contains("Item[]", changedProperties);
+        Assert.Contains(nameof(DisplayRowItem.Cells), changedProperties);
+
+        changedProperties.Clear();
+        Assert.True(row.RemoveCell("result"));
+        Assert.Contains("Item[]", changedProperties);
+    }
+
+    [Fact]
+    public void DynamicCellColumnDescriptor_UsesWpfIndexerBindingSyntax()
+    {
+        var column = new DynamicCellColumnDescriptor("result", "Result");
+
+        Assert.Equal("[result].Value", column.BindingPath);
+        Assert.Equal("Kwy.UI.WPF.Controls.Helpers", column.GetType().Namespace);
     }
 
     [Fact]
@@ -248,6 +367,23 @@ public sealed class BehaviorTests
         });
 
     [Fact]
+    public void NumberBox_ValidatesOptionsAndMaintainsBounds()
+        => RunInSta(() =>
+        {
+            var numberBox = new KwyNumberBox { Maximum = 5, Value = 4 };
+
+            numberBox.Minimum = 10;
+
+            Assert.Equal(10, numberBox.Minimum);
+            Assert.Equal(10, numberBox.Maximum);
+            Assert.Equal(10, numberBox.Value);
+            Assert.Throws<ArgumentException>(() => numberBox.SmallChange = 0);
+            Assert.Throws<ArgumentException>(() => numberBox.DecimalPlaces = -1);
+            Assert.Throws<ArgumentException>(() => numberBox.Value = double.NaN);
+            Assert.Throws<ArgumentException>(() => numberBox.Maximum = double.PositiveInfinity);
+        });
+
+    [Fact]
     public void NumberBox_RejectsInvalidPasteCandidate()
         => RunInSta(() =>
         {
@@ -315,6 +451,11 @@ public sealed class BehaviorTests
             toastHost.ApplyTemplate();
             Assert.NotNull(toastHost.Template);
 
+            var percent = new KwyPercent { Resources = resources, Total = 4, Current = 1 };
+            percent.ApplyTemplate();
+            Assert.NotNull(percent.Template);
+            Assert.Equal(0.25, percent.Percentage);
+
             var numericKeyboard = new KwyKeyboard
             {
                 Resources = resources,
@@ -332,6 +473,8 @@ public sealed class BehaviorTests
 
     private static KeyboardKeyInvokedEventArgs KeyInput(Key key, bool shift = false, bool capsLock = false)
         => new(KwyKeyboard.KeyInvokedEvent, key, shift, false, false, capsLock);
+
+    private sealed record Choice(int Key, string DisplayName);
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static WeakReference CreateAndReleaseDataGrid(ObservableCollection<IDataGridColumnDescriptor> columns)

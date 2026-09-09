@@ -49,7 +49,7 @@ public static class ToggleSwitchHelper
         if ((bool)e.NewValue)
         {
             // 读取 StyleKey（如果用户没有指定，用默认值）
-            string key = GetStyleKey(tb);
+            object key = GetStyleKey(tb);
             ApplyStyle(tb, key);
         }
         else
@@ -68,28 +68,26 @@ public static class ToggleSwitchHelper
     public static readonly DependencyProperty StyleKeyProperty =
         DependencyProperty.RegisterAttached(
             "StyleKey",
-            typeof(string),
+            typeof(object),
             typeof(ToggleSwitchHelper),
             new PropertyMetadata(KwyResourceKeys.ToggleButtonSwitchNoContentStyle, OnStyleKeyChanged));
 
-    public static string GetStyleKey(DependencyObject obj) => (string)obj.GetValue(StyleKeyProperty);
-    public static void SetStyleKey(DependencyObject obj, string value) => obj.SetValue(StyleKeyProperty, value);
+    public static object GetStyleKey(DependencyObject obj) => obj.GetValue(StyleKeyProperty);
+    public static void SetStyleKey(DependencyObject obj, object value) => obj.SetValue(StyleKeyProperty, value);
 
     private static void OnStyleKeyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not ToggleButton tb) return;
 
         // 只有在 IsSwitch = true 时才重新应用
-        if (GetIsSwitch(tb))
-            ApplyStyle(tb, (string)e.NewValue);
+        if (GetIsSwitch(tb) && e.NewValue is object key)
+            ApplyStyle(tb, key);
     }
 
     // ── 内部工具 ─────────────────────────────────────────────────────────
 
-    private static void ApplyStyle(ToggleButton tb, string key)
+    private static void ApplyStyle(ToggleButton tb, object key)
     {
-        if (string.IsNullOrWhiteSpace(key)) return;
-
         // 等到控件进入可视树后再查资源（否则 Application.Current 可能还没就绪）
         if (tb.IsLoaded)
         {
@@ -112,7 +110,7 @@ public static class ToggleSwitchHelper
             DoApply(tb, GetStyleKey(tb));
     }
 
-    private static void DoApply(ToggleButton tb, string key)
+    private static void DoApply(ToggleButton tb, object key)
     {
         var style = tb.TryFindResource(key) as Style
                  ?? Application.Current?.TryFindResource(key) as Style;

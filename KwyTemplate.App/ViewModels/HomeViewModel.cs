@@ -68,7 +68,7 @@ public sealed class HomeViewModel : BindableBase
     private readonly IDisposable stationLimitsAppliedSubscription;
     private readonly IDisposable localWorkOrderRecipeLoadedSubscription;
     private readonly object mesStateSyncRoot = new();
-    private readonly ObservableCollection<IDataGridColumnDescriptor> partColumns = [];
+    private readonly MachineResultTableAdapter resultTable = new();
     private readonly ObservableCollection<HomeChartTabModel> chartTabs = [];
     private readonly ObservableCollection<IDataGridColumnDescriptor> tapeParameterColumns = [];
     private readonly ObservableCollection<TapeParameterRowModel> tapeParameterRows = [];
@@ -156,14 +156,14 @@ public sealed class HomeViewModel : BindableBase
         this.localWorkOrderRecipeStore = localWorkOrderRecipeStore ?? throw new ArgumentNullException(nameof(localWorkOrderRecipeStore));
         this.localWorkOrderRecipeMapper = localWorkOrderRecipeMapper ?? throw new ArgumentNullException(nameof(localWorkOrderRecipeMapper));
         this.correctionParameterProvider = correctionParameterProvider ?? throw new ArgumentNullException(nameof(correctionParameterProvider));
-        SyncColumns();
+        SyncResultTable();
         SyncTapeParameterColumns();
         SyncChartTabs();
         AttachStandardSampleLimitItemHandlers(sampleState.StandardSample.LimitItems);
         sampleState.StandardSample.LimitItems.CollectionChanged += OnStandardSampleLimitItemsChanged;
         RestoreHomeDisplayState();
 
-        machine.TableChanged += OnMachineTableChanged;
+        machine.ResultTableChanged += OnMachineResultTableChanged;
         machine.StationResultPublished += OnStationResultPublished;
         machine.StationResultProcessingFailed += OnStationResultProcessingFailed;
         machine.RunningStateChanged += OnMachineRunningStateChanged;
@@ -189,9 +189,9 @@ public sealed class HomeViewModel : BindableBase
 
     public string MachineName => machine.MachineName;
 
-    public ObservableCollection<IDataGridColumnDescriptor> PartColumns => partColumns;
+    public ObservableCollection<IDataGridColumnDescriptor> PartColumns => resultTable.Columns;
 
-    public ObservableCollection<DisplayRowItem> PartRows => machine.PartRows;
+    public ObservableCollection<DisplayRowItem> PartRows => resultTable.Rows;
 
     public uint ElectricalTestOkCount => (machine as IMachineProductionCountMachine)?.ElectricalTestOkCount ?? 0;
 
@@ -258,7 +258,7 @@ public sealed class HomeViewModel : BindableBase
     public AsyncDelegateCommand ScanReelCommand => scanReelCommand ??= new AsyncDelegateCommand(ExecuteScanReelAsync);
 
 
-    public void ClearDataGrid() => RunOnUi(machine.ClearDataGrid);
+    public void ClearDataGrid() => RunOnUi(machine.ClearResultData);
 
     private async Task ExecuteMesConnectionAsync()
     {
@@ -947,7 +947,7 @@ public sealed class HomeViewModel : BindableBase
     private void ClearForNewWorkOrderScan(bool clearSampleState = true)
         => RunOnUi(() =>
         {
-            machine.ClearDataGrid();
+            machine.ClearResultData();
             WorkOrderNo = string.Empty;
             SpecialMachineLsLowerLimitText = string.Empty;
             SpecialMachineLsUnit = string.Empty;
@@ -1138,9 +1138,9 @@ public sealed class HomeViewModel : BindableBase
         await SaveMarkPrintOptionsAsync(setup).ConfigureAwait(false);
         RunOnUi(() =>
         {
-            if (machine.RefreshResultGridIfStructureChanged())
+            if (machine.RefreshResultTableIfStructureChanged())
             {
-                SyncColumns();
+                SyncResultTable();
                 SyncChartTabs();
             }
         });
@@ -1453,9 +1453,9 @@ public sealed class HomeViewModel : BindableBase
         SpecialMachineLsUnit = lsSetup.Unit?.Trim() ?? string.Empty;
         RunOnUi(() =>
         {
-            if (machine.RefreshResultGridIfStructureChanged())
+            if (machine.RefreshResultTableIfStructureChanged())
             {
-                SyncColumns();
+                SyncResultTable();
                 SyncChartTabs();
             }
         });
@@ -1772,7 +1772,7 @@ public sealed class HomeViewModel : BindableBase
     {
         if (!productionContext.IsResultGridDataEnabled)
         {
-            machine.ClearDataGrid();
+            machine.ClearResultData();
             areStationLimitsVisible = false;
             ClearChartLimits();
             SyncTapeParameterRows(null);
@@ -1787,16 +1787,8 @@ public sealed class HomeViewModel : BindableBase
     private void OnBraidOptionsChanged(object? sender, EventArgs e)
         => RunOnUi(() => SyncTapeParameterRows(braidOptionsStore.Current.ToTapeSetup()));
 
-    private void SyncColumns()
-        => RunOnUi(() =>
-        {
-            partColumns.Clear();
-            foreach (IDataGridColumnDescriptor column in machine.PartColumns)
-            {
-                partColumns.Add(column);
-            }
-
-        });
+    private void SyncResultTable()
+        => RunOnUi(() => resultTable.Synchronize(machine));
 
     private void SyncTapeParameterColumns()
         => RunOnUi(() =>
@@ -2041,10 +2033,11 @@ public sealed class HomeViewModel : BindableBase
         startCommand?.RaiseCanExecuteChanged();
         stopCommand?.RaiseCanExecuteChanged();
     }
-    private void OnMachineTableChanged(object? sender, EventArgs e)
+    private void OnMachineResultTableChanged(object? sender, EventArgs e)
     {
         PostOnUi(() =>
         {
+            resultTable.Synchronize(machine);
             RaisePropertyChanged(nameof(ElectricalTestOkCount));
             RaisePropertyChanged(nameof(MaterialInputCount));
         });
@@ -2113,7 +2106,7 @@ public sealed class HomeViewModel : BindableBase
     }
     private void OnLanguageChanged(object? sender, LanguageType languageType)
     {
-        SyncColumns();
+        SyncResultTable();
         SyncTapeParameterColumns();
     }
 
@@ -2248,7 +2241,7 @@ public sealed class HomeViewModel : BindableBase
     {
         if (disposing)
         {
-            machine.TableChanged -= OnMachineTableChanged;
+            machine.ResultTableChanged -= OnMachineResultTableChanged;
             machine.StationResultPublished -= OnStationResultPublished;
             machine.StationResultProcessingFailed -= OnStationResultProcessingFailed;
             machine.RunningStateChanged -= OnMachineRunningStateChanged;

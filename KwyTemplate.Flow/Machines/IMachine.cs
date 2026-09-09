@@ -1,4 +1,3 @@
-using Kwy.UI.DataGrids;
 using KwyTemplate.Flow.Models;
 
 namespace KwyTemplate.Flow.Machines;
@@ -24,11 +23,11 @@ public interface IMachine : IDisposable
 
 public interface IMachineResultProvider
 {
-    event EventHandler? TableChanged;
+    event EventHandler? ResultTableChanged;
 
-    IReadOnlyCollection<DataGridColumnDescriptor> PartColumns { get; }
+    IReadOnlyList<MachineResultColumn> ResultColumns { get; }
 
-    IReadOnlyCollection<DisplayRowItem> PartRows { get; }
+    IReadOnlyList<MachineResultRow> ResultRows { get; }
 }
 
 public interface IStationOperationMachine

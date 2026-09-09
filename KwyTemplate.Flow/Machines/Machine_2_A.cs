@@ -93,7 +93,7 @@ public class Machine_2_A :
         this.productionRecordWriter = productionRecordWriter;
         BindDevices();
         InitTestStations();
-        BuildDataGrid();
+        BuildResultTable();
         RefreshStationLimitsFromInstrumentConfigs();
     }
 
@@ -306,7 +306,7 @@ public class Machine_2_A :
                 StationNameKey = "Station.Machine2A.3.Name",
                 StationShortNameKey = "Station.Common.3",
                 StationDeviceNameKey = "Station.Device.CameraA",
-                ShowInResultGrid = false,
+                IncludeInResultSummary = false,
                 OrderedTestNames = [],
                 TestValues = new(StringComparer.OrdinalIgnoreCase),
                 TestJudges = new(StringComparer.OrdinalIgnoreCase),
@@ -321,7 +321,7 @@ public class Machine_2_A :
                 StationNameKey = "Station.Machine2A.4.Name",
                 StationShortNameKey = "Station.Common.4",
                 StationDeviceNameKey = "Station.Device.TapingCamera",
-                ShowInResultGrid = false,
+                IncludeInResultSummary = false,
                 OrderedTestNames = [],
                 TestValues = new(StringComparer.OrdinalIgnoreCase),
                 TestJudges = new(StringComparer.OrdinalIgnoreCase),
@@ -424,7 +424,7 @@ public class Machine_2_A :
     {
         if (Interlocked.Exchange(ref electricalTestOkCount, value) != value)
         {
-            RaiseTableChanged();
+            RaiseResultTableChanged();
         }
     }
 
@@ -432,7 +432,7 @@ public class Machine_2_A :
     {
         if (Interlocked.Exchange(ref materialInputCount, value) != value)
         {
-            RaiseTableChanged();
+            RaiseResultTableChanged();
         }
     }
 

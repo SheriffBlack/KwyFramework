@@ -117,7 +117,7 @@ public class Machine_4_HAHH :
         this.productionRecordWriter = productionRecordWriter;
         BindDevices();
         InitTestStations();
-        BuildDataGrid();
+        BuildResultTable();
         RefreshStationLimitsFromInstrumentConfigs();
     }
 
@@ -328,9 +328,9 @@ public class Machine_4_HAHH :
                 StationDeviceNameKey = "Station.Device.ZPhase",
                 InstrumentDeviceIds = [DeviceIds.Instrument("Pol", 1)],
 
-                /// 不需要显示到 DataGrid
+                /// 不纳入生产结果摘要
                 OrderedTestNames = [],
-                ShowInResultGrid = false,
+                IncludeInResultSummary = false,
                 TestValues = new ConcurrentDictionary<string, double>(StringComparer.OrdinalIgnoreCase)
                 {
                 },
@@ -359,7 +359,7 @@ public class Machine_4_HAHH :
                 StationDeviceNameKey = "Station.Device.ZPhase",
                 InstrumentDeviceIds = [DeviceIds.Instrument("Pol", 2)],
                 OrderedTestNames = [],
-                ShowInResultGrid = false,
+                IncludeInResultSummary = false,
                 TestValues = new ConcurrentDictionary<string, double>(StringComparer.OrdinalIgnoreCase)
                 {
                 },
@@ -447,7 +447,7 @@ public class Machine_4_HAHH :
                 StationNameKey = "Station.Machine4HAHH.5.Name",
                 StationShortNameKey = "Station.Common.5",
                 StationDeviceNameKey = "Station.Device.CameraA",
-                ShowInResultGrid = false,
+                IncludeInResultSummary = false,
                 OrderedTestNames = [],
                 TestValues = new(StringComparer.OrdinalIgnoreCase),
                 TestJudges = new(StringComparer.OrdinalIgnoreCase),
@@ -462,7 +462,7 @@ public class Machine_4_HAHH :
                 StationNameKey = "Station.Machine4HAHH.6.Name",
                 StationShortNameKey = "Station.Common.6",
                 StationDeviceNameKey = "Station.Device.CameraB",
-                ShowInResultGrid = false,
+                IncludeInResultSummary = false,
                 OrderedTestNames = [],
                 TestValues = new(StringComparer.OrdinalIgnoreCase),
                 TestJudges = new(StringComparer.OrdinalIgnoreCase),
@@ -477,7 +477,7 @@ public class Machine_4_HAHH :
                 StationNameKey = "Station.Machine4HAHH.7.Name",
                 StationShortNameKey = "Station.Common.7",
                 StationDeviceNameKey = "Station.Device.TapingCamera",
-                ShowInResultGrid = false,
+                IncludeInResultSummary = false,
                 OrderedTestNames = [],
                 TestValues = new(StringComparer.OrdinalIgnoreCase),
                 TestJudges = new(StringComparer.OrdinalIgnoreCase),
@@ -492,7 +492,7 @@ public class Machine_4_HAHH :
                 StationNameKey = "Station.Machine4HAHH.8.Name",
                 StationShortNameKey = "Station.Common.8",
                 StationDeviceNameKey = "Station.Device.AirSpray",
-                ShowInResultGrid = false,
+                IncludeInResultSummary = false,
                 OrderedTestNames = [],
                 TestValues = new(StringComparer.OrdinalIgnoreCase),
                 TestJudges = new(StringComparer.OrdinalIgnoreCase),
@@ -648,7 +648,7 @@ public class Machine_4_HAHH :
     {
         if (Interlocked.Exchange(ref electricalTestOkCount, value) != value)
         {
-            RaiseTableChanged();
+            RaiseResultTableChanged();
         }
     }
 
@@ -656,7 +656,7 @@ public class Machine_4_HAHH :
     {
         if (Interlocked.Exchange(ref materialInputCount, value) != value)
         {
-            RaiseTableChanged();
+            RaiseResultTableChanged();
         }
     }
 

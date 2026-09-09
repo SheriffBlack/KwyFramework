@@ -18,8 +18,8 @@
             <Setter Property="CornerRadius" Value="6" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsActive}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource ConnectBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ConnectBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource SuccessBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>

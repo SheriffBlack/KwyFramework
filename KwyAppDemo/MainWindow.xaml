@@ -103,7 +103,7 @@
                                     Margin="0,0,12,0"
                                     Background="{DynamicResource PrimaryBrush}"
                                     Content="Start"
-                                    Foreground="{DynamicResource WhilteBrush}"
+                                    Foreground="{DynamicResource WhiteBrush}"
                                     Style="{StaticResource DefaultButtonStyle}" />
                                 <Button
                                     Margin="0,0,12,0"

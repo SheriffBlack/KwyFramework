@@ -1,46 +1,61 @@
-﻿using System.Windows;
+using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Media;
 
 namespace Kwy.UI.WPF.Controls;
 
-[TemplatePart(Name = IndicatorPartName, Type = typeof(FrameworkElement))]
+/// <summary>
+/// Displays a normalized percentage calculated from a current value and a total value.
+/// Text, tooltip and indicator layout are provided by the control template.
+/// </summary>
 public class KwyPercent : Control
 {
-    private const string IndicatorPartName = "PART_Indicator";
-    private FrameworkElement? indicator;
-
     static KwyPercent()
     {
-        // 告诉 WPF 从 Generic.xaml 中加载默认样式
-        DefaultStyleKeyProperty.OverrideMetadata(typeof(KwyPercent), new FrameworkPropertyMetadata(typeof(KwyPercent)));
+        DefaultStyleKeyProperty.OverrideMetadata(
+            typeof(KwyPercent),
+            new FrameworkPropertyMetadata(typeof(KwyPercent)));
     }
 
-    #region Dependency Properties (Input)
-
     public static readonly DependencyProperty TotalProperty = DependencyProperty.Register(
-        nameof(Total), typeof(int), typeof(KwyPercent),
-        new PropertyMetadata(0, OnDataChanged));
+        nameof(Total),
+        typeof(double),
+        typeof(KwyPercent),
+        new FrameworkPropertyMetadata(0d, OnValueChanged),
+        IsFinite);
 
-    public static readonly DependencyProperty CurrentProperty = DependencyProperty.Register(
-        nameof(Current), typeof(int), typeof(KwyPercent),
-        new PropertyMetadata(0, OnDataChanged));
-
-    public int Total
+    public double Total
     {
-        get => (int)GetValue(TotalProperty);
+        get => (double)GetValue(TotalProperty);
         set => SetValue(TotalProperty, value);
     }
 
-    public int Current
+    public static readonly DependencyProperty CurrentProperty = DependencyProperty.Register(
+        nameof(Current),
+        typeof(double),
+        typeof(KwyPercent),
+        new FrameworkPropertyMetadata(0d, OnValueChanged),
+        IsFinite);
+
+    public double Current
     {
-        get => (int)GetValue(CurrentProperty);
+        get => (double)GetValue(CurrentProperty);
         set => SetValue(CurrentProperty, value);
     }
 
-    // 添加一个 BarBrush 属性，让渐变色可以被外部配置（可选优化）
-    public static readonly DependencyProperty BarBrushProperty = DependencyProperty.Register(
-        nameof(BarBrush), typeof(Brush), typeof(KwyPercent), new PropertyMetadata(null));
+    private static readonly DependencyPropertyKey PercentagePropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(Percentage),
+        typeof(double),
+        typeof(KwyPercent),
+        new FrameworkPropertyMetadata(0d));
+
+    public static readonly DependencyProperty PercentageProperty = PercentagePropertyKey.DependencyProperty;
+
+    /// <summary>
+    /// Gets the current percentage normalized to the range 0 through 1.
+    /// </summary>
+    public double Percentage => (double)GetValue(PercentageProperty);
 
     public Brush? BarBrush
     {
@@ -48,103 +63,66 @@ public class KwyPercent : Control
         set => SetValue(BarBrushProperty, value);
     }
 
-    #endregion Dependency Properties (Input)
+    public static readonly DependencyProperty BarBrushProperty = DependencyProperty.Register(
+        nameof(BarBrush), typeof(Brush), typeof(KwyPercent));
 
-    #region Read-Only Dependency Properties (Output for Binding)
-
-    // 使用 DependencyPropertyKey 定义只读依赖属性，防止外部修改计算结果
-
-    private static readonly DependencyPropertyKey PercentageTextPropertyKey =
-        DependencyProperty.RegisterReadOnly(nameof(PercentageText), typeof(string), typeof(KwyPercent), new PropertyMetadata("0%"));
-
-    public static readonly DependencyProperty PercentageTextProperty = PercentageTextPropertyKey.DependencyProperty;
-
-    public string PercentageText
+    public bool ShowPercentage
     {
-        get => (string)GetValue(PercentageTextProperty);
-        private set => SetValue(PercentageTextPropertyKey, value);
+        get => (bool)GetValue(ShowPercentageProperty);
+        set => SetValue(ShowPercentageProperty, value);
     }
 
-    private static readonly DependencyPropertyKey CurrentCountTextPropertyKey =
-        DependencyProperty.RegisterReadOnly(nameof(CurrentCountText), typeof(string), typeof(KwyPercent), new PropertyMetadata(string.Empty));
+    public static readonly DependencyProperty ShowPercentageProperty = DependencyProperty.Register(
+        nameof(ShowPercentage), typeof(bool), typeof(KwyPercent), new PropertyMetadata(true));
 
-    public static readonly DependencyProperty CurrentCountTextProperty = CurrentCountTextPropertyKey.DependencyProperty;
-
-    public string CurrentCountText
+    public bool ShowCount
     {
-        get => (string)GetValue(CurrentCountTextProperty);
-        private set => SetValue(CurrentCountTextPropertyKey, value);
+        get => (bool)GetValue(ShowCountProperty);
+        set => SetValue(ShowCountProperty, value);
     }
 
-    private static readonly DependencyPropertyKey ComputedTooltipTextPropertyKey =
-        DependencyProperty.RegisterReadOnly(nameof(ComputedTooltipText), typeof(string), typeof(KwyPercent), new PropertyMetadata(string.Empty));
+    public static readonly DependencyProperty ShowCountProperty = DependencyProperty.Register(
+        nameof(ShowCount), typeof(bool), typeof(KwyPercent), new PropertyMetadata(true));
 
-    public static readonly DependencyProperty ComputedTooltipTextProperty = ComputedTooltipTextPropertyKey.DependencyProperty;
-
-    public string ComputedTooltipText
+    public bool ShowToolTip
     {
-        get => (string)GetValue(ComputedTooltipTextProperty);
-        private set => SetValue(ComputedTooltipTextPropertyKey, value);
+        get => (bool)GetValue(ShowToolTipProperty);
+        set => SetValue(ShowToolTipProperty, value);
     }
 
-    #endregion Read-Only Dependency Properties (Output for Binding)
+    public static readonly DependencyProperty ShowToolTipProperty = DependencyProperty.Register(
+        nameof(ShowToolTip), typeof(bool), typeof(KwyPercent), new PropertyMetadata(true));
 
-    #region Logic
-
-    // 当 Total 或 Current 改变时触发
-    private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    public string PercentageStringFormat
     {
-        if (d is KwyPercent controls)
-        {
-            controls.UpdateVisuals();
-        }
+        get => (string)GetValue(PercentageStringFormatProperty);
+        set => SetValue(PercentageStringFormatProperty, value);
     }
 
-    // 获取模板中的部件
-    public override void OnApplyTemplate()
+    public static readonly DependencyProperty PercentageStringFormatProperty = DependencyProperty.Register(
+        nameof(PercentageStringFormat), typeof(string), typeof(KwyPercent), new PropertyMetadata("P2"));
+
+    public string CountStringFormat
     {
-        base.OnApplyTemplate();
-        indicator = GetTemplateChild(IndicatorPartName) as FrameworkElement;
-        UpdateVisuals();
+        get => (string)GetValue(CountStringFormatProperty);
+        set => SetValue(CountStringFormatProperty, value);
     }
 
-    // 当控件大小改变时，重新计算高度
-    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+    public static readonly DependencyProperty CountStringFormatProperty = DependencyProperty.Register(
+        nameof(CountStringFormat), typeof(string), typeof(KwyPercent), new PropertyMetadata("{0} / {1}"));
+
+    protected override AutomationPeer OnCreateAutomationPeer()
+        => new KwyPercentAutomationPeer(this);
+
+    private static bool IsFinite(object value)
+        => value is double number && double.IsFinite(number);
+
+    private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        base.OnRenderSizeChanged(sizeInfo);
-        UpdateVisuals();
+        var percent = (KwyPercent)d;
+        double value = percent.Total <= 0d
+            ? 0d
+            : Math.Clamp(percent.Current / percent.Total, 0d, 1d);
+        percent.SetValue(PercentagePropertyKey, value);
     }
-
-    private void UpdateVisuals()
-    {
-        PercentageText = Total <= 0 ? "0%" : $"{(double)Current / Total * 100:F2}%";
-
-        if (Total >= 1000)
-        {
-            CurrentCountText = $"{Current} \n/ {Total}";
-        }
-        else
-        {
-            CurrentCountText = $"{Current} / {Total}";
-        }
-
-        // Tooltip Logic
-        ComputedTooltipText = $"{PercentageText}\n{Current} / {Total}";
-
-        if (indicator != null)
-        {
-            // 注意：在 Customcontrol 中，我们通常基于控件本身的 ActualHeight 计算
-            // 原代码基于 ProgressContainer，这里假设模板根元素就是容器
-            double containerHeight = ActualHeight;
-
-            // 考虑到 BorderThickness (2)，为了精确可以减去边框宽度，或者在 Template 中处理
-            // 这里为了简单直接使用 ActualHeight，因为 TemplateBinding 通常会自动处理 Padding
-
-            double percentage = Total <= 0 ? 0 : Math.Clamp((double)Current / Total, 0, 1);
-
-            indicator.Height = percentage * containerHeight;
-        }
-    }
-
-    #endregion Logic
 }

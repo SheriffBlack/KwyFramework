@@ -13,7 +13,7 @@ namespace Kwy.UI.WPF.Internal.Converters;
 /// ComboBox 图标转换器
 /// 优先从 SelectedItem 获取图标，如果没有则使用 ComboBox 自身的图标
 /// </summary>
-public sealed class ComboBoxIconConverter : MarkupExtension, IMultiValueConverter
+internal sealed class ComboBoxIconConverter : MarkupExtension, IMultiValueConverter
 {
     private static ComboBoxIconConverter? instance;
     private static readonly ConcurrentDictionary<(Type Type, string Path), PropertyInfo?> propertyCache = new();
