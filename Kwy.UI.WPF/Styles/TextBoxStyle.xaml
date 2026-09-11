@@ -108,7 +108,7 @@
         TargetType="TextBox">
         <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
         <Setter Property="Template" Value="{StaticResource BaseTextBoxTemplate}" />
-        <Setter Property="MinHeight" Value="28.4" />
+        <Setter Property="MinHeight" Value="{DynamicResource KwyTextBoxMinHeight}" />
     </Style>
 
     <!--  多行 TextBox 样式  -->
