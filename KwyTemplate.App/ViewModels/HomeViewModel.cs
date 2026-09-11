@@ -76,6 +76,7 @@ public sealed class HomeViewModel : BindableBase
     private bool areStationLimitsVisible;
     private long chartSampleSequence;
     private int chartLimitsSyncPending;
+    private int resultTableSyncPending;
     private bool requiresLsLowerLimitOverride;
     private MesConnectionState lastMesConnectionState;
     private TaskCompletionSource? mesConnectSuccessDialogCompletion;
@@ -2035,13 +2036,48 @@ public sealed class HomeViewModel : BindableBase
     }
     private void OnMachineResultTableChanged(object? sender, EventArgs e)
     {
-        PostOnUi(() =>
+        RequestResultTableSynchronization();
+        RequestChartLimitsSync();
+    }
+
+    /// <summary>
+    /// A PLC cycle may publish several result mutations before WPF renders the next frame.
+    /// Project only the latest machine snapshot once per dispatcher turn.
+    /// </summary>
+    private void RequestResultTableSynchronization()
+    {
+        if (Interlocked.Exchange(ref resultTableSyncPending, 1) != 0)
         {
+            return;
+        }
+
+        void Synchronize()
+        {
+            Interlocked.Exchange(ref resultTableSyncPending, 0);
             resultTable.Synchronize(machine);
             RaisePropertyChanged(nameof(ElectricalTestOkCount));
             RaisePropertyChanged(nameof(MaterialInputCount));
-        });
-        RequestChartLimitsSync();
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+        {
+            Synchronize();
+            return;
+        }
+
+        try
+        {
+            dispatcher.BeginInvoke(Synchronize, DispatcherPriority.DataBind);
+        }
+        catch (InvalidOperationException)
+        {
+            Interlocked.Exchange(ref resultTableSyncPending, 0);
+        }
+        catch (TaskCanceledException)
+        {
+            Interlocked.Exchange(ref resultTableSyncPending, 0);
+        }
     }
 
     private void OnStationResultPublished(object? sender, StationResultPublishedEventArgs e)

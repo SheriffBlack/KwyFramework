@@ -19,6 +19,12 @@ public static class DataGridColumnsHelper
             typeof(INotifyCollectionChanged),
             typeof(DataGridColumnsHelper));
 
+    private static readonly DependencyProperty ColumnsUpdatePendingProperty =
+        DependencyProperty.RegisterAttached(
+            "ColumnsUpdatePending",
+            typeof(bool),
+            typeof(DataGridColumnsHelper));
+
     public static readonly DependencyProperty ColumnsSourceProperty =
         DependencyProperty.RegisterAttached(
             "ColumnsSource",
@@ -121,10 +127,17 @@ public static class DataGridColumnsHelper
 
     private static void OnColumnsCollectionChanged(this DataGrid dataGrid, object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if ((bool)dataGrid.GetValue(ColumnsUpdatePendingProperty))
+        {
+            return;
+        }
+
+        dataGrid.SetValue(ColumnsUpdatePendingProperty, true);
         dataGrid.Dispatcher.BeginInvoke(
-            System.Windows.Threading.DispatcherPriority.Loaded,
+            System.Windows.Threading.DispatcherPriority.DataBind,
             new Action(() =>
             {
+                dataGrid.SetValue(ColumnsUpdatePendingProperty, false);
                 if (ReferenceEquals(GetColumnsSource(dataGrid), sender))
                 {
                     UpdateColumns(dataGrid);
@@ -197,7 +210,7 @@ public static class DataGridColumnsHelper
 
         if (!string.IsNullOrWhiteSpace(descriptor.Key))
         {
-            Style cellStyle = CreateDynamicCellStyle(dataGrid);
+            Style cellStyle = CreateDynamicCellStyle(dataGrid, descriptor.Key);
             cellStyle.Seal();
             column.CellStyle = cellStyle;
         }
@@ -225,11 +238,10 @@ public static class DataGridColumnsHelper
 
         return column;
     }
-    private static Style CreateDynamicCellStyle(DataGrid dataGrid)
+    private static Style CreateDynamicCellStyle(DataGrid dataGrid, string cellKey)
     {
         var cellStyle = new Style(typeof(DataGridCell), ResolveBaseCellStyle(dataGrid));
-        cellStyle.Setters.Add(new Setter(DataGridCell.BorderBrushProperty, System.Windows.Media.Brushes.Transparent));
-        cellStyle.Setters.Add(new Setter(DataGridCell.BorderThicknessProperty, new Thickness(0)));
+        cellStyle.Setters.Add(new Setter(DataGridCell.TagProperty, new Binding($"[{cellKey}].VisualState")));
         return cellStyle;
     }
 
@@ -240,7 +252,9 @@ public static class DataGridColumnsHelper
             return dataGrid.CellStyle;
         }
 
-        return dataGrid.TryFindResource(KwyResourceKeys.ModernDataGridCellStyle) as Style
+        return dataGrid.TryFindResource(KwyResourceKeys.DynamicValidationDataGridCellStyle) as Style
+            ?? Application.Current?.TryFindResource(KwyResourceKeys.DynamicValidationDataGridCellStyle) as Style
+            ?? dataGrid.TryFindResource(KwyResourceKeys.ModernDataGridCellStyle) as Style
             ?? Application.Current?.TryFindResource(KwyResourceKeys.ModernDataGridCellStyle) as Style;
     }
     private static void ApplyElementStyle(DataGrid dataGrid, DataGridTextColumn textColumn, WpfDataGridColumnOptions? options)

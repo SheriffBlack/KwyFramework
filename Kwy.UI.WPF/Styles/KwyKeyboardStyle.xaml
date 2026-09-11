@@ -10,6 +10,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Margin" Value="3" />
         <Setter Property="Padding" Value="8,4" />
+        <Setter Property="MinHeight" Value="{DynamicResource KwyKeyboardKeyMinHeight}" />
         <Setter Property="FontFamily" Value="Segoe UI" />
         <Setter Property="FontSize" Value="17" />
         <Setter Property="FontWeight" Value="SemiBold" />

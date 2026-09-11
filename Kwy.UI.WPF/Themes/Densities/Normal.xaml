@@ -1,0 +1,15 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+    <system:Double x:Key="KwyControlMinHeight">40</system:Double>
+    <system:Double x:Key="KwyButtonHeight">40</system:Double>
+    <system:Double x:Key="KwyTextBoxMinHeight">28.4</system:Double>
+    <system:Double x:Key="KwyNumberBoxMinHeight">28.4</system:Double>
+    <system:Double x:Key="KwyDataGridRowHeight">38</system:Double>
+    <system:Double x:Key="KwyDataGridRowMinHeight">28</system:Double>
+    <system:Double x:Key="KwyDataGridHeaderHeight">45</system:Double>
+    <Thickness x:Key="KwyButtonPadding">14,0</Thickness>
+    <Thickness x:Key="KwyDataGridCellPadding">10</Thickness>
+    <Thickness x:Key="KwyDataGridHeaderPadding">15,12</Thickness>
+    <system:Double x:Key="KwyKeyboardKeyMinHeight">48</system:Double>
+</ResourceDictionary>

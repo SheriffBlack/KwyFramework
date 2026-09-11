@@ -39,6 +39,16 @@
     <Color x:Key="SelectionBorderColor">#1976D2</Color>
     <Color x:Key="SelectionBackgroundColor">#241976D2</Color>
 
+    <!--  Industrial semantic states  -->
+    <Color x:Key="StateSuccessColor">#1E7A46</Color>
+    <Color x:Key="StateWarningColor">#A85E00</Color>
+    <Color x:Key="StateErrorColor">#C53030</Color>
+    <Color x:Key="StateAlarmColor">#A61B1B</Color>
+    <Color x:Key="StateSuccessBackgroundColor">#E2F5E9</Color>
+    <Color x:Key="StateWarningBackgroundColor">#FFF1D6</Color>
+    <Color x:Key="StateErrorBackgroundColor">#FDE8E7</Color>
+    <Color x:Key="StateAlarmBackgroundColor">#F9D0D0</Color>
+
     <SolidColorBrush x:Key="WatermarkBrush" Color="{DynamicResource WatermarkColor}" />
     <SolidColorBrush x:Key="ControlSelectedBackgroundBrush" Color="{DynamicResource ControlSelectedBackgroundColor}" />
     <SolidColorBrush x:Key="ControlSelectedForegroundBrush" Color="{DynamicResource ControlSelectedForegroundColor}" />
@@ -59,5 +69,13 @@
     <SolidColorBrush x:Key="BackgroundBrush" Color="{DynamicResource WindowBackgroundColor}" />
     <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource ControlBorderColor}" />
     <SolidColorBrush x:Key="ForegroundBrush" Color="{DynamicResource ControlForegroundColor}" />
+    <SolidColorBrush x:Key="StateSuccessBrush" Color="{DynamicResource StateSuccessColor}" />
+    <SolidColorBrush x:Key="StateWarningBrush" Color="{DynamicResource StateWarningColor}" />
+    <SolidColorBrush x:Key="StateErrorBrush" Color="{DynamicResource StateErrorColor}" />
+    <SolidColorBrush x:Key="StateAlarmBrush" Color="{DynamicResource StateAlarmColor}" />
+    <SolidColorBrush x:Key="StateSuccessBackgroundBrush" Color="{DynamicResource StateSuccessBackgroundColor}" />
+    <SolidColorBrush x:Key="StateWarningBackgroundBrush" Color="{DynamicResource StateWarningBackgroundColor}" />
+    <SolidColorBrush x:Key="StateErrorBackgroundBrush" Color="{DynamicResource StateErrorBackgroundColor}" />
+    <SolidColorBrush x:Key="StateAlarmBackgroundBrush" Color="{DynamicResource StateAlarmBackgroundColor}" />
 
 </ResourceDictionary>

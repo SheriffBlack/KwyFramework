@@ -33,6 +33,7 @@
             BasedOn="{StaticResource {x:Type TextBox}}"
             TargetType="TextBox">
             <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="Height" Value="28.4" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding ReelScanState}" Value="{x:Static runtime:ReelScanState.Success}">
                     <Setter Property="Background" Value="{DynamicResource StatusSuccessBackgroundBrush}" />
