@@ -38,7 +38,7 @@ public sealed class WpfFileDialogService : IFileDialogService
         var dialog = new OpenFileDialog
         {
             Title = options.Title,
-            Filter = options.Filter,
+            Filter = options.Filter ?? string.Empty,
             FileName = options.FileName ?? string.Empty,
             DefaultExt = ResolveDefaultExtension(options),
             InitialDirectory = GetValidInitialDirectory(options.InitialDirectory),
@@ -63,7 +63,7 @@ public sealed class WpfFileDialogService : IFileDialogService
         var dialog = new SaveFileDialog
         {
             Title = options.Title,
-            Filter = options.Filter,
+            Filter = options.Filter ?? string.Empty,
             FileName = options.FileName ?? string.Empty,
             DefaultExt = ResolveDefaultExtension(options),
             InitialDirectory = GetValidInitialDirectory(options.InitialDirectory),
@@ -153,7 +153,7 @@ public sealed class WpfFileDialogService : IFileDialogService
             return NormalizeExtension(options.DefaultExtension);
         }
 
-        var parts = options.Filter.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var parts = (options.Filter ?? string.Empty).Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length < 2)
         {
             return string.Empty;

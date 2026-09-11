@@ -46,7 +46,8 @@ public class KwyKeyboard : Control
         nameof(Mode),
         typeof(SoftKeyboardMode),
         typeof(KwyKeyboard),
-        new PropertyMetadata(SoftKeyboardMode.Full));
+        new PropertyMetadata(SoftKeyboardMode.Full),
+        static value => value is SoftKeyboardMode mode && Enum.IsDefined(mode));
 
     public bool AllowNegative
     {
@@ -332,7 +333,8 @@ public class KwyKeyboard : Control
             nameof(KeyboardLayout),
             typeof(KeyboardLayout),
             typeof(KwyKeyboard),
-            new PropertyMetadata(KeyboardLayout.Qwerty));
+            new PropertyMetadata(KeyboardLayout.Qwerty),
+            static value => value is KeyboardLayout layout && Enum.IsDefined(layout));
 
     public override void OnApplyTemplate()
     {

@@ -8,7 +8,7 @@ public sealed class FolderDialogOptions
     /// <summary>
     /// Gets or sets the dialog title.
     /// </summary>
-    public string Title { get; set; } = "选择文件夹";
+    public string? Title { get; set; }
 
     /// <summary>
     /// Gets or sets the initial directory. If invalid, the service falls back to the last selected directory or Desktop.

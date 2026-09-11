@@ -30,7 +30,8 @@ public static class SoftKeyboardService
         "Layout",
         typeof(KeyboardLayout),
         typeof(SoftKeyboardService),
-        new PropertyMetadata(KeyboardLayout.Qwerty));
+        new PropertyMetadata(KeyboardLayout.Qwerty),
+        static value => value is KeyboardLayout layout && Enum.IsDefined(layout));
 
     public static void SetLayout(DependencyObject element, KeyboardLayout value) => element.SetValue(LayoutProperty, value);
     public static KeyboardLayout GetLayout(DependencyObject element) => (KeyboardLayout)element.GetValue(LayoutProperty);
@@ -39,7 +40,8 @@ public static class SoftKeyboardService
         "Mode",
         typeof(SoftKeyboardMode),
         typeof(SoftKeyboardService),
-        new PropertyMetadata(SoftKeyboardMode.Full));
+        new PropertyMetadata(SoftKeyboardMode.Full),
+        static value => value is SoftKeyboardMode mode && Enum.IsDefined(mode));
 
     public static void SetMode(DependencyObject element, SoftKeyboardMode value) => element.SetValue(ModeProperty, value);
     public static SoftKeyboardMode GetMode(DependencyObject element) => (SoftKeyboardMode)element.GetValue(ModeProperty);
@@ -51,7 +53,8 @@ public static class SoftKeyboardService
     public static bool GetAllowNegative(DependencyObject element) => (bool)element.GetValue(AllowNegativeProperty);
 
     public static readonly DependencyProperty DecimalPlacesProperty = DependencyProperty.RegisterAttached(
-        "DecimalPlaces", typeof(int?), typeof(SoftKeyboardService), new PropertyMetadata(null));
+        "DecimalPlaces", typeof(int?), typeof(SoftKeyboardService), new PropertyMetadata(null),
+        static value => value is null || (value is int places && places is >= 0 and <= 15));
 
     public static void SetDecimalPlaces(DependencyObject element, int? value) => element.SetValue(DecimalPlacesProperty, value);
     public static int? GetDecimalPlaces(DependencyObject element) => (int?)element.GetValue(DecimalPlacesProperty);
@@ -60,7 +63,8 @@ public static class SoftKeyboardService
         "Width",
         typeof(double),
         typeof(SoftKeyboardService),
-        new PropertyMetadata(760d));
+        new PropertyMetadata(760d),
+        static value => value is double width && double.IsFinite(width) && width > 0);
 
     public static void SetWidth(DependencyObject element, double value) => element.SetValue(WidthProperty, value);
     public static double GetWidth(DependencyObject element) => (double)element.GetValue(WidthProperty);

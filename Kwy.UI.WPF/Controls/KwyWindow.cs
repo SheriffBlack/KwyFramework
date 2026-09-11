@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -162,7 +163,8 @@ public class KwyWindow : Window
             nameof(TitleBarHeight),
             typeof(double),
             typeof(KwyWindow),
-            new FrameworkPropertyMetadata(40.0, FrameworkPropertyMetadataOptions.AffectsMeasure));
+            new FrameworkPropertyMetadata(40.0, FrameworkPropertyMetadataOptions.AffectsMeasure),
+            static value => value is double height && double.IsFinite(height) && height > 0);
 
     public Brush? TitleBarBackground
     {
@@ -184,6 +186,9 @@ public class KwyWindow : Window
         hwndSource?.AddHook(WndProc);
         SyncMaximizedState();
     }
+
+    protected override AutomationPeer OnCreateAutomationPeer()
+        => new KwyWindowAutomationPeer(this);
 
     protected override void OnStateChanged(EventArgs e)
     {

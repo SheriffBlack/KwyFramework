@@ -29,7 +29,8 @@ public class KwyCirclePanel : Panel
             "StartAngle",
             typeof(double),
             typeof(KwyCirclePanel),
-            new PropertyMetadata(-Math.PI / 2, OnLayoutPropertyChanged)); // 默认-π/2（12点）
+            new PropertyMetadata(-Math.PI / 2, OnLayoutPropertyChanged),
+            static value => value is double angle && double.IsFinite(angle)); // 默认-π/2（12点）
 
     // 依赖属性：圆的半径（可在XAML中设置）
     public static readonly DependencyProperty RadiusProperty =
@@ -37,7 +38,8 @@ public class KwyCirclePanel : Panel
             "Radius",
             typeof(double),
             typeof(KwyCirclePanel),
-            new PropertyMetadata(200.0, OnLayoutPropertyChanged));
+            new PropertyMetadata(200.0, OnLayoutPropertyChanged),
+            static value => value is double radius && double.IsFinite(radius) && radius >= 0);
 
     // 依赖属性：圆心X坐标（默认面板中心）
     public static readonly DependencyProperty CenterXProperty =
@@ -45,7 +47,8 @@ public class KwyCirclePanel : Panel
             "CenterX",
             typeof(double),
             typeof(KwyCirclePanel),
-            new PropertyMetadata(double.NaN, OnLayoutPropertyChanged));
+            new PropertyMetadata(double.NaN, OnLayoutPropertyChanged),
+            static value => value is double coordinate && (double.IsNaN(coordinate) || double.IsFinite(coordinate)));
 
     // 依赖属性：圆心Y坐标（默认面板中心）
     public static readonly DependencyProperty CenterYProperty =
@@ -53,7 +56,8 @@ public class KwyCirclePanel : Panel
             "CenterY",
             typeof(double),
             typeof(KwyCirclePanel),
-            new PropertyMetadata(double.NaN, OnLayoutPropertyChanged));
+            new PropertyMetadata(double.NaN, OnLayoutPropertyChanged),
+            static value => value is double coordinate && (double.IsNaN(coordinate) || double.IsFinite(coordinate)));
 
     //StartAngle属性封装，开始角度
     public double StartAngle

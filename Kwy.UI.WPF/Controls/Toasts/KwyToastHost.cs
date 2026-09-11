@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation.Peers;
 using System.Windows.Media;
 
 namespace Kwy.UI.WPF.Controls;
@@ -24,7 +25,8 @@ public class KwyToastHost : ItemsControl
     }
 
     public static readonly DependencyProperty DurationProperty =
-        DependencyProperty.Register(nameof(Duration), typeof(TimeSpan), typeof(KwyToastHost), new PropertyMetadata(TimeSpan.FromSeconds(3)));
+        DependencyProperty.Register(nameof(Duration), typeof(TimeSpan), typeof(KwyToastHost), new PropertyMetadata(TimeSpan.FromSeconds(3)),
+            static value => value is TimeSpan duration && duration >= TimeSpan.Zero);
 
     public int MaxItems
     {
@@ -33,7 +35,8 @@ public class KwyToastHost : ItemsControl
     }
 
     public static readonly DependencyProperty MaxItemsProperty =
-        DependencyProperty.Register(nameof(MaxItems), typeof(int), typeof(KwyToastHost), new PropertyMetadata(5));
+        DependencyProperty.Register(nameof(MaxItems), typeof(int), typeof(KwyToastHost), new PropertyMetadata(5),
+            static value => value is int count && count >= 0);
 
     public KwyToastPlacement Placement
     {
@@ -42,7 +45,11 @@ public class KwyToastHost : ItemsControl
     }
 
     public static readonly DependencyProperty PlacementProperty =
-        DependencyProperty.Register(nameof(Placement), typeof(KwyToastPlacement), typeof(KwyToastHost), new PropertyMetadata(KwyToastPlacement.Top));
+        DependencyProperty.Register(nameof(Placement), typeof(KwyToastPlacement), typeof(KwyToastHost), new PropertyMetadata(KwyToastPlacement.Top),
+            static value => value is KwyToastPlacement placement && Enum.IsDefined(placement));
+
+    protected override AutomationPeer OnCreateAutomationPeer()
+        => new KwyToastHostAutomationPeer(this);
 
     public void Show(object message, object? icon = null, Brush? accentBrush = null, TimeSpan? duration = null)
     {

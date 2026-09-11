@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation.Peers;
 
 namespace Kwy.UI.WPF.Controls;
 
@@ -41,7 +42,8 @@ public class KwyRadioButtonGroup : ListBox
     }
 
     public static readonly DependencyProperty ItemWidthProperty = DependencyProperty.Register(
-        nameof(ItemWidth), typeof(double), typeof(KwyRadioButtonGroup), new PropertyMetadata(double.NaN));
+        nameof(ItemWidth), typeof(double), typeof(KwyRadioButtonGroup), new PropertyMetadata(double.NaN),
+        static value => value is double width && (double.IsNaN(width) || (double.IsFinite(width) && width >= 0)));
 
     public Orientation Orientation
     {
@@ -50,7 +52,11 @@ public class KwyRadioButtonGroup : ListBox
     }
 
     public static readonly DependencyProperty OrientationProperty = DependencyProperty.Register(
-        nameof(Orientation), typeof(Orientation), typeof(KwyRadioButtonGroup), new PropertyMetadata(Orientation.Horizontal));
+        nameof(Orientation), typeof(Orientation), typeof(KwyRadioButtonGroup), new PropertyMetadata(Orientation.Horizontal),
+        static value => value is Orientation orientation && Enum.IsDefined(orientation));
+
+    protected override AutomationPeer OnCreateAutomationPeer()
+        => new KwyRadioButtonGroupAutomationPeer(this);
 
     protected override void OnSelectionChanged(SelectionChangedEventArgs e)
     {

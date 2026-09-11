@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation.Peers;
 
 namespace Kwy.UI.WPF.Controls;
 
@@ -32,7 +33,8 @@ public class KwyToast : ContentControl
     }
 
     public static readonly DependencyProperty IconSizeProperty =
-        DependencyProperty.Register(nameof(IconSize), typeof(double), typeof(KwyToast), new PropertyMetadata(18d));
+        DependencyProperty.Register(nameof(IconSize), typeof(double), typeof(KwyToast), new PropertyMetadata(18d),
+            static value => value is double size && double.IsFinite(size) && size >= 0);
 
     [Bindable(true)]
     public CornerRadius CornerRadius
@@ -43,4 +45,7 @@ public class KwyToast : ContentControl
 
     public static readonly DependencyProperty CornerRadiusProperty =
         DependencyProperty.Register(nameof(CornerRadius), typeof(CornerRadius), typeof(KwyToast), new PropertyMetadata(new CornerRadius(4)));
+
+    protected override AutomationPeer OnCreateAutomationPeer()
+        => new KwyToastAutomationPeer(this);
 }

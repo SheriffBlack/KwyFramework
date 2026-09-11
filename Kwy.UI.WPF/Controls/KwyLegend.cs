@@ -65,7 +65,9 @@ public class KwyLegend : System.Windows.Controls.ContentControl
     }
 
     public static readonly DependencyProperty LineProperty =
-        DependencyProperty.Register("Line", typeof(double), typeof(KwyLegend));
+        DependencyProperty.Register("Line", typeof(double), typeof(KwyLegend),
+            new PropertyMetadata(0d),
+            static value => value is double line && double.IsFinite(line) && line >= 0);
 
     /// <summary>
     /// 类型
@@ -78,7 +80,9 @@ public class KwyLegend : System.Windows.Controls.ContentControl
     }
 
     public static readonly DependencyProperty TypeProperty =
-        DependencyProperty.Register("Type", typeof(LegendStyle), typeof(KwyLegend));
+        DependencyProperty.Register("Type", typeof(LegendStyle), typeof(KwyLegend),
+            new PropertyMetadata(LegendStyle.Left),
+            static value => value is LegendStyle style && Enum.IsDefined(style));
 
     /// <summary>
     /// 标题
