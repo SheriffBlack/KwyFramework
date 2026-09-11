@@ -264,13 +264,15 @@
                 BorderThickness="1,1,1,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition />
+                        <ColumnDefinition />
                     </Grid.ColumnDefinitions>
-                    <kwyui:KwyFormItem Grid.Column="0" Label="{DynamicResource Home.Field.SpecialMachineOperation}" 
+                    <kwyui:KwyFormItem
+                        Grid.Column="0"
+                        Label="{DynamicResource Home.Field.SpecialMachineOperation}"
                         Visibility="{Binding IsTrailingXMachineType, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel Orientation="Horizontal" Margin="-20,0,0,0">
+                        <StackPanel Margin="-20,0,0,0" Orientation="Horizontal">
                             <TextBox
                                 Width="80"
                                 IsReadOnly="True"
@@ -281,14 +283,17 @@
                                 Text="{Binding SpecialMachineLsUnit, Mode=OneWay}" />
                         </StackPanel>
                     </kwyui:KwyFormItem>
-                    <kwyui:KwyFormItem  Margin="20,0,0,0"  Grid.Column="1" Label="{DynamicResource Home.Field.MaterialInputCount}">
+                    <kwyui:KwyFormItem
+                        Grid.Column="1"
+                        Margin="20,0,0,0"
+                        Label="{DynamicResource Home.Field.MaterialInputCount}">
                         <TextBlock
                             Margin="-20,4,0,0"
                             VerticalAlignment="Center"
                             Foreground="{DynamicResource ControlDisabledForegroundBrush}"
                             Text="{Binding MaterialInputCount, Mode=OneWay}" />
                     </kwyui:KwyFormItem>
-                    <kwyui:KwyFormItem  Grid.Column="2"  Label="{DynamicResource Home.Field.ElectricalTestOkCount}" >
+                    <kwyui:KwyFormItem Grid.Column="2" Label="{DynamicResource Home.Field.ElectricalTestOkCount}">
                         <TextBlock
                             Margin="-20,4,0,0"
                             VerticalAlignment="Center"
@@ -501,9 +506,9 @@
             <Button
                 Height="60"
                 Command="{Binding MesConnectionCommand}"
+                Content="{Binding MesStatus.DisplayText}"
                 Focusable="False"
-                IsTabStop="False"
-                Content="{Binding MesStatus.DisplayText}">
+                IsTabStop="False">
                 <Button.Style>
                     <Style BasedOn="{StaticResource ButtonContentHorizontalStyle}" TargetType="Button">
                         <Setter Property="Background" Value="{DynamicResource StatusErrorBackgroundBrush}" />

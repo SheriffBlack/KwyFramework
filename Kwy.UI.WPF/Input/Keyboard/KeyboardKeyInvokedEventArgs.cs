@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 
-namespace Kwy.UI.WPF.Controls;
+namespace Kwy.UI.WPF.Input.Keyboard;
 
 public sealed class KeyboardKeyInvokedEventArgs : RoutedEventArgs
 {

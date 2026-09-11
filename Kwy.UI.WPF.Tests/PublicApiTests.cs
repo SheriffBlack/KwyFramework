@@ -20,13 +20,15 @@ public sealed class PublicApiTests
     }
 
     [Fact]
-    public void KwyWindow_UsesFrameworkIconContract()
+    public void KwyWindow_ExposesGenericTemplateIconContract()
     {
-        PropertyInfo? iconProperty = typeof(KwyWindow).GetProperty(nameof(Window.Icon));
+        PropertyInfo? iconProperty = typeof(KwyWindow).GetProperty(
+            nameof(KwyWindow.Icon),
+            BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
         Assert.NotNull(iconProperty);
-        Assert.Equal(typeof(ImageSource), iconProperty.PropertyType);
-        Assert.Equal(typeof(Window), iconProperty.DeclaringType);
+        Assert.Equal(typeof(object), iconProperty.PropertyType);
+        Assert.Equal(typeof(KwyWindow), iconProperty.DeclaringType);
     }
 
     [Fact]
@@ -41,7 +43,7 @@ public sealed class PublicApiTests
 
         Assert.Contains(definitions, definition =>
             definition.XmlNamespace == "http://schemas.kwy.com/ui"
-            && definition.ClrNamespace == "Kwy.UI.WPF.Input");
+            && definition.ClrNamespace == "Kwy.UI.WPF.Input.Keyboard");
     }
 
     [Fact]

@@ -1,6 +1,4 @@
-using Kwy.UI.WPF.Controls;
-
-namespace Kwy.UI.WPF.Input;
+namespace Kwy.UI.WPF.Input.Keyboard;
 
 public interface IKeyboardInputAdapter
 {

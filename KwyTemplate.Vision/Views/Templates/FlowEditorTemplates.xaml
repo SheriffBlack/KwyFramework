@@ -1,0 +1,422 @@
+﻿<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:KwyTemplate.Vision.Converters"
+    xmlns:kwyflow="http://schemas.kwy.com/ui/flowdesigner"
+    xmlns:kwyui="http://schemas.kwy.com/ui"
+    xmlns:nodify="https://miroiu.github.io/nodify"
+    xmlns:viewmodelItems="clr-namespace:KwyTemplate.Vision.ViewModels.Items"
+    xmlns:views="clr-namespace:KwyTemplate.Vision.Views">
+
+    <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    <converters:SubCollectionConverter x:Key="SubCollectionConverter" />
+    <converters:ConnectionProbePositionConverter x:Key="ConnectionProbeLeftConverter" Axis="X" />
+    <converters:ConnectionProbePositionConverter x:Key="ConnectionProbeTopConverter" Axis="Y" />
+
+    <!--  特效资源声明  -->
+    <DropShadowEffect
+        x:Key="GlowSelected"
+        x:Shared="False"
+        BlurRadius="12"
+        Opacity="1.0"
+        ShadowDepth="0"
+        Color="{DynamicResource VisionAccentColor}" />
+    <DropShadowEffect
+        x:Key="GlowBreakpoint"
+        x:Shared="False"
+        BlurRadius="12"
+        Opacity="1.0"
+        ShadowDepth="0"
+        Color="{DynamicResource VisionDangerColor}" />
+
+    <!--  ── 拖拽预连线样式 ───────────────────────────────────  -->
+    <Style BasedOn="{StaticResource {x:Type kwyflow:KwyPendingConnection}}" TargetType="{x:Type kwyflow:KwyPendingConnection}">
+        <Setter Property="Stroke" Value="{DynamicResource AccentBlue}" />
+        <Setter Property="StrokeThickness" Value="2" />
+        <Setter Property="Opacity" Value="0.6" />
+    </Style>
+
+    <DataTemplate x:Key="PendingConnectionTemplate">
+        <kwyflow:KwyPendingConnection
+            ConnectionStyle="{Binding DataContext.ConnectionStyle, RelativeSource={RelativeSource AncestorType={x:Type kwyflow:KwyEditor}}}"
+            Source="{Binding Source}"
+            SourceSide="{Binding Side}"
+            Target="{Binding Target}"
+            TargetSide="{Binding TargetSide}" />
+    </DataTemplate>
+
+    <!--  ── 节点卡片 DataTemplate ───────────────────────────  -->
+    <DataTemplate x:Key="NodeTemplate" DataType="{x:Type viewmodelItems:FlowNodeViewModel}">
+        <Grid ClipToBounds="False">
+            <kwyflow:KwyNode
+                x:Name="NodeElement"
+                Header="{Binding DisplayName}"
+                InputLeft="{Binding InputLeft}"
+                InputTop="{Binding InputTop}"
+                IsDisabled="{Binding IsDisabled}"
+                IsSelected="{Binding IsSelected}"
+                OutputBottom="{Binding OutputBottom}"
+                OutputRight="{Binding OutputRight}"
+                Status="{Binding Status}"
+                Tag="{DynamicResource Proxy}"
+                ThemeColor="{DynamicResource AccentBlue}">
+
+                <kwyflow:KwyNode.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.RunToNodeCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentGreen}"
+                            Header="▶ 运行到此节点" />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.ExecuteNodeCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentGreen}"
+                            Header="▶ 单独运行此节点" />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.ToggleNodeDisableCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentPurple}"
+                            Header="⏸ 禁用/启用此节点" />
+                        <Separator />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.SelectNodeCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentBlue}"
+                            Header="⚙ 节点属性 (Properties)" />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.ShowNodeHelpCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Header="❓ 节点帮助" />
+                        <Separator />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.DeleteNodeCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentRed}"
+                            Header="✂ 删除节点 (Delete)" />
+                    </ContextMenu>
+                </kwyflow:KwyNode.ContextMenu>
+
+                <kwyflow:KwyNode.Style>
+                    <Style BasedOn="{StaticResource {x:Type kwyflow:KwyNode}}" TargetType="{x:Type kwyflow:KwyNode}">
+                        <Setter Property="Cursor" Value="Hand" />
+                    </Style>
+                </kwyflow:KwyNode.Style>
+
+                <!--  输入端口模板 (去文字化微芯片风格)  -->
+                <kwyflow:KwyNode.InputConnectorTemplate>
+                    <DataTemplate DataType="{x:Type viewmodelItems:PortViewModel}">
+                        <kwyflow:KwyConnector
+                            ActiveSide="{Binding LastSide, Mode=TwoWay}"
+                            Anchor="{Binding Anchor, Mode=TwoWay}"
+                            Direction="{Binding Direction}"
+                            IsConnected="{Binding IsConnected}"
+                            PortColor="{Binding PortColor}"
+                            PortType="{Binding Type}"
+                            Side="{Binding (kwyflow:KwyNode.PortSide), RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            Tag="{DynamicResource Proxy}">
+                            <kwyflow:KwyConnector.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem
+                                        Command="{Binding PlacementTarget.Tag.Data.TogglePortProbeCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                        CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                        Foreground="{DynamicResource AccentBlue}"
+                                        Header="📍 开启/关闭端口探针" />
+                                </ContextMenu>
+                            </kwyflow:KwyConnector.ContextMenu>
+
+                            <!--  引脚只有探针 logic，没有常驻文字  -->
+                            <kwyflow:KwyConnector.Header>
+                                <!--  📍 输入端口探针  -->
+                                <Canvas
+                                    Width="0"
+                                    Height="0"
+                                    IsHitTestVisible="False"
+                                    Visibility="{Binding ShowProbeValue, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                                    <Canvas.RenderTransform>
+                                        <TranslateTransform X="-65" Y="0" />
+                                    </Canvas.RenderTransform>
+                                    <Line
+                                        Opacity="0.6"
+                                        Stroke="{Binding PortColor}"
+                                        StrokeThickness="1.5"
+                                        X1="50"
+                                        X2="62"
+                                        Y1="0"
+                                        Y2="0" />
+                                    <Border
+                                        Canvas.Left="0"
+                                        Canvas.Top="-11"
+                                        MinWidth="40"
+                                        Padding="8,2"
+                                        Background="{DynamicResource VisionPanelBrush}"
+                                        BorderBrush="{Binding PortColor}"
+                                        BorderThickness="1.2"
+                                        CornerRadius="10">
+                                        <StackPanel Orientation="Horizontal">
+
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                FontFamily="Consolas"
+                                                FontSize="11"
+                                                FontWeight="SemiBold"
+                                                Foreground="{DynamicResource FgPrimary}"
+                                                Text="{Binding DisplayValue}" />
+                                        </StackPanel>
+                                    </Border>
+                                </Canvas>
+                            </kwyflow:KwyConnector.Header>
+                        </kwyflow:KwyConnector>
+                    </DataTemplate>
+                </kwyflow:KwyNode.InputConnectorTemplate>
+
+                <!--  输出端口模板 (去文字化微芯片风格)  -->
+                <kwyflow:KwyNode.OutputConnectorTemplate>
+                    <DataTemplate DataType="{x:Type viewmodelItems:PortViewModel}">
+                        <kwyflow:KwyConnector
+                            ActiveSide="{Binding LastSide, Mode=TwoWay}"
+                            Anchor="{Binding Anchor, Mode=TwoWay}"
+                            Direction="{Binding Direction}"
+                            IsConnected="{Binding IsConnected}"
+                            PortColor="{Binding PortColor}"
+                            PortType="{Binding Type}"
+                            Side="{Binding (kwyflow:KwyNode.PortSide), RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            Tag="{DynamicResource Proxy}">
+                            <kwyflow:KwyConnector.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem
+                                        Command="{Binding PlacementTarget.Tag.Data.TogglePortProbeCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                        CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                        Foreground="{DynamicResource AccentBlue}"
+                                        Header="📍 开启/关闭端口探针" />
+                                </ContextMenu>
+                            </kwyflow:KwyConnector.ContextMenu>
+
+                            <kwyflow:KwyConnector.Header>
+                                <!--  📍 输出端口探针  -->
+                                <Canvas
+                                    Width="0"
+                                    Height="0"
+                                    HorizontalAlignment="Right"
+                                    IsHitTestVisible="False"
+                                    Visibility="{Binding ShowProbeValue, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                                    <Canvas.RenderTransform>
+                                        <TranslateTransform X="15" Y="0" />
+                                    </Canvas.RenderTransform>
+                                    <Line
+                                        Opacity="0.6"
+                                        Stroke="{Binding PortColor}"
+                                        StrokeThickness="1.5"
+                                        X1="0"
+                                        X2="13"
+                                        Y1="0"
+                                        Y2="0" />
+                                    <Border
+                                        Canvas.Left="12"
+                                        Canvas.Top="-11"
+                                        MinWidth="40"
+                                        Padding="8,2"
+                                        Background="{DynamicResource VisionPanelBrush}"
+                                        BorderBrush="{Binding PortColor}"
+                                        BorderThickness="1.2"
+                                        CornerRadius="10">
+                                        <StackPanel Orientation="Horizontal">
+
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                FontFamily="Consolas"
+                                                FontSize="11"
+                                                FontWeight="SemiBold"
+                                                Foreground="{DynamicResource FgPrimary}"
+                                                Text="{Binding DisplayValue}" />
+                                        </StackPanel>
+                                    </Border>
+                                </Canvas>
+                            </kwyflow:KwyConnector.Header>
+                        </kwyflow:KwyConnector>
+                    </DataTemplate>
+                </kwyflow:KwyNode.OutputConnectorTemplate>
+            </kwyflow:KwyNode>
+
+            <Border
+                Margin="0,-22,-8,0"
+                Padding="7,2"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="{DynamicResource VisionPanelBrush}"
+                BorderBrush="{DynamicResource AccentBlue}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Visibility="{Binding ShowLastElapsed, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                <TextBlock
+                    FontFamily="Consolas"
+                    FontSize="10"
+                    FontWeight="SemiBold"
+                    Foreground="{DynamicResource FgPrimary}"
+                    Text="{Binding LastElapsedText}" />
+            </Border>
+
+            <Border
+                Margin="0,0,-8,-28"
+                Padding="8,3"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Background="{DynamicResource VisionPanelBrush}"
+                BorderBrush="{DynamicResource AccentGreen}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Visibility="{Binding ShowResultValue, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,4,0"
+                        FontSize="11"
+                        FontWeight="Bold"
+                        Foreground="{DynamicResource AccentGreen}"
+                        Text="结果" />
+                    <TextBlock
+                        FontFamily="Consolas"
+                        FontSize="11"
+                        FontWeight="Bold"
+                        Foreground="{DynamicResource FgPrimary}"
+                        Text="{Binding ResultDisplayValue}" />
+                </StackPanel>
+            </Border>
+
+            <Border
+                Margin="-8,0,0,-28"
+                Padding="8,3"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Background="{DynamicResource VisionPanelBrush}"
+                BorderBrush="{DynamicResource AccentRed}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Visibility="{Binding ShowRuntimeMessage, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                <TextBlock
+                    MaxWidth="180"
+                    FontSize="11"
+                    FontWeight="SemiBold"
+                    Foreground="{DynamicResource AccentRed}"
+                    Text="{Binding RuntimeMessage}"
+                    TextTrimming="CharacterEllipsis" />
+            </Border>
+        </Grid>
+        <DataTemplate.Triggers>
+            <!--  不同类型节点的图标切换  -->
+            <DataTrigger Binding="{Binding NodeType}" Value="Math">
+                <Setter TargetName="NodeElement" Property="ThemeColor" Value="{DynamicResource AccentBlue}" />
+                <Setter TargetName="NodeElement" Property="HeaderIcon" Value="{StaticResource IconAI}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding NodeType}" Value="Logic">
+                <Setter TargetName="NodeElement" Property="ThemeColor" Value="{DynamicResource AccentPurple}" />
+                <Setter TargetName="NodeElement" Property="HeaderIcon" Value="{StaticResource IconRAM}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding NodeType}" Value="IO">
+                <Setter TargetName="NodeElement" Property="ThemeColor" Value="{DynamicResource AccentGreen}" />
+                <Setter TargetName="NodeElement" Property="HeaderIcon" Value="{StaticResource IconPCI}" />
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!--  ── 连线 DataTemplate ──  -->
+    <DataTemplate x:Key="ConnectionTemplate" DataType="{x:Type viewmodelItems:FlowConnectionViewModel}">
+        <Grid>
+            <kwyflow:KwyConnection
+                ConnectionStyle="{Binding DataContext.ConnectionStyle, RelativeSource={RelativeSource AncestorType={x:Type kwyflow:KwyEditor}}}"
+                IsSelected="{Binding IsSelected}"
+                Source="{Binding Source.Anchor}"
+                SourceSide="{Binding Source.Side}"
+                Stroke="{Binding StrokeBrush}"
+                StrokeThickness="{Binding Thickness}"
+                Tag="{DynamicResource Proxy}"
+                Target="{Binding Target.Anchor}"
+                TargetSide="{Binding Target.Side}">
+                <kwyflow:KwyConnection.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.SelectConnectionCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentBlue}"
+                            Header="📄 连线属性" />
+                        <Separator />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.RunActiveGraphCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentGreen}"
+                            Header="▶ 运行当前流程" />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.DebugToConnectionCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentBlue}"
+                            Header="🪲 调试到该连线" />
+                        <Separator />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.ToggleProbeCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentBlue}"
+                            Header="📍 切换数据探针" />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.ToggleBreakpointCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentRed}"
+                            Header="⛔ 切换断点" />
+                        <Separator />
+                        <MenuItem
+                            Command="{Binding PlacementTarget.Tag.Data.DisconnectCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                            Foreground="{DynamicResource AccentRed}"
+                            Header="✂ 删除连线" />
+                    </ContextMenu>
+                </kwyflow:KwyConnection.ContextMenu>
+            </kwyflow:KwyConnection>
+
+            <!--  数据探针悬浮框  -->
+            <Canvas IsHitTestVisible="False">
+                <Border
+                    Padding="4,2"
+                    Background="{DynamicResource VisionPanelBrush}"
+                    BorderBrush="{Binding StrokeBrush}"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    Visibility="{Binding ShowProbeValue, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                    <Canvas.Left>
+                        <MultiBinding Converter="{StaticResource ConnectionProbeLeftConverter}">
+                            <Binding Path="Source.Anchor.X" />
+                            <Binding Path="Source.Anchor.Y" />
+                            <Binding Path="Target.Anchor.X" />
+                            <Binding Path="Target.Anchor.Y" />
+                            <Binding Path="Source.Side" />
+                            <Binding Path="Target.Side" />
+                            <Binding Path="DataContext.ConnectionStyle" RelativeSource="{RelativeSource AncestorType={x:Type kwyflow:KwyEditor}}" />
+                        </MultiBinding>
+                    </Canvas.Left>
+                    <Canvas.Top>
+                        <MultiBinding Converter="{StaticResource ConnectionProbeTopConverter}">
+                            <Binding Path="Source.Anchor.X" />
+                            <Binding Path="Source.Anchor.Y" />
+                            <Binding Path="Target.Anchor.X" />
+                            <Binding Path="Target.Anchor.Y" />
+                            <Binding Path="Source.Side" />
+                            <Binding Path="Target.Side" />
+                            <Binding Path="DataContext.ConnectionStyle" RelativeSource="{RelativeSource AncestorType={x:Type kwyflow:KwyEditor}}" />
+                        </MultiBinding>
+                    </Canvas.Top>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            Margin="0,0,4,0"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            Text="📍" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontFamily="Consolas"
+                            FontSize="10"
+                            FontWeight="Bold"
+                            Foreground="{DynamicResource FgPrimary}"
+                            Text="{Binding DisplayValue}" />
+                    </StackPanel>
+                </Border>
+            </Canvas>
+        </Grid>
+    </DataTemplate>
+</ResourceDictionary>
+

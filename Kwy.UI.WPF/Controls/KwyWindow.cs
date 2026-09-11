@@ -179,6 +179,23 @@ public class KwyWindow : Window
             typeof(KwyWindow),
             new FrameworkPropertyMetadata(null));
 
+    /// <summary>
+    /// Gets or sets the icon displayed by the Kwy window template.
+    /// Supports font glyph strings, geometries, images, and custom visual content.
+    /// </summary>
+    public new object? Icon
+    {
+        get => GetValue(IconProperty);
+        set => SetValue(IconProperty, value);
+    }
+
+    public new static readonly DependencyProperty IconProperty =
+        DependencyProperty.Register(
+            nameof(Icon),
+            typeof(object),
+            typeof(KwyWindow),
+            new FrameworkPropertyMetadata(null));
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);

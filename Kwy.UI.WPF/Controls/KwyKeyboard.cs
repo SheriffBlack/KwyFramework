@@ -4,15 +4,9 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Automation.Peers;
+using Kwy.UI.WPF.Input.Keyboard;
 
 namespace Kwy.UI.WPF.Controls;
-
-public enum KeyboardLayout
-{
-    Qwerty,
-    Azerty,
-    Qwertz
-}
 
 [TemplatePart(Name = "PART_KeysRoot", Type = typeof(Grid))]
 [TemplatePart(Name = "PART_NumericKeysRoot", Type = typeof(Grid))]
@@ -36,18 +30,18 @@ public class KwyKeyboard : Control
         Unloaded += OnKeyboardUnloaded;
     }
 
-    public SoftKeyboardMode Mode
+    public KwyKeyboardMode Mode
     {
-        get => (SoftKeyboardMode)GetValue(ModeProperty);
+        get => (KwyKeyboardMode)GetValue(ModeProperty);
         set => SetValue(ModeProperty, value);
     }
 
     public static readonly DependencyProperty ModeProperty = DependencyProperty.Register(
         nameof(Mode),
-        typeof(SoftKeyboardMode),
+        typeof(KwyKeyboardMode),
         typeof(KwyKeyboard),
-        new PropertyMetadata(SoftKeyboardMode.Full),
-        static value => value is SoftKeyboardMode mode && Enum.IsDefined(mode));
+        new PropertyMetadata(KwyKeyboardMode.Full),
+        static value => value is KwyKeyboardMode mode && Enum.IsDefined(mode));
 
     public bool AllowNegative
     {

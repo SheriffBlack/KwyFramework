@@ -25,6 +25,7 @@
         <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
         <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
         <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
         <Style.Resources>
             <Style BasedOn="{StaticResource DefaultScrollBarStyle}" TargetType="ScrollBar" />
 

@@ -3,7 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Globalization;
 
-namespace Kwy.UI.WPF.Input;
+namespace Kwy.UI.WPF.Input.Keyboard;
 
 public sealed class TextBoxKeyboardInputAdapter : IKeyboardInputAdapter
 {

@@ -8,8 +8,9 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />
-    <ProjectReference Include="..\Kwy.UI.WPF.FlowDesigner\Kwy.UI.WPF.FlowDesigner.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="ViewModel\" />
   </ItemGroup>
 </Project>

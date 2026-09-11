@@ -1,4 +1,4 @@
-namespace Kwy.UI.WPF.Input;
+namespace Kwy.UI.WPF.Input.Keyboard;
 
 public sealed record NumericKeyboardOptions(
     bool AllowDecimal = true,

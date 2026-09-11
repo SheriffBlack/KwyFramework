@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="Kwy.UI/Kwy.UI.csproj" />
-  <Project Path="Kwy.UI.WPF/Kwy.UI.WPF.csproj" />
   <Project Path="Kwy.UI.WPF.Tests/Kwy.UI.WPF.Tests.csproj" />
+  <Project Path="Kwy.UI.WPF/Kwy.UI.WPF.csproj" />
+  <Project Path="Kwy.UI/Kwy.UI.csproj" />
 </Solution>

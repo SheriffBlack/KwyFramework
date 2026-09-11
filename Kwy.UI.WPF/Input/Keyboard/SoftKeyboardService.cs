@@ -5,7 +5,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 
-namespace Kwy.UI.WPF.Input;
+namespace Kwy.UI.WPF.Input.Keyboard;
 
 /// <summary>
 /// Opens an application-local soft keyboard for an enabled <see cref="TextBox"/>.
@@ -38,13 +38,13 @@ public static class SoftKeyboardService
 
     public static readonly DependencyProperty ModeProperty = DependencyProperty.RegisterAttached(
         "Mode",
-        typeof(SoftKeyboardMode),
+        typeof(KwyKeyboardMode),
         typeof(SoftKeyboardService),
-        new PropertyMetadata(SoftKeyboardMode.Full),
-        static value => value is SoftKeyboardMode mode && Enum.IsDefined(mode));
+        new PropertyMetadata(KwyKeyboardMode.Full),
+        static value => value is KwyKeyboardMode mode && Enum.IsDefined(mode));
 
-    public static void SetMode(DependencyObject element, SoftKeyboardMode value) => element.SetValue(ModeProperty, value);
-    public static SoftKeyboardMode GetMode(DependencyObject element) => (SoftKeyboardMode)element.GetValue(ModeProperty);
+    public static void SetMode(DependencyObject element, KwyKeyboardMode value) => element.SetValue(ModeProperty, value);
+    public static KwyKeyboardMode GetMode(DependencyObject element) => (KwyKeyboardMode)element.GetValue(ModeProperty);
 
     public static readonly DependencyProperty AllowNegativeProperty = DependencyProperty.RegisterAttached(
         "AllowNegative", typeof(bool), typeof(SoftKeyboardService), new PropertyMetadata(true));
@@ -121,16 +121,16 @@ public static class SoftKeyboardService
             return;
         }
 
-        SoftKeyboardMode mode = element is KwyNumberBox number
-            ? number.IsInteger ? SoftKeyboardMode.Integer : SoftKeyboardMode.Numeric
+        KwyKeyboardMode mode = element is KwyNumberBox number
+            ? number.IsInteger ? KwyKeyboardMode.Integer : KwyKeyboardMode.Numeric
             : GetMode(element);
         bool allowNegative = element is KwyNumberBox numberInput
             ? numberInput.Minimum is null or < 0
             : GetAllowNegative(element);
-        var numericOptions = mode == SoftKeyboardMode.Full
+        var numericOptions = mode == KwyKeyboardMode.Full
             ? null
             : new NumericKeyboardOptions(
-                mode == SoftKeyboardMode.Numeric,
+                mode == KwyKeyboardMode.Numeric,
                 allowNegative,
                 element is KwyNumberBox numeric ? numeric.DecimalPlaces : GetDecimalPlaces(element),
                 element is KwyNumberBox bounded ? bounded.Minimum : null,

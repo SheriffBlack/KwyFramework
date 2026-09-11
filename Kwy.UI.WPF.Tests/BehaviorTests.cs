@@ -1,7 +1,7 @@
 using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Controls;
 using Kwy.UI.WPF.Controls.Helpers;
-using Kwy.UI.WPF.Input;
+using Kwy.UI.WPF.Input.Keyboard;
 using Kwy.UI.WPF.Themes;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -59,6 +59,21 @@ public sealed class BehaviorTests
         });
 
     [Fact]
+    public void ListBoxAccentStyles_LoadAsStyles()
+        => RunInSta(() =>
+        {
+            var resources = new ResourceDictionary
+            {
+                Source = new Uri(
+                    "pack://application:,,,/Kwy.UI.WPF;component/DefaultStyle.xaml",
+                    UriKind.Absolute)
+            };
+
+            Assert.IsType<Style>(resources["ListBoxAccentStyle"]);
+            Assert.IsType<Style>(resources["ListBoxItemAccentStyle"]);
+        });
+
+    [Fact]
     public void Keyboard_ReattachesButtonEventsAfterReload()
         => RunInSta(() =>
         {
@@ -74,7 +89,7 @@ public sealed class BehaviorTests
                     "pack://application:,,,/Kwy.UI.WPF;component/Themes/Generic.xaml",
                     UriKind.Absolute)
             });
-            var keyboard = new KwyKeyboard { Resources = resources, Mode = SoftKeyboardMode.Numeric };
+            var keyboard = new KwyKeyboard { Resources = resources, Mode = KwyKeyboardMode.Numeric };
             keyboard.ApplyTemplate();
             var panel = (Grid)keyboard.Template.FindName("PART_NumericKeysRoot", keyboard)!;
             var seven = panel.Children.OfType<Button>().Single(button => Equals(button.Content, "7"));
@@ -225,11 +240,11 @@ public sealed class BehaviorTests
             var numberBox = new KwyNumberBox();
 
             SoftKeyboardService.SetIsEnabled(textBox, true);
-            SoftKeyboardService.SetMode(textBox, SoftKeyboardMode.Numeric);
+            SoftKeyboardService.SetMode(textBox, KwyKeyboardMode.Numeric);
             SoftKeyboardService.SetIsEnabled(numberBox, true);
 
             Assert.True(SoftKeyboardService.GetIsEnabled(textBox));
-            Assert.Equal(SoftKeyboardMode.Numeric, SoftKeyboardService.GetMode(textBox));
+            Assert.Equal(KwyKeyboardMode.Numeric, SoftKeyboardService.GetMode(textBox));
             Assert.True(SoftKeyboardService.GetIsEnabled(numberBox));
         });
 
@@ -481,7 +496,7 @@ public sealed class BehaviorTests
             var numericKeyboard = new KwyKeyboard
             {
                 Resources = resources,
-                Mode = SoftKeyboardMode.Numeric
+                Mode = KwyKeyboardMode.Numeric
             };
             numericKeyboard.ApplyTemplate();
             var numericPanel = (Grid?)numericKeyboard.Template.FindName("PART_NumericKeysRoot", numericKeyboard);

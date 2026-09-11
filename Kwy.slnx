@@ -10,6 +10,7 @@
     <Project Path="KwyTemplate.Security/KwyTemplate.Security.csproj" Id="23b46b31-e57f-4153-89f0-e052f93e6bf7" />
     <Project Path="KwyTemplate.Shell/KwyTemplate.Shell.csproj" />
     <Project Path="KwyTemplate.Tests/KwyTemplate.Tests.csproj" />
+    <Project Path="KwyTemplate.Vision/KwyTemplate.Vision.csproj" />
   </Folder>
   <Folder Name="/Tools/">
     <Project Path="Kwy.Packaging/Kwy.Packaging.csproj" />

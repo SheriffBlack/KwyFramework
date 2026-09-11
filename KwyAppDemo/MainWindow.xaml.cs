@@ -10,5 +10,6 @@ public partial class MainWindow : KwyWindow
     public MainWindow()
     {
         InitializeComponent();
+        this.DataContext = new MainViewModel();
     }
 }

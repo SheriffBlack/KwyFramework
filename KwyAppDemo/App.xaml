@@ -8,8 +8,8 @@
                 <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/DefaultStyle.xaml" />
                 <!--<ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Themes/DarkTheme.xaml" />-->
                 <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Themes/LightTheme.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF.FlowDesigner;component/DefaultStyle.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF.FlowDesigner;component/Themes/LightTheme.xaml" />
+                <!--<ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF.FlowDesigner;component/DefaultStyle.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF.FlowDesigner;component/Themes/LightTheme.xaml" />-->
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

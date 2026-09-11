@@ -1,0 +1,31 @@
+﻿<UserControl
+    x:Class="KwyAppDemo.Views.ButtonView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:kwyui="http://schemas.kwy.com/ui"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    mc:Ignorable="d">
+    <UniformGrid>
+        <Button Content="xxx" />
+        <Button
+            Width="150"
+            kwyui:IconHelper.Icon="{StaticResource IconAI}"
+            Content="xxx"
+            Style="{StaticResource ButtonContentHorizontalStyle}" />
+        <Button
+            Width="90"
+            Height="90"
+            kwyui:IconHelper.Icon="{StaticResource IconAI}"
+            Content="xxx"
+            Style="{StaticResource ButtonContentVerticalStyle}" />
+        <Button
+            Width="60"
+            Height="60"
+            Content="xxx"
+            Style="{StaticResource ButtonCircleStyle}" />
+
+    </UniformGrid>
+</UserControl>
