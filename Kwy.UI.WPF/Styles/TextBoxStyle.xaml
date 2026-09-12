@@ -31,7 +31,7 @@
                     Grid.Column="0"
                     Margin="0,0,0,3"
                     Padding="{TemplateBinding Padding}"
-                    VerticalAlignment="{TemplateBinding VerticalAlignment}"
+                    VerticalAlignment="Center"
                     VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
                     Background="{TemplateBinding Background}"
                     HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
@@ -42,7 +42,8 @@
                     Grid.Column="1"
                     Margin="5,0,0,3"
                     Padding="10,0"
-                    VerticalAlignment="{TemplateBinding VerticalAlignment}"
+                    VerticalAlignment="Stretch"
+                    VerticalContentAlignment="Center"
                     Command="{Binding Path=(helpers:InputAdornerHelper.ButtonCommand), RelativeSource={RelativeSource TemplatedParent}}"
                     CommandParameter="{Binding Path=(helpers:InputAdornerHelper.ButtonCommandParameter), RelativeSource={RelativeSource TemplatedParent}}"
                     Content="{Binding Path=(helpers:InputAdornerHelper.ButtonContent), RelativeSource={RelativeSource TemplatedParent}}" />
@@ -66,6 +67,11 @@
 
         <!--  状态触发器：默认、聚焦、禁用、只读  -->
         <ControlTemplate.Triggers>
+            <!--  单行文本使用居中内容宿主；多行编辑需要完整高度以保持滚动区域。  -->
+            <Trigger Property="AcceptsReturn" Value="True">
+                <Setter TargetName="PART_ContentHost" Property="VerticalAlignment" Value="Stretch" />
+            </Trigger>
+
             <!--  聚焦状态：下划线变为焦点色，并带淡入动画  -->
             <Trigger Property="IsKeyboardFocused" Value="True">
                 <Setter TargetName="PART_BottomBorder" Property="Background" Value="{DynamicResource ControlFocusedBorderBrush}" />
@@ -109,6 +115,7 @@
         <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
         <Setter Property="Template" Value="{StaticResource BaseTextBoxTemplate}" />
         <Setter Property="MinHeight" Value="{DynamicResource KwyTextBoxMinHeight}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
     <!--  多行 TextBox 样式  -->
@@ -118,7 +125,6 @@
         TargetType="TextBox">
         <Setter Property="AcceptsReturn" Value="True" />
         <Setter Property="TextWrapping" Value="Wrap" />
-        <Setter Property="VerticalAlignment" Value="Top" />
         <Setter Property="VerticalContentAlignment" Value="Top" />
         <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
         <Setter Property="MinHeight" Value="60" />

@@ -1,0 +1,40 @@
+<controls:KwyWindow
+    x:Class="Kwy.UI.WPF.Input.Keyboard.KwyKeyboardInputDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Kwy.UI.WPF.Controls"
+    Title="输入"
+    x:ClassModifier="internal"
+    ResizeMode="NoResize"
+    ShowInTaskbar="False"
+    ShowMaximizeButton="False"
+    ShowMinimizeButton="False"
+    SizeToContent="WidthAndHeight"
+    WindowStartupLocation="CenterOwner"
+    WindowStyle="None">
+    <controls:KwyWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/TextBoxStyle.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </controls:KwyWindow.Resources>
+
+    <Border Padding="20">
+        <StackPanel>
+            <TextBox
+                x:Name="PART_Editor"
+                Margin="0,0,0,16"
+                FontSize="20"
+                Style="{StaticResource DefaultTextBoxStyle}"
+                Text="{Binding Text, RelativeSource={RelativeSource AncestorType=controls:KwyWindow}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <controls:KwyKeyboard
+                x:Name="PART_Keyboard"
+                Width="{Binding KeyboardWidth, RelativeSource={RelativeSource AncestorType=controls:KwyWindow}}"
+                AllowNegative="{Binding AllowNegative, RelativeSource={RelativeSource AncestorType=controls:KwyWindow}}"
+                Focusable="False"
+                KeyboardLayout="{Binding KeyboardLayout, RelativeSource={RelativeSource AncestorType=controls:KwyWindow}}"
+                Mode="{Binding Mode, RelativeSource={RelativeSource AncestorType=controls:KwyWindow}}" />
+        </StackPanel>
+    </Border>
+</controls:KwyWindow>

@@ -29,11 +29,11 @@
                 <ControlTemplate TargetType="{x:Type controls:KwyPercent}">
                     <Border
                         x:Name="PART_Root"
-                        Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"
                         Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
                         SnapsToDevicePixels="True"
+                        Tag="{Binding RelativeSource={RelativeSource TemplatedParent}}"
                         ToolTipService.IsEnabled="{TemplateBinding ShowToolTip}">
                         <Border.ToolTip>
                             <ToolTip>

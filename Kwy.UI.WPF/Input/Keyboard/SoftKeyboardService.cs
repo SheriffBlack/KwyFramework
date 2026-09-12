@@ -1,46 +1,35 @@
-using Kwy.UI.WPF.Controls;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Threading;
+using Kwy.UI.WPF.Controls;
 
 namespace Kwy.UI.WPF.Input.Keyboard;
 
 /// <summary>
-/// Opens an application-local soft keyboard for an enabled <see cref="TextBox"/>.
+/// Attaches the application-local soft keyboard to supported text input controls.
+/// A dispatcher owns at most one active keyboard session.
 /// </summary>
 public static class SoftKeyboardService
 {
-    private static readonly DependencyProperty SessionProperty = DependencyProperty.RegisterAttached(
-        "Session",
-        typeof(KeyboardSession),
-        typeof(SoftKeyboardService));
+    private static readonly ConditionalWeakTable<Dispatcher, SoftKeyboardCoordinator> Coordinators = new();
 
     public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
-        "IsEnabled",
-        typeof(bool),
-        typeof(SoftKeyboardService),
-        new PropertyMetadata(false, OnIsEnabledChanged));
+        "IsEnabled", typeof(bool), typeof(SoftKeyboardService), new PropertyMetadata(false, OnIsEnabledChanged));
 
     public static void SetIsEnabled(DependencyObject element, bool value) => element.SetValue(IsEnabledProperty, value);
     public static bool GetIsEnabled(DependencyObject element) => (bool)element.GetValue(IsEnabledProperty);
 
     public static readonly DependencyProperty LayoutProperty = DependencyProperty.RegisterAttached(
-        "Layout",
-        typeof(KeyboardLayout),
-        typeof(SoftKeyboardService),
-        new PropertyMetadata(KeyboardLayout.Qwerty),
+        "Layout", typeof(KeyboardLayout), typeof(SoftKeyboardService), new PropertyMetadata(KeyboardLayout.Qwerty),
         static value => value is KeyboardLayout layout && Enum.IsDefined(layout));
 
     public static void SetLayout(DependencyObject element, KeyboardLayout value) => element.SetValue(LayoutProperty, value);
     public static KeyboardLayout GetLayout(DependencyObject element) => (KeyboardLayout)element.GetValue(LayoutProperty);
 
     public static readonly DependencyProperty ModeProperty = DependencyProperty.RegisterAttached(
-        "Mode",
-        typeof(KwyKeyboardMode),
-        typeof(SoftKeyboardService),
-        new PropertyMetadata(KwyKeyboardMode.Full),
+        "Mode", typeof(KwyKeyboardMode), typeof(SoftKeyboardService), new PropertyMetadata(KwyKeyboardMode.Full),
         static value => value is KwyKeyboardMode mode && Enum.IsDefined(mode));
 
     public static void SetMode(DependencyObject element, KwyKeyboardMode value) => element.SetValue(ModeProperty, value);
@@ -60,10 +49,7 @@ public static class SoftKeyboardService
     public static int? GetDecimalPlaces(DependencyObject element) => (int?)element.GetValue(DecimalPlacesProperty);
 
     public static readonly DependencyProperty WidthProperty = DependencyProperty.RegisterAttached(
-        "Width",
-        typeof(double),
-        typeof(SoftKeyboardService),
-        new PropertyMetadata(760d),
+        "Width", typeof(double), typeof(SoftKeyboardService), new PropertyMetadata(760d),
         static value => value is double width && double.IsFinite(width) && width > 0);
 
     public static void SetWidth(DependencyObject element, double value) => element.SetValue(WidthProperty, value);
@@ -79,153 +65,55 @@ public static class SoftKeyboardService
         Detach(element);
         if ((bool)e.NewValue)
         {
-            element.GotKeyboardFocus += OnGotKeyboardFocus;
+            GetCoordinator(element.Dispatcher).WarmUp(element);
             element.PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
+            element.PreviewTouchDown += OnPreviewTouchDown;
             element.Unloaded += OnElementUnloaded;
-        }
-    }
-
-    private static void OnGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        if (sender is FrameworkElement element)
-        {
-            Open(element);
         }
     }
 
     private static void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is FrameworkElement element)
+        if (TryRequestOpen(sender))
         {
-            element.Dispatcher.BeginInvoke(() => Open(element));
+            e.Handled = true;
         }
     }
 
-    private static void Open(FrameworkElement element)
+    private static void OnPreviewTouchDown(object? sender, TouchEventArgs e)
     {
-        TextBox? textBox = element switch
+        if (TryRequestOpen(sender))
         {
-            TextBox direct => direct,
-            KwyNumberBox numberBox => numberBox.Editor,
-            _ => null
-        };
-        bool isReadOnly = element is TextBox directTextBox ? directTextBox.IsReadOnly : ((KwyNumberBox)element).IsReadOnly;
-        if (!GetIsEnabled(element) || textBox == null || isReadOnly || !element.IsEnabled)
-        {
-            return;
+            // Prevent WPF from promoting the same touch to a second mouse request.
+            e.Handled = true;
         }
-
-        if (element.GetValue(SessionProperty) is KeyboardSession existing)
-        {
-            existing.Popup.IsOpen = true;
-            return;
-        }
-
-        KwyKeyboardMode mode = element is KwyNumberBox number
-            ? number.IsInteger ? KwyKeyboardMode.Integer : KwyKeyboardMode.Numeric
-            : GetMode(element);
-        bool allowNegative = element is KwyNumberBox numberInput
-            ? numberInput.Minimum is null or < 0
-            : GetAllowNegative(element);
-        var numericOptions = mode == KwyKeyboardMode.Full
-            ? null
-            : new NumericKeyboardOptions(
-                mode == KwyKeyboardMode.Numeric,
-                allowNegative,
-                element is KwyNumberBox numeric ? numeric.DecimalPlaces : GetDecimalPlaces(element),
-                element is KwyNumberBox bounded ? bounded.Minimum : null,
-                element is KwyNumberBox boundedMaximum ? boundedMaximum.Maximum : null);
-        var keyboard = new KwyKeyboard
-        {
-            Focusable = false,
-            KeyboardLayout = GetLayout(element),
-            Mode = mode,
-            AllowNegative = allowNegative,
-            Width = GetWidth(element)
-        };
-        var popup = new Popup
-        {
-            AllowsTransparency = true,
-            Child = keyboard,
-            Focusable = false,
-            Placement = PlacementMode.Bottom,
-            PlacementTarget = element,
-            StaysOpen = false
-        };
-        var session = new KeyboardSession(textBox, keyboard, popup, numericOptions);
-        keyboard.KeyInvoked += session.OnKeyInvoked;
-        popup.Closed += session.OnClosed;
-        element.SetValue(SessionProperty, session);
-        popup.IsOpen = true;
     }
+
+    private static bool TryRequestOpen(object? sender)
+        => sender is FrameworkElement element
+           && GetIsEnabled(element)
+           && GetCoordinator(element.Dispatcher).RequestOpen(element);
 
     private static void OnElementUnloaded(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement element)
+        if (sender is FrameworkElement element
+            && Coordinators.TryGetValue(element.Dispatcher, out SoftKeyboardCoordinator? coordinator))
         {
-            Detach(element);
+            coordinator.CloseIfOwnedBy(element);
         }
     }
 
     private static void Detach(FrameworkElement element)
     {
-        element.GotKeyboardFocus -= OnGotKeyboardFocus;
         element.PreviewMouseLeftButtonDown -= OnPreviewMouseLeftButtonDown;
+        element.PreviewTouchDown -= OnPreviewTouchDown;
         element.Unloaded -= OnElementUnloaded;
-
-        if (element.GetValue(SessionProperty) is KeyboardSession session)
+        if (Coordinators.TryGetValue(element.Dispatcher, out SoftKeyboardCoordinator? coordinator))
         {
-            session.Dispose();
-            element.ClearValue(SessionProperty);
+            coordinator.CloseIfOwnedBy(element);
         }
     }
 
-    private sealed class KeyboardSession : IDisposable
-    {
-        private readonly TextBoxKeyboardInputAdapter target;
-        private readonly TextBox textBox;
-        private readonly KwyKeyboard keyboard;
-        private string originalText;
-
-        public KeyboardSession(TextBox textBox, KwyKeyboard keyboard, Popup popup, NumericKeyboardOptions? numericOptions)
-        {
-            this.textBox = textBox;
-            this.keyboard = keyboard;
-            Popup = popup;
-            target = new TextBoxKeyboardInputAdapter(textBox, numericOptions);
-            originalText = textBox.Text;
-        }
-
-        public Popup Popup { get; }
-
-        public void OnKeyInvoked(object? sender, KeyboardKeyInvokedEventArgs e)
-        {
-            KeyboardInputResult result = target.HandleKey(e, keyboard.KeyboardLayout);
-            e.Handled = true;
-            if (result == KeyboardInputResult.Commit)
-            {
-                textBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-                Popup.IsOpen = false;
-            }
-            else if (result == KeyboardInputResult.Cancel)
-            {
-                textBox.Text = originalText;
-                Popup.IsOpen = false;
-            }
-        }
-
-        public void OnClosed(object? sender, EventArgs e)
-        {
-            originalText = textBox.Text;
-        }
-
-        public void Dispose()
-        {
-            Popup.IsOpen = false;
-            keyboard.KeyInvoked -= OnKeyInvoked;
-            Popup.Closed -= OnClosed;
-            Popup.Child = null;
-            Popup.PlacementTarget = null;
-        }
-    }
+    private static SoftKeyboardCoordinator GetCoordinator(Dispatcher dispatcher)
+        => Coordinators.GetValue(dispatcher, static owner => new SoftKeyboardCoordinator(owner));
 }
