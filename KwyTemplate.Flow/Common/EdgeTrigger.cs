@@ -9,6 +9,11 @@ public sealed class EdgeTrigger
 
     public bool Last => last;
 
+    /// <summary>
+    /// 上升沿
+    /// </summary>
+    /// <param name="current"></param>
+    /// <returns></returns>
     public bool Rising(bool current)
     {
         bool triggered = current && !last;
@@ -16,6 +21,11 @@ public sealed class EdgeTrigger
         return triggered;
     }
 
+    /// <summary>
+    /// 下降沿
+    /// </summary>
+    /// <param name="current"></param>
+    /// <returns></returns>
     public bool Falling(bool current)
     {
         bool triggered = !current && last;

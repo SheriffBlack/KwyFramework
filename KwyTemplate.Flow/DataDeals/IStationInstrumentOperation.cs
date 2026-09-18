@@ -3,7 +3,8 @@
 namespace KwyTemplate.Flow.DataDeals;
 
 /// <summary>
-/// 宸ョ珯鍐呬华琛ㄦ搷浣滆兘鍔涳紝鐢ㄤ簬鏍囧噯浠躲€佺‘璁や欢銆佹牎鍑嗙瓑闇€瑕佹寜宸ョ珯瀹氫綅浠〃鐨勭壒娈婃祦绋嬨€?/// </summary>
+/// 工站内仪表操作能力，用于标准件、确认件、校准等需要按工站定位仪表的特殊流程。
+/// </summary>
 public interface IStationInstrumentOperation
 {
     string TestName { get; }
@@ -11,7 +12,7 @@ public interface IStationInstrumentOperation
     Task TriggerAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// return 鈥滃師鍊?+ 鍑€鍊尖€?
+    /// return “原值 + 净值”
     /// </summary>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>

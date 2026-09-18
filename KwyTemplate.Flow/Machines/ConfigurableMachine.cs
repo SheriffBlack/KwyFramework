@@ -11,8 +11,9 @@ using KwyTemplate.Flow.Models;
 namespace KwyTemplate.Flow.Machines;
 
 /// <summary>
-/// The standard machine runtime. Structure, devices and station IO are supplied by MachineProfile;
-/// it reuses MachineBase polling, result dispatch and the existing instrument data deals.
+/// 标准的设备运行时。结构、设备和站点IO由MachineProfile提供；
+/// 它复用了MachineBase的轮询、结果分发以及现有的仪器数据处理方式。
+/// -------------------------------------------------------------------------------- 未完成
 /// </summary>
 public sealed class ConfigurableMachine : MachineBase
 {

@@ -5,7 +5,9 @@ using KwyTemplate.Flow.Models;
 namespace KwyTemplate.Flow.DataDeals;
 
 /// <summary>
-/// 閫氱敤浠〃璇绘暟澶勭悊鍣ㄣ€?/// Hardware 妯″紡涓?OK/NG 浣跨敤 IO 鍒ゅ畾缁撴灉锛汼oftware 妯″紡涓嬫墠浣跨敤浠〃 Judgment銆?/// </summary>
+/// 通用仪表读数处理器。
+/// Hardware 模式中 OK/NG 使用 IO 判定结果；Software 模式下才使用仪表 Judgment。
+/// </summary>
 public class InstrumentMeasurementDataDeal : IStationDataDeal, IStationInstrumentOperation
 {
     private readonly IMeasurementInstrument? meter;

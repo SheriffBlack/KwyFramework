@@ -5,7 +5,9 @@ using KwyTemplate.Flow.Models;
 namespace KwyTemplate.Flow.DataDeals;
 
 /// <summary>
-/// 涓€鍙颁华琛ㄤ竴娆¤繑鍥炲涓祴閲忓€兼椂浣跨敤鐨勯€氱敤閲囬泦鍣ㄣ€?/// 渚嬪 HIOKI LCR 涓€娆¤繑鍥?Ls銆丷s锛屽氨璇诲彇涓€娆′华琛ㄥ悗鍒嗗埆鍐欏叆澶氫釜娴嬭瘯椤广€?/// </summary>
+/// 一台仪表一次返回多个测量值时使用的通用采集器。
+/// 例如 HIOKI LCR 一次返回 Ls、Rs，就读取一次仪表后分别写入多个测试项。
+/// </summary>
 public sealed class InstrumentMultiMeasurementDataDeal : IStationDataDeal, IStationInstrumentOperation
 {
     private readonly IMeasurementInstrument? meter;

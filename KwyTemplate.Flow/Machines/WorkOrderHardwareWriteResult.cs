@@ -1,6 +1,8 @@
 namespace KwyTemplate.Flow.Machines;
 
-/// <summary>Non-blocking physical write outcome for a work-order application.</summary>
+/// <summary>
+/// 工单参数写入到仪表的结果
+/// </summary>
 public sealed class WorkOrderHardwareWriteResult
 {
     private readonly List<WorkOrderHardwareWriteFailure> failures = [];

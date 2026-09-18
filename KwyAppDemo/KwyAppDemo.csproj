@@ -10,7 +10,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="ViewModel\" />
-  </ItemGroup>
 </Project>

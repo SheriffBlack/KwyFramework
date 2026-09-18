@@ -1,4 +1,5 @@
-﻿using System;
+﻿using KwyAppDemo.ViewModel;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,7 @@ namespace KwyAppDemo.Views
         public ComboBoxView()
         {
             InitializeComponent();
+            this.DataContext = new ComboBoxViewModel();
         }
     }
 }

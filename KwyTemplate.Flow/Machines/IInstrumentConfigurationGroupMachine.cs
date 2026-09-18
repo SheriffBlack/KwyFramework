@@ -3,8 +3,8 @@ using Kwy.Device.Abstractions;
 namespace KwyTemplate.Flow.Machines;
 
 /// <summary>
-/// Allows a machine to keep instruments in one process group consistent when
-/// SetView applies the configuration of a single member.
+/// 支持在应用当前仪表参数时，按机型规则决定
+/// 是否还需要同时下发其他关联仪表。
 /// </summary>
 public interface IInstrumentConfigurationGroupMachine
 {
