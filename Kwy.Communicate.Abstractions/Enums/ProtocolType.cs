@@ -43,5 +43,10 @@ public enum ProtocolType
     /// <summary>
     /// SECS/HSMS 协议
     /// </summary>
-    Secs
+    Secs,
+
+    /// <summary>
+    /// gRPC 远程过程调用协议
+    /// </summary>
+    Grpc
 }

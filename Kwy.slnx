@@ -21,6 +21,9 @@
   <Project Path="Kwy.Communicate.FMdb/Kwy.Communicate.FMdb.csproj" Id="95926aed-0f23-4270-b873-111680c46484" />
   <Project Path="Kwy.Communicate.Gem/Kwy.Communicate.Gem.csproj" />
   <Project Path="Kwy.Communicate.Gem300/Kwy.Communicate.Gem300.csproj" Id="728a621c-edc6-4753-b390-4303366e3d30" />
+  <Project Path="Kwy.Communicate.Grpc.Client/Kwy.Communicate.Grpc.Client.csproj" Id="cc3eddbe-b699-4932-8fe7-29d2c45ec8e8" />
+  <Project Path="Kwy.Communicate.Grpc.Contracts/Kwy.Communicate.Grpc.Contracts.csproj" Id="aaac4559-7d1f-4047-9a4f-84171ab1bd32" />
+  <Project Path="Kwy.Communicate.Grpc.Service/Kwy.Communicate.Grpc.Service.csproj" Id="3e3f8f78-d8c5-4995-8789-15909a388aa0" />
   <Project Path="Kwy.Communicate.Mqtt/Kwy.Communicate.Mqtt.csproj" Id="a08c1cb9-d3ee-4d52-a967-f2f5674cd48c" />
   <Project Path="Kwy.Communicate.NI/Kwy.Communicate.NI.csproj" Id="9aac76b0-d811-4800-bf8d-242b38e904e4" />
   <Project Path="Kwy.Communicate.OpcUa/Kwy.Communicate.OpcUa.csproj" Id="27449b06-edb9-4ceb-b2e3-05bc77833f2e" />

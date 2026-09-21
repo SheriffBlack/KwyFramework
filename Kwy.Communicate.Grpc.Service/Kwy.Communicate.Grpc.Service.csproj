@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\eng\Kwy.Communicate.Version.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>Kwy.Communicate.Grpc.Service</PackageId>
+    <Description>ASP.NET Core gRPC service registration and baseline Kwy connectivity endpoint.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.64.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.Communicate.Grpc.Contracts\Kwy.Communicate.Grpc.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

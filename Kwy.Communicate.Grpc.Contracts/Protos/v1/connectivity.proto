@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package kwy.communicate.grpc.v1;
+
+option csharp_namespace = "Kwy.Communicate.Grpc.Contracts.V1";
+
+// A minimal endpoint shared by every Kwy gRPC service.
+// Business services belong in their own versioned proto files.
+service ConnectivityService {
+  rpc Ping(PingRequest) returns (PingReply);
+}
+
+message PingRequest {
+}
+
+message PingReply {
+  string service_name = 1;
+  int64 server_time_unix_milliseconds = 2;
+}

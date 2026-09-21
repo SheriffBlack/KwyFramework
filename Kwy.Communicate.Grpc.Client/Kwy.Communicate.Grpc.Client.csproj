@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\eng\Kwy.Communicate.Version.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>Kwy.Communicate.Grpc.Client</PackageId>
+    <Description>gRPC client lifecycle and communication-factory integration for Kwy.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.Net.Client" Version="2.64.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.Communicate.Abstractions\Kwy.Communicate.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Communicate.Core\Kwy.Communicate.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Communicate.Grpc.Contracts\Kwy.Communicate.Grpc.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
