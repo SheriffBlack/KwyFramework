@@ -71,6 +71,14 @@ public sealed class MachineIoPointProfile
     public int Channel { get; set; } = -1;
 }
 
+public sealed class MachineAxisProfile
+{
+    public string Key { get; set; } = string.Empty;          // Load.X
+    public string DisplayName { get; set; } = string.Empty;  // 上料 X 轴
+    public string DeviceId { get; set; } = string.Empty;     // MotionCard_1
+    public short Axis { get; set; }                           // 1
+}
+
 public enum MachineIoPointDirection
 {
     Input,
