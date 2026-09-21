@@ -4,9 +4,9 @@ using Kwy.Communicate.Grpc.Contracts.V1;
 namespace Kwy.Communicate.Grpc.Service;
 
 /// <summary>
-/// 每个 Kwy gRPC 主机实现的基线连接端点
+/// Baseline connectivity endpoint implemented by every Kwy gRPC host.
 /// </summary>
-public sealed class KwyGrpcConnectivityService : ConnectivityService.ConnectivityServiceBase
+public sealed class GrpcConnectivityService : ConnectivityService.ConnectivityServiceBase
 {
     public override Task<PingReply> Ping(PingRequest request, ServerCallContext context)
         => Task.FromResult(new PingReply

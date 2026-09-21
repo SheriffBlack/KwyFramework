@@ -5,21 +5,21 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kwy.Communicate.Grpc.Service;
 
 /// <summary>
-/// 在 ASP.NET Core 主机中注册并映射基线 Kwy gRPC 服务端点
+/// Registers and maps the baseline Kwy gRPC service endpoints in an ASP.NET Core host.
 /// </summary>
-public static class KwyGrpcServiceExtensions
+public static class GrpcServiceExtensions
 {
-    public static IServiceCollection AddKwyGrpcServices(this IServiceCollection services)
+    public static IServiceCollection AddGrpcServices(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddGrpc();
         return services;
     }
 
-    public static IEndpointRouteBuilder MapKwyGrpcServices(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapGrpcServices(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-        endpoints.MapGrpcService<KwyGrpcConnectivityService>();
+        endpoints.MapGrpcService<GrpcConnectivityService>();
         return endpoints;
     }
 }
