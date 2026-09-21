@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Communicate.Core\Kwy.Communicate.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Communicate.Secs\Kwy.Communicate.Secs.csproj" />
   </ItemGroup>
 
 </Project>
