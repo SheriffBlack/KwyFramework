@@ -6,6 +6,7 @@ using Kwy.Files;
 using Kwy.ComponentModel;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
+using Kwy.Device.Core.IO;
 using Kwy.Device.Abstractions.Instrument;
 using Kwy.Device.Abstractions.PLC;
 using Kwy.Device.Instruments.Dcr;
@@ -267,8 +268,11 @@ public class Machine_4_HAHH :
         if (Devices.TryGet<IIoCardDevice>(DeviceIds.MainIoCard, out IIoCardDevice? mainIoCard) && mainIoCard != null)
         {
             BindIoCard(mainIoCard);
-            RegisterCardToPcNames(mainIoCard);
-            RegisterPcToCardNames(mainIoCard);
+            if (mainIoCard is IIoPointRegistry pointRegistry)
+            {
+                RegisterCardToPcNames(pointRegistry);
+                RegisterPcToCardNames(pointRegistry);
+            }
         }
 
 
@@ -299,7 +303,7 @@ public class Machine_4_HAHH :
 
     }
 
-    private static void RegisterCardToPcNames(IIoCardDevice card)
+    private static void RegisterCardToPcNames(IIoPointRegistry card)
     {
         foreach (CardToPc input in Enum.GetValues<CardToPc>())
         {
@@ -307,7 +311,7 @@ public class Machine_4_HAHH :
         }
     }
 
-    private static void RegisterPcToCardNames(IIoCardDevice card)
+    private static void RegisterPcToCardNames(IIoPointRegistry card)
     {
         foreach (PcToCard output in Enum.GetValues<PcToCard>())
         {

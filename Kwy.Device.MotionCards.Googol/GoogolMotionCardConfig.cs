@@ -1,4 +1,5 @@
 using Kwy.Device.Abstractions;
+using Kwy.Device.Abstractions.Motion;
 
 namespace Kwy.Device.MotionCards.Googol;
 
@@ -70,7 +71,7 @@ public sealed class GoogolMotionCardConfig : IDeviceConfig
     /// software travel limits, motion limits, direction conversion, and homing behavior.
     /// </summary>
     /// <remarks>These values are not read from or written to <c>gts.cfg</c>.</remarks>
-    public IList<GoogolAxisConfig> Axes { get; } = new List<GoogolAxisConfig>();
+    public IList<AxisDefinition> Axes { get; } = new List<AxisDefinition>();
 
     /// <summary>
     /// Gets the application-level coordinate-system definitions used for interpolation.
@@ -88,31 +89,53 @@ public sealed class GoogolMotionCardConfig : IDeviceConfig
 
     public bool Validate()
     {
-        return AxisCount is >= 1 and <= MaxSupportedAxisCount
+        string resolvedDeviceId = DeviceId ?? $"Googol-{CardNo}";
+        return CardNo >= 0
+            && !string.IsNullOrWhiteSpace(resolvedDeviceId)
+            && !string.IsNullOrWhiteSpace(Model)
+            && (!LoadConfigOnConnect || !string.IsNullOrWhiteSpace(ConfigFilePath))
+            && AxisCount is >= 1 and <= MaxSupportedAxisCount
             && SnapshotBatchSize is >= 1 and <= MaxSupportedAxisCount
             && double.IsFinite(SnapshotSlowThresholdMilliseconds)
             && SnapshotSlowThresholdMilliseconds >= 0
             && DiChannelCount is >= 1 and <= MaxSupportedIoChannelCount
             && DoChannelCount is >= 1 and <= MaxSupportedIoChannelCount
-            && Axes.All(item => item.Validate(AxisCount))
-            && Axes.Select(item => item.Axis).Distinct().Count() == Axes.Count
+            && Axes.Count > 0
+            && Axes.All(IsValidAxis)
+            && Axes.Select(item => item.Channel).Distinct().Count() == Axes.Count
+            && Axes.Select(item => item.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == Axes.Count
+            && Axes.All(item => string.Equals(item.DeviceId, resolvedDeviceId, StringComparison.OrdinalIgnoreCase))
             && CoordinateSystems.All(item => item.Validate(AxisCount, MaxSupportedCoordinateSystemCount))
+            && CoordinateSystems.All(item => item.Axes.All(axis => Axes.Any(definition => definition.Channel == axis)))
             && CoordinateSystems.All(HasCompatibleCoordinateUnits)
             && CoordinateSystems.Select(item => item.CoordinateSystem).Distinct().Count() == CoordinateSystems.Count;
     }
 
-    public GoogolAxisConfig GetAxisConfig(short axis)
-        => Axes.FirstOrDefault(item => item.Axis == axis)
-            ?? new GoogolAxisConfig { Axis = axis, Name = $"Axis {axis}" };
+    public AxisDefinition GetAxisDefinition(short axis)
+        => Axes.FirstOrDefault(item => item.Channel == axis)
+            ?? throw new KeyNotFoundException($"Axis {axis} is not configured.");
 
     public GoogolCoordinateSystemConfig? GetCoordinateSystemConfig(short coordinateSystem)
         => CoordinateSystems.FirstOrDefault(item => item.CoordinateSystem == coordinateSystem);
 
     private bool HasCompatibleCoordinateUnits(GoogolCoordinateSystemConfig coordinateSystem)
     {
-        GoogolAxisConfig first = GetAxisConfig(coordinateSystem.Axes[0]);
+        AxisEngineeringConfig first = GetAxisDefinition(coordinateSystem.Axes[0]).Engineering;
         return coordinateSystem.Axes.Skip(1)
-            .Select(GetAxisConfig)
+            .Select(axis => GetAxisDefinition(axis).Engineering)
             .All(item => item.Unit == first.Unit && item.PulsesPerUnit.Equals(first.PulsesPerUnit));
+    }
+
+    private bool IsValidAxis(AxisDefinition definition)
+    {
+        try
+        {
+            definition.Validate();
+            return definition.Channel <= AxisCount;
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            return false;
+        }
     }
 }

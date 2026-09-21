@@ -17,7 +17,7 @@ public interface ISimulationMotionControl
 
 public sealed class SimulationMotionCardDevice :
     MotionCardBase,
-    IAxisEngineeringUnitProvider,
+    IAxisDefinitionProvider,
     ISimulationMotionControl
 {
     private readonly SimulationMotionCardConfig config;
@@ -35,7 +35,14 @@ public sealed class SimulationMotionCardDevice :
 
         for (short axis = 1; axis <= config.AxisCount; axis++)
         {
-            axes[axis] = new AxisState(axis);
+            AxisDefinition definition = config.GetAxisDefinition(axis);
+            var state = new AxisState(axis);
+            state.Update(value =>
+            {
+                value.NegativeSoftLimit = definition.Limits.MinimumPosition;
+                value.PositiveSoftLimit = definition.Limits.MaximumPosition;
+            });
+            axes[axis] = state;
         }
     }
 
@@ -62,11 +69,13 @@ public sealed class SimulationMotionCardDevice :
 
     protected override bool IsConnectionAlive() => connected;
 
-    public AxisEngineeringConfig GetAxisEngineeringConfig(short axis)
+    public AxisDefinition GetAxisDefinition(short axis)
     {
         ValidateAxis(axis);
-        return config.GetAxisEngineeringConfig(axis);
+        return config.GetAxisDefinition(axis);
     }
+
+    public AxisEngineeringConfig GetAxisEngineeringConfig(short axis) => GetAxisDefinition(axis).Engineering;
 
     public override void ServoOn(short axis) => GetState(axis).Update(state => state.ServoEnabled = true);
 
@@ -126,12 +135,21 @@ public sealed class SimulationMotionCardDevice :
 
     public override void GoHome(short axis)
     {
+        AxisDefinition definition = GetAxisDefinition(axis);
+        AxisHomeDefinition home = definition.Home;
+        if (!home.Enabled)
+            throw new InvalidOperationException($"Homing is disabled for axis {axis}.");
+
         AxisState state = GetState(axis);
         EnsureMovable(state);
         state.Update(value => value.HomeState = HomeState.Running);
         state.Start(async token =>
         {
-            await MoveToCoreAsync(state, 0, new MotionProfile(20, 100, 100), token).ConfigureAwait(false);
+            await MoveToCoreAsync(
+                state,
+                home.Position,
+                new MotionProfile(home.SearchVelocity, home.Acceleration, home.Acceleration),
+                token).ConfigureAwait(false);
             state.Update(value => value.HomeState = value.HomeFailure ? HomeState.Failed : HomeState.Succeeded);
         });
     }
@@ -211,6 +229,14 @@ public sealed class SimulationMotionCardDevice :
 
     private void StartPositionMove(AxisState state, double target, MotionProfile profile)
     {
+        AxisLimitConfig limits = GetAxisDefinition(state.Axis).Limits;
+        if (profile.Velocity > limits.MaximumVelocity
+            || profile.Acceleration > limits.MaximumAcceleration
+            || profile.Deceleration > limits.MaximumDeceleration)
+        {
+            throw new ArgumentOutOfRangeException(nameof(profile), "Motion profile exceeds the configured axis limits.");
+        }
+
         EnsureMovable(state);
         state.Read(value =>
         {

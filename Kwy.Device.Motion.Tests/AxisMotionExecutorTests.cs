@@ -5,6 +5,7 @@ using Kwy.Device.Core.Motion;
 using Kwy.Device.MotionCards.Simulation;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
+using System.Diagnostics;
 using Xunit;
 
 namespace Kwy.Device.Motion.Tests;
@@ -25,6 +26,27 @@ public sealed class AxisMotionExecutorTests
             CreateOptions());
 
         Assert.Equal(25, result.ActualPosition, 3);
+    }
+
+    [Fact]
+    public async Task MoveAbsAsync_RequiresContinuousSettlingTime()
+    {
+        await using ExecutorFixture fixture = await ExecutorFixture.CreateAsync();
+        var stopwatch = Stopwatch.StartNew();
+
+        await fixture.Executor.MoveAbsAsync(
+            1,
+            1,
+            FastProfile,
+            new MotionExecutionOptions
+            {
+                PositionTolerance = 0.001,
+                Timeout = TimeSpan.FromSeconds(2),
+                SettlingTime = TimeSpan.FromMilliseconds(60),
+                SettlingVelocityThreshold = 0.01
+            });
+
+        Assert.True(stopwatch.Elapsed >= TimeSpan.FromMilliseconds(50));
     }
 
     [Fact]
@@ -253,7 +275,9 @@ public sealed class AxisMotionExecutorTests
             remove { }
         }
 
-        public event EventHandler<ulong>? OnHardwareTriggerReceived;
+        public int DigitalInputCount => 64;
+        public int DigitalOutputCount => 64;
+        public event EventHandler<IoSignalSnapshot>? HardwareInterruptReceived;
 
         public bool ReadDiBit(int channel) => (inputs & (1UL << channel)) != 0;
         public bool[] ReadAllDi() => Enumerable.Range(0, 64).Select(ReadDiBit).ToArray();
@@ -279,7 +303,7 @@ public sealed class AxisMotionExecutorTests
             inputs = state ? inputs | bit : inputs & ~bit;
             if (raiseInterrupt)
             {
-                OnHardwareTriggerReceived?.Invoke(this, inputs);
+                HardwareInterruptReceived?.Invoke(this, new IoSignalSnapshot(DeviceId, inputs, DateTimeOffset.UtcNow, IoSnapshotSource.HardwareInterrupt));
             }
         }
 

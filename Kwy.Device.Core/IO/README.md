@@ -17,7 +17,9 @@
 | 类型 | 作用 |
 | --- | --- |
 | `IoCardBase` | IO 板卡基类，提供通用 DO 掩码写入、软件脉冲、点位命名和硬件中断事件。 |
-| `IIoStateMonitor` / `IoStateMonitor` | 可通过 DI 使用的 IO 状态监控服务，把逻辑 IO 名称映射到物理设备与通道。 |
+| `IIoCardDevice` | 物理 IO 卡能力，仅用于驱动、诊断和基础设施。 |
+| `ILogicalIoService` | 业务默认使用的逻辑点位服务，处理稳定 ID、极性、Owner 与安全输出。 |
+| `IIoStateMonitor` / `IoStateMonitor` | 逻辑 IO 的初始化、状态监视和诊断服务。 |
 | `IoBitConverter` | `byte[]`、`bool[]`、`ulong mask` 之间的通用转换工具。 |
 | `IoChannelGuard` | 通道数量、端口数量、通道索引的统一校验工具。 |
 | `IoMaskExtensions` | `ulong` IO 快照的扩展方法。 |
@@ -134,7 +136,7 @@ ioCard.WriteDoPortMask(target, changed);
 
 ## IIoStateMonitor
 
-`IIoStateMonitor` 把业务逻辑名映射到物理 IO 点位。新项目应通过 `AddKwyDeviceCore()` 注册后由 DI 注入，不再使用全局单例。
+`IIoStateMonitor` 把业务逻辑名映射到物理 IO 点位。业务服务应注入 `ILogicalIoService`；`IIoCardDevice` 只应由驱动、诊断或基础设施使用。
 
 初始化：
 
@@ -147,22 +149,24 @@ ioMonitor.Initialize(
     {
         new IoPoint
         {
-            Name = "DI_Start",
+            Id = "machine.start",
+            Name = "启动按钮",
             DeviceId = ioCard.DeviceId,
+            Kind = IoSignalKind.DigitalInput,
             Channel = 0,
-            Inverted = false,
-            Description = "启动按钮"
+            Inverted = false
         }
     },
     doConfigs: new[]
     {
         new IoPoint
         {
-            Name = "DO_LightGreen",
+            Id = "tower.green",
+            Name = "绿灯",
             DeviceId = ioCard.DeviceId,
+            Kind = IoSignalKind.DigitalOutput,
             Channel = 0,
-            Inverted = false,
-            Description = "绿灯"
+            Inverted = false
         }
     });
 ```
@@ -170,19 +174,19 @@ ioMonitor.Initialize(
 读取逻辑 DI：
 
 ```csharp
-bool start = ioMonitor.ReadDi("DI_Start");
+bool start = ioMonitor.ReadDi("machine.start");
 ```
 
 写入逻辑 DO：
 
 ```csharp
-ioMonitor.WriteDo("DO_LightGreen", true);
+ioMonitor.WriteDo("tower.green", true);
 ```
 
 逻辑脉冲：
 
 ```csharp
-ioMonitor.WritePulse("DO_Trigger", 20);
+ioMonitor.WritePulse("camera.trigger", 20);
 ```
 
 `IIoStateMonitor` 会处理 `IoPoint.Inverted`：
@@ -197,16 +201,21 @@ DO 写入：physical = logical ^ Inverted
 `IIoStateMonitor` 同时支持两种状态更新来源：
 
 ```text
-硬件中断是可选能力：只有实现 `IHardwareInterruptSource` 的 IO 驱动才发布 `OnHardwareTriggerReceived`。`IIoCardDevice` 本身只保证同步读写与快照能力；不支持中断的设备继续由 `IIoStateMonitor` 轮询。
+硬件中断是可选能力：只有实现 `IHardwareInterruptSource` 的 IO 驱动才发布 `HardwareInterruptReceived`。事件使用 `IoSignalSnapshot`，包含设备 ID、快照时间、来源及可选触发边沿。`IIoCardDevice` 本身只保证同步读写与快照能力；不支持中断的设备继续由 `IIoStateMonitor` 轮询。
 后台扫描任务：周期调用 ReadDiPortMask()
 ```
 
 状态变化事件：
 
 ```csharp
-ioMonitor.OnIoStateChanged += (name, state) =>
+ioMonitor.OnIoStateChanged += (pointId, state) =>
 {
-    Console.WriteLine($"{name}: {state}");
+    Console.WriteLine($"{pointId}: {state}");
+};
+
+ioMonitor.OnIoSnapshotReceived += snapshot =>
+{
+    Console.WriteLine($"{snapshot.DeviceId} {snapshot.Source} {snapshot.Timestamp:O}");
 };
 ```
 

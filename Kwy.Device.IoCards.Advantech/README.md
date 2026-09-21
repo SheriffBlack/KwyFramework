@@ -118,31 +118,14 @@ public sealed class StationIoService
 }
 ```
 
-也可以注入通用接口：
-
-```csharp
-public sealed class StationIoService
-{
-    private readonly IIoCardDevice ioCard;
-
-    public StationIoService(IIoCardDevice ioCard)
-    {
-        this.ioCard = ioCard;
-    }
-
-    public void SetLight(bool state)
-    {
-        ioCard.WriteDoBit(0, state);
-    }
-}
-```
+此扩展方法只注册具体的 `AdvantechIoCardDevice`，不把物理接口 `IIoCardDevice` 注入为全局默认服务。业务应注入 `ILogicalIoService`，通过稳定点位 ID 读写；具体驱动只供启动组装、诊断或硬件调试使用。
 
 生命周期说明：
 
 ```text
-AdvantechIoCardConfig    Singleton
+AdvantechIoCardConfig    启动组装时创建
 AdvantechIoCardDevice    Singleton
-IIoCardDevice            指向同一个 AdvantechIoCardDevice 实例
+ILogicalIoService        由 Kwy.Device.Core 注册，业务默认使用
 ```
 
 业务代码不要手动释放从 IOC 注入的 `AdvantechIoCardDevice` / `IIoCardDevice`，由容器在应用退出时释放。业务代码只负责在合适时机调用 `ConnectAsync()` 和 `DisconnectAsync()`。
@@ -196,25 +179,24 @@ bool di12 = mask.IsPinActive(12);
 连接时如果 `EnableInterrupt = true`，模块会：
 
 ```text
-配置 DiintChannels
-订阅 InstantDiCtrl.Interrupt
-调用 SnapStart()
+通过 IAdvantechIoSdkPort 配置 DI 中断端口和触发沿
+启动 SDK Port 的中断监听
 ```
 
-中断触发后会读取当前 DI 快照，并通过 `OnHardwareTriggerReceived` 转发：
+中断触发后会读取当前 DI 快照，并通过 `HardwareInterruptReceived` 转发。事件包含设备 ID、时间戳、来源和触发边沿：
 
 ```csharp
-ioCard.OnHardwareTriggerReceived += (_, mask) =>
+ioCard.HardwareInterruptReceived += (_, snapshot) =>
 {
-    bool di0 = mask.IsPinActive(0);
+    bool di0 = snapshot.Mask.IsPinActive(0);
 };
 ```
 
 断开和释放时会：
 
 ```text
-SnapStop()
-取消 Interrupt 事件订阅
+停止 SDK Port 的中断监听
+取消 Port 事件订阅
 ```
 
 ## 资源释放
@@ -229,10 +211,8 @@ await using var ioCard = new AdvantechIoCardDevice(config);
 
 ```text
 先断开设备
-停止 SnapStart 中断监听
-取消 Interrupt 事件订阅
-释放 InstantDiCtrl
-释放 InstantDoCtrl
+停止 Port 中断监听并取消订阅
+释放 DAQNavi SDK Port
 释放内部 IO 串行锁
 ```
 
@@ -240,7 +220,7 @@ await using var ioCard = new AdvantechIoCardDevice(config);
 
 ## 错误处理
 
-Advantech SDK 的 `ErrorCode` 属于厂商 DLL 类型，所以错误码处理保留在本模块内，不放入 `Kwy.Device.Core`。
+Advantech SDK 的 `ErrorCode` 属于厂商 DLL 类型，所以错误码处理收敛在 `DaqNaviAdvantechIoSdkPort` 内，不放入 `Kwy.Device.Core` 或卡驱动本身。
 
 当 SDK 返回非 `Success` 时，模块会：
 
@@ -274,3 +254,6 @@ DeviceDescription 正确
 DI / DO port 数量与硬件一致
 中断通道确实被硬件支持
 ```
+# Advantech PCI-1730U IO 卡
+
+`AdvantechIoCardDevice` 仅依赖 `IAdvantechIoSdkPort`；默认的 `DaqNaviAdvantechIoSdkPort` 封装 `Automation.BDaq`。Port 的边界仅覆盖 1730U 当前需要的 DI/DO、端口快照和 DI 中断，便于在不安装 DAQNavi 或不连接板卡时完成 fake 契约测试。

@@ -10,9 +10,10 @@ namespace Kwy.Device.MotionCards.Leadshine;
 public sealed class LeadshineMotionCardDevice :
     MotionCardBase,
     IAdvancedMotionCard,
-    IAxisEngineeringUnitProvider,
+    IAxisDefinitionProvider,
     IPositionCompareOutput,
     IIoCardDevice,
+    IIoPointRegistry,
     IBulkAxisSnapshotReader,
     IBufferedAxisSnapshotReader
 {
@@ -50,6 +51,10 @@ public sealed class LeadshineMotionCardDevice :
 
     public override string DeviceModel => config.Model;
 
+    public int DigitalInputCount => config.DiChannelCount;
+
+    public int DigitalOutputCount => config.DoChannelCount;
+
     protected override Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -77,11 +82,12 @@ public sealed class LeadshineMotionCardDevice :
                     ThrowIfFailed(LTDMC.dmc_download_configfile((ushort)config.CardNo, config.ConfigFilePath), $"Load Leadshine config file failed: {config.ConfigFilePath}");
                 }
 
-                foreach (LeadshineAxisConfig axisConfig in config.Axes)
+                foreach (AxisDefinition definition in config.Axes)
                 {
-                    if (axisConfig.MinimumPosition is double minimum && axisConfig.MaximumPosition is double maximum)
+                    if (double.IsFinite(definition.Limits.MinimumPosition)
+                        && double.IsFinite(definition.Limits.MaximumPosition))
                     {
-                        SetSoftLimitCore(axisConfig.Axis, maximum, minimum, axisConfig.ToEngineeringConfig());
+                        SetSoftLimitCore(definition.Channel, definition.Limits.MaximumPosition, definition.Limits.MinimumPosition, definition.Engineering);
                     }
                 }
 
@@ -244,8 +250,10 @@ public sealed class LeadshineMotionCardDevice :
     {
         EnsureReady();
         ValidateAxis(axis);
-        LeadshineAxisConfig axisConfig = config.GetAxisConfig(axis);
-        if (!axisConfig.Home.Enabled)
+        AxisDefinition definition = config.GetAxisDefinition(axis);
+        LeadshineAxisOptions vendorOptions = config.GetAxisOptions(axis);
+        AxisHomeDefinition home = definition.Home;
+        if (!home.Enabled)
         {
             throw new InvalidOperationException($"Homing is not enabled for axis {axis}.");
         }
@@ -256,13 +264,13 @@ public sealed class LeadshineMotionCardDevice :
             homedAxes.Remove(axis);
             homingAxes.Add(axis);
 
-            AxisEngineeringConfig engineering = axisConfig.ToEngineeringConfig();
+            AxisEngineeringConfig engineering = definition.Engineering;
             ushort nativeAxis = (ushort)(axis - 1);
 
-            double rawVelocity = AxisEngineeringConverter.ToNativeVelocity(axisConfig.Home.Velocity, engineering);
+            double rawVelocity = AxisEngineeringConverter.ToNativeVelocity(home.SearchVelocity * home.Direction, engineering);
             double highVel = Math.Abs(rawVelocity) * 1000.0;
-            double lowVel = Math.Min(Math.Max(highVel * 0.1, 0.001), highVel);
-            double nativeAcc = AxisEngineeringConverter.ToNativeAcceleration(axisConfig.Home.Acceleration, engineering) * 1_000_000.0;
+            double lowVel = Math.Abs(AxisEngineeringConverter.ToNativeVelocity(home.CreepVelocity, engineering)) * 1000.0;
+            double nativeAcc = AxisEngineeringConverter.ToNativeAcceleration(home.Acceleration, engineering) * 1_000_000.0;
 
             double Tacc = highVel / nativeAcc;
             if (Tacc < 0.001) Tacc = 0.001;
@@ -276,10 +284,10 @@ public sealed class LeadshineMotionCardDevice :
             ushort homeDir = (ushort)(rawVelocity >= 0 ? 0 : 1);
 
             ThrowIfFailed(
-                LTDMC.dmc_set_homemode((ushort)config.CardNo, nativeAxis, homeDir, highVel, axisConfig.Home.HomeMode, axisConfig.Home.EzCount),
+                LTDMC.dmc_set_homemode((ushort)config.CardNo, nativeAxis, homeDir, highVel, vendorOptions.HomeMode, vendorOptions.EzCount),
                 $"Set home mode axis {axis} failed");
 
-            double nativeHomeOffset = AxisEngineeringConverter.ToNativePosition(axisConfig.Home.Offset, engineering);
+            double nativeHomeOffset = AxisEngineeringConverter.ToNativePosition(home.Offset, engineering);
             ThrowIfFailed(
                 LTDMC.dmc_set_home_position((ushort)config.CardNo, nativeAxis, 1, nativeHomeOffset),
                 $"Set home offset axis {axis} failed");
@@ -704,7 +712,7 @@ public sealed class LeadshineMotionCardDevice :
     }
 
     public override async Task WaitForHomeCompletedAsync(short axis, CancellationToken cancellationToken = default)
-        => await WaitForHomeCompletedAsync(axis, config.GetAxisConfig(axis).Home.Timeout, cancellationToken).ConfigureAwait(false);
+        => await WaitForHomeCompletedAsync(axis, GetAxisDefinition(axis).Home.Timeout, cancellationToken).ConfigureAwait(false);
 
     public override void SetSoftLimit(short axis, double positive, double negative)
     {
@@ -718,10 +726,13 @@ public sealed class LeadshineMotionCardDevice :
         });
     }
 
-    public AxisEngineeringConfig GetAxisEngineeringConfig(short axis)
+    public AxisDefinition GetAxisDefinition(short axis)
     {
-        return config.GetAxisConfig(axis).ToEngineeringConfig();
+        ValidateAxis(axis);
+        return config.GetAxisDefinition(axis);
     }
+
+    public AxisEngineeringConfig GetAxisEngineeringConfig(short axis) => GetAxisDefinition(axis).Engineering;
 
     public void SetDoName(int channel, string name)
     {
@@ -1078,9 +1089,8 @@ public sealed class LeadshineMotionCardDevice :
 
     private void ApplyHomeCoordinate(short axis)
     {
-        LeadshineAxisConfig axisConfig = config.GetAxisConfig(axis);
-        AxisEngineeringConfig engineering = axisConfig.ToEngineeringConfig();
-        double nativePosition = AxisEngineeringConverter.ToNativePosition(axisConfig.Home.Position, engineering);
+        AxisDefinition definition = GetAxisDefinition(axis);
+        double nativePosition = AxisEngineeringConverter.ToNativePosition(definition.Home.Position, definition.Engineering);
         ushort nativeAxis = (ushort)(axis - 1);
 
         Execute(() =>
@@ -1151,38 +1161,37 @@ public sealed class LeadshineMotionCardDevice :
 
     private void ValidateAxisMotion(short axis, double position, double velocity, double acceleration, double deceleration)
     {
-        LeadshineAxisConfig axisConfig = config.GetAxisConfig(axis);
-        if (axisConfig.MinimumPosition is double minimum && position < minimum)
+        AxisDefinition definition = GetAxisDefinition(axis);
+        if (position < definition.Limits.MinimumPosition)
         {
-            throw new ArgumentOutOfRangeException(nameof(position), position, $"Axis {axis} position must be greater than or equal to {minimum}.");
+            throw new ArgumentOutOfRangeException(nameof(position), position, $"Axis {axis} position must be greater than or equal to {definition.Limits.MinimumPosition}.");
         }
 
-        if (axisConfig.MaximumPosition is double maximum && position > maximum)
+        if (position > definition.Limits.MaximumPosition)
         {
-            throw new ArgumentOutOfRangeException(nameof(position), position, $"Axis {axis} position must be less than or equal to {maximum}.");
+            throw new ArgumentOutOfRangeException(nameof(position), position, $"Axis {axis} position must be less than or equal to {definition.Limits.MaximumPosition}.");
         }
 
         ValidateAxisVelocity(axis, velocity);
-        ValidateMaximum(axis, acceleration, axisConfig.MaximumAcceleration, nameof(acceleration));
-        ValidateMaximum(axis, deceleration, axisConfig.MaximumDeceleration, nameof(deceleration));
+        ValidateMaximum(axis, acceleration, definition.Limits.MaximumAcceleration, nameof(acceleration));
+        ValidateMaximum(axis, deceleration, definition.Limits.MaximumDeceleration, nameof(deceleration));
     }
 
     private void ValidateAxisVelocity(short axis, double velocity)
     {
-        LeadshineAxisConfig axisConfig = config.GetAxisConfig(axis);
-        ValidateMaximum(axis, velocity, axisConfig.MaximumVelocity, nameof(velocity));
+        ValidateMaximum(axis, velocity, GetAxisDefinition(axis).Limits.MaximumVelocity, nameof(velocity));
     }
 
-    private static void ValidateMaximum(short axis, double value, double? maximum, string parameterName)
+    private static void ValidateMaximum(short axis, double value, double maximum, string parameterName)
     {
         if (!double.IsFinite(value) || value <= 0)
         {
             throw new ArgumentOutOfRangeException(parameterName, value, $"Axis {axis} {parameterName} must be finite and greater than 0.");
         }
 
-        if (maximum is double limit && value > limit)
+        if (value > maximum)
         {
-            throw new ArgumentOutOfRangeException(parameterName, value, $"Axis {axis} {parameterName} must not exceed {limit}.");
+            throw new ArgumentOutOfRangeException(parameterName, value, $"Axis {axis} {parameterName} must not exceed {maximum}.");
         }
     }
 
@@ -1190,16 +1199,16 @@ public sealed class LeadshineMotionCardDevice :
     {
         for (int index = 0; index < axes.Length; index++)
         {
-            LeadshineAxisConfig axisConfig = config.GetAxisConfig(axes[index]);
+            AxisDefinition definition = GetAxisDefinition(axes[index]);
             double position = positions[index];
-            if (axisConfig.MinimumPosition is double minimum && position < minimum
-                || axisConfig.MaximumPosition is double maximum && position > maximum)
+            if (position < definition.Limits.MinimumPosition
+                || position > definition.Limits.MaximumPosition)
             {
                 throw new ArgumentOutOfRangeException(nameof(positions), position, $"Axis {axes[index]} interpolation target is outside configured travel limits.");
             }
 
             ValidateAxisVelocity(axes[index], velocity);
-            ValidateMaximum(axes[index], acceleration, axisConfig.MaximumAcceleration, nameof(acceleration));
+            ValidateMaximum(axes[index], acceleration, definition.Limits.MaximumAcceleration, nameof(acceleration));
         }
     }
 

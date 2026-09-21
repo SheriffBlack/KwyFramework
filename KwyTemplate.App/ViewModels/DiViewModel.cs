@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
+using Kwy.Device.Core.IO;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using KwyTemplate.App.Models;
@@ -89,7 +90,7 @@ public sealed class DiViewModel : BindableBase, INavigationAware
         lastStates.Clear();
         ioCard = TryGetMainIoCard();
 
-        IEnumerable<(int Index, string Name)> points = ioCard?.GetAllInputs()
+        IEnumerable<(int Index, string Name)> points = (ioCard as IIoPointRegistry)?.GetAllInputs()
             .Where(point => !string.IsNullOrWhiteSpace(point.Name))
             .OrderBy(point => point.Index)
             ?? GetEnumDefinitions<Machine_Default_PLC.CardToPc>();

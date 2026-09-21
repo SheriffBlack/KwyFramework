@@ -10,9 +10,10 @@ namespace Kwy.Device.MotionCards.Googol;
 public sealed class GoogolMotionCardDevice :
     MotionCardBase,
     IAdvancedMotionCard,
-    IAxisEngineeringUnitProvider,
+    IAxisDefinitionProvider,
     IPositionCompareOutput,
     IIoCardDevice,
+    IIoPointRegistry,
     IBulkAxisSnapshotReader,
     IBufferedAxisSnapshotReader
 {
@@ -56,6 +57,10 @@ public sealed class GoogolMotionCardDevice :
 
     public override string DeviceModel => config.Model;
 
+    public int DigitalInputCount => config.DiChannelCount;
+
+    public int DigitalOutputCount => config.DoChannelCount;
+
     protected override Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -80,11 +85,12 @@ public sealed class GoogolMotionCardDevice :
                     ThrowIfFailed(mc.GT_LoadConfig(config.ConfigFilePath), $"Load Googol config file failed: {config.ConfigFilePath}");
                 }
 
-                foreach (GoogolAxisConfig axisConfig in config.Axes)
+                foreach (AxisDefinition definition in config.Axes)
                 {
-                    if (axisConfig.MinimumPosition is double minimum && axisConfig.MaximumPosition is double maximum)
+                    if (double.IsFinite(definition.Limits.MinimumPosition)
+                        && double.IsFinite(definition.Limits.MaximumPosition))
                     {
-                        SetSoftLimitCore(axisConfig.Axis, maximum, minimum, axisConfig.ToEngineeringConfig());
+                        SetSoftLimitCore(definition.Channel, definition.Limits.MaximumPosition, definition.Limits.MinimumPosition, definition.Engineering);
                     }
                 }
 
@@ -238,8 +244,9 @@ public sealed class GoogolMotionCardDevice :
     {
         EnsureReady();
         ValidateAxis(axis);
-        GoogolAxisConfig axisConfig = config.GetAxisConfig(axis);
-        if (!axisConfig.Home.Enabled)
+        AxisDefinition definition = GetAxisDefinition(axis);
+        AxisHomeDefinition home = definition.Home;
+        if (!home.Enabled)
         {
             throw new InvalidOperationException($"Homing is disabled for axis {axis}.");
         }
@@ -247,11 +254,11 @@ public sealed class GoogolMotionCardDevice :
         Execute(() =>
         {
             SelectCard();
-            AxisEngineeringConfig engineering = axisConfig.ToEngineeringConfig();
-            int homePosition = ToIntPosition(AxisEngineeringConverter.ToNativePosition(axisConfig.Home.Position, engineering));
-            double homeVelocity = AxisEngineeringConverter.ToNativeVelocity(axisConfig.Home.Velocity, engineering);
-            double homeAcceleration = AxisEngineeringConverter.ToNativeAcceleration(axisConfig.Home.Acceleration, engineering);
-            int homeOffset = ToIntPosition(AxisEngineeringConverter.ToNativePosition(axisConfig.Home.Offset, engineering));
+            AxisEngineeringConfig engineering = definition.Engineering;
+            int homePosition = ToIntPosition(AxisEngineeringConverter.ToNativePosition(home.Position, engineering));
+            double homeVelocity = AxisEngineeringConverter.ToNativeVelocity(home.SearchVelocity * home.Direction, engineering);
+            double homeAcceleration = AxisEngineeringConverter.ToNativeAcceleration(home.Acceleration, engineering);
+            int homeOffset = ToIntPosition(AxisEngineeringConverter.ToNativePosition(home.Offset, engineering));
             ThrowIfFailed(mc.GT_HomeInit(), "Initialize Googol home module failed");
             ThrowIfFailed(mc.GT_Home(axis, homePosition, homeVelocity, homeAcceleration, homeOffset), $"Home axis {axis} failed");
             homedAxes.Remove(axis);
@@ -259,11 +266,13 @@ public sealed class GoogolMotionCardDevice :
         });
     }
 
-    public AxisEngineeringConfig GetAxisEngineeringConfig(short axis)
+    public AxisDefinition GetAxisDefinition(short axis)
     {
         ValidateAxis(axis);
-        return config.GetAxisConfig(axis).ToEngineeringConfig();
+        return config.GetAxisDefinition(axis);
     }
+
+    public AxisEngineeringConfig GetAxisEngineeringConfig(short axis) => GetAxisDefinition(axis).Engineering;
 
     public override HomeStatus GetHomeStatus(short axis)
     {
@@ -698,7 +707,7 @@ public sealed class GoogolMotionCardDevice :
     }
 
     public override async Task WaitForHomeCompletedAsync(short axis, CancellationToken cancellationToken = default)
-        => await WaitForHomeCompletedAsync(axis, config.GetAxisConfig(axis).Home.Timeout, cancellationToken).ConfigureAwait(false);
+        => await WaitForHomeCompletedAsync(axis, GetAxisDefinition(axis).Home.Timeout, cancellationToken).ConfigureAwait(false);
 
     public override void SetSoftLimit(short axis, double positive, double negative)
     {
@@ -1036,38 +1045,37 @@ public sealed class GoogolMotionCardDevice :
 
     private void ValidateAxisMotion(short axis, double position, double velocity, double acceleration, double deceleration)
     {
-        GoogolAxisConfig axisConfig = config.GetAxisConfig(axis);
-        if (axisConfig.MinimumPosition is double minimum && position < minimum)
+        AxisDefinition definition = GetAxisDefinition(axis);
+        if (position < definition.Limits.MinimumPosition)
         {
-            throw new ArgumentOutOfRangeException(nameof(position), position, $"Axis {axis} position must be greater than or equal to {minimum}.");
+            throw new ArgumentOutOfRangeException(nameof(position), position, $"Axis {axis} position must be greater than or equal to {definition.Limits.MinimumPosition}.");
         }
 
-        if (axisConfig.MaximumPosition is double maximum && position > maximum)
+        if (position > definition.Limits.MaximumPosition)
         {
-            throw new ArgumentOutOfRangeException(nameof(position), position, $"Axis {axis} position must be less than or equal to {maximum}.");
+            throw new ArgumentOutOfRangeException(nameof(position), position, $"Axis {axis} position must be less than or equal to {definition.Limits.MaximumPosition}.");
         }
 
         ValidateAxisVelocity(axis, velocity);
-        ValidateMaximum(axis, acceleration, axisConfig.MaximumAcceleration, nameof(acceleration));
-        ValidateMaximum(axis, deceleration, axisConfig.MaximumDeceleration, nameof(deceleration));
+        ValidateMaximum(axis, acceleration, definition.Limits.MaximumAcceleration, nameof(acceleration));
+        ValidateMaximum(axis, deceleration, definition.Limits.MaximumDeceleration, nameof(deceleration));
     }
 
     private void ValidateAxisVelocity(short axis, double velocity)
     {
-        GoogolAxisConfig axisConfig = config.GetAxisConfig(axis);
-        ValidateMaximum(axis, velocity, axisConfig.MaximumVelocity, nameof(velocity));
+        ValidateMaximum(axis, velocity, GetAxisDefinition(axis).Limits.MaximumVelocity, nameof(velocity));
     }
 
-    private static void ValidateMaximum(short axis, double value, double? maximum, string parameterName)
+    private static void ValidateMaximum(short axis, double value, double maximum, string parameterName)
     {
         if (!double.IsFinite(value) || value <= 0)
         {
             throw new ArgumentOutOfRangeException(parameterName, value, $"Axis {axis} {parameterName} must be finite and greater than 0.");
         }
 
-        if (maximum is double limit && value > limit)
+        if (value > maximum)
         {
-            throw new ArgumentOutOfRangeException(parameterName, value, $"Axis {axis} {parameterName} must not exceed {limit}.");
+            throw new ArgumentOutOfRangeException(parameterName, value, $"Axis {axis} {parameterName} must not exceed {maximum}.");
         }
     }
 
@@ -1075,16 +1083,16 @@ public sealed class GoogolMotionCardDevice :
     {
         for (int index = 0; index < axes.Length; index++)
         {
-            GoogolAxisConfig axisConfig = config.GetAxisConfig(axes[index]);
+            AxisDefinition definition = GetAxisDefinition(axes[index]);
             double position = positions[index];
-            if (axisConfig.MinimumPosition is double minimum && position < minimum
-                || axisConfig.MaximumPosition is double maximum && position > maximum)
+            if (position < definition.Limits.MinimumPosition
+                || position > definition.Limits.MaximumPosition)
             {
                 throw new ArgumentOutOfRangeException(nameof(positions), position, $"Axis {axes[index]} interpolation target is outside configured travel limits.");
             }
 
             ValidateAxisVelocity(axes[index], velocity);
-            ValidateMaximum(axes[index], acceleration, axisConfig.MaximumAcceleration, nameof(acceleration));
+            ValidateMaximum(axes[index], acceleration, definition.Limits.MaximumAcceleration, nameof(acceleration));
         }
     }
 

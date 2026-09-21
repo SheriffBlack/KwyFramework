@@ -21,7 +21,6 @@ public static class ServiceCollectionExtensions
 
         var device = new Lazy<AdvantechIoCardDevice>(() => new AdvantechIoCardDevice(config));
         services.AddSingleton(_ => device.Value);
-        services.AddSingleton<IIoCardDevice>(_ => device.Value);
 
         return services;
     }

@@ -148,11 +148,7 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
         }
         catch (Exception ex)
         {
-            MonitorErrorOccurred?.Invoke(
-                this,
-                new ErrorOccurredEventArgs(
-                    ex,
-                    $"Motion state capture failed: {ex.Message}"));
+            PublishMonitorError(ex, $"Motion state capture failed: {ex.Message}");
         }
     }
 
@@ -164,8 +160,10 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
         }
         else if (snapshotReader is IBulkAxisSnapshotReader bulkReader)
         {
-            MotionAxisSnapshot[] snapshots = bulkReader.GetMultipleAxisSnapshots(monitoredAxes);
-            snapshots.CopyTo(captureBuffer, 0);
+            MotionAxisSnapshot[] captured = bulkReader.GetMultipleAxisSnapshots(monitoredAxes);
+            if (captured.Length != monitoredAxes.Length)
+                throw new InvalidOperationException($"Snapshot reader returned {captured.Length} axes; expected {monitoredAxes.Length}.");
+            captured.CopyTo(captureBuffer, 0);
         }
         else
         {
@@ -179,18 +177,20 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
         {
             short axis = monitoredAxes[i];
             var snapshot = captureBuffer[i];
+            if (snapshot.Axis != axis)
+                throw new InvalidOperationException($"Snapshot index {i} returned axis {snapshot.Axis}; expected axis {axis}.");
             var previousSnapshot = snapshots.TryGetValue(axis, out var previous)
                 ? previous
                 : (MotionAxisSnapshot?)null;
 
             snapshots[axis] = snapshot;
-            AxisSnapshotCaptured?.Invoke(snapshot);
+            PublishSnapshotCaptured(snapshot);
 
             if (previousSnapshot is null)
             {
                 if (options.RaiseInitialSnapshotChanged)
                 {
-                    AxisSnapshotChanged?.Invoke(this, new MotionAxisSnapshotChangedEventArgs(snapshot, null));
+                    PublishSnapshotChanged(new MotionAxisSnapshotChangedEventArgs(snapshot, null));
                 }
 
                 continue;
@@ -198,8 +198,45 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
 
             if (!snapshot.HasSameState(previousSnapshot.Value))
             {
-                AxisSnapshotChanged?.Invoke(this, new MotionAxisSnapshotChangedEventArgs(snapshot, previousSnapshot));
+                PublishSnapshotChanged(new MotionAxisSnapshotChangedEventArgs(snapshot, previousSnapshot));
             }
+        }
+    }
+
+    private void PublishSnapshotCaptured(MotionAxisSnapshot snapshot)
+    {
+        Delegate[] subscribers = AxisSnapshotCaptured?.GetInvocationList() ?? Array.Empty<Delegate>();
+        foreach (Action<MotionAxisSnapshot> subscriber in subscribers.Cast<Action<MotionAxisSnapshot>>())
+        {
+            try { subscriber(snapshot); }
+            catch (Exception exception)
+            {
+                PublishMonitorError(exception, $"Axis {snapshot.Axis} snapshot subscriber failed: {exception.Message}");
+            }
+        }
+    }
+
+    private void PublishSnapshotChanged(MotionAxisSnapshotChangedEventArgs args)
+    {
+        Delegate[] subscribers = AxisSnapshotChanged?.GetInvocationList() ?? Array.Empty<Delegate>();
+        foreach (EventHandler<MotionAxisSnapshotChangedEventArgs> subscriber in subscribers.Cast<EventHandler<MotionAxisSnapshotChangedEventArgs>>())
+        {
+            try { subscriber(this, args); }
+            catch (Exception exception)
+            {
+                PublishMonitorError(exception, $"Axis {args.Snapshot.Axis} change subscriber failed: {exception.Message}");
+            }
+        }
+    }
+
+    private void PublishMonitorError(Exception exception, string message)
+    {
+        var args = new ErrorOccurredEventArgs(exception, message);
+        Delegate[] subscribers = MonitorErrorOccurred?.GetInvocationList() ?? Array.Empty<Delegate>();
+        foreach (EventHandler<ErrorOccurredEventArgs> subscriber in subscribers.Cast<EventHandler<ErrorOccurredEventArgs>>())
+        {
+            try { subscriber(this, args); }
+            catch { }
         }
     }
 

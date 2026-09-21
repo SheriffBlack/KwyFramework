@@ -7,12 +7,18 @@ Kwy 将运动控制拆分为硬件能力、通用运动服务和业务工艺三�
 `MotionProfile` 明确描述速度、加速度和减速度。`AxisEngineeringConfig` 描述某一轴的业务单位和脉冲当量：
 
 ```csharp
-var axis = new AxisEngineeringConfig
+var axis = new AxisDefinition
 {
-    Axis = 1,
-    Unit = MotionUnit.Millimeter,
-    PulsesPerUnit = 10_000,
-    DirectionReversed = false
+    Id = "stage.x",
+    DisplayName = "X",
+    DeviceId = "Motion.Googol",
+    Channel = 1,
+    Engineering = new AxisEngineeringConfig
+    {
+        Unit = MotionUnit.Millimeter,
+        PulsesPerUnit = 10_000,
+        DirectionReversed = false
+    }
 };
 
 var profile = new MotionProfile(velocity: 100, acceleration: 500, deceleration: 500);
@@ -23,18 +29,18 @@ var profile = new MotionProfile(velocity: 100, acceleration: 500, deceleration: 
 ```csharp
 services.AddKwyGoogolMotionCard(config =>
 {
-    config.Axes.Add(new GoogolAxisConfig
+    config.DeviceId = "Motion.Googol";
+    config.Axes.Add(new AxisDefinition
     {
-        Axis = 1,
-        Name = "X",
-        Unit = MotionUnit.Millimeter,
-        PulsesPerUnit = 10_000,
-        MinimumPosition = 0,
-        MaximumPosition = 300,
-        MaximumVelocity = 200,
-        Home = new GoogolHomeConfig
+        Id = "stage.x",
+        DisplayName = "X",
+        DeviceId = "Motion.Googol",
+        Channel = 1,
+        Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 10_000 },
+        Limits = new AxisLimitConfig { MinimumPosition = 0, MaximumPosition = 300, MaximumVelocity = 200 },
+        Home = new AxisHomeDefinition
         {
-            Velocity = 20,
+            SearchVelocity = 20,
             Acceleration = 100,
             Timeout = TimeSpan.FromSeconds(60)
         }
@@ -250,7 +256,7 @@ SensorSeekResult result = await motion.SeekSensorAsync(
 | `ControllerHardwareStop` | Kwy 通过硬件事件或 DI 轮询观察触发并等待轴停止，但不因传感器触发发送软件停止命令。控制器必须事先将该输入绑定为停轴输入。 | 探针、快速输入及可能造成机械损伤的动作。 |
 | `SoftwareStop` | Kwy 按 `PollInterval` 读取 DI，触发后调用平滑停止。 | 低速调试和非安全关键传感器。 |
 
-`ControllerHardwareStop` 不是自动配置硬件绑定。控制器参数必须完成快速输入停轴配置。厂商模块发布 `OnHardwareTriggerReceived` 时可更快观察到触发；未发布时 Kwy 仅按 `PollInterval` 补充确认 DI 状态，停车动作仍必须由控制器硬件完成。
+`ControllerHardwareStop` 不是自动配置硬件绑定。控制器参数必须完成快速输入停轴配置。厂商模块发布 `HardwareInterruptReceived`（携带时间戳、设备 ID 与触发沿的 `IoSignalSnapshot`）时可更快观察到触发；未发布时 Kwy 仅按 `PollInterval` 补充确认 DI 状态，停车动作仍必须由控制器硬件完成。
 
 ## 分配压测
 

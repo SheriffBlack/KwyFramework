@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
+using Kwy.Device.Core.IO;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using KwyTemplate.App.Models;
@@ -102,7 +103,7 @@ public sealed class DoViewModel : BindableBase, INavigationAware
         OutPutPoints.Clear();
         ioCard = TryGetMainIoCard();
 
-        IEnumerable<(int Index, string Name)> points = ioCard?.GetAllOutputs()
+        IEnumerable<(int Index, string Name)> points = (ioCard as IIoPointRegistry)?.GetAllOutputs()
             .Where(point => !string.IsNullOrWhiteSpace(point.Name))
             .OrderBy(point => point.Index)
             ?? GetEnumDefinitions<Machine_Default_PLC.PcToCard>();

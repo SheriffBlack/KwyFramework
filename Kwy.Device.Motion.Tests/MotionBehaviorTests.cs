@@ -2,6 +2,7 @@ using Kwy.Device.Abstractions.Motion;
 using Kwy.Device.Core.Motion;
 using Kwy.Device.MotionCards.Simulation;
 using Kwy.Device.MotionCards.Googol;
+using Kwy.Device.MotionCards.Leadshine;
 using Xunit;
 
 namespace Kwy.Device.Motion.Tests;
@@ -11,7 +12,7 @@ public sealed class MotionBehaviorTests
     [Fact]
     public void EngineeringConverter_PreservesNativePulseUnits()
     {
-        var config = new AxisEngineeringConfig { Axis = 1, Unit = MotionUnit.Pulse };
+        var config = new AxisEngineeringConfig { Unit = MotionUnit.Pulse };
 
         Assert.Equal(100, AxisEngineeringConverter.ToNativePosition(100, config));
         Assert.Equal(20, AxisEngineeringConverter.ToNativeVelocity(20, config));
@@ -23,7 +24,6 @@ public sealed class MotionBehaviorTests
     {
         var config = new AxisEngineeringConfig
         {
-            Axis = 1,
             Unit = MotionUnit.Millimeter,
             PulsesPerUnit = 10_000
         };
@@ -31,6 +31,30 @@ public sealed class MotionBehaviorTests
         Assert.Equal(100_000, AxisEngineeringConverter.ToNativePosition(10, config));
         Assert.Equal(500, AxisEngineeringConverter.ToNativeVelocity(50, config));
         Assert.Equal(5, AxisEngineeringConverter.ToNativeAcceleration(500, config));
+    }
+
+    [Fact]
+    public void SimulationConfig_IndexesEngineeringSettingsByPhysicalChannel()
+    {
+        var config = new SimulationMotionCardConfig { AxisCount = 2 };
+        config.Axes[2] = CreateAxisDefinition("SimulationMotion", 2) with
+        {
+            Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 2_000 }
+        };
+
+        Assert.True(config.Validate());
+        Assert.Equal(2_000, config.GetAxisDefinition(2).Engineering.PulsesPerUnit);
+        Assert.Equal(MotionUnit.Pulse, config.GetAxisDefinition(1).Engineering.Unit);
+    }
+
+    [Fact]
+    public void SimulationConfig_RejectsEngineeringSettingsOutsideConfiguredChannels()
+    {
+        var config = new SimulationMotionCardConfig { AxisCount = 2 };
+        config.Axes[3] = CreateAxisDefinition("SimulationMotion", 3);
+
+        Assert.False(config.Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => config.GetAxisDefinition(3));
     }
 
     [Fact]
@@ -159,14 +183,37 @@ public sealed class MotionBehaviorTests
     {
         var config = new GoogolMotionCardConfig { AxisCount = 2 };
         config.Axes.Add(CreateGoogolAxis(1));
-        GoogolAxisConfig secondAxis = CreateGoogolAxis(2);
-        secondAxis.PulsesPerUnit = 5_000;
+        AxisDefinition secondAxis = CreateGoogolAxis(2) with
+        {
+            Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 5_000 }
+        };
         config.Axes.Add(secondAxis);
         config.CoordinateSystems.Add(new GoogolCoordinateSystemConfig
         {
             CoordinateSystem = 1,
             Axes = new short[] { 1, 2 }
         });
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void LeadshineConfig_SeparatesCommonAxisDefinitionFromVendorOptions()
+    {
+        var config = new LeadshineMotionCardConfig();
+        config.Axes.Add(CreateAxisDefinition("Leadshine-0", 1));
+        config.AxisOptions[1] = new LeadshineAxisOptions { HomeMode = 3, EzCount = 1 };
+
+        Assert.True(config.Validate());
+        Assert.Equal((short)1, config.GetAxisDefinition(1).Channel);
+        Assert.Equal((ushort)3, config.GetAxisOptions(1).HomeMode);
+    }
+
+    [Fact]
+    public void LeadshineConfig_RejectsVendorOptionsForUndefinedAxis()
+    {
+        var config = new LeadshineMotionCardConfig();
+        config.AxisOptions[1] = new LeadshineAxisOptions();
 
         Assert.False(config.Validate());
     }
@@ -179,17 +226,26 @@ public sealed class MotionBehaviorTests
             SimulationSpeedRatio = 10
         });
 
-    private static GoogolAxisConfig CreateGoogolAxis(short axis)
-        => new()
+    private static AxisDefinition CreateGoogolAxis(short axis)
+        => CreateAxisDefinition("Googol-0", axis) with
         {
-            Axis = axis,
-            Name = $"Axis {axis}",
-            Unit = MotionUnit.Millimeter,
-            PulsesPerUnit = 10_000,
-            MinimumPosition = 0,
-            MaximumPosition = 300,
-            MaximumVelocity = 200,
-            MaximumAcceleration = 1_000,
-            MaximumDeceleration = 1_000
+            Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 10_000 },
+            Limits = new AxisLimitConfig
+            {
+                MinimumPosition = 0,
+                MaximumPosition = 300,
+                MaximumVelocity = 200,
+                MaximumAcceleration = 1_000,
+                MaximumDeceleration = 1_000
+            }
         };
+
+    private static AxisDefinition CreateAxisDefinition(string deviceId, short axis) => new()
+    {
+        Id = $"{deviceId}.axis.{axis}",
+        DisplayName = $"Axis {axis}",
+        DeviceId = deviceId,
+        Channel = axis,
+        Engineering = new AxisEngineeringConfig()
+    };
 }

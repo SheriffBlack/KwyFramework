@@ -14,6 +14,8 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
     private readonly IMotionProfileController profileController;
     private readonly IMotionStateMonitor stateMonitor;
     private readonly IMotionSafetyGuard safetyGuard;
+    private readonly IAxisDefinitionProvider? axisDefinitions;
+    private readonly IAxisBrakeCoordinator? brakeCoordinator;
     private readonly ConcurrentDictionary<short, AxisOperation> activeOperations = new();
     private readonly ConcurrentDictionary<short, PositionCrossingWaiter> crossingWaiters = new();
     private bool disposed;
@@ -22,12 +24,15 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         IAxisMotionController controller,
         IMotionProfileController profileController,
         IMotionStateMonitor stateMonitor,
-        IMotionSafetyGuard safetyGuard)
+        IMotionSafetyGuard safetyGuard,
+        IAxisBrakeCoordinator? brakeCoordinator = null)
     {
         this.controller = controller ?? throw new ArgumentNullException(nameof(controller));
         this.profileController = profileController ?? throw new ArgumentNullException(nameof(profileController));
         this.stateMonitor = stateMonitor ?? throw new ArgumentNullException(nameof(stateMonitor));
         this.safetyGuard = safetyGuard ?? throw new ArgumentNullException(nameof(safetyGuard));
+        axisDefinitions = controller as IAxisDefinitionProvider;
+        this.brakeCoordinator = brakeCoordinator;
         stateMonitor.AxisSnapshotCaptured += OnAxisSnapshotCaptured;
     }
 
@@ -40,14 +45,25 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(profile);
-        options ??= new MotionExecutionOptions();
+        options ??= axisDefinitions?.GetAxisDefinition(axis).Defaults.ToExecutionOptions()
+            ?? new MotionExecutionOptions();
         options.Validate();
         await EnsureMonitorStartedAsync().ConfigureAwait(false);
 
         MotionAxisSnapshot snapshot = stateMonitor.GetAxisSnapshot(axis);
         int direction = Math.Sign(position - snapshot.Position);
         safetyGuard.ValidateAndThrow(new(axis, MotionRequestKind.Absolute, position, direction));
-        if (Math.Abs(position - snapshot.Position) <= options.PositionTolerance)
+        if (options.FollowingErrorLimit is { } followingErrorLimit
+            && Math.Abs(snapshot.Position - snapshot.EncoderPosition) > followingErrorLimit)
+        {
+            throw new MotionFollowingErrorException(axis, snapshot.Position, snapshot.EncoderPosition, followingErrorLimit);
+        }
+
+        bool velocitySettled = options.SettlingVelocityThreshold is not { } velocityLimit
+            || Math.Abs(snapshot.Velocity) <= velocityLimit;
+        if (options.SettlingTime == TimeSpan.Zero
+            && velocitySettled
+            && Math.Abs(position - snapshot.Position) <= options.PositionTolerance)
         {
             return new(axis, position, snapshot.Position, options.PositionTolerance);
         }
@@ -56,6 +72,8 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         AddOperation(operation);
         try
         {
+            if (brakeCoordinator is not null)
+                await brakeCoordinator.PrepareForMotionAsync(axis, cancellationToken).ConfigureAwait(false);
             if (!operation.IsCompleted)
             {
                 profileController.MoveAbs(axis, position, profile);
@@ -66,7 +84,15 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
             operation.TrySetException(exception);
         }
 
-        return await operation.Task.ConfigureAwait(false);
+        try
+        {
+            return await operation.Task.ConfigureAwait(false);
+        }
+        finally
+        {
+            if (brakeCoordinator is not null)
+                await brakeCoordinator.CompleteMotionAsync(axis, CancellationToken.None).ConfigureAwait(false);
+        }
     }
 
     public async Task<MotionCompletionResult> MoveRelAsync(
@@ -141,13 +167,13 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
 
         var operation = new SensorSeekOperation(this, axis, channel, options, cancellationToken);
         AddOperation(operation);
-        EventHandler<ulong>? handler = null;
+        EventHandler<IoSignalSnapshot>? handler = null;
         IHardwareInterruptSource? interruptSource = null;
         if (options.StopMode == SensorStopMode.ControllerHardwareStop)
         {
-            handler = (_, mask) =>
+            handler = (_, snapshot) =>
             {
-                bool state = (mask & (1UL << channel)) != 0;
+                bool state = (snapshot.Mask & (1UL << channel)) != 0;
                 if (state == options.ExpectedState)
                 {
                     operation.SignalSensor();
@@ -156,7 +182,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
             interruptSource = ioDevice as IHardwareInterruptSource;
             if (interruptSource is not null)
             {
-                interruptSource.OnHardwareTriggerReceived += handler;
+                interruptSource.HardwareInterruptReceived += handler;
             }
         }
 
@@ -187,7 +213,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         {
             if (handler is not null && interruptSource is not null)
             {
-                interruptSource.OnHardwareTriggerReceived -= handler;
+                interruptSource.HardwareInterruptReceived -= handler;
             }
         }
     }
@@ -417,6 +443,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         private readonly Stopwatch stopwatch = Stopwatch.StartNew();
         private readonly MotionExecutionOptions options;
         private bool observedMoving;
+        private DateTimeOffset? stableSince;
 
         public PositionMotionOperation(
             AxisMotionExecutor owner,
@@ -454,9 +481,18 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
                 return;
             }
 
-            if (!snapshot.IsMoving && Math.Abs(snapshot.Position - Target) <= options.PositionTolerance && TryComplete())
+            bool insidePositionWindow = Math.Abs(snapshot.Position - Target) <= options.PositionTolerance;
+            bool insideVelocityWindow = options.SettlingVelocityThreshold is not { } velocityLimit
+                || Math.Abs(snapshot.Velocity) <= velocityLimit;
+            if (!snapshot.IsMoving && insidePositionWindow && insideVelocityWindow)
             {
-                completion.TrySetResult(new(Axis, Target, snapshot.Position, options.PositionTolerance));
+                stableSince ??= snapshot.Timestamp;
+                if (snapshot.Timestamp - stableSince.Value >= options.SettlingTime && TryComplete())
+                    completion.TrySetResult(new(Axis, Target, snapshot.Position, options.PositionTolerance));
+            }
+            else
+            {
+                stableSince = null;
             }
         }
 
@@ -488,6 +524,12 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
 
         private Exception? GetFailure(MotionAxisSnapshot snapshot)
         {
+            if (options.FollowingErrorLimit is { } followingErrorLimit
+                && Math.Abs(snapshot.Position - snapshot.EncoderPosition) > followingErrorLimit)
+            {
+                return new MotionFollowingErrorException(Axis, snapshot.Position, snapshot.EncoderPosition, followingErrorLimit);
+            }
+
             if (snapshot.IsAlarm)
             {
                 return new MotionAlarmException(Axis);

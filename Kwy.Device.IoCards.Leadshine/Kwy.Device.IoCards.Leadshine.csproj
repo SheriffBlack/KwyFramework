@@ -4,6 +4,8 @@
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- 尚未绑定具体雷赛独立 IO 型号与 SDK，禁止生成误导性的空 NuGet 包。 -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
 </Project>

@@ -14,8 +14,8 @@ public sealed class MotionRuntimeRegistryTests
     {
         var services = new ServiceCollection();
         services.AddKwyMotionServices();
-        services.AddKwyGoogolMotionCard(config => config.DeviceId = "Motion.Googol");
-        services.AddKwyLeadshineMotionCard(config => config.DeviceId = "Motion.Leadshine");
+        services.AddKwyGoogolMotionCard(config => ConfigureAxis(config, "Motion.Googol"));
+        services.AddKwyLeadshineMotionCard(config => ConfigureAxis(config, "Motion.Leadshine"));
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IMotionRuntimeRegistry registry = provider.GetRequiredService<IMotionRuntimeRegistry>();
@@ -34,7 +34,7 @@ public sealed class MotionRuntimeRegistryTests
     {
         var services = new ServiceCollection();
         services.AddKwyMotionServices();
-        services.AddKwyGoogolMotionCard(config => config.DeviceId = "Motion.Main");
+        services.AddKwyGoogolMotionCard(config => ConfigureAxis(config, "Motion.Main"));
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IMotionRuntimeRegistry registry = provider.GetRequiredService<IMotionRuntimeRegistry>();
@@ -43,4 +43,25 @@ public sealed class MotionRuntimeRegistryTests
             registry.GetRequired("Motion.Main").AxisExecutor,
             provider.GetRequiredService<IAxisMotionExecutor>());
     }
+
+    private static void ConfigureAxis(GoogolMotionCardConfig config, string deviceId)
+    {
+        config.DeviceId = deviceId;
+        config.Axes.Add(CreateAxis(deviceId));
+    }
+
+    private static void ConfigureAxis(LeadshineMotionCardConfig config, string deviceId)
+    {
+        config.DeviceId = deviceId;
+        config.Axes.Add(CreateAxis(deviceId));
+    }
+
+    private static AxisDefinition CreateAxis(string deviceId) => new()
+    {
+        Id = $"{deviceId}.axis.1",
+        DisplayName = "Axis 1",
+        DeviceId = deviceId,
+        Channel = 1,
+        Engineering = new AxisEngineeringConfig()
+    };
 }

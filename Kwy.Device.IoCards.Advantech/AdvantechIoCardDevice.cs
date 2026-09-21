@@ -1,4 +1,4 @@
-using Automation.BDaq;
+using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Core.IO;
 
 namespace Kwy.Device.IoCards.Advantech;
@@ -9,8 +9,7 @@ namespace Kwy.Device.IoCards.Advantech;
 public sealed class AdvantechIoCardDevice : IoCardBase
 {
     private readonly AdvantechIoCardConfig config;
-    private readonly InstantDiCtrl instantDiCtrl;
-    private readonly InstantDoCtrl instantDoCtrl;
+    private readonly IAdvantechIoSdkPort sdkPort;
     private readonly SemaphoreSlim ioSemaphore = new(1, 1);
     private readonly object interruptSync = new();
     private byte[] diPortBuffer = Array.Empty<byte>();
@@ -22,11 +21,17 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     private int nativeResourcesReleased;
 
     public AdvantechIoCardDevice(AdvantechIoCardConfig config)
-        : this(config.DeviceDescription, config.Model, config)
+        : this(config.DeviceDescription, config.Model, config, new DaqNaviAdvantechIoSdkPort())
     {
     }
 
     public AdvantechIoCardDevice(string deviceId, string deviceName, AdvantechIoCardConfig config)
+        : this(deviceId, deviceName, config, new DaqNaviAdvantechIoSdkPort())
+    {
+    }
+
+    /// <summary>允许测试或宿主注入 1730U 的 SDK 适配实现。</summary>
+    public AdvantechIoCardDevice(string deviceId, string deviceName, AdvantechIoCardConfig config, IAdvantechIoSdkPort sdkPort)
         : base(deviceId, deviceName, config)
     {
         this.config = config ?? throw new ArgumentNullException(nameof(config));
@@ -35,8 +40,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
             throw new ArgumentException("Invalid Advantech IO card configuration.", nameof(config));
         }
 
-        instantDiCtrl = new InstantDiCtrl();
-        instantDoCtrl = new InstantDoCtrl();
+        this.sdkPort = sdkPort ?? throw new ArgumentNullException(nameof(sdkPort));
     }
 
     public override string DeviceModel => config.Model;
@@ -45,39 +49,27 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        try
-        {
-            
-            shuttingDown = false;
-            var deviceInformation = new DeviceInformation(config.DeviceDescription);
-            instantDiCtrl.SelectedDevice = deviceInformation;
-            instantDoCtrl.SelectedDevice = deviceInformation;
+        shuttingDown = false;
+        sdkPort.Open(config.DeviceDescription);
 
-            if (config.EnableInterrupt)
+        if (config.EnableInterrupt)
+        {
+            ConfigureInterrupt();
+            sdkPort.DiInterruptReceived -= OnSdkPortInterrupt;
+            sdkPort.DiInterruptReceived += OnSdkPortInterrupt;
+            try
             {
-                ConfigureInterrupt();
-                instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
-                instantDiCtrl.Interrupt += OnInstantDiInterrupt;
-
-                var error = instantDiCtrl.SnapStart();
-                try
-                {
-                    ThrowIfFailed(error, "Start Advantech DI interrupt listener failed");
-                }
-                catch
-                {
-                    instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
-                    throw;
-                }
+                sdkPort.StartDiInterrupt();
             }
+            catch
+            {
+                sdkPort.DiInterruptReceived -= OnSdkPortInterrupt;
+                throw;
+            }
+        }
 
-            connected = true;
-            return Task.CompletedTask;
-        }
-        catch (DaqException ex)
-        {
-            throw CreateDaqException("Connect Advantech IO card failed", ex);
-        }
+        connected = true;
+        return Task.CompletedTask;
     }
 
     protected override Task DisconnectCoreAsync(CancellationToken cancellationToken)
@@ -91,14 +83,16 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             try
             {
-                instantDiCtrl.SnapStop();
+                sdkPort.StopDiInterrupt();
             }
             catch
             {
             }
 
-            instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
+            sdkPort.DiInterruptReceived -= OnSdkPortInterrupt;
         }
+
+        sdkPort.Close();
 
         return Task.CompletedTask;
     }
@@ -117,8 +111,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             int port = channel / 8;
             int bit = channel % 8;
-            var error = instantDoCtrl.WriteBit(port, bit, state ? (byte)1 : (byte)0);
-            ThrowIfFailed(error, $"Write DO channel {channel} failed");
+            sdkPort.WriteDoBit(port, bit, state);
         });
     }
 
@@ -143,22 +136,20 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             int port = channel / 8;
             int bit = channel % 8;
-            var error = instantDiCtrl.ReadBit(port, bit, out byte value);
-            ThrowIfFailed(error, $"Read DI channel {channel} failed");
-            return value != 0;
+            return sdkPort.ReadDiBit(port, bit);
         });
     }
 
     public override bool[] ReadAllDi()
     {
         EnsureReady();
-        return ReadPorts(instantDiCtrl, GetDiPortCount());
+        return ReadDiPorts(GetDiPortCount());
     }
 
     public override bool[] ReadAllDo()
     {
         EnsureReady();
-        return ReadPorts(instantDoCtrl, GetDoPortCount());
+        return ReadDoPorts(GetDoPortCount());
     }
 
     public override ulong ReadDiPortMask()
@@ -176,7 +167,6 @@ public sealed class AdvantechIoCardDevice : IoCardBase
 
         shuttingDown = true;
         connected = false;
-        ReleaseNativeResources();
 
         try
         {
@@ -184,7 +174,10 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         }
         finally
         {
-            GC.SuppressFinalize(this);
+            if (State == Kwy.Communicate.Abstractions.Enums.ConnectionState.Disconnected)
+                ReleaseNativeResources();
+            if (Volatile.Read(ref nativeResourcesReleased) != 0)
+                GC.SuppressFinalize(this);
         }
     }
     public override void Dispose()
@@ -197,7 +190,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
 
     private void ReleaseNativeResources()
     {
-        if (Interlocked.Exchange(ref nativeResourcesReleased, 1) != 0)
+        if (Volatile.Read(ref nativeResourcesReleased) != 0)
         {
             return;
         }
@@ -209,11 +202,16 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         try
         {
             lockTaken = ioSemaphore.Wait(NativeReleaseWaitTimeout);
+            if (!lockTaken)
+                return;
+            if (Interlocked.Exchange(ref nativeResourcesReleased, 1) != 0)
+                return;
             ReleaseNativeResourcesCore();
         }
         catch (ObjectDisposedException)
         {
-            ReleaseNativeResourcesCore();
+            if (Interlocked.Exchange(ref nativeResourcesReleased, 1) == 0)
+                ReleaseNativeResourcesCore();
         }
         finally
         {
@@ -242,7 +240,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     {
         try
         {
-            instantDiCtrl.Interrupt -= OnInstantDiInterrupt;
+            sdkPort.DiInterruptReceived -= OnSdkPortInterrupt;
         }
         catch
         {
@@ -252,7 +250,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             try
             {
-                instantDiCtrl.SnapStop();
+                sdkPort.StopDiInterrupt();
             }
             catch
             {
@@ -261,31 +259,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
 
         try
         {
-            instantDiCtrl.Cleanup();
-        }
-        catch
-        {
-        }
-
-        try
-        {
-            instantDoCtrl.Cleanup();
-        }
-        catch
-        {
-        }
-
-        try
-        {
-            instantDiCtrl.Dispose();
-        }
-        catch
-        {
-        }
-
-        try
-        {
-            instantDoCtrl.Dispose();
+            sdkPort.Dispose();
         }
         catch
         {
@@ -298,8 +272,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             int portCount = GetDiPortCount();
             byte[] portData = GetDiPortBuffer(portCount);
-            var error = instantDiCtrl.Read(0, portCount, portData);
-            ThrowIfFailed(error, "Read DI port mask failed");
+            sdkPort.ReadDiPorts(portData, portCount);
 
             return IoBitConverter.ToMask(portData);
         });
@@ -311,36 +284,33 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             IoChannelGuard.ValidateChannel(config.InterruptChannel, GetDiChannelCount(), nameof(config.InterruptChannel));
             int interruptIndex = config.InterruptChannel / 8;
-            if (interruptIndex >= instantDiCtrl.DiintChannels.Count())
+            if (interruptIndex >= sdkPort.DigitalInputPortCount)
             {
                 throw new NotSupportedException($"Advantech interrupt channel {config.InterruptChannel} is not supported by this device.");
             }
 
-            instantDiCtrl.DiintChannels[interruptIndex].Enabled = true;
-            instantDiCtrl.DiintChannels[interruptIndex].TrigEdge = config.InterruptRisingEdge
-                ? ActiveSignal.RisingEdge
-                : ActiveSignal.FallingEdge;
+            sdkPort.ConfigureDiInterrupt(interruptIndex, config.InterruptRisingEdge
+                ? IoTriggerEdge.Rising
+                : IoTriggerEdge.Falling);
         }
     }
 
-    private bool[] ReadPorts(InstantDiCtrl controller, int portCount)
+    private bool[] ReadDiPorts(int portCount)
     {
         return ExecuteIo(() =>
         {
             byte[] portData = GetDiPortBuffer(portCount);
-            var error = controller.Read(0, portCount, portData);
-            ThrowIfFailed(error, "Read DI ports failed");
+            sdkPort.ReadDiPorts(portData, portCount);
             return IoBitConverter.ToBits(portData);
         });
     }
 
-    private bool[] ReadPorts(InstantDoCtrl controller, int portCount)
+    private bool[] ReadDoPorts(int portCount)
     {
         return ExecuteIo(() =>
         {
             byte[] portData = GetDoPortBuffer(portCount);
-            var error = controller.Read(0, portCount, portData);
-            ThrowIfFailed(error, "Read DO ports failed");
+            sdkPort.ReadDoPorts(portData, portCount);
             return IoBitConverter.ToBits(portData);
         });
     }
@@ -356,8 +326,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             int portCount = GetDoPortCount();
             byte[] currentData = GetDoPortBuffer(portCount);
-            var readError = instantDoCtrl.Read(0, portCount, currentData);
-            ThrowIfFailed(readError, "Read current DO ports before mask write failed");
+            sdkPort.ReadDoPorts(currentData, portCount);
 
             for (int port = 0; port < portCount; port++)
             {
@@ -383,8 +352,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
 
                 if (targetValue != currentData[port])
                 {
-                    var writeError = instantDoCtrl.Write(port, targetValue);
-                    ThrowIfFailed(writeError, $"Write DO port {port} failed");
+                    sdkPort.WriteDoPort(port, targetValue);
                 }
             }
         });
@@ -425,9 +393,10 @@ public sealed class AdvantechIoCardDevice : IoCardBase
             ThrowIfUnavailable();
             return operation();
         }
-        catch (DaqException ex)
+        catch (Exception exception)
         {
-            throw CreateDaqException("Execute Advantech IO operation failed", ex);
+            RaiseErrorOccurred($"[{DeviceName}/{DeviceId}] Advantech IO operation failed: {exception.Message}", exception);
+            throw;
         }
         finally
         {
@@ -452,9 +421,10 @@ public sealed class AdvantechIoCardDevice : IoCardBase
             ThrowIfUnavailable();
             operation();
         }
-        catch (DaqException ex)
+        catch (Exception exception)
         {
-            throw CreateDaqException("Execute Advantech IO operation failed", ex);
+            RaiseErrorOccurred($"[{DeviceName}/{DeviceId}] Advantech IO operation failed: {exception.Message}", exception);
+            throw;
         }
         finally
         {
@@ -464,9 +434,9 @@ public sealed class AdvantechIoCardDevice : IoCardBase
             }
         }
     }
-    private void OnInstantDiInterrupt(object? sender, DiSnapEventArgs e)
+    private void OnSdkPortInterrupt(object? sender, int interruptPort)
     {
-        if (e.SrcNum == config.InterruptChannel / 8)
+        if (interruptPort == config.InterruptChannel / 8)
         {
             ThreadPool.QueueUserWorkItem(_ => PublishHardwareTriggerSnapshot());
         }
@@ -476,7 +446,9 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     {
         try
         {
-            RaiseHardwareTrigger(ReadDiPortMaskCore());
+            RaiseHardwareInterrupt(
+                ReadDiPortMaskCore(),
+                config.InterruptRisingEdge ? IoTriggerEdge.Rising : IoTriggerEdge.Falling);
         }
         catch (Exception ex)
         {
@@ -489,12 +461,12 @@ public sealed class AdvantechIoCardDevice : IoCardBase
 
     private int GetDiPortCount()
     {
-        return Math.Min(config.DiPortCount, Math.Min(AdvantechIoCardConfig.MaxSupportedPorts, instantDiCtrl.Features.PortCount));
+        return Math.Min(config.DiPortCount, Math.Min(AdvantechIoCardConfig.MaxSupportedPorts, sdkPort.DigitalInputPortCount));
     }
 
     private int GetDoPortCount()
     {
-        return Math.Min(config.DoPortCount, Math.Min(AdvantechIoCardConfig.MaxSupportedPorts, instantDoCtrl.Features.PortCount));
+        return Math.Min(config.DoPortCount, Math.Min(AdvantechIoCardConfig.MaxSupportedPorts, sdkPort.DigitalOutputPortCount));
     }
 
     private int GetDiChannelCount()
@@ -517,6 +489,11 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         return GetDoChannelCount();
     }
 
+    protected override int GetDigitalInputChannelCount()
+    {
+        return GetDiChannelCount();
+    }
+
     private void EnsureReady()
     {
         ThrowIfDisposed();
@@ -531,20 +508,4 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         }
     }
 
-    private void ThrowIfFailed(ErrorCode errorCode, string message)
-    {
-        if (errorCode != ErrorCode.Success)
-        {
-            var fullMessage = $"[{DeviceName}/{DeviceId}] {message}. DeviceDescription={config.DeviceDescription}, Model={config.Model}, ErrorCode={errorCode}.";
-            RaiseErrorOccurred(fullMessage);
-            throw new InvalidOperationException(fullMessage);
-        }
-    }
-
-    private InvalidOperationException CreateDaqException(string operation, DaqException exception)
-    {
-        var fullMessage = $"[{DeviceName}/{DeviceId}] {operation}. DeviceDescription={config.DeviceDescription}, Model={config.Model}. {exception.Message}";
-        RaiseErrorOccurred(fullMessage, exception);
-        return new InvalidOperationException(fullMessage, exception);
-    }
 }

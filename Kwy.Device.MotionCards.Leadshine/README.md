@@ -34,27 +34,36 @@ services.AddKwyLeadshineMotionCard(options =>
     options.DoChannelCount = 16;
     options.DigitalIoActiveLow = true;
 
-    options.Axes.Add(new LeadshineAxisConfig
+    options.Axes.Add(new AxisDefinition
     {
-        Axis = 1,
-        Name = "X",
-        Unit = MotionUnit.Millimeter,
-        PulsesPerUnit = 10_000,
-        MinimumPosition = 0,
-        MaximumPosition = 300,
-        MaximumVelocity = 200,
-        MaximumAcceleration = 1_000,
-        MaximumDeceleration = 1_000,
-        Home = new LeadshineHomeConfig
+        Id = "stage.x",
+        DisplayName = "X",
+        DeviceId = "Motion.Leadshine",
+        Channel = 1,
+        Engineering = new AxisEngineeringConfig
         {
-            Velocity = -20,
+            Unit = MotionUnit.Millimeter,
+            PulsesPerUnit = 10_000
+        },
+        Limits = new AxisLimitConfig
+        {
+            MinimumPosition = 0,
+            MaximumPosition = 300,
+            MaximumVelocity = 200,
+            MaximumAcceleration = 1_000,
+            MaximumDeceleration = 1_000
+        },
+        Home = new AxisHomeDefinition
+        {
+            Direction = -1,
+            SearchVelocity = 20,
             Acceleration = 100,
             Position = 0,
             Offset = 0,
-            HomeMode = 1,
             Timeout = TimeSpan.FromSeconds(60)
         }
     });
+    options.AxisOptions[1] = new LeadshineAxisOptions { HomeMode = 1 };
 });
 ```
 
@@ -129,3 +138,8 @@ await motionCard.WaitForCoordinateSystemCompletedAsync(
 4. 验证板载 DI/DO 端口数量和有效电平。
 5. 低速验证直线、圆弧插补方向和终点。
 6. 使用真实机构验证停止距离、急停和安全联锁。
+# LTDMC SDK Port
+
+`LeadshineMotionCardDevice` 不直接引用 `csLTDMC.LTDMC`。所有当前已支持的雷赛能力——连接、单轴运动、回零、插补、HCMP/PSO、板载 DI/DO、软限位及状态读取——均通过可注入的 `ILeadshineMotionSdkPort` 访问；默认实现 `LtdmcLeadshineMotionSdkPort` 是唯一引用 LTDMC P/Invoke 的位置。
+
+这使同品牌不同控制卡可分别提供对应 Port，而无需修改核心运动模型或业务轴定义。

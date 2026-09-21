@@ -15,7 +15,11 @@ public sealed class SimulationMotionCardConfig : IDeviceConfig
 
     public double SimulationSpeedRatio { get; set; } = 1;
 
-    public IList<AxisEngineeringConfig> AxisEngineeringConfigs { get; } = new List<AxisEngineeringConfig>();
+    /// <summary>
+    /// 仿真轴直接复用真实设备的通用轴定义。
+    /// </summary>
+    public IDictionary<short, AxisDefinition> Axes { get; }
+        = new Dictionary<short, AxisDefinition>();
 
     public bool Validate()
     {
@@ -31,9 +35,11 @@ public sealed class SimulationMotionCardConfig : IDeviceConfig
 
         try
         {
-            foreach (AxisEngineeringConfig item in AxisEngineeringConfigs)
+            foreach ((short channel, AxisDefinition definition) in Axes)
             {
-                item.Validate();
+                definition.Validate();
+                if (channel != definition.Channel || !string.Equals(definition.DeviceId, DeviceId, StringComparison.OrdinalIgnoreCase))
+                    return false;
             }
         }
         catch (ArgumentException)
@@ -41,11 +47,24 @@ public sealed class SimulationMotionCardConfig : IDeviceConfig
             return false;
         }
 
-        return AxisEngineeringConfigs.All(item => item.Axis <= AxisCount)
-            && AxisEngineeringConfigs.Select(item => item.Axis).Distinct().Count() == AxisEngineeringConfigs.Count;
+        return Axes.Keys.All(axis => axis >= 1 && axis <= AxisCount)
+            && Axes.Values.Select(item => item.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == Axes.Count;
     }
 
-    public AxisEngineeringConfig GetAxisEngineeringConfig(short axis)
-        => AxisEngineeringConfigs.FirstOrDefault(item => item.Axis == axis)
-            ?? new AxisEngineeringConfig { Axis = axis };
+    public AxisDefinition GetAxisDefinition(short axis)
+    {
+        if (axis < 1 || axis > AxisCount)
+            throw new ArgumentOutOfRangeException(nameof(axis), axis, $"Axis must be between 1 and {AxisCount}.");
+
+        return Axes.TryGetValue(axis, out AxisDefinition? definition)
+            ? definition
+            : new AxisDefinition
+            {
+                Id = $"{DeviceId}.axis.{axis}",
+                DisplayName = $"Axis {axis}",
+                DeviceId = DeviceId,
+                Channel = axis,
+                Engineering = new AxisEngineeringConfig()
+            };
+    }
 }

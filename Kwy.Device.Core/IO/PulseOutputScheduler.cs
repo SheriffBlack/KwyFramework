@@ -48,24 +48,29 @@ public sealed class PulseOutputScheduler : IDisposable
         _ = ResetPulseAsync(channel, durationMs, newToken);
     }
 
-    public void CancelAll()
+    public void CancelAll(bool resetOutputs = false)
     {
-        List<CancellationTokenSource> tokens;
+        List<(int Channel, CancellationTokenSource Token)> tokens;
         lock (syncRoot)
         {
-            tokens = pulseTokens.Values.ToList();
+            tokens = pulseTokens.Select(static item => (item.Key, item.Value)).ToList();
             pulseTokens.Clear();
         }
 
-        foreach (CancellationTokenSource token in tokens)
+        foreach ((int channel, CancellationTokenSource token) in tokens)
         {
             try
             {
                 token.Cancel();
+                if (resetOutputs && canResetOutput())
+                {
+                    writeOutput(channel, false);
+                }
                 token.Dispose();
             }
-            catch
+            catch (Exception exception)
             {
+                onResetError(channel, exception);
             }
         }
     }
@@ -78,7 +83,7 @@ public sealed class PulseOutputScheduler : IDisposable
         }
 
         disposed = true;
-        CancelAll();
+        CancelAll(resetOutputs: true);
     }
 
     private async Task ResetPulseAsync(int channel, int durationMs, CancellationTokenSource pulseToken)

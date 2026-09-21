@@ -8,7 +8,7 @@ namespace Kwy.Device.Core.IO;
 /// <summary>
 /// IO 板卡设备抽象基类
 /// </summary>
-public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterruptSource
+public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterruptSource, IIoPointRegistry
 {
     protected const int DefaultIoChannelCount = IoChannelGuard.MaxChannelCount;
 
@@ -56,6 +56,15 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
         return DefaultIoChannelCount;
     }
 
+    protected virtual int GetDigitalInputChannelCount()
+    {
+        return DefaultIoChannelCount;
+    }
+
+    public int DigitalInputCount => GetDigitalInputChannelCount();
+
+    public int DigitalOutputCount => GetDigitalOutputChannelCount();
+
     public virtual void WritePulse(int channel, int durationMs)
     {
         ThrowIfDisposed();
@@ -73,11 +82,13 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
     /// <summary>
     /// 当硬件中断触发时抛出，携带最高 64 位 IO 快照
     /// </summary>
-    public event EventHandler<ulong>? OnHardwareTriggerReceived;
+    public event EventHandler<IoSignalSnapshot>? HardwareInterruptReceived;
 
-    protected void RaiseHardwareTrigger(ulong mask)
+    protected void RaiseHardwareInterrupt(ulong mask, IoTriggerEdge? triggerEdge = null)
     {
-        OnHardwareTriggerReceived?.Invoke(this, mask);
+        HardwareInterruptReceived?.Invoke(
+            this,
+            new IoSignalSnapshot(DeviceId, mask, DateTimeOffset.UtcNow, IoSnapshotSource.HardwareInterrupt, triggerEdge));
     }
 
 
@@ -88,7 +99,7 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
 
     public void SetDoName(int channel, string name)
     {
-        IoChannelGuard.ValidateChannel(channel, DefaultIoChannelCount, nameof(channel));
+        IoChannelGuard.ValidateChannel(channel, GetDigitalOutputChannelCount(), nameof(channel));
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException("DO name cannot be empty.", nameof(name));
@@ -97,18 +108,14 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
         _doNames[channel] = name;
     }
 
-    public System.Collections.Generic.IEnumerable<(int Index, string Name)> GetAllOutputs()
-    {
-        // 转换并返回所有已命名通道
-        foreach (var kvp in _doNames)
-        {
-            yield return (kvp.Key, kvp.Value);
-        }
-    }
+    public IEnumerable<(int Index, string Name)> GetAllOutputs()
+        => _doNames.OrderBy(static item => item.Key)
+            .Select(static item => (item.Key, item.Value))
+            .ToArray();
 
     public void SetDiName(int channel, string name)
     {
-        IoChannelGuard.ValidateChannel(channel, DefaultIoChannelCount, nameof(channel));
+        IoChannelGuard.ValidateChannel(channel, GetDigitalInputChannelCount(), nameof(channel));
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException("DI name cannot be empty.", nameof(name));
@@ -117,13 +124,10 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
         _diNames[channel] = name;
     }
 
-    public System.Collections.Generic.IEnumerable<(int Index, string Name)> GetAllInputs()
-    {
-        foreach (var kvp in _diNames)
-        {
-            yield return (kvp.Key, kvp.Value);
-        }
-    }
+    public IEnumerable<(int Index, string Name)> GetAllInputs()
+        => _diNames.OrderBy(static item => item.Key)
+            .Select(static item => (item.Key, item.Value))
+            .ToArray();
 
     public override async ValueTask DisposeAsync()
     {

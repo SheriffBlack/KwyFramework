@@ -27,8 +27,7 @@ public static class ServiceCollectionExtensions
 
         var stateMonitorOptions = new MotionStateMonitorOptions
         {
-            FirstAxis = 1,
-            AxisCount = config.AxisCount
+            Axes = config.Axes.Select(static axis => axis.Channel).ToArray()
         };
         configureStateMonitor?.Invoke(stateMonitorOptions);
         stateMonitorOptions.Validate();

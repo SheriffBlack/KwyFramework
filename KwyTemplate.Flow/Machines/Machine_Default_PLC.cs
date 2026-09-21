@@ -154,8 +154,11 @@ public sealed class Machine_Default_PLC : MachineBase
         if (Devices.TryGet<Kwy.Device.Abstractions.IO.IIoCardDevice>(DeviceIds.MainIoCard, out Kwy.Device.Abstractions.IO.IIoCardDevice? mainIoCard) && mainIoCard != null)
         {
             base.BindIoCard(mainIoCard);
-            RegisterCardToPcNames(mainIoCard);
-            RegisterPcToCardNames(mainIoCard);
+            if (mainIoCard is Kwy.Device.Core.IO.IIoPointRegistry pointRegistry)
+            {
+                RegisterCardToPcNames(pointRegistry);
+                RegisterPcToCardNames(pointRegistry);
+            }
         }
 
         if (Devices.TryGet<IMeasurementInstrument>(DeviceIds.Instrument("Dcr", 1), out IMeasurementInstrument? dcr))
@@ -165,7 +168,7 @@ public sealed class Machine_Default_PLC : MachineBase
     }
 
 
-    private static void RegisterCardToPcNames(Kwy.Device.Abstractions.IO.IIoCardDevice card)
+    private static void RegisterCardToPcNames(Kwy.Device.Core.IO.IIoPointRegistry card)
     {
         foreach (CardToPc input in Enum.GetValues<CardToPc>())
         {
@@ -173,7 +176,7 @@ public sealed class Machine_Default_PLC : MachineBase
         }
     }
 
-    private static void RegisterPcToCardNames(Kwy.Device.Abstractions.IO.IIoCardDevice card)
+    private static void RegisterPcToCardNames(Kwy.Device.Core.IO.IIoPointRegistry card)
     {
         foreach (PcToCard output in Enum.GetValues<PcToCard>())
         {

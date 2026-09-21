@@ -70,9 +70,9 @@ GoogolMotionCardConfig
 | 脉冲、编码器与轴通道映射 | `gts.cfg` | 属于控制器硬件资源，由固高 SDK 解析和应用。 |
 | 报警、正负限位、原点输入映射及有效电平 | `gts.cfg` | 属于现场电气接线，必须与控制器配置保持一致。 |
 | 滤波、控制环、DAC、停止参数 | `gts.cfg` | 属于控制器底层参数，应使用固高配置工具维护。 |
-| 轴名称、工程单位、脉冲当量、方向 | `GoogolAxisConfig` | 属于 Kwy 面向机器和业务代码的坐标语义。 |
-| 软件行程、业务速度和加减速度上限 | `GoogolAxisConfig` | 属于应用安全边界，不替代控制器硬件限位。 |
-| 回零速度、加速度、偏移和等待超时 | `GoogolHomeConfig` | 属于 Kwy 的回零执行策略；原点输入映射仍在 `gts.cfg`。 |
+| 轴名称、工程单位、脉冲当量、方向 | `AxisDefinition.Engineering` | 属于 Kwy 面向机器和业务代码的坐标语义。 |
+| 软件行程、业务速度和加减速度上限 | `AxisDefinition.Limits` | 属于应用安全边界，不替代控制器硬件限位。 |
+| 回零速度、加速度、偏移和等待超时 | `AxisDefinition.Home` | 属于 Kwy 的回零执行策略；原点输入映射仍在 `gts.cfg`。 |
 | 插补轴组合、合成速度、加速度和平滑时间 | `GoogolCoordinateSystemConfig` | 属于应用如何组织多轴插补。 |
 
 连接时的加载顺序如下：
@@ -104,21 +104,25 @@ var config = new GoogolMotionCardConfig
     DigitalIoActiveLow = true
 };
 
-config.Axes.Add(new GoogolAxisConfig
+config.Axes.Add(new AxisDefinition
 {
-    Axis = 1,
-    Name = "X",
-    Unit = MotionUnit.Millimeter,
-    PulsesPerUnit = 10_000,
-    MinimumPosition = -10,
-    MaximumPosition = 300,
-    MaximumVelocity = 200,
-    MaximumAcceleration = 1_000,
-    MaximumDeceleration = 1_000,
-    Home = new GoogolHomeConfig
+    Id = "stage.x",
+    DisplayName = "X",
+    DeviceId = "Googol-0",
+    Channel = 1,
+    Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 10_000 },
+    Limits = new AxisLimitConfig
+    {
+        MinimumPosition = -10,
+        MaximumPosition = 300,
+        MaximumVelocity = 200,
+        MaximumAcceleration = 1_000,
+        MaximumDeceleration = 1_000
+    },
+    Home = new AxisHomeDefinition
     {
         Position = 0,
-        Velocity = 20,
+        SearchVelocity = 20,
         Acceleration = 100,
         Offset = 0,
         Timeout = TimeSpan.FromSeconds(60)
@@ -150,7 +154,7 @@ config.CoordinateSystems.Add(new GoogolCoordinateSystemConfig
 | `DiChannelCount` | GPI 通道数量，默认 16。 |
 | `DoChannelCount` | GPO 通道数量，默认 16。 |
 | `DigitalIoActiveLow` | GTS 常见 IO 为低电平有效，默认 `true`。 |
-| `Axes` | 每轴工程单位、脉冲当量、方向、行程上限、运动上限和回零参数。未配置的轴使用原生脉冲单位和默认回零参数。 |
+| `Axes` | 显式配置的工程轴定义；状态监视器仅轮询这些轴。未配置的物理轴不对业务层暴露。 |
 | `CoordinateSystems` | 每个坐标系的轴组合、最大合成速度、最大合成加速度和平滑时间。 |
 
 ## IOC 注册
@@ -171,18 +175,17 @@ services.AddKwyGoogolMotionCard(options =>
     options.DiChannelCount = 16;
     options.DoChannelCount = 16;
     options.DigitalIoActiveLow = true;
-    options.Axes.Add(new GoogolAxisConfig
+    options.Axes.Add(new AxisDefinition
     {
-        Axis = 1,
-        Name = "X",
-        Unit = MotionUnit.Millimeter,
-        PulsesPerUnit = 10_000,
-        MinimumPosition = 0,
-        MaximumPosition = 300,
-        MaximumVelocity = 200,
-        Home = new GoogolHomeConfig
+        Id = "stage.x",
+        DisplayName = "X",
+        DeviceId = "Motion.Googol",
+        Channel = 1,
+        Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 10_000 },
+        Limits = new AxisLimitConfig { MinimumPosition = 0, MaximumPosition = 300, MaximumVelocity = 200 },
+        Home = new AxisHomeDefinition
         {
-            Velocity = 20,
+            SearchVelocity = 20,
             Acceleration = 100,
             Timeout = TimeSpan.FromSeconds(60)
         }
@@ -523,7 +526,7 @@ GPI / GPO 是否为低电平有效
 1. **批量状态拉取 (IBulkAxisSnapshotReader)**：
    当前实现已将 `GoogolMotionCardDevice` 升级为 `IBulkAxisSnapshotReader`。当后台监控 `MotionStateMonitor` 运行轮询时，会自动启用批量读取机制。所有轴的硬件 P/Invoke 状态拉取将在单次 Lock 周期内同步、连续快速完成，极大地减少了占锁耗时与上下文切换开销，保证了紧急状态下 `Stop` / `Abort` 动作的高响应实时性。
 2. **多向回零支持**：
-   回零参数验证与 API 中已解除了对速度绝对值的限制。`GoogolHomeConfig.Velocity` 允许配置为负数（负向搜索原点），运动指令会保留符号直接下发给固高控制器。
+   `AxisHomeDefinition.Direction` 显式表示搜索方向，`SearchVelocity` 始终使用正数幅值；驱动层统一合成有符号的厂商速度。
 3. **回零安全打断**：
    在轴触发 `Stop` 或 `Abort` 时，控制逻辑会强制将该轴从“正在回零 (homingAxes)”的追踪队列中移除，从而杜绝了在人工终止或报警中止时因 SDK 状态清零而被误判为“回零成功”的隐患。
 

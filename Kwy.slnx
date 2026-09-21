@@ -48,6 +48,7 @@
   <Project Path="Kwy.Device.Cameras.HikVision/Kwy.Device.Cameras.HikVision.csproj" Id="04cc9402-e3b3-470c-aa3e-c3ec71460964" />
   <Project Path="Kwy.Device.Core/Kwy.Device.Core.csproj" Id="48e87eba-648f-49c8-a84f-cf0a5d98b069" />
   <Project Path="Kwy.Device.Instruments/Kwy.Device.Instruments.csproj" />
+  <Project Path="Kwy.Device.Io.Tests/Kwy.Device.Io.Tests.csproj" />
   <Project Path="Kwy.Device.IoCards.Advantech/Kwy.Device.IoCards.Advantech.csproj" Id="665abd38-5ef9-443c-874a-9b577da013a3" />
   <Project Path="Kwy.Device.IoCards.Leadshine/Kwy.Device.IoCards.Leadshine.csproj" Id="15aad508-1f53-4b44-a4ab-9188723d625e" />
   <Project Path="Kwy.Device.IoCards/Kwy.Device.IoCards.csproj" />

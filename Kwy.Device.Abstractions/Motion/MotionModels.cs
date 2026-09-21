@@ -9,8 +9,6 @@ public enum MotionUnit
 
 public sealed record AxisEngineeringConfig
 {
-    public short Axis { get; init; }
-
     public MotionUnit Unit { get; init; } = MotionUnit.Pulse;
 
     public double PulsesPerUnit { get; init; } = 1;
@@ -19,11 +17,8 @@ public sealed record AxisEngineeringConfig
 
     public void Validate()
     {
-        if (Axis < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(Axis), Axis, "Axis must be greater than or equal to 1.");
-        }
-
+        if (!Enum.IsDefined(Unit))
+            throw new ArgumentOutOfRangeException(nameof(Unit));
         if (!double.IsFinite(PulsesPerUnit) || PulsesPerUnit <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(PulsesPerUnit), PulsesPerUnit, "PulsesPerUnit must be finite and greater than 0.");
@@ -102,6 +97,12 @@ public sealed class MotionExecutionOptions
 
     public TimeSpan StartDetectionDelay { get; set; } = TimeSpan.FromMilliseconds(100);
 
+    public TimeSpan SettlingTime { get; set; } = TimeSpan.Zero;
+
+    public double? SettlingVelocityThreshold { get; set; }
+
+    public double? FollowingErrorLimit { get; set; }
+
     public void Validate()
     {
         if (!double.IsFinite(PositionTolerance) || PositionTolerance < 0)
@@ -118,6 +119,17 @@ public sealed class MotionExecutionOptions
         {
             throw new ArgumentOutOfRangeException(nameof(StartDetectionDelay));
         }
+
+        if (SettlingTime < TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(SettlingTime));
+        ValidateOptionalNonNegative(SettlingVelocityThreshold, nameof(SettlingVelocityThreshold));
+        ValidateOptionalNonNegative(FollowingErrorLimit, nameof(FollowingErrorLimit));
+    }
+
+    private static void ValidateOptionalNonNegative(double? value, string name)
+    {
+        if (value is { } number && (!double.IsFinite(number) || number < 0))
+            throw new ArgumentOutOfRangeException(name, number, $"{name} must be finite and non-negative.");
     }
 }
 

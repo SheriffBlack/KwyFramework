@@ -12,28 +12,33 @@ public sealed class IoStateMonitor : IIoStateMonitor
     // 存储所有的 IO 设备 (运动控制卡或专用 IO 卡)
     private readonly ConcurrentDictionary<string, IIoCardDevice> _devices = new();
 
-    // 逻辑名 -> 物理点位映射表
+    // 稳定点位 ID -> 物理点位映射。
     private readonly Dictionary<string, IoPoint> _diMap = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly Dictionary<string, IoPoint> _doMap = new(StringComparer.OrdinalIgnoreCase);
 
     // 🚀 优化三：缓存各张卡的物理掩码，以及上一次的状态用于对比 (升级为 64 位支持)
     private readonly ConcurrentDictionary<string, ulong> _deviceMaskCache = new();
-
-    private readonly ConcurrentDictionary<string, ulong> _previousMaskCache = new();
-
+    private readonly object _maskSync = new();
     public event Action<string, bool>? OnIoStateChanged;
 
     private readonly Dictionary<string, string[]> _fastReverseDiMap = new();
 
     private CancellationTokenSource? _scanCancellation;
     private Task? _scanTask;
-    private readonly ConcurrentDictionary<string, EventHandler<ulong>> _interruptHandlers = new();
+    private readonly ConcurrentDictionary<string, EventHandler<IoSignalSnapshot>> _interruptHandlers = new();
+    private readonly ConcurrentDictionary<string, PulseOutputScheduler> _logicalPulseSchedulers = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
 
     public int PollingIntervalMs { get; set; } = 5;
 
     public event Action<string, Exception>? OnIoReadFailed;
+
+    public event Action<string, Exception>? OnIoWriteFailed;
+
+    public event Action<string, Exception>? OnIoNotificationFailed;
+
+    public event Action<IoSignalSnapshot>? OnIoSnapshotReceived;
 
     public IoStateMonitor()
     { }
@@ -48,19 +53,17 @@ public sealed class IoStateMonitor : IIoStateMonitor
         ArgumentNullException.ThrowIfNull(diConfigs);
         ArgumentNullException.ThrowIfNull(doConfigs);
 
+        IIoCardDevice[] deviceItems = devices.ToArray();
+        IoPoint[] diItems = diConfigs.ToArray();
+        IoPoint[] doItems = doConfigs.ToArray();
+        InitializationMaps maps = BuildAndValidateMaps(deviceItems, diItems, doItems);
+
+        // 候选配置全部校验通过后再替换运行状态，避免无效配置破坏现有监视器。
         Reset();
 
-        foreach (var dev in devices)
+        foreach (IIoCardDevice dev in deviceItems)
         {
-            if (dev == null)
-            {
-                continue;
-            }
-
             _devices[dev.DeviceId] = dev;
-            _deviceMaskCache[dev.DeviceId] = 0;
-            _previousMaskCache[dev.DeviceId] = 0;
-
             // 为每张卡预分配一个数组（支持最大 64 通道）
             _fastReverseDiMap[dev.DeviceId] = new string[64];
 
@@ -68,70 +71,157 @@ public sealed class IoStateMonitor : IIoStateMonitor
             // 当硬件产生中断时，微秒级瞬间触发解析，同步更新内存缓存并广播 UI 状态更新事件，无需等待 5ms 轮询！
             if (dev is IHardwareInterruptSource interruptSource)
             {
-                EventHandler<ulong> handler = (sender, mask) => ProcessMaskChange(dev.DeviceId, mask);
+                EventHandler<IoSignalSnapshot> handler = (_, snapshot) => ProcessSignalSnapshot(snapshot);
                 _interruptHandlers[dev.DeviceId] = handler;
-                interruptSource.OnHardwareTriggerReceived += handler;
+                interruptSource.HardwareInterruptReceived += handler;
             }
         }
 
-        foreach (var di in diConfigs)
+        foreach ((string id, IoPoint point) in maps.DiMap)
         {
-            IoChannelGuard.ValidateChannel(di.Channel, IoChannelGuard.MaxChannelCount, nameof(di.Channel));
-            _diMap[di.Name] = di;
-
-            // 预先将逻辑标签填入数组对应的槽位中
-            if (_fastReverseDiMap.TryGetValue(di.DeviceId, out var channelArray) && di.Channel < channelArray.Length)
-            {
-                channelArray[di.Channel] = di.Name;
-            }
+            _diMap[id] = point;
+            _fastReverseDiMap[point.DeviceId][point.Channel] = id;
         }
-        foreach (var @do in doConfigs)
+        foreach ((string id, IoPoint point) in maps.DoMap)
         {
-            IoChannelGuard.ValidateChannel(@do.Channel, IoChannelGuard.MaxChannelCount, nameof(@do.Channel));
-            _doMap[@do.Name] = @do;
+            _doMap[id] = point;
         }
 
         StartHeartbeat();
+    }
+
+    private static InitializationMaps BuildAndValidateMaps(
+        IReadOnlyCollection<IIoCardDevice> devices,
+        IReadOnlyCollection<IoPoint> inputs,
+        IReadOnlyCollection<IoPoint> outputs)
+    {
+        var deviceMap = new Dictionary<string, IIoCardDevice>(StringComparer.OrdinalIgnoreCase);
+        foreach (IIoCardDevice device in devices)
+        {
+            ArgumentNullException.ThrowIfNull(device);
+            ArgumentException.ThrowIfNullOrWhiteSpace(device.DeviceId);
+            if (!deviceMap.TryAdd(device.DeviceId, device))
+                throw new ArgumentException($"Duplicate IO device ID '{device.DeviceId}'.", nameof(devices));
+        }
+
+        var allIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, IoPoint> diMap = ValidatePoints(inputs, IoSignalKind.DigitalInput, deviceMap, allIds, nameof(inputs));
+        Dictionary<string, IoPoint> doMap = ValidatePoints(outputs, IoSignalKind.DigitalOutput, deviceMap, allIds, nameof(outputs));
+        return new InitializationMaps(diMap, doMap);
+    }
+
+    private static Dictionary<string, IoPoint> ValidatePoints(
+        IEnumerable<IoPoint> points,
+        IoSignalKind expectedKind,
+        IReadOnlyDictionary<string, IIoCardDevice> devices,
+        ISet<string> allIds,
+        string parameterName)
+    {
+        var result = new Dictionary<string, IoPoint>(StringComparer.OrdinalIgnoreCase);
+        var physicalChannels = new HashSet<(string DeviceId, int Channel)>(DeviceChannelComparer.Instance);
+
+        foreach (IoPoint point in points)
+        {
+            ArgumentNullException.ThrowIfNull(point);
+            point.Validate();
+            if (point.Kind != expectedKind)
+                throw new ArgumentException(
+                    $"IO point '{point.Id}' is '{point.Kind}' but was placed in the '{expectedKind}' collection.",
+                    parameterName);
+            if (!devices.TryGetValue(point.DeviceId, out IIoCardDevice? device))
+                throw new ArgumentException($"IO point '{point.Id}' references unknown device '{point.DeviceId}'.", parameterName);
+            int channelCount = expectedKind == IoSignalKind.DigitalInput
+                ? device.DigitalInputCount
+                : device.DigitalOutputCount;
+            IoChannelGuard.ValidateChannel(point.Channel, channelCount, nameof(point.Channel));
+            if (!allIds.Add(point.Id))
+                throw new ArgumentException($"Duplicate IO point ID '{point.Id}'.", parameterName);
+            if (!physicalChannels.Add((point.DeviceId, point.Channel)))
+                throw new ArgumentException($"Duplicate {expectedKind} channel '{point.DeviceId}:{point.Channel}'.", parameterName);
+            result.Add(point.Id, point);
+        }
+
+        return result;
     }
 
     /// <summary>
     /// 统一解析引脚掩码变化，同时支持【轮询线程】和【硬件中断回调】的高效调用。
     /// 包含并发锁确保线程安全，并通过缓存对比实现自动去重。
     /// </summary>
-    private void ProcessMaskChange(string deviceId, ulong currentMask)
+    private void ProcessSignalSnapshot(IoSignalSnapshot snapshot)
     {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        string deviceId = snapshot.DeviceId;
+        ulong currentMask = snapshot.Mask;
+        List<(string PointId, bool State)>? changes = null;
         // 🚀 使用锁确保当硬件中断线程与 5ms 扫描线程同时触发时，状态更新与事件广播依然绝对安全且不产生竞争
-        lock (_previousMaskCache)
+        lock (_maskSync)
         {
-            ulong lastMask = _previousMaskCache.TryGetValue(deviceId, out var m) ? m : (ulong)0;
-            if (currentMask == lastMask) return; // 如果状态没变，或者已经被中断处理过了，直接退出
-
-            // 1. 同步刷新状态缓存（O(1) 极速存取）
-            _deviceMaskCache[deviceId] = currentMask;
-            _previousMaskCache[deviceId] = currentMask;
-
-            // 2. 差异检测 (XOR 异或)
-            ulong diff = currentMask ^ lastMask;
-
-            // 3. 拿到该设备通道逻辑标签的反向高速查找映射表
-            string[] channelLabels = _fastReverseDiMap[deviceId];
-
-            // 4. O(1) 遍历发生变化的引脚，最高支持 64 通道
-            for (int i = 0; i < 64; i++)
+            bool hasPrevious = _deviceMaskCache.TryGetValue(deviceId, out ulong lastMask);
+            if (!hasPrevious || currentMask != lastMask)
             {
-                if ((diff & (1UL << i)) != 0)
+                // 首次快照需要发布所有已配置点位，让 UI 和联锁建立确定的初始状态。
+                _deviceMaskCache[deviceId] = currentMask;
+                ulong diff = hasPrevious ? currentMask ^ lastMask : ulong.MaxValue;
+                if (_fastReverseDiMap.TryGetValue(deviceId, out string[]? channelLabels))
                 {
-                    string label = channelLabels[i];
-                    if (!string.IsNullOrEmpty(label) && _diMap.TryGetValue(label, out var point))
+                    for (int i = 0; i < 64; i++)
                     {
-                        bool physicalState = (currentMask & (1UL << i)) != 0;
-                        bool newState = physicalState ^ point.Inverted;
-
-                        // 广播状态变更通知，诊断 UI 界面（DiViewModel）将立刻同步接收
-                        OnIoStateChanged?.Invoke(label, newState);
+                        if ((diff & (1UL << i)) != 0)
+                        {
+                            string label = channelLabels[i];
+                            if (!string.IsNullOrEmpty(label) && _diMap.TryGetValue(label, out var point))
+                            {
+                                bool physicalState = (currentMask & (1UL << i)) != 0;
+                                bool newState = physicalState ^ point.Inverted;
+                                (changes ??= new()).Add((label, newState));
+                            }
+                        }
                     }
                 }
             }
+        }
+
+        // 订阅者回调不属于掩码临界区，避免 UI 或业务回调阻塞扫描线程。
+        PublishSnapshotReceived(snapshot);
+        if (changes is null) return;
+        foreach ((string pointId, bool state) in changes)
+            PublishStateChanged(pointId, state);
+    }
+
+    private void PublishStateChanged(string pointId, bool state)
+    {
+        Delegate[] subscribers = OnIoStateChanged?.GetInvocationList() ?? Array.Empty<Delegate>();
+        foreach (Action<string, bool> subscriber in subscribers.Cast<Action<string, bool>>())
+        {
+            try
+            {
+                subscriber(pointId, state);
+            }
+            catch (Exception exception)
+            {
+                try { OnIoNotificationFailed?.Invoke(pointId, exception); }
+                catch { }
+            }
+        }
+    }
+
+    private void PublishSnapshotReceived(IoSignalSnapshot snapshot)
+    {
+        Delegate[] subscribers = OnIoSnapshotReceived?.GetInvocationList() ?? Array.Empty<Delegate>();
+        foreach (Action<IoSignalSnapshot> subscriber in subscribers.Cast<Action<IoSignalSnapshot>>())
+        {
+            try { subscriber(snapshot); }
+            catch (Exception exception) { PublishNotificationFailure(snapshot.DeviceId, exception); }
+        }
+    }
+
+    private void PublishNotificationFailure(string source, Exception exception)
+    {
+        foreach (Action<string, Exception> subscriber in (OnIoNotificationFailed?.GetInvocationList() ?? Array.Empty<Delegate>()).Cast<Action<string, Exception>>())
+        {
+            try { subscriber(source, exception); }
+            catch { }
         }
     }
 
@@ -146,8 +236,10 @@ public sealed class IoStateMonitor : IIoStateMonitor
         }
 
         _scanCancellation?.Dispose();
-        _scanCancellation = new CancellationTokenSource();
-        _scanTask = Task.Run(() => RunScanLoopAsync(_scanCancellation.Token));
+        var cancellation = new CancellationTokenSource();
+        _scanCancellation = cancellation;
+        // 任务只捕获本次启动的取消源，避免 Reset 置空字段导致竞态。
+        _scanTask = Task.Run(() => RunScanLoopAsync(cancellation.Token));
     }
 
     private async Task RunScanLoopAsync(CancellationToken cancellationToken)
@@ -179,11 +271,11 @@ public sealed class IoStateMonitor : IIoStateMonitor
             try
             {
                 ulong currentMask = _devices[deviceId].ReadDiPortMask();
-                ProcessMaskChange(deviceId, currentMask);
+                ProcessSignalSnapshot(new IoSignalSnapshot(deviceId, currentMask, DateTimeOffset.UtcNow, IoSnapshotSource.Polling));
             }
             catch (Exception ex)
             {
-                OnIoReadFailed?.Invoke(deviceId, ex);
+                PublishReadFailure(deviceId, ex);
                 // 保持扫描任务存活，单张卡的瞬时读取异常不应终止整个 IO 管理器。
             }
         }
@@ -206,52 +298,21 @@ public sealed class IoStateMonitor : IIoStateMonitor
     {
         if (!_diMap.TryGetValue(label, out var point))
             throw new ArgumentException($"未定义的 DI 标签: {label}");
-        IoChannelGuard.ValidateChannel(point.Channel, IoChannelGuard.MaxChannelCount, nameof(point.Channel));
-
         if (!_devices.TryGetValue(point.DeviceId, out var device))
             throw new InvalidOperationException($"IO 设备 {point.DeviceId} 未就绪");
+        IoChannelGuard.ValidateChannel(point.Channel, device.DigitalInputCount, nameof(point.Channel));
 
         if (device is not IHardwareInterruptSource interruptSource)
         {
             throw new NotSupportedException($"IO device '{point.DeviceId}' does not provide hardware interrupt notifications.");
         }
 
-        var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
-        EventHandler<ulong>? handler = null;
-        CancellationTokenRegistration reg = default;
-        handler = (sender, mask) =>
-        {
-            // 收到中断快照的瞬间，解析对应通道的物理电平，并带上极性反转逻辑计算逻辑电平
-            bool physicalState = (mask & (1UL << point.Channel)) != 0;
-            bool logicalState = physicalState ^ point.Inverted;
-
-            if (logicalState == expectedState)
-            {
-                tcs.TrySetResult(true);
-                interruptSource.OnHardwareTriggerReceived -= handler;
-                reg.Dispose();
-            }
-        };
-
-        interruptSource.OnHardwareTriggerReceived += handler;
-        reg = token.Register(() =>
-        {
-            interruptSource.OnHardwareTriggerReceived -= handler;
-            tcs.TrySetCanceled(token);
-        });
-
-        // 【防御性编程】在挂载中断事件的瞬间，有可能信号已经跳变完成了。
-        // 为了防止漏掉前置跳变导致“死等”，我们在这里补一刀：注册完后主动探测一次电平。
-        // （直接从底层硬件读，不从缓存读，确保绝对实时）
-        bool currentPhysical = device.ReadDiBit(point.Channel);
-        if ((currentPhysical ^ point.Inverted) == expectedState)
-        {
-            interruptSource.OnHardwareTriggerReceived -= handler;
-            reg.Dispose();
-            return Task.CompletedTask;
-        }
-
-        return tcs.Task;
+        return WaitForHardwareInterruptCoreAsync(
+            device,
+            interruptSource,
+            point.Channel,
+            expectedState ^ point.Inverted,
+            token);
     }
 
     /// <summary>
@@ -266,116 +327,185 @@ public sealed class IoStateMonitor : IIoStateMonitor
     {
         if (device == null)
             throw new ArgumentNullException(nameof(device));
-        IoChannelGuard.ValidateChannel(channel, IoChannelGuard.MaxChannelCount, nameof(channel));
+        IoChannelGuard.ValidateChannel(channel, device.DigitalInputCount, nameof(channel));
 
         if (device is not IHardwareInterruptSource interruptSource)
         {
             throw new NotSupportedException($"IO device '{device.DeviceId}' does not provide hardware interrupt notifications.");
         }
 
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        EventHandler<ulong>? handler = null;
-        CancellationTokenRegistration reg = default;
-        handler = (sender, mask) =>
-        {
-            // 收到跳变快照，直接位运算判定对应的物理通道
-            bool physicalState = (mask & (1UL << channel)) != 0;
-            if (physicalState == expectedState)
-            {
-                tcs.TrySetResult(true);
-                interruptSource.OnHardwareTriggerReceived -= handler;
-                reg.Dispose();
-            }
-        };
-
-        interruptSource.OnHardwareTriggerReceived += handler;
-        reg = token.Register(() =>
-        {
-            interruptSource.OnHardwareTriggerReceived -= handler;
-            tcs.TrySetCanceled(token);
-        });
-
-        // 防御性安全自检：如果注册时就已经跳变到位，立刻返回
-        if (device.ReadDiBit(channel) == expectedState)
-        {
-            interruptSource.OnHardwareTriggerReceived -= handler;
-            reg.Dispose();
-            return Task.CompletedTask;
-        }
-
-        return tcs.Task;
+        return WaitForHardwareInterruptCoreAsync(device, interruptSource, channel, expectedState, token);
     }
 
-    public bool ReadDi(string label)
+    private void PublishReadFailure(string deviceId, Exception exception)
     {
-        if (!_diMap.TryGetValue(label, out var point)) return false;
-
-        // 从内存缓存中读取，性能极高
-        if (_deviceMaskCache.TryGetValue(point.DeviceId, out ulong mask))
+        foreach (Action<string, Exception> subscriber in (OnIoReadFailed?.GetInvocationList() ?? Array.Empty<Delegate>()).Cast<Action<string, Exception>>())
         {
-            bool physicalState = (mask & (1UL << point.Channel)) != 0;
-            return physicalState ^ point.Inverted;
+            try { subscriber(deviceId, exception); }
+            catch (Exception notificationException) { PublishNotificationFailure(deviceId, notificationException); }
         }
-        return false;
+    }
+
+    private static Task WaitForHardwareInterruptCoreAsync(
+        IIoCardDevice device,
+        IHardwareInterruptSource interruptSource,
+        int channel,
+        bool expectedPhysicalState,
+        CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled(cancellationToken);
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        EventHandler<IoSignalSnapshot> handler = (_, snapshot) =>
+        {
+            if (((snapshot.Mask & (1UL << channel)) != 0) == expectedPhysicalState)
+                completion.TrySetResult();
+        };
+
+        interruptSource.HardwareInterruptReceived += handler;
+        CancellationTokenRegistration registration = cancellationToken.Register(
+            () => completion.TrySetCanceled(cancellationToken));
+        _ = completion.Task.ContinueWith(
+            _ =>
+            {
+                interruptSource.HardwareInterruptReceived -= handler;
+                registration.Dispose();
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
+        try
+        {
+            if (device.ReadDiBit(channel) == expectedPhysicalState)
+                completion.TrySetResult();
+        }
+        catch (Exception exception)
+        {
+            completion.TrySetException(exception);
+        }
+
+        return completion.Task;
+    }
+
+    public bool ReadDi(string pointId)
+    {
+        if (!_diMap.ContainsKey(pointId))
+            throw new KeyNotFoundException($"Undefined DI point ID: {pointId}");
+        if (!TryReadDi(pointId, out bool state))
+            throw new InvalidOperationException($"DI point '{pointId}' has no captured device snapshot.");
+        return state;
+    }
+
+    public bool TryReadDi(string pointId, out bool state)
+    {
+        state = false;
+        if (!_diMap.TryGetValue(pointId, out IoPoint? point)
+            || !_deviceMaskCache.TryGetValue(point.DeviceId, out ulong mask))
+            return false;
+
+        bool physicalState = (mask & (1UL << point.Channel)) != 0;
+        state = physicalState ^ point.Inverted;
+        return true;
     }
 
     /// <summary>
     /// 写入逻辑输出 (DO)
     /// </summary>
-    public void WriteDo(string label, bool state)
+    public void WriteDo(string pointId, bool state, string? owner = null)
     {
-        if (!_doMap.TryGetValue(label, out var point))
-            throw new ArgumentException($"未定义的 DO 标签: {label}");
-        IoChannelGuard.ValidateChannel(point.Channel, IoChannelGuard.MaxChannelCount, nameof(point.Channel));
-
-        if (!_devices.TryGetValue(point.DeviceId, out var device))
-            throw new InvalidOperationException($"IO 设备 {point.DeviceId} 未就绪");
-
-        // 核心逻辑：物理写入值 = 状态 ^ 极性反转
-        device.WriteDoBit(point.Channel, state ^ point.Inverted);
+        IoPoint point = GetOutputForWrite(pointId, owner);
+        WriteLogicalOutput(point, state);
     }
 
     /// <summary>
     /// 写入逻辑输出高精度脉冲 (DO)
     /// </summary>
-    public void WritePulse(string label, int durationMs)
+    public void WritePulse(string pointId, int durationMs, string? owner = null)
     {
         if (durationMs < 0)
             throw new ArgumentOutOfRangeException(nameof(durationMs), durationMs, "Pulse duration cannot be negative.");
 
-        if (!_doMap.TryGetValue(label, out var point))
-            throw new ArgumentException($"未定义的 DO 标签: {label}");
-        IoChannelGuard.ValidateChannel(point.Channel, IoChannelGuard.MaxChannelCount, nameof(point.Channel));
-
-        if (!_devices.TryGetValue(point.DeviceId, out var device))
-            throw new InvalidOperationException($"IO 设备 {point.DeviceId} 未就绪");
-
-        device.WriteDoBit(point.Channel, true ^ point.Inverted);
-        _ = ResetLogicalPulseAsync(device, point, durationMs);
+        IoPoint point = GetOutputForWrite(pointId, owner);
+        PulseOutputScheduler scheduler = _logicalPulseSchedulers.GetOrAdd(point.Id, _ => CreateLogicalPulseScheduler(point));
+        scheduler.WritePulse(0, durationMs);
     }
 
-    private static async Task ResetLogicalPulseAsync(IIoCardDevice device, IoPoint point, int durationMs)
+    /// <summary>
+    /// 将所有已配置安全状态的输出切换到逻辑安全值。
+    /// 安全处置是系统级操作，不受业务 Owner 限制。
+    /// </summary>
+    public void ApplySafeOutputs()
     {
-        try
+        ThrowIfDisposed();
+        var failures = new List<Exception>();
+        foreach (IoPoint point in _doMap.Values)
         {
-            await Task.Delay(durationMs).ConfigureAwait(false);
-            if (device.IsConnected)
+            if (point.SafeState is not { } safeState)
+                continue;
+
+            try
             {
-                device.WriteDoBit(point.Channel, false ^ point.Inverted);
+                if (!_devices.TryGetValue(point.DeviceId, out IIoCardDevice? device))
+                    throw new InvalidOperationException($"IO device '{point.DeviceId}' is not available.");
+                device.WriteDoBit(point.Channel, safeState ^ point.Inverted);
+            }
+            catch (Exception ex)
+            {
+                failures.Add(new InvalidOperationException($"Failed to apply the safe state for DO '{point.Id}'.", ex));
             }
         }
-        catch
+
+        if (failures.Count > 0)
+            throw new AggregateException("One or more safe output states could not be applied.", failures);
+    }
+
+    private IoPoint GetOutputForWrite(string pointId, string? owner)
+    {
+        if (!_doMap.TryGetValue(pointId, out IoPoint? point))
+            throw new ArgumentException($"Undefined DO point ID: {pointId}", nameof(pointId));
+
+        if (!string.IsNullOrWhiteSpace(point.Owner)
+            && !string.Equals(point.Owner, owner, StringComparison.OrdinalIgnoreCase))
         {
-            // Pulse reset is a best-effort background operation for the legacy synchronous API.
+            throw new UnauthorizedAccessException($"DO point '{point.Id}' is owned by '{point.Owner}'.");
+        }
+
+        return point;
+    }
+
+    private void WriteLogicalOutput(IoPoint point, bool state)
+    {
+        if (!_devices.TryGetValue(point.DeviceId, out IIoCardDevice? device))
+            throw new InvalidOperationException($"IO device '{point.DeviceId}' is not available.");
+
+        device.WriteDoBit(point.Channel, state ^ point.Inverted);
+    }
+
+    private PulseOutputScheduler CreateLogicalPulseScheduler(IoPoint point)
+        => new(
+            (_, state) => WriteLogicalOutput(point, state),
+            () => !_disposed
+                && _devices.TryGetValue(point.DeviceId, out IIoCardDevice? device)
+                && device.IsConnected,
+            (_, exception) => PublishWriteFailure(point.Id, exception));
+
+    private void PublishWriteFailure(string pointId, Exception exception)
+    {
+        foreach (Action<string, Exception> subscriber in (OnIoWriteFailed?.GetInvocationList() ?? Array.Empty<Delegate>()).Cast<Action<string, Exception>>())
+        {
+            try { subscriber(pointId, exception); }
+            catch (Exception notificationException) { PublishNotificationFailure(pointId, notificationException); }
         }
     }
 
     /// <summary>
     /// 批量刷新所有 DI (用于 UI 显示，性能更高)
     /// </summary>
-    public Dictionary<string, bool> RefreshAllDi()
+    public IReadOnlyDictionary<string, bool> RefreshAllDi()
     {
-        var result = new Dictionary<string, bool>();
+        var result = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var label in _diMap.Keys)
         {
             result[label] = ReadDi(label);
@@ -422,14 +552,16 @@ public sealed class IoStateMonitor : IIoStateMonitor
             if (_devices.TryGetValue(pair.Key, out var device)
                 && device is IHardwareInterruptSource interruptSource)
             {
-                interruptSource.OnHardwareTriggerReceived -= pair.Value;
+                interruptSource.HardwareInterruptReceived -= pair.Value;
             }
         }
 
         _interruptHandlers.Clear();
+        foreach (PulseOutputScheduler scheduler in _logicalPulseSchedulers.Values)
+            scheduler.Dispose();
+        _logicalPulseSchedulers.Clear();
         _devices.Clear();
         _deviceMaskCache.Clear();
-        _previousMaskCache.Clear();
         _diMap.Clear();
         _doMap.Clear();
         _fastReverseDiMap.Clear();
@@ -441,5 +573,20 @@ public sealed class IoStateMonitor : IIoStateMonitor
         {
             throw new ObjectDisposedException(nameof(IoStateMonitor));
         }
+    }
+
+    private sealed record InitializationMaps(
+        Dictionary<string, IoPoint> DiMap,
+        Dictionary<string, IoPoint> DoMap);
+
+    private sealed class DeviceChannelComparer : IEqualityComparer<(string DeviceId, int Channel)>
+    {
+        public static DeviceChannelComparer Instance { get; } = new();
+
+        public bool Equals((string DeviceId, int Channel) x, (string DeviceId, int Channel) y)
+            => x.Channel == y.Channel && StringComparer.OrdinalIgnoreCase.Equals(x.DeviceId, y.DeviceId);
+
+        public int GetHashCode((string DeviceId, int Channel) value)
+            => HashCode.Combine(StringComparer.OrdinalIgnoreCase.GetHashCode(value.DeviceId), value.Channel);
     }
 }

@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IDeviceFactory, DeviceFactory>();
         services.TryAddSingleton<IDeviceRegistry, DeviceRegistry>();
         services.TryAddSingleton<IIoStateMonitor, IoStateMonitor>();
+        services.TryAddSingleton<ILogicalIoService>(provider => provider.GetRequiredService<IIoStateMonitor>());
         services.TryAddSingleton<IHardwareInterruptWaiter>(provider => provider.GetRequiredService<IIoStateMonitor>());
         services.TryAddSingleton<ICameraRegistry, CameraRegistry>();
         services.TryAddSingleton<DeviceSafetyOptions>();
@@ -88,13 +89,35 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IMotionStateMonitor>(provider =>
             provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().StateMonitor);
         services.TryAddSingleton<IMotionStateProvider>(provider => provider.GetRequiredService<IMotionStateMonitor>());
-        services.TryAddSingleton<IMotionSafetyGuard, MotionSafetyGuard>();
-        services.TryAddSingleton<SafeAxisMotionController>();
+        services.TryAddSingleton<IMotionSafetyGuard>(provider =>
+        {
+            IMotionDeviceRuntime runtime = provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle();
+            return new MotionSafetyGuard(runtime.Card, runtime.StateMonitor, safetyOptions);
+        });
+        services.TryAddSingleton<SafeAxisMotionController>(provider =>
+        {
+            IMotionCard card = provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().Card;
+            if (card is not IAxisMotionController controller
+                || card is not IMotionProfileController profileController
+                || card is not IAxisStatusReader statusReader)
+            {
+                throw new InvalidOperationException($"Motion card '{card.DeviceId}' does not provide standard single-axis motion capabilities.");
+            }
+
+            return new SafeAxisMotionController(
+                controller,
+                profileController,
+                statusReader,
+                provider.GetRequiredService<IMotionSafetyGuard>());
+        });
         services.TryAddSingleton<ISafeAxisMotionController>(provider => provider.GetRequiredService<SafeAxisMotionController>());
         services.TryAddSingleton<IAxisMotionExecutor>(provider =>
             provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().AxisExecutor);
         services.TryAddSingleton<INamedPositionRepository, InMemoryNamedPositionRepository>();
         services.TryAddSingleton<INamedPositionMotionService, NamedPositionMotionService>();
+        services.TryAddSingleton<IAxisCoordinateTransformer>(provider =>
+            new AxisCoordinateTransformer(provider.GetService<IAxisErrorCompensationProvider>()));
+        services.TryAddSingleton<IRotaryAxisPathPlanner, RotaryAxisPathPlanner>();
 
         return services;
     }

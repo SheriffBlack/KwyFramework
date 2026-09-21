@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Kwy.Device.Abstractions.Instrument;
 using Kwy.Device.Abstractions.PLC;
 using Kwy.Device.Abstractions.IO;
+using Kwy.Device.Core.IO;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Profiles;
 using KwyTemplate.Flow.Common;
@@ -65,16 +66,20 @@ public sealed class ConfigurableMachine : MachineBase
         if (ioProfile != null && Devices.TryGet<IIoCardDevice>(ioProfile.DeviceId, out IIoCardDevice? ioCard) && ioCard != null)
         {
             BindIoCard(ioCard);
-            foreach (MachineIoPointProfile point in profile.IoPoints)
+            // 点位显示名是适配器的可选维护能力，不影响设备绑定。
+            if (ioCard is IIoPointRegistry pointRegistry)
             {
-                string displayName = string.IsNullOrWhiteSpace(point.DisplayName) ? point.Key : point.DisplayName;
-                if (point.Direction == MachineIoPointDirection.Input)
+                foreach (MachineIoPointProfile point in profile.IoPoints)
                 {
-                    ioCard.SetDiName(point.Channel, displayName);
-                }
-                else
-                {
-                    ioCard.SetDoName(point.Channel, displayName);
+                    string displayName = string.IsNullOrWhiteSpace(point.DisplayName) ? point.Key : point.DisplayName;
+                    if (point.Direction == MachineIoPointDirection.Input)
+                    {
+                        pointRegistry.SetDiName(point.Channel, displayName);
+                    }
+                    else
+                    {
+                        pointRegistry.SetDoName(point.Channel, displayName);
+                    }
                 }
             }
         }

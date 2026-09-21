@@ -194,7 +194,6 @@ public abstract class DeviceBase : IDevice
             {
                 RaiseErrorOccurred($"Device dispose timed out waiting for lifecycle operation after {ShutdownTimeout.TotalSeconds:0}s.");
                 disposed = true;
-                GC.SuppressFinalize(this);
                 return;
             }
 
@@ -219,8 +218,6 @@ public abstract class DeviceBase : IDevice
             {
                 lifecycleSemaphore.Dispose();
             }
-
-            GC.SuppressFinalize(this);
         }
     }
 

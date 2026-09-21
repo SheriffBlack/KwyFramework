@@ -19,9 +19,11 @@ public sealed class MotionStateMonitorOptions
 
     public IReadOnlyCollection<short> GetAxes()
     {
-        if (Axes is { Count: > 0 })
+        if (Axes is not null)
         {
-            return Axes;
+            if (Axes.Count == 0)
+                throw new InvalidOperationException("At least one monitored axis must be configured.");
+            return Axes.ToArray();
         }
 
         if (AxisCount < 1)
@@ -33,6 +35,9 @@ public sealed class MotionStateMonitorOptions
         {
             throw new InvalidOperationException("FirstAxis must be greater than or equal to 1.");
         }
+
+        if ((int)FirstAxis + AxisCount - 1 > short.MaxValue)
+            throw new InvalidOperationException("The configured axis range exceeds Int16.MaxValue.");
 
         var axes = new short[AxisCount];
         for (short i = 0; i < AxisCount; i++)
@@ -50,6 +55,10 @@ public sealed class MotionStateMonitorOptions
             throw new InvalidOperationException("PollInterval must be greater than zero.");
         }
 
-        _ = GetAxes();
+        IReadOnlyCollection<short> axes = GetAxes();
+        if (axes.Any(static axis => axis < 1))
+            throw new InvalidOperationException("Monitored axes must be greater than or equal to 1.");
+        if (axes.Distinct().Count() != axes.Count)
+            throw new InvalidOperationException("Monitored axes cannot contain duplicates.");
     }
 }

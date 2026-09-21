@@ -23,12 +23,14 @@ public sealed class MotionSafetyGuard : IMotionSafetyGuard
     private readonly IMotionCard card;
     private readonly IMotionStateProvider stateProvider;
     private readonly MotionSafetyOptions options;
+    private readonly IAxisDefinitionProvider? axisDefinitions;
 
     public MotionSafetyGuard(IMotionCard card, IMotionStateProvider stateProvider, MotionSafetyOptions options)
     {
         this.card = card ?? throw new ArgumentNullException(nameof(card));
         this.stateProvider = stateProvider ?? throw new ArgumentNullException(nameof(stateProvider));
         this.options = options ?? throw new ArgumentNullException(nameof(options));
+        axisDefinitions = card as IAxisDefinitionProvider;
     }
 
     public MotionSafetyResult Validate(MotionRequest request)
@@ -88,6 +90,21 @@ public sealed class MotionSafetyGuard : IMotionSafetyGuard
             && (target < limits.Negative || target > limits.Positive))
         {
             AddViolation(ref violations, "SoftwareLimit", $"Axis {request.Axis} target {target} is outside [{limits.Negative}, {limits.Positive}].");
+        }
+
+        if (request.TargetPosition is double definitionTarget && axisDefinitions is not null)
+        {
+            AxisDefinition definition = axisDefinitions.GetAxisDefinition(request.Axis);
+            if (definition.Safety.ForbiddenRanges.Any(range =>
+                    range.Contains(definitionTarget)
+                    || !range.Contains(snapshot.Position)
+                    && Math.Min(snapshot.Position, definitionTarget) <= range.Maximum
+                    && Math.Max(snapshot.Position, definitionTarget) >= range.Minimum))
+            {
+                AddViolation(ref violations, "ForbiddenRange", $"Axis {request.Axis} path to {definitionTarget} enters or crosses a forbidden range.");
+            }
+            if (definition.Rotary?.IsForbidden(definitionTarget) == true)
+                AddViolation(ref violations, "ForbiddenAngle", $"Axis {request.Axis} target {definitionTarget} is inside a forbidden angle range.");
         }
 
         foreach (var rule in options.AdditionalRules)

@@ -14,6 +14,15 @@ public interface IAxisEngineeringUnitProvider
     AxisEngineeringConfig GetAxisEngineeringConfig(short axis);
 }
 
+/// <summary>提供与厂商无关的完整轴定义。</summary>
+public interface IAxisDefinitionProvider : IAxisEngineeringUnitProvider
+{
+    AxisDefinition GetAxisDefinition(short axis);
+
+    AxisEngineeringConfig IAxisEngineeringUnitProvider.GetAxisEngineeringConfig(short axis)
+        => GetAxisDefinition(axis).Engineering;
+}
+
 public interface IHomeStatusReader
 {
     HomeStatus GetHomeStatus(short axis);
@@ -171,6 +180,21 @@ public sealed class MotionPositionException : MotionCompletionException
     public double ActualPosition { get; }
 
     public double Tolerance { get; }
+}
+
+public sealed class MotionFollowingErrorException : MotionCompletionException
+{
+    public MotionFollowingErrorException(short axis, double plannedPosition, double encoderPosition, double limit)
+        : base(axis, $"Axis {axis} following error {Math.Abs(plannedPosition - encoderPosition)} exceeds limit {limit}.")
+    {
+        PlannedPosition = plannedPosition;
+        EncoderPosition = encoderPosition;
+        Limit = limit;
+    }
+
+    public double PlannedPosition { get; }
+    public double EncoderPosition { get; }
+    public double Limit { get; }
 }
 
 public sealed class MotionServoDisabledException : MotionCompletionException

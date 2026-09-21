@@ -11,14 +11,14 @@ public sealed class AdvantechIoCardConfig : IDeviceConfig
     public const int MaxSupportedPorts = MaxSupportedChannels / 8;
 
     /// <summary>
-    /// Device description used by Advantech DAQNavi, for example "PCI-1730,BID#0".
+    /// 1730U 在 DAQNavi 中使用的设备描述，例如 "PCI-1730U,BID#0"。
     /// </summary>
-    public string DeviceDescription { get; set; } = "PCI-1730,BID#0";
+    public string DeviceDescription { get; set; } = "PCI-1730U,BID#0";
 
     /// <summary>
     /// Device model name exposed by Kwy.
     /// </summary>
-    public string Model { get; set; } = "PCI-1730";
+    public string Model { get; set; } = "PCI-1730U";
 
     /// <summary>
     /// Digital input port count. One port contains eight channels.
@@ -48,8 +48,9 @@ public sealed class AdvantechIoCardConfig : IDeviceConfig
     public bool Validate()
     {
         return !string.IsNullOrWhiteSpace(DeviceDescription)
+            && !string.IsNullOrWhiteSpace(Model)
             && DiPortCount is >= 1 and <= MaxSupportedPorts
             && DoPortCount is >= 1 and <= MaxSupportedPorts
-            && InterruptChannel is >= 0 and < MaxSupportedChannels;
+            && (!EnableInterrupt || InterruptChannel >= 0 && InterruptChannel < DiPortCount * 8);
     }
 }
