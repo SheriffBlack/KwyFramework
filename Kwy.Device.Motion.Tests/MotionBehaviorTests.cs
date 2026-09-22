@@ -153,12 +153,12 @@ public sealed class MotionBehaviorTests
     public async Task InMemoryNamedPositionRepository_ReplacesNamesCaseInsensitively()
     {
         var repository = new InMemoryNamedPositionRepository();
-        await repository.SaveAsync(new NamedPositionSet("Load", new Dictionary<short, double> { [1] = 10 }));
-        await repository.SaveAsync(new NamedPositionSet("load", new Dictionary<short, double> { [1] = 20 }));
+        await repository.SaveAsync(new NamedPositionSet("Load", new Dictionary<string, double> { ["stage.x"] = 10 }));
+        await repository.SaveAsync(new NamedPositionSet("load", new Dictionary<string, double> { ["stage.x"] = 20 }));
 
         IReadOnlyList<NamedPositionSet> all = await repository.GetAllAsync();
         Assert.Single(all);
-        Assert.Equal(20, (await repository.GetAsync("LOAD"))!.Positions[1]);
+        Assert.Equal(20, (await repository.GetAsync("LOAD"))!.Positions["stage.x"]);
     }
 
     [Fact]

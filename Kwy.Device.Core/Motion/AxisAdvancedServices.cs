@@ -110,7 +110,7 @@ public sealed class MultiAxisSafetyGuard : IMultiAxisSafetyGuard
             zone.Validate();
     }
 
-    public MotionSafetyResult Validate(IReadOnlyDictionary<short, double> targetPositions)
+    public MotionSafetyResult Validate(IReadOnlyDictionary<string, double> targetPositions)
     {
         ArgumentNullException.ThrowIfNull(targetPositions);
         MotionSafetyViolation[] violations = zones

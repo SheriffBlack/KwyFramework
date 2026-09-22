@@ -2,17 +2,12 @@ using Kwy.Communicate.Abstractions.Events;
 
 namespace Kwy.Device.Abstractions.Motion;
 
-/// <summary>
-/// Marker and lifecycle interface for motion cards.
-/// Advanced capabilities are expressed by separate capability interfaces.
-/// </summary>
+/// <summary>物理运动控制卡的设备生命周期入口；工艺层不应直接依赖它。</summary>
 public interface IMotionCard : IDevice, IConfigurableDevice
 {
 }
 
-/// <summary>
-/// Standard motion card capability set for common single-axis motion scenarios.
-/// </summary>
+/// <summary>常规物理卡能力集合，参数中的 short axis 都是卡内通道号。</summary>
 public interface IStandardMotionCard :
     IMotionCard,
     IAxisMotionController,
@@ -20,23 +15,19 @@ public interface IStandardMotionCard :
     IAxisStatusReader,
     IAxisSnapshotReader,
     IHomeStatusReader,
+    IAxisFaultReader,
     IMotionWaiter
 {
 }
 
-/// <summary>
-/// Advanced motion card capability set for cards that support coordinate interpolation.
-/// Optional features such as IO and position compare output remain separate capabilities.
-/// </summary>
+/// <summary>支持坐标系插补的物理卡能力；电子凸轮、齿轮等仍应以独立可选能力表达。</summary>
 public interface IAdvancedMotionCard :
     IStandardMotionCard,
     IInterpolationMotionController
 {
 }
 
-/// <summary>
-/// Basic single-axis motion control capability.
-/// </summary>
+/// <summary>物理单轴控制能力，仅供设备适配器和 Core 执行器使用。</summary>
 public interface IAxisMotionController
 {
     void ServoOn(short axis);
@@ -44,10 +35,6 @@ public interface IAxisMotionController
     void ServoOff(short axis);
 
     void ClearError(short axis);
-
-    void MoveAbs(short axis, double position, double velocity, double acc = 0.5, double dec = 0.5);
-
-    void MoveRel(short axis, double distance, double velocity, double acc = 0.5, double dec = 0.5);
 
     void MoveJog(short axis, double velocity);
 
@@ -60,9 +47,7 @@ public interface IAxisMotionController
     void SetSoftLimit(short axis, double positive, double negative);
 }
 
-/// <summary>
-/// Axis status and position read capability.
-/// </summary>
+/// <summary>读取厂商原始轴状态的能力；业务诊断应优先使用状态监视器快照。</summary>
 public interface IAxisStatusReader
 {
     double GetPosition(short axis);
@@ -82,30 +67,25 @@ public interface IAxisStatusReader
     bool IsAlarm(short axis);
 }
 
-/// <summary>
-/// Axis state snapshot read capability.
-/// </summary>
+/// <summary>读取一次物理轴状态快照，适用于厂商支持的原子读取。</summary>
 public interface IAxisSnapshotReader
 {
     MotionAxisSnapshot GetAxisSnapshot(short axis);
 }
 
-/// <summary>
-/// Bulk axis state snapshot read capability.
-/// </summary>
+/// <summary>批量读取多轴快照，供状态监视器降低 SDK 调用次数。</summary>
 public interface IBulkAxisSnapshotReader
 {
     MotionAxisSnapshot[] GetMultipleAxisSnapshots(short[] axes);
 }
 
+/// <summary>由调用方提供缓冲区的批量快照读取，避免后台扫描产生数组分配。</summary>
 public interface IBufferedAxisSnapshotReader
 {
     void GetMultipleAxisSnapshots(short[] axes, MotionAxisSnapshot[] destination);
 }
 
-/// <summary>
-/// Cached or live motion state access.
-/// </summary>
+/// <summary>供 Core 与诊断读取的轴状态来源，可能是缓存快照或直接硬件读取。</summary>
 public interface IMotionStateProvider
 {
     event Action<MotionAxisSnapshot>? AxisSnapshotCaptured;
@@ -119,9 +99,7 @@ public interface IMotionStateProvider
     IReadOnlyDictionary<short, MotionAxisSnapshot> GetAllAxisSnapshots();
 }
 
-/// <summary>
-/// Background motion state monitor that keeps axis snapshots up to date.
-/// </summary>
+/// <summary>后台状态监视器；负责刷新、事件发布与故障检测，不负责下发运动命令。</summary>
 public interface IMotionStateMonitor : IMotionStateProvider, IDisposable, IAsyncDisposable
 {
     bool IsRunning { get; }
@@ -131,9 +109,7 @@ public interface IMotionStateMonitor : IMotionStateProvider, IDisposable, IAsync
     Task StopAsync(CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Coordinate interpolation capability.
-/// </summary>
+/// <summary>控制器原生坐标系插补能力；业务应通过 IMotionGroupExecutor 使用业务轴 ID。</summary>
 public interface IInterpolationMotionController
 {
     void InitCoordinateSystem(short crdIndex, short[] axes);
@@ -158,9 +134,7 @@ public interface IInterpolationMotionController
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Optional position synchronized output / compare output capability.
-/// </summary>
+/// <summary>可选的位置比较输出能力，例如飞拍或点胶触发；参数均为物理卡层单位。</summary>
 public interface IPositionCompareOutput
 {
     void EnablePso(short axis, double[] triggerPositions, double pulseScale = 10000.0, short pulseWidthUs = 20);
@@ -168,6 +142,7 @@ public interface IPositionCompareOutput
     void DisablePso();
 }
 
+/// <summary>等待物理卡动作结束的底层能力；超时与到位判定由调用方明确传入。</summary>
 public interface IMotionWaiter
 {
     Task WaitForAxisStoppedAsync(short axis, CancellationToken cancellationToken = default);

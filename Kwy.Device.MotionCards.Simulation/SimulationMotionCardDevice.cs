@@ -48,6 +48,8 @@ public sealed class SimulationMotionCardDevice :
 
     public override string DeviceModel => "Simulation";
 
+    public IReadOnlyCollection<AxisDefinition> Axes => config.Axes.Values.ToArray();
+
     protected override Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -88,11 +90,11 @@ public sealed class SimulationMotionCardDevice :
 
     public override void ClearError(short axis) => GetState(axis).Update(state => state.Alarm = false);
 
-    public override void MoveAbs(short axis, double position, double velocity, double acc = 0.5, double dec = 0.5)
+    protected override void MoveAbsCore(short axis, double position, double velocity, double acc, double dec)
         => StartPositionMove(GetState(axis), position, new MotionProfile(velocity, acc, dec));
 
-    public override void MoveRel(short axis, double distance, double velocity, double acc = 0.5, double dec = 0.5)
-        => MoveAbs(axis, GetPosition(axis) + distance, velocity, acc, dec);
+    protected override void MoveRelCore(short axis, double distance, double velocity, double acc, double dec)
+        => MoveAbsCore(axis, GetPosition(axis) + distance, velocity, acc, dec);
 
     public override void MoveJog(short axis, double velocity)
     {

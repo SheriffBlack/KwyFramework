@@ -67,14 +67,14 @@ public sealed class AxisAdvancedServicesTests
     public void MultiAxisGuard_RejectsTargetInsideForbiddenZone()
     {
         var guard = new MultiAxisSafetyGuard([
-            new MultiAxisForbiddenZone("camera", new Dictionary<short, AxisForbiddenRange>
+            new MultiAxisForbiddenZone("camera", new Dictionary<string, AxisForbiddenRange>
             {
-                [1] = new(10, 20),
-                [2] = new(30, 40)
+                ["stage.x"] = new(10, 20),
+                ["stage.y"] = new(30, 40)
             })
         ]);
 
-        MotionSafetyResult result = guard.Validate(new Dictionary<short, double> { [1] = 15, [2] = 35 });
+        MotionSafetyResult result = guard.Validate(new Dictionary<string, double> { ["stage.x"] = 15, ["stage.y"] = 35 });
 
         Assert.False(result.IsAllowed);
         Assert.Equal("ForbiddenZone", Assert.Single(result.Violations).Code);
@@ -84,7 +84,7 @@ public sealed class AxisAdvancedServicesTests
     public void MultiAxisGuard_RejectsEmptyZoneDefinition()
     {
         Assert.Throws<ArgumentException>(() => new MultiAxisSafetyGuard([
-            new MultiAxisForbiddenZone("empty", new Dictionary<short, AxisForbiddenRange>())
+            new MultiAxisForbiddenZone("empty", new Dictionary<string, AxisForbiddenRange>())
         ]));
     }
 

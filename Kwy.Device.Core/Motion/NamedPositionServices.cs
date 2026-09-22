@@ -47,7 +47,7 @@ public sealed class InMemoryNamedPositionRepository : INamedPositionRepository
             throw new ArgumentException("A named position must contain at least one axis.", nameof(position));
         }
 
-        if (position.Positions.Keys.Any(axis => axis < 1)
+        if (position.Positions.Keys.Any(string.IsNullOrWhiteSpace)
             || position.Positions.Values.Any(value => !double.IsFinite(value)))
         {
             throw new ArgumentException("Named position contains an invalid axis or position.", nameof(position));
@@ -177,20 +177,14 @@ public sealed class JsonNamedPositionRepository : INamedPositionRepository
 public sealed class NamedPositionMotionService : INamedPositionMotionService
 {
     private readonly INamedPositionRepository repository;
-    private readonly IAxisMotionExecutor executor;
-    private readonly IMotionStateProvider stateProvider;
-    private readonly IMotionSafetyGuard safetyGuard;
+    private readonly IBusinessAxisMotionExecutor executor;
 
     public NamedPositionMotionService(
         INamedPositionRepository repository,
-        IAxisMotionExecutor executor,
-        IMotionStateProvider stateProvider,
-        IMotionSafetyGuard safetyGuard)
+        IBusinessAxisMotionExecutor executor)
     {
         this.repository = repository;
         this.executor = executor;
-        this.stateProvider = stateProvider;
-        this.safetyGuard = safetyGuard;
     }
 
     public async Task MoveToAsync(string name, MotionProfile profile, TimeSpan timeout, CancellationToken cancellationToken = default)
@@ -204,21 +198,11 @@ public sealed class NamedPositionMotionService : INamedPositionMotionService
             Timeout = timeout
         };
 
-        foreach ((short axis, double position) in target.Positions)
-        {
-            MotionAxisSnapshot snapshot = stateProvider.GetAxisSnapshot(axis);
-            safetyGuard.ValidateAndThrow(new(
-                axis,
-                MotionRequestKind.Absolute,
-                position,
-                Math.Sign(position - snapshot.Position)));
-        }
-
         var tasks = new Task<MotionCompletionResult>[target.Positions.Count];
         int index = 0;
-        foreach ((short axis, double position) in target.Positions)
+        foreach ((string axisId, double position) in target.Positions)
         {
-            tasks[index++] = executor.MoveAbsAsync(axis, position, profile, options, cancellationToken);
+            tasks[index++] = executor.MoveAbsAsync(axisId, position, profile, options, cancellationToken);
         }
 
         await Task.WhenAll(tasks).ConfigureAwait(false);

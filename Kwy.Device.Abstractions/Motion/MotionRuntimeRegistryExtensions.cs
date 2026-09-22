@@ -1,7 +1,7 @@
 namespace Kwy.Device.Abstractions.Motion;
 
 /// <summary>
-/// Convenience accessors for resolving motion card capabilities by device id.
+/// 通过设备ID便捷地访问运动卡功能的辅助工具。
 /// </summary>
 public static class MotionRuntimeRegistryExtensions
 {

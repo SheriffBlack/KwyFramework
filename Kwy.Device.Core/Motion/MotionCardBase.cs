@@ -25,18 +25,20 @@ public abstract class MotionCardBase :
     public abstract void ServoOff(short axis);
     public abstract void ClearError(short axis);
 
-    public abstract void MoveAbs(short axis, double position, double velocity, double acc = 0.5, double dec = 0.5);
-    public abstract void MoveRel(short axis, double distance, double velocity, double acc = 0.5, double dec = 0.5);
+    /// <summary>厂商卡内部的原始绝对运动实现；公开调用必须提供 MotionProfile。</summary>
+    protected abstract void MoveAbsCore(short axis, double position, double velocity, double acc, double dec);
+    /// <summary>厂商卡内部的原始相对运动实现；公开调用必须提供 MotionProfile。</summary>
+    protected abstract void MoveRelCore(short axis, double distance, double velocity, double acc, double dec);
     public virtual void MoveAbs(short axis, double position, MotionProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        MoveAbs(axis, position, profile.Velocity, profile.Acceleration, profile.Deceleration);
+        MoveAbsCore(axis, position, profile.Velocity, profile.Acceleration, profile.Deceleration);
     }
 
     public virtual void MoveRel(short axis, double distance, MotionProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        MoveRel(axis, distance, profile.Velocity, profile.Acceleration, profile.Deceleration);
+        MoveRelCore(axis, distance, profile.Velocity, profile.Acceleration, profile.Deceleration);
     }
     public abstract void MoveJog(short axis, double velocity);
     public abstract void Stop(short axis);
@@ -56,20 +58,35 @@ public abstract class MotionCardBase :
     public virtual HomeStatus GetHomeStatus(short axis)
         => new(axis, HomeState.Unknown, 0);
 
+    /// <summary>基础映射覆盖所有卡通用状态；厂商适配器可重写以映射详细驱动器错误码。</summary>
+    public virtual AxisFault? GetAxisFault(short axis)
+    {
+        int rawStatus = GetStatus(axis);
+        if (IsAlarm(axis))
+            return new(AxisFaultCode.ControllerAlarm, AxisFaultSeverity.StopRequired, "控制器报告轴报警。", rawStatus, "清除报警并确认驱动器及机械状态后再恢复。");
+        if (IsPositiveLimit(axis))
+            return new(AxisFaultCode.PositiveLimitReached, AxisFaultSeverity.StopRequired, "轴触发正限位。", rawStatus, "仅允许向负方向脱离限位。");
+        if (IsNegativeLimit(axis))
+            return new(AxisFaultCode.NegativeLimitReached, AxisFaultSeverity.StopRequired, "轴触发负限位。", rawStatus, "仅允许向正方向脱离限位。");
+        return null;
+    }
+
     public virtual MotionAxisSnapshot GetAxisSnapshot(short axis)
     {
+        int rawStatus = GetStatus(axis);
         return new MotionAxisSnapshot(
             axis,
             GetPosition(axis),
             GetEncoderPosition(axis),
             GetVelocity(axis),
-            GetStatus(axis),
+            rawStatus,
             IsMoving(axis),
             IsAlarm(axis),
             IsPositiveLimit(axis),
             IsNegativeLimit(axis),
             DateTimeOffset.Now,
-            homeState: GetHomeStatus(axis).State);
+            homeState: GetHomeStatus(axis).State,
+            fault: GetAxisFault(axis));
     }
 
     public virtual Task WaitForAxisStoppedAsync(short axis, CancellationToken cancellationToken = default)

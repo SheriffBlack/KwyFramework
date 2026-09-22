@@ -1,8 +1,6 @@
 namespace Kwy.Device.Abstractions.Motion;
 
-/// <summary>
-/// Immutable axis state snapshot.
-/// </summary>
+/// <summary>某一时刻的物理轴不可变快照；用于监视、诊断和执行器闭环，不作为业务配置。</summary>
 public readonly record struct MotionAxisSnapshot
 {
     public MotionAxisSnapshot(
@@ -17,7 +15,8 @@ public readonly record struct MotionAxisSnapshot
         bool isNegativeLimit,
         DateTimeOffset timestamp,
         bool isServoEnabled = false,
-        HomeState homeState = HomeState.Unknown)
+        HomeState homeState = HomeState.Unknown,
+        AxisFault? fault = null)
     {
         Axis = axis;
         Position = position;
@@ -31,16 +30,21 @@ public readonly record struct MotionAxisSnapshot
         Timestamp = timestamp;
         IsServoEnabled = isServoEnabled;
         HomeState = homeState;
+        Fault = fault;
     }
 
+    /// <summary>控制卡内物理轴通道号。</summary>
     public short Axis { get; }
 
+    /// <summary>控制器规划位置，单位为轴工程单位。</summary>
     public double Position { get; }
 
+    /// <summary>编码器反馈位置，用于跟随误差和精密到位诊断。</summary>
     public double EncoderPosition { get; }
 
     public double Velocity { get; }
 
+    /// <summary>厂商原始状态字，仅供底层映射与诊断，不应由工艺层判断位含义。</summary>
     public int RawStatus { get; }
 
     public bool IsMoving { get; }
@@ -57,6 +61,9 @@ public readonly record struct MotionAxisSnapshot
 
     public HomeState HomeState { get; }
 
+    /// <summary>已映射的当前主故障；RawStatus 仍保留给厂商诊断。</summary>
+    public AxisFault? Fault { get; }
+
     public bool HasSameState(MotionAxisSnapshot other)
     {
         return Axis == other.Axis
@@ -69,6 +76,7 @@ public readonly record struct MotionAxisSnapshot
             && IsPositiveLimit == other.IsPositiveLimit
             && IsNegativeLimit == other.IsNegativeLimit
             && IsServoEnabled == other.IsServoEnabled
-            && HomeState == other.HomeState;
+            && HomeState == other.HomeState
+            && EqualityComparer<AxisFault?>.Default.Equals(Fault, other.Fault);
     }
 }

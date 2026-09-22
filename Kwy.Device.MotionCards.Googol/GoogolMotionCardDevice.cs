@@ -57,6 +57,9 @@ public sealed class GoogolMotionCardDevice :
 
     public override string DeviceModel => config.Model;
 
+    /// <summary>运行时仅暴露轴定义快照，避免调用方修改设备配置集合。</summary>
+    public IReadOnlyCollection<AxisDefinition> Axes => config.Axes.ToArray();
+
     public int DigitalInputCount => config.DiChannelCount;
 
     public int DigitalOutputCount => config.DoChannelCount;
@@ -168,7 +171,7 @@ public sealed class GoogolMotionCardDevice :
         });
     }
 
-    public override void MoveAbs(short axis, double position, double velocity, double acc = 0.5, double dec = 0.5)
+    protected override void MoveAbsCore(short axis, double position, double velocity, double acc, double dec)
     {
         EnsureReady();
         ValidateAxis(axis);
@@ -190,9 +193,9 @@ public sealed class GoogolMotionCardDevice :
         });
     }
 
-    public override void MoveRel(short axis, double distance, double velocity, double acc = 0.5, double dec = 0.5)
+    protected override void MoveRelCore(short axis, double distance, double velocity, double acc, double dec)
     {
-        MoveAbs(axis, GetPosition(axis) + distance, velocity, acc, dec);
+        MoveAbsCore(axis, GetPosition(axis) + distance, velocity, acc, dec);
     }
 
     public override void MoveJog(short axis, double velocity)

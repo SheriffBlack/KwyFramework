@@ -24,13 +24,15 @@ public sealed class MotionSafetyGuard : IMotionSafetyGuard
     private readonly IMotionStateProvider stateProvider;
     private readonly MotionSafetyOptions options;
     private readonly IAxisDefinitionProvider? axisDefinitions;
+    private readonly IAxisHomeLifecycle? homeLifecycle;
 
-    public MotionSafetyGuard(IMotionCard card, IMotionStateProvider stateProvider, MotionSafetyOptions options)
+    public MotionSafetyGuard(IMotionCard card, IMotionStateProvider stateProvider, MotionSafetyOptions options, IAxisHomeLifecycle? homeLifecycle = null)
     {
         this.card = card ?? throw new ArgumentNullException(nameof(card));
         this.stateProvider = stateProvider ?? throw new ArgumentNullException(nameof(stateProvider));
         this.options = options ?? throw new ArgumentNullException(nameof(options));
         axisDefinitions = card as IAxisDefinitionProvider;
+        this.homeLifecycle = homeLifecycle;
     }
 
     public MotionSafetyResult Validate(MotionRequest request)
@@ -73,6 +75,12 @@ public sealed class MotionSafetyGuard : IMotionSafetyGuard
         if (requiresHomed && snapshot.HomeState != HomeState.Succeeded)
         {
             AddViolation(ref violations, "NotHomed", $"Axis {request.Axis} has not completed homing.");
+        }
+        if (requiresHomed && axisDefinitions is not null && homeLifecycle is not null)
+        {
+            AxisHomeLifecycleSnapshot lifecycle = homeLifecycle.Get(axisDefinitions.GetAxisDefinition(request.Axis).Id);
+            if (lifecycle.Validity != AxisHomeValidity.Valid)
+                AddViolation(ref violations, "HomeValidity", $"Axis {request.Axis} homing is not trusted. State={lifecycle.Validity}.");
         }
 
         if (request.Direction > 0 && snapshot.IsPositiveLimit)
@@ -138,38 +146,39 @@ public sealed class SafeAxisMotionController : ISafeAxisMotionController
     private readonly IMotionProfileController profileController;
     private readonly IAxisStatusReader statusReader;
     private readonly IMotionSafetyGuard safetyGuard;
+    private readonly IAxisDefinitionProvider? definitions;
+    private readonly IAxisHomeLifecycle? homeLifecycle;
 
     public SafeAxisMotionController(
         IAxisMotionController inner,
         IMotionProfileController profileController,
         IAxisStatusReader statusReader,
-        IMotionSafetyGuard safetyGuard)
+        IMotionSafetyGuard safetyGuard,
+        IAxisDefinitionProvider? definitions = null,
+        IAxisHomeLifecycle? homeLifecycle = null)
     {
         this.inner = inner;
         this.profileController = profileController;
         this.statusReader = statusReader;
         this.safetyGuard = safetyGuard;
+        this.definitions = definitions;
+        this.homeLifecycle = homeLifecycle;
     }
 
     public void ServoOn(short axis) => inner.ServoOn(axis);
-    public void ServoOff(short axis) => inner.ServoOff(axis);
-    public void ClearError(short axis) => inner.ClearError(axis);
+    public void ServoOff(short axis)
+    {
+        inner.ServoOff(axis);
+        InvalidateHome(axis, AxisHomeInvalidationReason.ServoDisabled);
+    }
+    public void ClearError(short axis)
+    {
+        inner.ClearError(axis);
+        InvalidateHome(axis, AxisHomeInvalidationReason.AlarmReset);
+    }
     public void Stop(short axis) => inner.Stop(axis);
     public void Abort(short axis) => inner.Abort(axis);
     public void SetSoftLimit(short axis, double positive, double negative) => inner.SetSoftLimit(axis, positive, negative);
-
-    public void MoveAbs(short axis, double position, double velocity, double acc = 0.5, double dec = 0.5)
-    {
-        safetyGuard.ValidateAndThrow(new(axis, MotionRequestKind.Absolute, position, Math.Sign(position - statusReader.GetPosition(axis))));
-        inner.MoveAbs(axis, position, velocity, acc, dec);
-    }
-
-    public void MoveRel(short axis, double distance, double velocity, double acc = 0.5, double dec = 0.5)
-    {
-        double target = statusReader.GetPosition(axis) + distance;
-        safetyGuard.ValidateAndThrow(new(axis, MotionRequestKind.Relative, target, Math.Sign(distance)));
-        inner.MoveRel(axis, distance, velocity, acc, dec);
-    }
 
     public void MoveAbs(short axis, double position, MotionProfile profile)
     {
@@ -194,5 +203,11 @@ public sealed class SafeAxisMotionController : ISafeAxisMotionController
     {
         safetyGuard.ValidateAndThrow(new(axis, MotionRequestKind.Home, RequiresHomed: false));
         inner.GoHome(axis);
+    }
+
+    private void InvalidateHome(short axis, AxisHomeInvalidationReason reason)
+    {
+        if (definitions is not null && homeLifecycle is not null)
+            homeLifecycle.Invalidate(definitions.GetAxisDefinition(axis).Id, reason);
     }
 }

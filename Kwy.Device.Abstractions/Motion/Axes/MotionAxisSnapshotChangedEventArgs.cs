@@ -1,7 +1,7 @@
 namespace Kwy.Device.Abstractions.Motion;
 
 /// <summary>
-/// Event data for axis snapshot changes.
+/// 轴快照更改的事件数据。
 /// </summary>
 public sealed class MotionAxisSnapshotChangedEventArgs : EventArgs
 {

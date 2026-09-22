@@ -165,7 +165,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         await EnsureMonitorStartedAsync().ConfigureAwait(false);
         safetyGuard.ValidateAndThrow(new(axis, MotionRequestKind.Jog, Direction: Math.Sign(velocity), RequiresHomed: false));
 
-        var operation = new SensorSeekOperation(this, axis, channel, options, cancellationToken);
+        var operation = new SensorSeekOperation(this, axis, $"physical.di.{channel}", options, cancellationToken);
         AddOperation(operation);
         EventHandler<IoSignalSnapshot>? handler = null;
         IHardwareInterruptSource? interruptSource = null;
@@ -199,7 +199,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
 
             if (!operation.IsCompleted)
             {
-                _ = PollSensorAsync(ioDevice, operation, options.PollInterval);
+                _ = PollSensorAsync(() => ioDevice.ReadDiBit(channel), operation, options.PollInterval);
             }
 
             return await operation.Task.ConfigureAwait(false);
@@ -215,6 +215,54 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
             {
                 interruptSource.HardwareInterruptReceived -= handler;
             }
+        }
+    }
+
+    public async Task<SensorSeekResult> SeekSensorAsync(
+        short axis,
+        string sensorPointId,
+        Func<bool> readSensorState,
+        double velocity,
+        SensorSeekOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        ArgumentException.ThrowIfNullOrWhiteSpace(sensorPointId);
+        ArgumentNullException.ThrowIfNull(readSensorState);
+        options ??= new SensorSeekOptions();
+        options.Validate();
+        if (!double.IsFinite(velocity) || velocity == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(velocity));
+        }
+
+        await EnsureMonitorStartedAsync().ConfigureAwait(false);
+        safetyGuard.ValidateAndThrow(new(axis, MotionRequestKind.Jog, Direction: Math.Sign(velocity), RequiresHomed: false));
+
+        var operation = new SensorSeekOperation(this, axis, sensorPointId, options, cancellationToken);
+        AddOperation(operation);
+        try
+        {
+            if (readSensorState() == options.ExpectedState)
+            {
+                operation.SignalSensor();
+            }
+            else if (!operation.IsCompleted)
+            {
+                controller.MoveJog(axis, velocity);
+            }
+
+            if (!operation.IsCompleted)
+            {
+                _ = PollSensorAsync(readSensorState, operation, options.PollInterval);
+            }
+
+            return await operation.Task.ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!operation.IsCompleted)
+        {
+            operation.TrySetException(exception);
+            throw;
         }
     }
 
@@ -239,7 +287,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
     }
 
     private async Task PollSensorAsync(
-        IIoCardDevice ioDevice,
+        Func<bool> readSensorState,
         SensorSeekOperation operation,
         TimeSpan pollInterval)
     {
@@ -248,7 +296,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         {
             while (!operation.IsCompleted && await timer.WaitForNextTickAsync(operation.OperationToken).ConfigureAwait(false))
             {
-                if (ioDevice.ReadDiBit(operation.Channel) == operation.ExpectedState)
+                if (readSensorState() == operation.ExpectedState)
                 {
                     operation.SignalSensor();
                     return;
@@ -572,17 +620,17 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         public SensorSeekOperation(
             AxisMotionExecutor owner,
             short axis,
-            int channel,
+            string sensorPointId,
             SensorSeekOptions options,
             CancellationToken cancellationToken)
             : base(owner, axis, options.Timeout, cancellationToken)
         {
             this.owner = owner;
-            Channel = channel;
+            SensorPointId = sensorPointId;
             this.options = options;
         }
 
-        public int Channel { get; }
+        public string SensorPointId { get; }
 
         public bool ExpectedState => options.ExpectedState;
 
@@ -623,7 +671,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
 
             if (Volatile.Read(ref sensorTriggered) != 0 && !snapshot.IsMoving && TryComplete())
             {
-                completion.TrySetResult(new(Axis, Channel, snapshot.EncoderPosition, options.StopMode));
+                completion.TrySetResult(new(Axis, SensorPointId, snapshot.EncoderPosition, options.StopMode));
             }
         }
 

@@ -24,6 +24,10 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IDeviceRegistry, DeviceRegistry>();
         services.TryAddSingleton<IIoStateMonitor, IoStateMonitor>();
         services.TryAddSingleton<ILogicalIoService>(provider => provider.GetRequiredService<IIoStateMonitor>());
+        services.TryAddSingleton<ILogicalIoReader>(provider => provider.GetRequiredService<IIoStateMonitor>());
+        services.TryAddSingleton<ILogicalIoWriter>(provider => provider.GetRequiredService<IIoStateMonitor>());
+        services.TryAddSingleton<IIoSafetyController>(provider => provider.GetRequiredService<IIoStateMonitor>());
+        services.TryAddSingleton<IIoStateSubscription>(provider => provider.GetRequiredService<IIoStateMonitor>());
         services.TryAddSingleton<IHardwareInterruptWaiter>(provider => provider.GetRequiredService<IIoStateMonitor>());
         services.TryAddSingleton<ICameraRegistry, CameraRegistry>();
         services.TryAddSingleton<DeviceSafetyOptions>();
@@ -92,7 +96,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IMotionSafetyGuard>(provider =>
         {
             IMotionDeviceRuntime runtime = provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle();
-            return new MotionSafetyGuard(runtime.Card, runtime.StateMonitor, safetyOptions);
+            return new MotionSafetyGuard(runtime.Card, runtime.StateMonitor, safetyOptions, provider.GetRequiredService<IAxisHomeLifecycle>());
         });
         services.TryAddSingleton<SafeAxisMotionController>(provider =>
         {
@@ -108,17 +112,98 @@ public static class ServiceCollectionExtensions
                 controller,
                 profileController,
                 statusReader,
-                provider.GetRequiredService<IMotionSafetyGuard>());
+                provider.GetRequiredService<IMotionSafetyGuard>(),
+                card as IAxisDefinitionProvider,
+                provider.GetRequiredService<IAxisHomeLifecycle>());
         });
         services.TryAddSingleton<ISafeAxisMotionController>(provider => provider.GetRequiredService<SafeAxisMotionController>());
         services.TryAddSingleton<IAxisMotionExecutor>(provider =>
             provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().AxisExecutor);
+        services.TryAddSingleton<IBusinessAxisMotionExecutor, BusinessAxisMotionExecutor>();
+        services.TryAddSingleton<IMotionResourceLock, MotionResourceLock>();
+        services.TryAddSingleton<MotionOperationTracker>();
+        services.TryAddSingleton<IMotionOperationTracker>(provider => provider.GetRequiredService<MotionOperationTracker>());
+        services.TryAddSingleton<IAxisHomeLifecycle, AxisHomeLifecycle>();
         services.TryAddSingleton<INamedPositionRepository, InMemoryNamedPositionRepository>();
         services.TryAddSingleton<INamedPositionMotionService, NamedPositionMotionService>();
         services.TryAddSingleton<IAxisCoordinateTransformer>(provider =>
             new AxisCoordinateTransformer(provider.GetService<IAxisErrorCompensationProvider>()));
         services.TryAddSingleton<IRotaryAxisPathPlanner, RotaryAxisPathPlanner>();
 
+        return services;
+    }
+
+    /// <summary>注册启动期运动组配置、配置校验与自动模式门禁。</summary>
+    public static IServiceCollection AddKwyMotionGroups(
+        this IServiceCollection services,
+        IEnumerable<MotionGroupDefinition> groups,
+        IEnumerable<IoPoint>? ioPoints = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        var groupDefinitions = groups?.ToArray() ?? throw new ArgumentNullException(nameof(groups));
+        var pointDefinitions = ioPoints?.ToArray() ?? Array.Empty<IoPoint>();
+        services.AddSingleton<IMotionGroupDefinitionProvider>(_ => new MotionGroupDefinitionProvider(groupDefinitions));
+        services.AddSingleton<IMotionConfigurationValidator>(provider => new MotionConfigurationValidator(
+            provider.GetRequiredService<IMotionRuntimeRegistry>(),
+            provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
+            pointDefinitions,
+            provider.GetService<IVirtualAxisDefinitionProvider>(),
+            provider.GetService<IMotionSynchronizationDefinitionProvider>()));
+        services.AddSingleton<IMotionAutoModeGate, MotionAutoModeGate>();
+        services.AddSingleton<IMotionGroupExecutor, MotionGroupExecutor>();
+        return services;
+    }
+
+    /// <summary>注册虚拟轴、电子齿轮与电子凸轮的设备配置定义。</summary>
+    public static IServiceCollection AddKwyMotionSynchronizations(
+        this IServiceCollection services,
+        IEnumerable<VirtualAxisDefinition>? virtualAxes = null,
+        IEnumerable<ElectronicGearDefinition>? electronicGears = null,
+        IEnumerable<ElectronicCamDefinition>? electronicCams = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        VirtualAxisDefinition[] virtualAxisDefinitions = virtualAxes?.ToArray() ?? [];
+        ElectronicGearDefinition[] gearDefinitions = electronicGears?.ToArray() ?? [];
+        ElectronicCamDefinition[] camDefinitions = electronicCams?.ToArray() ?? [];
+        services.AddSingleton<MotionSynchronizationDefinitionProvider>(_ => new MotionSynchronizationDefinitionProvider(
+            virtualAxisDefinitions,
+            gearDefinitions,
+            camDefinitions));
+        services.AddSingleton<IVirtualAxisDefinitionProvider>(provider => provider.GetRequiredService<MotionSynchronizationDefinitionProvider>());
+        services.AddSingleton<IMotionSynchronizationDefinitionProvider>(provider => provider.GetRequiredService<MotionSynchronizationDefinitionProvider>());
+        return services;
+    }
+
+    /// <summary>
+    /// 注册空间坐标与机构运动入口。
+    /// 调用方需额外注册对应机构的 IKinematicsSolver；框架不假设任何六轴机构的几何尺寸或逆解公式。
+    /// </summary>
+    public static IServiceCollection AddKwySpatialMotion(
+        this IServiceCollection services,
+        IEnumerable<CoordinateFrameDefinition> coordinateFrames,
+        IEnumerable<KinematicMechanismDefinition> mechanisms)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        CoordinateFrameDefinition[] frameDefinitions = coordinateFrames?.ToArray() ?? throw new ArgumentNullException(nameof(coordinateFrames));
+        KinematicMechanismDefinition[] mechanismDefinitions = mechanisms?.ToArray() ?? throw new ArgumentNullException(nameof(mechanisms));
+        services.AddSingleton<CoordinateTransformService>(_ => new CoordinateTransformService(frameDefinitions));
+        services.AddSingleton<ICoordinateTransformService>(provider => provider.GetRequiredService<CoordinateTransformService>());
+        services.AddSingleton<ICoordinateFrameRegistry>(provider => provider.GetRequiredService<CoordinateTransformService>());
+        services.TryAddSingleton<ICartesianTrajectoryPlanner, CartesianTrajectoryPlanner>();
+        services.AddSingleton<IMotionPlanningPipeline>(provider => new MotionPlanningPipeline(
+            mechanismDefinitions,
+            provider.GetServices<IKinematicsSolver>(),
+            provider.GetRequiredService<ICoordinateFrameRegistry>(),
+            provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
+            provider.GetRequiredService<IMotionRuntimeRegistry>(),
+            provider.GetRequiredService<ICartesianTrajectoryPlanner>()));
+        services.AddSingleton<IPoseMotionExecutor>(provider => new PoseMotionExecutor(
+            mechanismDefinitions,
+            provider.GetServices<IKinematicsSolver>(),
+            provider.GetRequiredService<ICoordinateTransformService>(),
+            provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
+            provider.GetRequiredService<IMotionGroupExecutor>(),
+            provider.GetRequiredService<IMotionRuntimeRegistry>()));
         return services;
     }
 }

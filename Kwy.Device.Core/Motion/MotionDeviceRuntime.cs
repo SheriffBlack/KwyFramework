@@ -1,21 +1,27 @@
 using Kwy.Device.Abstractions.Motion;
+using Kwy.Communicate.Abstractions.Enums;
+using Kwy.Communicate.Abstractions.Events;
 
 namespace Kwy.Device.Core.Motion;
 
 public sealed class MotionDeviceRuntime : IMotionDeviceRuntime
 {
     private readonly IDisposable? executorDisposable;
+    private readonly IAxisHomeLifecycle? homeLifecycle;
     private int disposed;
 
     public MotionDeviceRuntime(
         IMotionCard card,
         IMotionStateMonitor stateMonitor,
-        IAxisMotionExecutor axisExecutor)
+        IAxisMotionExecutor axisExecutor,
+        IAxisHomeLifecycle? homeLifecycle = null)
     {
         Card = card ?? throw new ArgumentNullException(nameof(card));
         StateMonitor = stateMonitor ?? throw new ArgumentNullException(nameof(stateMonitor));
         AxisExecutor = axisExecutor ?? throw new ArgumentNullException(nameof(axisExecutor));
         executorDisposable = axisExecutor as IDisposable;
+        this.homeLifecycle = homeLifecycle;
+        Card.StateChanged += OnCardStateChanged;
     }
 
     public string DeviceId => Card.DeviceId;
@@ -33,6 +39,7 @@ public sealed class MotionDeviceRuntime : IMotionDeviceRuntime
             return;
         }
 
+        Card.StateChanged -= OnCardStateChanged;
         executorDisposable?.Dispose();
         StateMonitor.Dispose();
     }
@@ -44,7 +51,16 @@ public sealed class MotionDeviceRuntime : IMotionDeviceRuntime
             return;
         }
 
+        Card.StateChanged -= OnCardStateChanged;
         executorDisposable?.Dispose();
         await StateMonitor.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private void OnCardStateChanged(object? sender, ConnectionStateChangedEventArgs args)
+    {
+        if (args.CurrentState != ConnectionState.Connected || Card is not IAxisDefinitionProvider definitions || homeLifecycle is null)
+            return;
+        foreach (AxisDefinition axis in definitions.Axes)
+            homeLifecycle.Invalidate(axis.Id, AxisHomeInvalidationReason.ControllerReconnected, "Motion controller entered a new connected session.");
     }
 }

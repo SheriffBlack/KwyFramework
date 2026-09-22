@@ -12,7 +12,7 @@ public sealed class AxisDefinitionTests
 
         definition.Validate();
 
-        Assert.Equal(new AxisId("motion-card-1", 1), definition.PhysicalId);
+        Assert.Equal(new AxisAddress("motion-card-1", 1), definition.PhysicalId);
         Assert.Equal(0.005, definition.Defaults.ToExecutionOptions().PositionTolerance);
     }
 
@@ -23,7 +23,7 @@ public sealed class AxisDefinitionTests
 
         definition.Validate();
         Assert.Equal((short)1, definition.Channel);
-        Assert.Equal(new AxisId("motion-card-1", 1), definition.PhysicalId);
+        Assert.Equal(new AxisAddress("motion-card-1", 1), definition.PhysicalId);
     }
 
     [Fact]

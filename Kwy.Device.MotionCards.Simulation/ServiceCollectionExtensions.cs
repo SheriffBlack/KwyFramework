@@ -35,7 +35,7 @@ public static class ServiceCollectionExtensions
                 monitor,
                 provider.GetService<MotionSafetyOptions>() ?? new MotionSafetyOptions());
             var executor = new AxisMotionExecutor(card, card, monitor, safety);
-            return new MotionDeviceRuntime(card, monitor, executor);
+            return new MotionDeviceRuntime(card, monitor, executor, provider.GetService<IAxisHomeLifecycle>());
         });
 
         return services;

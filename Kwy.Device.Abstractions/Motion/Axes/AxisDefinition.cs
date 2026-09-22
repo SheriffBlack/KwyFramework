@@ -1,9 +1,7 @@
 namespace Kwy.Device.Abstractions.Motion;
 
-/// <summary>
-/// Identifies one physical axis independently of a vendor-specific card model.
-/// </summary>
-public readonly record struct AxisId(string DeviceId, short Channel)
+/// <summary>物理控制卡上的轴地址；业务稳定标识必须使用 AxisDefinition.Id，而不是此地址。</summary>
+public readonly record struct AxisAddress(string DeviceId, short Channel)
 {
     public void Validate()
     {
@@ -15,6 +13,7 @@ public readonly record struct AxisId(string DeviceId, short Channel)
     }
 }
 
+/// <summary>轴在工程单位下的软限位及动态上限；用于保护机构，不能由单次工艺参数突破。</summary>
 public sealed record AxisLimitConfig
 {
     public double MinimumPosition { get; init; } = double.NegativeInfinity;
@@ -41,6 +40,7 @@ public sealed record AxisLimitConfig
     }
 }
 
+/// <summary>轴级默认到位规则；工艺动作可以更严格，但不应散落地重复这些默认值。</summary>
 public sealed record AxisMotionDefaults
 {
     public double PositionTolerance { get; init; } = 0.01;
@@ -76,6 +76,7 @@ public sealed record AxisMotionDefaults
     }
 }
 
+/// <summary>物理轴回零配方；Mode 的具体含义由厂商适配器映射，业务流程不解析它。</summary>
 public sealed record AxisHomeDefinition
 {
     public bool Enabled { get; init; } = true;
@@ -109,13 +110,20 @@ public sealed record AxisHomeDefinition
     }
 }
 
+/// <summary>闭环反馈来源，用于诊断和双闭环配置，不等同于厂商状态字。</summary>
 public enum AxisFeedbackSource
 {
+    /// <summary>电机自带编码器（电机端）</summary>
     MotorEncoder,
+
+    /// <summary>负载端编码器/旋转编码器 </summary>
     LoadEncoder,
+
+    /// <summary>光栅尺（直线负载端，线性标尺）</summary>
     LinearScale
 }
 
+/// <summary>单轴不可进入的机械位置区间，例如夹具、线缆或维护禁区。</summary>
 public readonly record struct AxisForbiddenRange(double Minimum, double Maximum)
 {
     public bool Contains(double position) => position >= Minimum && position <= Maximum;
@@ -127,12 +135,14 @@ public readonly record struct AxisForbiddenRange(double Minimum, double Maximum)
     }
 }
 
+/// <summary>垂直轴失能时抱闸与伺服的安全顺序。</summary>
 public enum AxisBrakeDisableStrategy
 {
     EngageBeforeServoOff,
     ServoOffBeforeEngage
 }
 
+/// <summary>轴级安全策略；跨轴空间关系应配置在运动组禁入区，而非塞入单轴。</summary>
 public sealed record AxisSafetyDefinition
 {
     public bool RequireHomedBeforeMotion { get; init; } = true;
@@ -161,12 +171,17 @@ public sealed record AxisSafetyDefinition
     }
 }
 
+/// <summary>旋转轴位置表达方式：累计角度或模周期角度。</summary>
 public enum RotaryPositionMode
 {
+    /// <summary>累计角度，正转+，反转-</summary>
     Accumulated,
+
+    /// <summary>模周期角度，[0~360°] 循环</summary>
     Modulo
 }
 
+/// <summary>旋转轴专属路径约束，例如缠绕限制、偏好方向和禁入角度。</summary>
 public sealed record RotaryAxisDefinition
 {
     public RotaryPositionMode PositionMode { get; init; } = RotaryPositionMode.Accumulated;
@@ -197,6 +212,7 @@ public sealed record RotaryAxisDefinition
     }
 }
 
+/// <summary>机械/标定坐标修正与反馈配置；标定算法由独立坐标转换服务承载。</summary>
 public sealed record AxisCalibrationConfig
 {
     public double MechanicalZeroOffset { get; init; }
@@ -216,40 +232,82 @@ public sealed record AxisCalibrationConfig
     }
 }
 
-/// <summary>
-/// Complete application-level definition of an axis. Vendor-specific electrical
-/// and controller parameters remain in the motion-card implementation.
-/// </summary>
-public sealed record AxisDefinition
+/// <summary>轴可参与的运动关系。同步主从能力必须由设备配置显式声明，默认不允许隐式耦合。</summary>
+[Flags]
+public enum AxisMotionCapability
 {
+    SingleAxis = 1,
+    Interpolation = 2,
+    SynchronizationMaster = 4,
+    SynchronizationFollower = 8
+}
+
+/// <summary>
+/// 物理轴与虚拟轴共享的业务定义。运动关系始终引用 <see cref="Id"/>，
+/// 不在插补、凸轮或齿轮模型中重复维护轴的工程属性。
+/// </summary>
+public abstract record AxisResourceDefinition
+{
+    /// <summary>业务稳定 ID，例如 transport.x；配方、运动组、凸轮和齿轮均以此引用。</summary>
     public required string Id { get; init; }
+    /// <summary>供 HMI、报警和维护人员显示的名称，可改名而不影响业务绑定。</summary>
     public required string DisplayName { get; init; }
-    public required string DeviceId { get; init; }
-    public short Channel { get; init; }
+    /// <summary>工程单位、方向和脉冲换算规则。</summary>
     public required AxisEngineeringConfig Engineering { get; init; }
+    /// <summary>机械行程与动态能力上限。</summary>
     public AxisLimitConfig Limits { get; init; } = new();
+    /// <summary>该轴的一般定位到位规则。</summary>
     public AxisMotionDefaults Defaults { get; init; } = new();
-    public AxisHomeDefinition Home { get; init; } = new();
-    public AxisSafetyDefinition Safety { get; init; } = new();
-    public RotaryAxisDefinition? Rotary { get; init; }
-    public AxisCalibrationConfig Calibration { get; init; } = new();
+    /// <summary>允许参与的运动关系；插补或同步前均会在配置校验阶段检查。</summary>
+    public AxisMotionCapability Capabilities { get; init; } = AxisMotionCapability.SingleAxis | AxisMotionCapability.Interpolation;
 
-    public AxisId PhysicalId => new(DeviceId, Channel);
-
-    public void Validate()
+    protected void ValidateCommon()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(Id);
         ArgumentException.ThrowIfNullOrWhiteSpace(DisplayName);
         ArgumentNullException.ThrowIfNull(Engineering);
         ArgumentNullException.ThrowIfNull(Limits);
         ArgumentNullException.ThrowIfNull(Defaults);
+        if (Capabilities == 0 || (Capabilities & ~AllCapabilities) != 0)
+            throw new ArgumentOutOfRangeException(nameof(Capabilities));
+        Engineering.Validate();
+        Limits.Validate();
+        Defaults.Validate();
+    }
+
+    private const AxisMotionCapability AllCapabilities =
+        AxisMotionCapability.SingleAxis |
+        AxisMotionCapability.Interpolation |
+        AxisMotionCapability.SynchronizationMaster |
+        AxisMotionCapability.SynchronizationFollower;
+}
+
+/// <summary>
+/// 物理轴的完整应用层定义。
+/// 厂商特定的电气和控制器参数保留在运动控制卡的实现中。
+/// </summary>
+public sealed record AxisDefinition : AxisResourceDefinition
+{
+    /// <summary>承载该轴的物理运动控制卡设备 ID。</summary>
+    public required string DeviceId { get; init; }
+    /// <summary>该控制卡内部的物理轴通道号。</summary>
+    public short Channel { get; init; }
+    /// <summary>回零配方。</summary>
+    public AxisHomeDefinition Home { get; init; } = new();
+    /// <summary>回零、抱闸、互锁与禁入区等安全策略。</summary>
+    public AxisSafetyDefinition Safety { get; init; } = new();
+    public RotaryAxisDefinition? Rotary { get; init; }
+    public AxisCalibrationConfig Calibration { get; init; } = new();
+
+    public AxisAddress PhysicalId => new(DeviceId, Channel);
+
+    public void Validate()
+    {
+        ValidateCommon();
         ArgumentNullException.ThrowIfNull(Home);
         ArgumentNullException.ThrowIfNull(Safety);
         ArgumentNullException.ThrowIfNull(Calibration);
         PhysicalId.Validate();
-        Engineering.Validate();
-        Limits.Validate();
-        Defaults.Validate();
         Home.Validate();
         Safety.Validate();
         Calibration.Validate();
