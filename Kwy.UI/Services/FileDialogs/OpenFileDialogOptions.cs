@@ -1,17 +1,17 @@
 namespace Kwy.UI.Services.FileDialogs;
 
 /// <summary>
-/// Options for opening one or more files.
+/// 打开一个或多个文件时使用的选项。
 /// </summary>
 public sealed class OpenFileDialogOptions : FileDialogOptions
 {
     /// <summary>
-    /// Gets or sets whether multiple files can be selected.
+    /// 获取或设置是否允许多选文件。
     /// </summary>
     public bool Multiselect { get; set; }
 
     /// <summary>
-    /// Gets or sets whether the selected file must exist.
+    /// 获取或设置所选文件是否必须存在。
     /// </summary>
     public bool CheckFileExists { get; set; } = true;
 }

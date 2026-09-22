@@ -1,33 +1,33 @@
 namespace Kwy.UI.Services.FileDialogs;
 
 /// <summary>
-/// Base options shared by WPF file dialogs.
+/// 文件对话框的基础选项。
 /// </summary>
 public abstract class FileDialogOptions
 {
     /// <summary>
-    /// Gets or sets the dialog title.
+    /// 获取或设置对话框标题。
     /// </summary>
     public string? Title { get; set; }
 
     /// <summary>
-    /// Gets or sets the file filter, such as "JSON (*.json)|*.json|All files (*.*)|*.*".
-    /// A null or empty value leaves the dialog without a library-specific filter.
+    /// 获取或设置文件筛选条件，例如“JSON (*.json)|*.json|所有文件 (*.*)|*.*”。
+    /// <see langword="null"/> 或空值表示不设置库预定义的筛选条件。
     /// </summary>
     public string? Filter { get; set; }
 
     /// <summary>
-    /// Gets or sets the initial directory. If invalid, the service falls back to the last selected directory or Desktop.
+    /// 获取或设置初始目录。目录无效时，服务回退到最近一次选择的目录或桌面。
     /// </summary>
     public string? InitialDirectory { get; set; }
 
     /// <summary>
-    /// Gets or sets the default file name.
+    /// 获取或设置默认文件名。
     /// </summary>
     public string? FileName { get; set; }
 
     /// <summary>
-    /// Gets or sets the default extension. If empty, it is inferred from <see cref="Filter"/>.
+    /// 获取或设置默认扩展名。为空时从 <see cref="Filter"/> 推断。
     /// </summary>
     public string? DefaultExtension { get; set; }
 }

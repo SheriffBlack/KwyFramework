@@ -1,17 +1,17 @@
 namespace Kwy.UI.Services.FileDialogs;
 
 /// <summary>
-/// Options for selecting a folder.
+/// 选择文件夹时使用的选项。
 /// </summary>
 public sealed class FolderDialogOptions
 {
     /// <summary>
-    /// Gets or sets the dialog title.
+    /// 获取或设置对话框标题。
     /// </summary>
     public string? Title { get; set; }
 
     /// <summary>
-    /// Gets or sets the initial directory. If invalid, the service falls back to the last selected directory or Desktop.
+    /// 获取或设置初始目录。目录无效时，服务回退到最近一次选择的目录或桌面。
     /// </summary>
     public string? InitialDirectory { get; set; }
 }

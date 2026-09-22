@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Microsoft.Win32;
@@ -6,10 +7,11 @@ using Kwy.UI.Services.FileDialogs;
 namespace Kwy.UI.WPF.Services.FileDialogs;
 
 /// <summary>
-/// WPF implementation of <see cref="IFileDialogService"/>.
+/// <see cref="IFileDialogService"/> 的 WPF 实现。
 /// </summary>
 public sealed class WpfFileDialogService : IFileDialogService
 {
+    private const string ThisPcShellNamespace = "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
     private readonly object syncRoot = new();
     private string? lastDirectory;
 
@@ -100,6 +102,47 @@ public sealed class WpfFileDialogService : IFileDialogService
         return dialog.FolderName;
     }
 
+    /// <inheritdoc />
+    public bool OpenInFileExplorer(string? path = null)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return StartExplorer(ThisPcShellNamespace);
+            }
+
+            string fullPath = Path.GetFullPath(path);
+            if (Directory.Exists(fullPath))
+            {
+                return StartExplorer(fullPath);
+            }
+
+            if (File.Exists(fullPath))
+            {
+                return StartExplorer($"/select,\"{fullPath}\"");
+            }
+        }
+        catch (ArgumentException)
+        {
+            // 传入的路径不是有效的 Windows 路径。
+        }
+        catch (IOException)
+        {
+            // 路径无效或驱动器不可访问，资源管理器无法打开。
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // 当前用户无权访问该路径，无法启动资源管理器。
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // 当前 Windows 环境中无法使用资源管理器。
+        }
+
+        return false;
+    }
+
     private string GetValidInitialDirectory(string? path)
     {
         if (!string.IsNullOrWhiteSpace(path) && Directory.Exists(path))
@@ -145,6 +188,14 @@ public sealed class WpfFileDialogService : IFileDialogService
         var owner = ResolveActiveWindow();
         return owner == null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
     }
+
+    private static bool StartExplorer(string arguments)
+        => Process.Start(new ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            Arguments = arguments,
+            UseShellExecute = true
+        }) != null;
 
     private static string ResolveDefaultExtension(FileDialogOptions options)
     {
