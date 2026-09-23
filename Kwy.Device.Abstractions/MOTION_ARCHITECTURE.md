@@ -118,6 +118,25 @@ Kwy.Device.MotionCards.*
 
 `Kinematics/OfflinePlanning` 中的代码仅服务于仿真、配方预检和预计时间；它不是控制器实时轨迹内核。不要因为目录名称相近而把它用于运行期点流控制。
 
+### 业务轴与物理轴通道
+
+轴与 IO、PLC 一样区分“业务定义”和“物理执行”，但运动卡仍直接使用物理轴通道：
+
+```text
+IAxisDefinitionProvider
+    axisId → AxisDefinition(DeviceId + AxisAddress)
+        ↓
+IMotionRuntimeRegistry
+    DeviceId → 物理运动卡运行时
+        ↓
+IAxisChannelDefinitionProvider
+    short channel → 卡内轴通道配置
+        ↓
+IMotionCard / IAxisMotionController
+```
+
+工艺、配方、HMI 与运动组使用 `axisId`；`short channel` 只允许出现在 Core 物理运行时和厂商适配器中。当前设备级 `AxisDefinitionProvider` 会在运行时组装阶段汇集各张已配置运动卡的轴定义，并一次性校验业务 ID 与物理地址重复；它不会在每次业务运动时遍历所有控制卡。
+
 ## 4. 物理能力接口
 
 `IMotionCard` 只表示运动设备生命周期。设备按真实能力实现细粒度接口，而不存在“标准卡”或“高级卡”的大组合接口。

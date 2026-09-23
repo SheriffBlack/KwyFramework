@@ -10,10 +10,9 @@ namespace Kwy.Device.MotionCards.Googol;
 public sealed class GoogolMotionCardDevice :
     MotionCardBase,
     IInterpolationMotionController,
-    IAxisDefinitionProvider,
+    IAxisChannelDefinitionProvider,
     IPositionCompareOutput,
     IIoCardDevice,
-    IIoPointRegistry,
     IBulkAxisSnapshotReader,
     IBufferedAxisSnapshotReader
 {
@@ -734,32 +733,6 @@ public sealed class GoogolMotionCardDevice :
         });
     }
 
-    public void SetDoName(int channel, string name)
-    {
-        IoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("DO name cannot be empty.", nameof(name));
-        }
-
-        doNames[channel] = name;
-    }
-
-    public IEnumerable<(int Index, string Name)> GetAllOutputs() => doNames.Select(pair => (pair.Key, pair.Value));
-
-    public void SetDiName(int channel, string name)
-    {
-        IoChannelGuard.ValidateChannel(channel, config.DiChannelCount, nameof(channel));
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("DI name cannot be empty.", nameof(name));
-        }
-
-        diNames[channel] = name;
-    }
-
-    public IEnumerable<(int Index, string Name)> GetAllInputs() => diNames.Select(pair => (pair.Key, pair.Value));
-
     public void WriteDoBit(int channel, bool state)
     {
         EnsureReady();
@@ -897,8 +870,6 @@ public sealed class GoogolMotionCardDevice :
         await base.DisposeAsync();
     }
 
-    private readonly Dictionary<int, string> doNames = new();
-    private readonly Dictionary<int, string> diNames = new();
 
     private uint ReadRawDiValue()
     {
@@ -947,8 +918,7 @@ public sealed class GoogolMotionCardDevice :
         pulseScheduler.CancelAll();
     }
 
-    // The vendor home status API is relatively expensive and is only meaningful while
-    // a home operation is active. Completed state is retained locally until the next home.
+    // 厂商回零状态读取开销较高，且仅在回零进行中有意义；完成结果保留在本地，直到下一次回零开始。
     private HomeState ReadHomeStateForSnapshot(short axis)
     {
         if (!homingAxes.Contains(axis))
@@ -991,7 +961,7 @@ public sealed class GoogolMotionCardDevice :
             }
             catch
             {
-                // Preserve the original connection exception.
+                // 保留首次连接失败的原始异常，便于定位 SDK 或硬件问题。
             }
         }
 

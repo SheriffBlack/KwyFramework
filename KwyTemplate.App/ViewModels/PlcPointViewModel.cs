@@ -134,7 +134,7 @@ public sealed class PlcPointViewModel : BindableBase
     private void LoadPoints()
     {
         Points.Clear();
-        foreach (MachinePlcPointDefinition point in machine.PlcPointDefinitions.OrderBy(static item => item.Address, StringComparer.OrdinalIgnoreCase))
+        foreach (PlcPointDefinition point in machine.PlcPointDefinitions.OrderBy(static item => item.Address, StringComparer.OrdinalIgnoreCase))
         {
             Points.Add(new PlcPointModel(point));
         }
@@ -280,7 +280,7 @@ public sealed class PlcPointViewModel : BindableBase
             return;
         }
 
-        point.WriteValueText = NormalizeWriteValue(point.Definition.DataType, result.Value);
+        point.WriteValueText = NormalizeWriteValue(point.Definition.ClrType, result.Value);
         await ExecuteWriteAsync(point).ConfigureAwait(false);
     }
 
@@ -293,7 +293,7 @@ public sealed class PlcPointViewModel : BindableBase
 
         try
         {
-            Type dataType = point.Definition.DataType;
+            Type dataType = point.Definition.ClrType;
             string value = await ReadValueTextAsync(point.Address, dataType, cancellationToken);
             point.ValueText = value;
             point.LastUpdatedAt = DateTime.Now;
@@ -385,7 +385,7 @@ public sealed class PlcPointViewModel : BindableBase
             throw new InvalidOperationException(localizationService?.T("PlcPoint.Status.PlcDisconnected", "PLC 未连接。") ?? "PLC 未连接。");
         }
 
-        Type dataType = point.Definition.DataType;
+        Type dataType = point.Definition.ClrType;
         string raw = point.WriteValueText;
 
         if (dataType == typeof(bool))
@@ -495,7 +495,7 @@ public sealed class PlcPointViewModel : BindableBase
 
     private InputDialogOptions CreateWriteDialogOptions(PlcPointModel point)
     {
-        Type dataType = point.Definition.DataType;
+        Type dataType = point.Definition.ClrType;
         (decimal? minimum, decimal? maximum) = GetNumericRange(dataType);
 
         return new InputDialogOptions

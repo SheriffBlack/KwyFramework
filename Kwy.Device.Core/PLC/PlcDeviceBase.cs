@@ -1,38 +1,50 @@
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.PLC;
 using Kwy.Communicate.Abstractions.Enums;
-using System.Collections.Concurrent;
 
 namespace Kwy.Device.Core.PLC;
 
 /// <summary>
-/// Base class for asynchronous PLC devices and point metadata management.
+/// 异步 PLC 设备基类，提供设备生命周期与协议层心跳管理。
 /// </summary>
 public abstract class PlcDeviceBase : DeviceBase, IPlcDevice
 {
-    private readonly ConcurrentDictionary<string, PlcPointInfoModel> registeredPoints = new();
     private readonly object keepAliveSync = new();
     private CancellationTokenSource? keepAliveCancellation;
 
+    /// <summary>使用设备身份和配置创建 PLC 设备。</summary>
     protected PlcDeviceBase(string deviceId, string deviceName, IDeviceConfig config)
         : base(deviceId, deviceName, config)
     {
     }
 
+    /// <inheritdoc/>
     public abstract Task<bool> ReadBoolAsync(string address, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task WriteBoolAsync(string address, bool value, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task<short> ReadInt16Async(string address, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task WriteInt16Async(string address, short value, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task WriteInt32Async(string address, int value, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task<float> ReadFloatAsync(string address, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task WriteFloatAsync(string address, float value, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task<byte[]> ReadBytesAsync(string address, ushort length, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task WriteBytesAsync(string address, byte[] data, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task<short[]> ReadInt16ArrayAsync(string address, ushort count, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task<int[]> ReadInt32ArrayAsync(string address, ushort count, CancellationToken cancellationToken = default);
+    /// <inheritdoc/>
     public abstract Task<float[]> ReadFloatArrayAsync(string address, ushort count, CancellationToken cancellationToken = default);
 
-    protected virtual async Task ExecuteKeepAliveAsync(PlcConfig config, CancellationToken cancellationToken)
+    /// <summary>按照心跳配置执行一次读取；厂商适配器可重写此方法实现协议专属心跳。</summary>
+    protected virtual async Task ExecuteKeepAliveAsync(IPlcKeepAliveConfig config, CancellationToken cancellationToken)
     {
         switch (config.KeepAliveMode)
         {
@@ -52,34 +64,23 @@ public abstract class PlcDeviceBase : DeviceBase, IPlcDevice
                 _ = await ReadBytesAsync(config.KeepAliveAddress!, 1, cancellationToken);
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(config), config.KeepAliveMode, "Unsupported PLC KeepAlive mode.");
+                throw new ArgumentOutOfRangeException(nameof(config), config.KeepAliveMode, "不支持的 PLC 心跳读取方式。");
         }
     }
 
+    /// <inheritdoc/>
     protected override Task OnConnectedAsync(CancellationToken cancellationToken)
     {
         StartKeepAlive();
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
     protected override Task OnDisconnectingAsync(CancellationToken cancellationToken)
     {
         StopKeepAlive();
         return Task.CompletedTask;
     }
-
-    public void RegisterPoint(string address, string name, Type dataType, bool isReadOnly = false)
-    {
-        registeredPoints[address] = new PlcPointInfoModel
-        {
-            Address = address,
-            Name = name,
-            DataType = dataType,
-            IsReadOnly = isReadOnly
-        };
-    }
-
-    public IEnumerable<PlcPointInfoModel> GetAllRegisteredPoints() => registeredPoints.Values;
 
     private void StartKeepAlive()
     {
@@ -133,7 +134,7 @@ public abstract class PlcDeviceBase : DeviceBase, IPlcDevice
     private async Task HandleKeepAliveFailureAsync(Exception exception)
     {
         StopKeepAlive();
-        await HandleDeviceFailureAsync($"PLC KeepAlive failed: {exception.Message}", exception);
+        await HandleDeviceFailureAsync($"PLC 心跳失败：{exception.Message}", exception);
     }
 
     private void StopKeepAlive()
@@ -144,6 +145,7 @@ public abstract class PlcDeviceBase : DeviceBase, IPlcDevice
         }
     }
 
+    /// <inheritdoc/>
     public override async ValueTask DisposeAsync()
     {
         if (disposed)

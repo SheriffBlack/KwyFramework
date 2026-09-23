@@ -48,12 +48,19 @@ public sealed class ConfigurableMachine : MachineBase
                 continue;
             }
 
-            PlcPointDefinitions.Add(new MachinePlcPointDefinition(
-                point.Key,
-                point.Address,
-                string.IsNullOrWhiteSpace(point.DisplayName) ? point.Key : point.DisplayName,
-                ResolveDataType(point.DataType),
-                point.IsReadOnly));
+            PlcPointDefinitions.Add(new PlcPointDefinition
+            {
+                Id = point.Key,
+                Name = string.IsNullOrWhiteSpace(point.DisplayName) ? point.Key : point.DisplayName,
+                DeviceId = point.DeviceId ?? profile.Devices.First(item => item.Kind == ConfigurableDeviceKind.MainPlc).DeviceId,
+                Address = point.Address,
+                DataType = PlcPointDefinition.FromClrType(ResolveDataType(point.DataType)),
+                Access = point.IsReadOnly ? PlcPointAccess.ReadOnly : PlcPointAccess.ReadWrite,
+                Length = point.Length,
+                Unit = point.Unit,
+                Group = point.Group,
+                Description = point.Description
+            });
         }
 
         MachineDeviceProfile? plcProfile = profile.Devices.FirstOrDefault(item => item.Kind == ConfigurableDeviceKind.MainPlc);
@@ -66,22 +73,6 @@ public sealed class ConfigurableMachine : MachineBase
         if (ioProfile != null && Devices.TryGet<IIoCardDevice>(ioProfile.DeviceId, out IIoCardDevice? ioCard) && ioCard != null)
         {
             BindIoCard(ioCard);
-            // 点位显示名是适配器的可选维护能力，不影响设备绑定。
-            if (ioCard is IIoPointRegistry pointRegistry)
-            {
-                foreach (MachineIoPointProfile point in profile.IoPoints)
-                {
-                    string displayName = string.IsNullOrWhiteSpace(point.DisplayName) ? point.Key : point.DisplayName;
-                    if (point.Direction == MachineIoPointDirection.Input)
-                    {
-                        pointRegistry.SetDiName(point.Channel, displayName);
-                    }
-                    else
-                    {
-                        pointRegistry.SetDoName(point.Channel, displayName);
-                    }
-                }
-            }
         }
     }
 

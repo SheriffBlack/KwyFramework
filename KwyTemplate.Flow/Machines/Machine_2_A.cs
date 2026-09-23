@@ -223,11 +223,6 @@ public class Machine_2_A :
         if (Devices.TryGet<IIoCardDevice>(DeviceIds.MainIoCard, out IIoCardDevice? mainIoCard) && mainIoCard != null)
         {
             BindIoCard(mainIoCard);
-            if (mainIoCard is IIoPointRegistry pointRegistry)
-            {
-                RegisterCardToPcNames(pointRegistry);
-                RegisterPcToCardNames(pointRegistry);
-            }
         }
 
         if (Devices.TryGet<IMeasurementInstrument>(DeviceIds.Instrument("Dcr", 1), out IMeasurementInstrument? dcr1))
@@ -238,22 +233,6 @@ public class Machine_2_A :
         if (Devices.TryGet<IMeasurementInstrument>(DeviceIds.Instrument("Dcr", 2), out IMeasurementInstrument? dcr2))
         {
             dcrMeter2 = dcr2;
-        }
-    }
-
-    private static void RegisterCardToPcNames(IIoPointRegistry card)
-    {
-        foreach (CardToPc input in Enum.GetValues<CardToPc>())
-        {
-            card.SetDiName((int)input, GetDescription(input));
-        }
-    }
-
-    private static void RegisterPcToCardNames(IIoPointRegistry card)
-    {
-        foreach (PcToCard output in Enum.GetValues<PcToCard>())
-        {
-            card.SetDoName((int)output, GetDescription(output));
         }
     }
 
@@ -445,43 +424,20 @@ public class Machine_2_A :
 
     private async Task<uint> ReadUInt32PointAsync(IPlcDevice plc, PlcPoints point)
     {
-        string lowAddress = PlcAddressCache[(int)point];
-        string highAddress = GetNextWordAddress(lowAddress);
         try
         {
-            ushort low = unchecked((ushort)await plc.ReadInt16Async(lowAddress).ConfigureAwait(false));
-            ushort high = unchecked((ushort)await plc.ReadInt16Async(highAddress).ConfigureAwait(false));
-            return ((uint)high << 16) | low;
+            return await ReadPlcPointAsync<PlcPoints, uint>(point).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[Machine_2_A] Read PLC UInt32 failed. Point={point}, LowAddress={lowAddress}, HighAddress={highAddress}, Message={ex.Message}");
+            Debug.WriteLine($"[Machine_2_A] Read PLC UInt32 failed. Point={point}, Message={ex.Message}");
             throw;
         }
     }
 
-    private static string GetNextWordAddress(string address)
-    {
-        int index = address.Length - 1;
-        while (index >= 0 && char.IsDigit(address[index]))
-        {
-            index--;
-        }
-
-        if (index == address.Length - 1)
-        {
-            throw new InvalidOperationException($"PLC address does not contain a numeric suffix: {address}");
-        }
-
-        string prefix = address[..(index + 1)];
-        string numberText = address[(index + 1)..];
-        int next = int.Parse(numberText, CultureInfo.InvariantCulture) + 1;
-        return prefix + next.ToString(CultureInfo.InvariantCulture);
-    }
     private async Task<ushort> ReadUInt16PointAsync(IPlcDevice plc, PlcPoints point, CancellationToken cancellationToken)
     {
-        short value = await plc.ReadInt16Async(PlcAddressCache[(int)point], cancellationToken).ConfigureAwait(false);
-        return unchecked((ushort)value);
+        return await ReadPlcPointAsync<PlcPoints, ushort>(point, cancellationToken).ConfigureAwait(false);
     }
 
     #endregion 系统统计轮询
@@ -704,12 +660,12 @@ public class Machine_2_A :
             return;
         }
 
-        if (value.Value is < short.MinValue or > short.MaxValue)
+        if (value.Value is < ushort.MinValue or > ushort.MaxValue)
         {
             throw new ArgumentOutOfRangeException(nameof(value), value.Value, $"PLC point {point} value is out of Int16 range.");
         }
 
-        await plc.WriteInt16Async(PlcAddressCache[(int)point], (short)value.Value, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointAsync(point, (ushort)value.Value, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task WriteUInt32PointAsync(IPlcDevice plc, PlcPoints point, int? value, CancellationToken cancellationToken)
@@ -719,7 +675,12 @@ public class Machine_2_A :
             return;
         }
 
-        await plc.WriteInt32Async(PlcAddressCache[(int)point], value.Value, cancellationToken).ConfigureAwait(false);
+        if (value.Value < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), value.Value, $"PLC 点位 {point} 不允许写入负数。");
+        }
+
+        await WritePlcPointAsync(point, (uint)value.Value, cancellationToken).ConfigureAwait(false);
     }
 
     private static string NormalizeAdexRange(string range)
@@ -802,8 +763,8 @@ public class Machine_2_A :
             return;
         }
 
-        await plc.WriteInt16Async(PlcAddressCache[stationSwitchPointKey.Value], isEnabled ? (short)1 : (short)0, cancellationToken).ConfigureAwait(false);
-        await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.工位保存], 1, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointByKeyAsync(stationSwitchPointKey.Value, isEnabled ? (ushort)1 : (ushort)0, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointAsync(PlcPoints.工位保存, (ushort)1, cancellationToken).ConfigureAwait(false);
         SetStationEnabledState(station, isEnabled);
     }
 
@@ -818,12 +779,12 @@ public class Machine_2_A :
         }
 
         int? stationSwitchPointKey = GetStationSwitchPointKey(station);
-        if (!stationSwitchPointKey.HasValue || !PlcAddressCache.TryGetValue(stationSwitchPointKey.Value, out string? address))
+        if (!stationSwitchPointKey.HasValue || !TryGetPlcPoint(stationSwitchPointKey.Value, out _))
         {
             return station.IsEnabled;
         }
 
-        short value = await plc.ReadInt16Async(address, cancellationToken).ConfigureAwait(false);
+        ushort value = await ReadPlcPointByKeyAsync<ushort>(stationSwitchPointKey.Value, cancellationToken).ConfigureAwait(false);
         return value != 0;
     }
     private static int? GetStationSwitchPointKey(TestStationModel station)
@@ -861,41 +822,41 @@ public class Machine_2_A :
             return;
         }
 
-        await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.进入点检界面], isActive ? (short)1 : (short)0, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointAsync(PlcPoints.进入点检界面, isActive ? (ushort)1 : (ushort)0, cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task SetCheckCompletedAsync(bool isCompleted, CancellationToken cancellationToken = default)
     {
         IPlcDevice? plc = Plc;
-        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue(0, out string? address))
+        if (plc is not { IsConnected: true } || !TryGetPlcPoint(0, out _))
         {
             return;
         }
 
-        await plc.WriteInt16Async(address, isCompleted ? (short)1 : (short)0, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointByKeyAsync(0, isCompleted ? (ushort)1 : (ushort)0, cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task<bool?> ReadCheckCompletedAsync(CancellationToken cancellationToken = default)
     {
         IPlcDevice? plc = Plc;
-        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue(0, out string? address))
+        if (plc is not { IsConnected: true } || !TryGetPlcPoint(0, out _))
         {
             return null;
         }
 
-        return await plc.ReadInt16Async(address, cancellationToken).ConfigureAwait(false) != 0;
+        return await ReadPlcPointByKeyAsync<ushort>(0, cancellationToken).ConfigureAwait(false) != 0;
     }
 
     public override async Task SetStandardSampleExpiredAsync(bool isExpired, CancellationToken cancellationToken = default)
     {
         IPlcDevice? plc = Plc;
-        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue((int)PlcPoints.标准件过期, out string? address))
+        if (plc is not { IsConnected: true } || !TryGetPlcPoint((int)PlcPoints.标准件过期, out _))
         {
             return;
         }
 
         // 标准件过期点位为反向有效：过期写 0，查询成功/恢复有效写 1。
-        await plc.WriteInt16Async(address, isExpired ? (short)0 : (short)1, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointAsync(PlcPoints.标准件过期, isExpired ? (ushort)0 : (ushort)1, cancellationToken).ConfigureAwait(false);
     }
     public Task<bool> SetIndustrialPcOnlineAsync(bool online, CancellationToken cancellationToken = default)
     {
@@ -951,24 +912,24 @@ public class Machine_2_A :
     private async Task<bool> IsPlcStopSignalActiveAsync(PlcPoints point, CancellationToken cancellationToken)
     {
         IPlcDevice? plc = Plc;
-        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue((int)point, out string? address))
+        if (plc is not { IsConnected: true } || !TryGetPlcPoint((int)point, out _))
         {
             return false;
         }
 
-        short value = await plc.ReadInt16Async(address, cancellationToken).ConfigureAwait(false);
+        ushort value = await ReadPlcPointAsync<PlcPoints, ushort>(point, cancellationToken).ConfigureAwait(false);
         return value == 1;
     }
 
     private async Task WritePlcStopSignalAsync(PlcPoints point, short value, CancellationToken cancellationToken)
     {
         IPlcDevice? plc = Plc;
-        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue((int)point, out string? address))
+        if (plc is not { IsConnected: true } || !TryGetPlcPoint((int)point, out _))
         {
             return;
         }
 
-        await plc.WriteInt16Async(address, value, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointAsync(point, checked((ushort)value), cancellationToken).ConfigureAwait(false);
     }
 
     #region 生产记录
@@ -1072,7 +1033,7 @@ public class Machine_2_A :
         string fileName = ProductionRecordPathHelper.BuildFileName(productionContext?.WorkOrderNo, MachineId);
 
         uint outputQty = await ReadUInt32PointAsync(plc, PlcPoints.测试总量).ConfigureAwait(false);
-        float yield = await plc.ReadFloatAsync(PlcAddressCache[(int)PlcPoints.测试合格率], cancellationToken).ConfigureAwait(false);
+        float yield = await ReadPlcPointAsync<PlcPoints, float>(PlcPoints.测试合格率, cancellationToken).ConfigureAwait(false);
         uint ngSum = await ReadUInt32PointAsync(plc, PlcPoints.测试NG数).ConfigureAwait(false);
         ushort tcAddQty = await ReadUInt16PointAsync(plc, PlcPoints.补料盒计数, cancellationToken).ConfigureAwait(false);
         double? dcr1CpkValue = CalculateCpk("DCR1", dcr1Cpk);
@@ -1155,8 +1116,8 @@ public class Machine_2_A :
             await WriteForceBraidNewWorkOrderSignalAsync(true, cancellationToken).ConfigureAwait(false);
             forceBraidSignalWrittenWorkOrderNo = currentWorkOrderNo;
         }
-        await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.PC启动按钮], 1, cancellationToken).ConfigureAwait(false);
-        await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.PC停止按钮], 0, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointAsync(PlcPoints.PC启动按钮, (ushort)1, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointAsync(PlcPoints.PC停止按钮, (ushort)0, cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task OnTestStoppedAsync(CancellationToken cancellationToken)
@@ -1166,8 +1127,8 @@ public class Machine_2_A :
             IPlcDevice? plc = Plc;
             if (plc is { IsConnected: true })
             {
-                await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.PC启动按钮], 0, cancellationToken).ConfigureAwait(false);
-                await plc.WriteInt16Async(PlcAddressCache[(int)PlcPoints.PC停止按钮], 1, cancellationToken).ConfigureAwait(false);
+                await WritePlcPointAsync(PlcPoints.PC启动按钮, (ushort)0, cancellationToken).ConfigureAwait(false);
+                await WritePlcPointAsync(PlcPoints.PC停止按钮, (ushort)1, cancellationToken).ConfigureAwait(false);
             }
         }
         finally
@@ -1185,22 +1146,22 @@ public class Machine_2_A :
     private async Task WriteForceBraidNewWorkOrderSignalAsync(bool value, CancellationToken cancellationToken)
     {
         IPlcDevice? plc = Plc;
-        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue((int)PlcPoints.强制编带_新工单, out string? address))
+        if (plc is not { IsConnected: true } || !TryGetPlcPoint((int)PlcPoints.强制编带_新工单, out _))
         {
             return;
         }
 
-        await plc.WriteInt16Async(address, value ? (short)1 : (short)0, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointAsync(PlcPoints.强制编带_新工单, value ? (ushort)1 : (ushort)0, cancellationToken).ConfigureAwait(false);
     }
     public async Task<bool> ResetProductionCounterAsync(CancellationToken cancellationToken = default)
     {
         IPlcDevice? plc = Plc;
-        if (plc is not { IsConnected: true } || !PlcAddressCache.TryGetValue((int)PlcPoints.统计计数清零, out string? address))
+        if (plc is not { IsConnected: true } || !TryGetPlcPoint((int)PlcPoints.统计计数清零, out _))
         {
             return false;
         }
 
-        await plc.WriteInt16Async(address, 1, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointAsync(PlcPoints.统计计数清零, (ushort)1, cancellationToken).ConfigureAwait(false);
         return true;
     }
 

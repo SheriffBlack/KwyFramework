@@ -97,5 +97,5 @@ public interface IMotionPlanningPipeline
 /// <summary>完整关节轨迹的命令前安全校验；逐段检查，不能只校验最终目标点。</summary>
 public interface IJointTrajectorySafetyValidator
 {
-    void Validate(JointTrajectory trajectory, MotionGroupDefinition group, IAxisDefinitionProvider axisDefinitions);
+    void Validate(JointTrajectory trajectory, MotionGroupDefinition group, IAxisChannelDefinitionProvider axisDefinitions);
 }

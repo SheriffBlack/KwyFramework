@@ -56,10 +56,10 @@ public sealed class AxisCoordinateTransformer : IAxisCoordinateTransformer
 public sealed class AxisBrakeCoordinator : IAxisBrakeCoordinator
 {
     private readonly IAxisMotionController controller;
-    private readonly IAxisDefinitionProvider definitions;
+    private readonly IAxisChannelDefinitionProvider definitions;
     private readonly IAxisBrake brake;
 
-    public AxisBrakeCoordinator(IAxisMotionController controller, IAxisDefinitionProvider definitions, IAxisBrake brake)
+    public AxisBrakeCoordinator(IAxisMotionController controller, IAxisChannelDefinitionProvider definitions, IAxisBrake brake)
     {
         this.controller = controller ?? throw new ArgumentNullException(nameof(controller));
         this.definitions = definitions ?? throw new ArgumentNullException(nameof(definitions));

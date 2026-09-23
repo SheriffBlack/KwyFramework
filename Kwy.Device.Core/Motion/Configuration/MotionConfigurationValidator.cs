@@ -8,20 +8,20 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
 {
     private readonly IMotionRuntimeRegistry runtimes;
     private readonly IMotionGroupDefinitionProvider groups;
-    private readonly IReadOnlyCollection<IoPoint> ioPoints;
+    private readonly IReadOnlyCollection<IoPointDefinition> ioPoints;
     private readonly IVirtualAxisDefinitionProvider? virtualAxes;
     private readonly IMotionSynchronizationDefinitionProvider? synchronizations;
 
     public MotionConfigurationValidator(
         IMotionRuntimeRegistry runtimes,
         IMotionGroupDefinitionProvider groups,
-        IEnumerable<IoPoint>? ioPoints = null,
+        IEnumerable<IoPointDefinition>? ioPoints = null,
         IVirtualAxisDefinitionProvider? virtualAxes = null,
         IMotionSynchronizationDefinitionProvider? synchronizations = null)
     {
         this.runtimes = runtimes;
         this.groups = groups;
-        this.ioPoints = ioPoints?.ToArray() ?? Array.Empty<IoPoint>();
+        this.ioPoints = ioPoints?.ToArray() ?? Array.Empty<IoPointDefinition>();
         this.virtualAxes = virtualAxes;
         this.synchronizations = synchronizations;
     }
@@ -29,7 +29,7 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
     public MotionConfigurationValidationResult Validate()
     {
         var issues = new List<MotionConfigurationIssue>();
-        AxisDefinition[] axes = runtimes.Runtimes.SelectMany(runtime => (runtime.Card as IAxisDefinitionProvider)?.Axes ?? []).ToArray();
+        AxisDefinition[] axes = runtimes.Runtimes.SelectMany(runtime => (runtime.Card as IAxisChannelDefinitionProvider)?.Axes ?? []).ToArray();
         VirtualAxisDefinition[] virtualAxisDefinitions = virtualAxes?.VirtualAxes.ToArray() ?? [];
         AxisResourceDefinition[] resources = axes.Cast<AxisResourceDefinition>().Concat(virtualAxisDefinitions).ToArray();
         AddDuplicate(resources.Select(axis => axis.Id), "AxisIdDuplicate", "Business axis ID", issues);

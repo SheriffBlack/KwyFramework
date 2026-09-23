@@ -103,10 +103,8 @@ public sealed class DoViewModel : BindableBase, INavigationAware
         OutPutPoints.Clear();
         ioCard = TryGetMainIoCard();
 
-        IEnumerable<(int Index, string Name)> points = (ioCard as IIoPointRegistry)?.GetAllOutputs()
-            .Where(point => !string.IsNullOrWhiteSpace(point.Name))
-            .OrderBy(point => point.Index)
-            ?? GetEnumDefinitions<Machine_Default_PLC.PcToCard>();
+        // 物理卡不保存点位业务名称；正式设备应由 IoPointDefinition 配置驱动此页面。
+        IEnumerable<(int Index, string Name)> points = GetEnumDefinitions<Machine_Default_PLC.PcToCard>();
 
         foreach ((int index, string name) in points)
         {
@@ -163,7 +161,10 @@ public sealed class DoViewModel : BindableBase, INavigationAware
         }
         else
         {
-            ioCard.WritePulse(item.BitIndex, durationMs);
+            // 物理卡契约不提供软件脉冲；维护界面明确以普通异步定时方式复位，不能用于实时触发。
+            ioCard.WriteDoBit(item.BitIndex, activeState);
+            CancellationToken cancellationToken = activeCts?.Token ?? DestroyToken;
+            _ = ResetReversePulseAsync(ioCard, item.BitIndex, inactiveState, durationMs, cancellationToken);
         }
 
         item.TriggerCount++;

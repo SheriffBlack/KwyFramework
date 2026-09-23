@@ -75,7 +75,7 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
         MotionGroupDefinition group = groups.GetMotionGroup(groupId);
         group.Validate(); EnsureExactAxisSet(group, values, nameof(values));
         IMotionDeviceRuntime runtime = runtimes.GetRequired(group.DeviceId);
-        if (runtime.Card is not IInterpolationMotionController controller || runtime.Card is not IAxisDefinitionProvider axes)
+        if (runtime.Card is not IInterpolationMotionController controller || runtime.Card is not IAxisChannelDefinitionProvider axes)
             throw new NotSupportedException($"Motion card '{group.DeviceId}' does not support configured interpolation.");
         foreach (string axisId in group.AxisIds)
         {
@@ -92,13 +92,13 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
 
     private static short[] ResolveChannels(IMotionDeviceRuntime runtime, MotionGroupDefinition group)
     {
-        IAxisDefinitionProvider axes = (IAxisDefinitionProvider)runtime.Card;
+        IAxisChannelDefinitionProvider axes = (IAxisChannelDefinitionProvider)runtime.Card;
         return group.AxisIds.Select(id => axes.Axes.Single(axis => string.Equals(axis.Id, id, StringComparison.OrdinalIgnoreCase)).Channel).ToArray();
     }
 
     private void ValidateAdmission(MotionGroupDefinition group, IMotionDeviceRuntime runtime, IReadOnlyList<double> targets)
     {
-        IAxisDefinitionProvider definitions = (IAxisDefinitionProvider)runtime.Card;
+        IAxisChannelDefinitionProvider definitions = (IAxisChannelDefinitionProvider)runtime.Card;
         var guard = new MotionAdmissionGuard(runtime.Card, runtime.StateMonitor, admissionOptions, homes);
         for (int index = 0; index < group.AxisIds.Count; index++)
         {

@@ -102,7 +102,7 @@ public sealed class PoseMotionExecutor : IPoseMotionExecutor
         if (!group.AxisIds.SequenceEqual(mechanism.JointAxisIds, StringComparer.OrdinalIgnoreCase))
             throw new InvalidOperationException($"Kinematic mechanism '{mechanismId}' joint axes do not match motion group '{group.Id}'.");
         IMotionDeviceRuntime runtime = runtimes.GetRequired(group.DeviceId);
-        if (runtime.Card is not IAxisDefinitionProvider definitions) throw new InvalidOperationException($"Motion group '{group.Id}' card has no axis definitions.");
+            if (runtime.Card is not IAxisChannelDefinitionProvider definitions) throw new InvalidOperationException($"Motion group '{group.Id}' card has no axis definitions.");
         IReadOnlyDictionary<string, double> joints = KinematicSolutionSelector.Select(solver.SolveInverseCandidates(poseInBase.ToRigidPose()), mechanism, group, runtime, definitions);
         return motionGroups.MoveLinearAsync(new(group.Id, joints, profile, tolerance, timeout), cancellationToken);
     }

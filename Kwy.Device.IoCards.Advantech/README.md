@@ -118,14 +118,14 @@ public sealed class StationIoService
 }
 ```
 
-此扩展方法只注册具体的 `AdvantechIoCardDevice`，不把物理接口 `IIoCardDevice` 注入为全局默认服务。业务应注入 `ILogicalIoService`，通过稳定点位 ID 读写；具体驱动只供启动组装、诊断或硬件调试使用。
+此扩展方法只注册具体的 `AdvantechIoCardDevice`，不把物理接口 `IIoCardDevice` 注入为全局默认服务。业务应注入 `ILogicalIoReader`、`ILogicalIoWriter`，通过稳定点位 ID 读写；具体驱动只供启动组装、诊断或硬件调试使用。
 
 生命周期说明：
 
 ```text
 AdvantechIoCardConfig    启动组装时创建
 AdvantechIoCardDevice    Singleton
-ILogicalIoService        由 Kwy.Device.Core 注册，业务默认使用
+ILogicalIoReader/Writer  由 Kwy.Device.Core 注册，业务默认使用
 ```
 
 业务代码不要手动释放从 IOC 注入的 `AdvantechIoCardDevice` / `IIoCardDevice`，由容器在应用退出时释放。业务代码只负责在合适时机调用 `ConnectAsync()` 和 `DisconnectAsync()`。

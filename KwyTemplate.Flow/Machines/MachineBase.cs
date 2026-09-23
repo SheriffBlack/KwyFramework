@@ -2,12 +2,15 @@ using System.Globalization;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using Kwy.ComponentModel;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Abstractions.Instrument;
 using Kwy.Device.Abstractions.PLC;
+using Kwy.Device.Core.PLC;
 using KwyTemplate.Contracts.Localization;
+using KwyTemplate.Device;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Flow.Common;
 using KwyTemplate.Flow.DataDeals;
@@ -28,7 +31,8 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     private readonly List<Task> stationLifecycleTasks = [];
     private StationResultDispatchQueue? stationResultDispatchQueue;
     private Task? stationResultDispatchTask;
-    private readonly Dictionary<string, MachinePlcPointDefinition> plcPointMap = new(StringComparer.OrdinalIgnoreCase);
+    private IPlcPointDefinitionProvider plcPointDefinitions = new PlcPointDefinitionProvider([]);
+    private readonly Dictionary<int, string> legacyPlcPointIds = new();
     private readonly Dictionary<string, MachineResultRow> resultRowMap = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<MachineResultColumn> resultColumns = [];
     private readonly List<MachineResultRow> resultRows = [];
@@ -57,8 +61,6 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             this.localizationService.LanguageChanged += OnLanguageChanged;
         }
     }
-
-    protected readonly Dictionary<int, string> PlcAddressCache = new();
 
     protected IMachineDeviceContext Devices { get; }
 
@@ -103,7 +105,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
     public IReadOnlyList<MachineResultRow> ResultRows => resultRows;
 
-    public ObservableCollection<MachinePlcPointDefinition> PlcPointDefinitions { get; } = [];
+    public ObservableCollection<PlcPointDefinition> PlcPointDefinitions { get; } = [];
 
     public bool IsRunning => isRunning;
 
@@ -132,15 +134,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
     public void BindPlc(IPlcDevice? plc)
     {
         Plc = plc;
-        if (plc == null)
-        {
-            return;
-        }
-
-        foreach (MachinePlcPointDefinition point in PlcPointDefinitions)
-        {
-            plc.RegisterPoint(point.Address, point.DisplayName, point.DataType, point.IsReadOnly);
-        }
+        RebuildPlcPointDefinitionProvider();
     }
 
 
@@ -724,15 +718,15 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             return MachineExamineResult.Failed("PLC is not connected.", measurements);
         }
 
-        await plc.WriteInt16Async(PlcAddressCache[flow.SamplePointKey], 1, cancellationToken).ConfigureAwait(false);
-        await plc.WriteInt16Async(PlcAddressCache[flow.StartPointKey], 1, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointByKeyAsync(flow.SamplePointKey, (ushort)1, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointByKeyAsync(flow.StartPointKey, (ushort)1, cancellationToken).ConfigureAwait(false);
 
         int repeatCount = Math.Max(1, flow.RepeatCount);
         for (int repeatIndex = 0; repeatIndex < repeatCount; repeatIndex++)
         {
             foreach (MachineExamineStepDescriptor step in flow.Steps)
             {
-                bool ready = await WaitPlcSignalAsync(plc, PlcAddressCache[step.TriggerPointKey], (ushort)1, timeoutMs: step.TimeoutMs, cancellationToken: cancellationToken).ConfigureAwait(false);
+                bool ready = await WaitPlcPointByKeyAsync(step.TriggerPointKey, (ushort)1, timeoutMs: step.TimeoutMs, cancellationToken: cancellationToken).ConfigureAwait(false);
                 if (!ready)
                 {
                     return MachineExamineResult.Failed(measurements: measurements);
@@ -746,11 +740,11 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
                 measurements.Add(measurement);
                 progress?.Report(measurement);
-                await plc.WriteInt16Async(PlcAddressCache[step.ReadCompletedPointKey], 1, cancellationToken).ConfigureAwait(false);
+                await WritePlcPointByKeyAsync(step.ReadCompletedPointKey, (ushort)1, cancellationToken).ConfigureAwait(false);
             }
         }
 
-        await plc.WriteInt16Async(PlcAddressCache[flow.CompletedPointKey], 1, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointByKeyAsync(flow.CompletedPointKey, (ushort)1, cancellationToken).ConfigureAwait(false);
         return MachineExamineResult.Completed(measurements);
     }
 
@@ -795,24 +789,136 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             .Any(item => string.Equals(item, requestedTestName, StringComparison.OrdinalIgnoreCase));
     }
 
-    public MachinePlcPointDefinition GetPlcPoint(string key)
+    public PlcPointDefinition GetPlcPoint(string key)
     {
-        if (plcPointMap.TryGetValue(key, out MachinePlcPointDefinition? point))
-        {
-            return point;
-        }
+        return plcPointDefinitions.GetRequired(key);
+    }
 
-        throw new KeyNotFoundException($"PLC point not found: {key}");
+    /// <summary>按照稳定点位 ID 读取当前机台 PLC 点位。</summary>
+    protected async Task<TValue> ReadPlcPointAsync<TValue>(
+        string pointId,
+        CancellationToken cancellationToken = default)
+    {
+        IPlcDevice plc = GetConnectedPlc();
+        PlcPointDefinition point = GetPlcPointForDevice(pointId, plc);
+        if (point.Access == PlcPointAccess.WriteOnly)
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”为只写点位。");
+        if (point.ClrType != typeof(TValue))
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”的数据类型为 {point.DataType}，与请求类型 {typeof(TValue).Name} 不一致。");
+
+        return await ReadPlcSignalValueAsync<TValue>(plc, point.Address, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>按照枚举名称形成的稳定点位 ID 读取当前机台 PLC 点位。</summary>
+    protected Task<TValue> ReadPlcPointAsync<TPoint, TValue>(
+        TPoint point,
+        CancellationToken cancellationToken = default)
+        where TPoint : struct, Enum
+        => ReadPlcPointAsync<TValue>(point.ToString(), cancellationToken);
+
+    /// <summary>按照稳定点位 ID 写入当前机台 PLC 点位。</summary>
+    protected async Task WritePlcPointAsync<TValue>(
+        string pointId,
+        TValue value,
+        CancellationToken cancellationToken = default)
+    {
+        IPlcDevice plc = GetConnectedPlc();
+        PlcPointDefinition point = GetPlcPointForDevice(pointId, plc);
+        if (point.Access == PlcPointAccess.ReadOnly)
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”为只读点位。");
+        if (point.ClrType != typeof(TValue))
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”的数据类型为 {point.DataType}，与写入类型 {typeof(TValue).Name} 不一致。");
+
+        switch (value)
+        {
+            case bool actual: await plc.WriteBoolAsync(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            case short actual: await plc.WriteInt16Async(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            case ushort actual: await plc.WriteInt16Async(point.Address, unchecked((short)actual), cancellationToken).ConfigureAwait(false); break;
+            case int actual: await plc.WriteInt32Async(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            case uint actual: await plc.WriteInt32Async(point.Address, unchecked((int)actual), cancellationToken).ConfigureAwait(false); break;
+            case float actual: await plc.WriteFloatAsync(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            case byte[] actual: await plc.WriteBytesAsync(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            default: throw new NotSupportedException($"不支持写入 PLC 的值类型：{typeof(TValue).FullName}。");
+        }
+    }
+
+    /// <summary>按照枚举名称形成的稳定点位 ID 写入当前机台 PLC 点位。</summary>
+    protected Task WritePlcPointAsync<TPoint, TValue>(
+        TPoint point,
+        TValue value,
+        CancellationToken cancellationToken = default)
+        where TPoint : struct, Enum
+        => WritePlcPointAsync(point.ToString(), value, cancellationToken);
+
+    /// <summary>等待指定业务点位达到期望值。</summary>
+    protected Task<bool> WaitPlcPointAsync<TPoint, TValue>(
+        TPoint point,
+        TValue expectedValue,
+        int timeoutMs = 5000,
+        int intervalMs = 1,
+        CancellationToken cancellationToken = default)
+        where TPoint : struct, Enum
+    {
+        PlcPointDefinition definition = GetPlcPoint(point.ToString());
+        return WaitPlcSignalAsync(Plc, definition.Address, expectedValue, timeoutMs, intervalMs, cancellationToken);
+    }
+
+    private IPlcDevice GetConnectedPlc()
+        => Plc is { IsConnected: true } plc
+            ? plc
+            : throw new InvalidOperationException("PLC 未连接。");
+
+    private PlcPointDefinition GetPlcPointForDevice(string pointId, IPlcDevice plc)
+    {
+        PlcPointDefinition point = GetPlcPoint(pointId);
+        if (!string.Equals(point.DeviceId, plc.DeviceId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”属于设备“{point.DeviceId}”，当前绑定设备为“{plc.DeviceId}”。");
+        return point;
     }
 
     public string GetPlcAddress(int pointKey)
     {
-        if (PlcAddressCache.TryGetValue(pointKey, out string? address))
+        return GetPlcPoint(pointKey).Address;
+    }
+
+    /// <summary>按照旧枚举整数键获取统一目录中的点位定义。</summary>
+    protected PlcPointDefinition GetPlcPoint(int pointKey)
+        => TryGetPlcPoint(pointKey, out PlcPointDefinition? point)
+            ? point
+            : throw new KeyNotFoundException($"未找到 PLC 点位枚举键：{pointKey}。");
+
+    /// <summary>尝试按照旧枚举整数键获取统一目录中的点位定义。</summary>
+    protected bool TryGetPlcPoint(int pointKey, [NotNullWhen(true)] out PlcPointDefinition? point)
+    {
+        if (legacyPlcPointIds.TryGetValue(pointKey, out string? pointId)
+            && plcPointDefinitions.TryGet(pointId, out PlcPointDefinition found))
         {
-            return address;
+            point = found;
+            return true;
         }
 
-        throw new KeyNotFoundException($"PLC address not found. PointKey={pointKey}.");
+        point = null;
+        return false;
+    }
+
+    /// <summary>按照旧枚举整数键写入点位；仅作为配置迁移期间的兼容入口。</summary>
+    protected Task WritePlcPointByKeyAsync<TValue>(int pointKey, TValue value, CancellationToken cancellationToken = default)
+        => WritePlcPointAsync(GetPlcPoint(pointKey).Id, value, cancellationToken);
+
+    /// <summary>按照旧枚举整数键读取点位；仅作为配置迁移期间的兼容入口。</summary>
+    protected Task<TValue> ReadPlcPointByKeyAsync<TValue>(int pointKey, CancellationToken cancellationToken = default)
+        => ReadPlcPointAsync<TValue>(GetPlcPoint(pointKey).Id, cancellationToken);
+
+    /// <summary>按照旧枚举整数键等待点位达到期望值。</summary>
+    protected Task<bool> WaitPlcPointByKeyAsync<TValue>(
+        int pointKey,
+        TValue expectedValue,
+        int timeoutMs = 5000,
+        int intervalMs = 1,
+        CancellationToken cancellationToken = default)
+    {
+        PlcPointDefinition point = GetPlcPoint(pointKey);
+        return WaitPlcSignalAsync(Plc, point.Address, expectedValue, timeoutMs, intervalMs, cancellationToken);
     }
 
     public Task<bool> WaitPlcSignalAsync(
@@ -942,15 +1048,14 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
         foreach (PlcPointMetadataItem item in PropertyMetadataReader.GetPlcPoints<TEnum>())
         {
             int numericKey = Convert.ToInt32(item.Value);
-            var definition = new MachinePlcPointDefinition(item.Name, item.Address, item.DisplayName, item.DataType, item.IsReadOnly);
+            var definition = CreatePlcPointDefinition(item.Name, item.Address, item.DisplayName, item.DataType, item.IsReadOnly);
 
-            plcPointMap[item.Name] = definition;
-            PlcAddressCache[numericKey] = item.Address;
+            legacyPlcPointIds[numericKey] = item.Name;
 
             int existingIndex = -1;
             for (int i = 0; i < PlcPointDefinitions.Count; i++)
             {
-                if (string.Equals(PlcPointDefinitions[i].Key, item.Name, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(PlcPointDefinitions[i].Id, item.Name, StringComparison.OrdinalIgnoreCase))
                 {
                     existingIndex = i;
                     break;
@@ -966,8 +1071,9 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
                 PlcPointDefinitions.Add(definition);
             }
 
-            Plc?.RegisterPoint(item.Address, item.DisplayName, item.DataType, item.IsReadOnly);
         }
+
+        RebuildPlcPointDefinitionProvider();
     }
 
     protected void RegisterPlcPoint<TPoint>(TPoint point, string address, string displayName, Type dataType, bool isReadOnly = false)
@@ -979,15 +1085,14 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
         int numericKey = Convert.ToInt32(point);
         string key = point.ToString();
-        var definition = new MachinePlcPointDefinition(key, address, displayName, dataType, isReadOnly);
+        var definition = CreatePlcPointDefinition(key, address, displayName, dataType, isReadOnly);
 
-        plcPointMap[key] = definition;
-        PlcAddressCache[numericKey] = address;
+        legacyPlcPointIds[numericKey] = key;
 
         int existingIndex = -1;
         for (int i = 0; i < PlcPointDefinitions.Count; i++)
         {
-            if (string.Equals(PlcPointDefinitions[i].Key, key, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(PlcPointDefinitions[i].Id, key, StringComparison.OrdinalIgnoreCase))
             {
                 existingIndex = i;
                 break;
@@ -1003,10 +1108,10 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             PlcPointDefinitions.Add(definition);
         }
 
-        Plc?.RegisterPoint(address, displayName, dataType, isReadOnly);
+        RebuildPlcPointDefinitionProvider();
     }
 
-    protected IEnumerable<MachinePlcPointDefinition> GetPlcPoints<TPoint>(params TPoint[] points)
+    protected IEnumerable<PlcPointDefinition> GetPlcPoints<TPoint>(params TPoint[] points)
         where TPoint : struct, Enum
     {
         foreach (TPoint point in points)
@@ -1477,6 +1582,28 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
         resultRows.Add(row);
     }
+
+    private static PlcPointDefinition CreatePlcPointDefinition(
+        string id,
+        string address,
+        string name,
+        Type dataType,
+        bool isReadOnly)
+        => new()
+        {
+            Id = id,
+            Name = name,
+            DeviceId = DeviceIds.MainPlc,
+            Address = address,
+            DataType = PlcPointDefinition.FromClrType(dataType),
+            Access = isReadOnly ? PlcPointAccess.ReadOnly : PlcPointAccess.ReadWrite
+        };
+
+    private void RebuildPlcPointDefinitionProvider()
+    {
+        plcPointDefinitions = new PlcPointDefinitionProvider(PlcPointDefinitions);
+    }
+
 
     private MachineResultRow GetResultRow(string key)
     {

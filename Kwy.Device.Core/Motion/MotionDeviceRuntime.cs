@@ -62,7 +62,7 @@ public sealed class MotionDeviceRuntime : IMotionDeviceRuntime
 
     private void OnCardStateChanged(object? sender, ConnectionStateChangedEventArgs args)
     {
-        if (args.CurrentState != ConnectionState.Connected || Card is not IAxisDefinitionProvider definitions || homeLifecycle is null)
+        if (args.CurrentState != ConnectionState.Connected || Card is not IAxisChannelDefinitionProvider definitions || homeLifecycle is null)
             return;
         foreach (AxisDefinition axis in definitions.Axes)
             homeLifecycle.Invalidate(axis.Id, AxisHomeInvalidationReason.ControllerReconnected, "Motion controller entered a new connected session.");

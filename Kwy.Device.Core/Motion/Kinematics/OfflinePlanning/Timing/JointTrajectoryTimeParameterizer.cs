@@ -5,7 +5,7 @@ namespace Kwy.Device.Core.Motion;
 /// <summary>基于各轴速度/加减速度上限的保守离线时间估算器，不参与控制器实时点流。</summary>
 public sealed class JointTrajectoryTimeParameterizer : IJointTrajectoryTimeParameterizer
 {
-    public JointTrajectory Parameterize(JointTrajectory geometricTrajectory, IReadOnlyCollection<string> jointAxisIds, IAxisDefinitionProvider axisDefinitions, JointTrajectoryTimingOptions? options = null)
+    public JointTrajectory Parameterize(JointTrajectory geometricTrajectory, IReadOnlyCollection<string> jointAxisIds, IAxisChannelDefinitionProvider axisDefinitions, JointTrajectoryTimingOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(geometricTrajectory);
         ArgumentNullException.ThrowIfNull(jointAxisIds);

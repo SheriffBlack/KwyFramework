@@ -48,7 +48,7 @@ public sealed class DeviceRegistryInitializer : IDeviceRegistryInitializer
         foreach (DeviceDefinition definition in definitions)
         {
             IDevice device = definition.CreateDevice(services);
-            deviceRegistry.AddOrUpdate(device);
+            deviceRegistry.Add(device);
         }
     }
 

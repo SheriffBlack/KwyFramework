@@ -1,27 +1,27 @@
 namespace Kwy.Device.Abstractions.PLC;
 
 /// <summary>
-/// PLC protocol-level heartbeat configuration.
+/// PLC 协议层心跳配置。
 /// </summary>
 public interface IPlcKeepAliveConfig
 {
     /// <summary>
-    /// Whether to enable PLC protocol-level heartbeat.
+    /// 是否启用 PLC 协议层心跳。
     /// </summary>
     bool KeepAlive { get; set; }
 
     /// <summary>
-    /// PLC heartbeat interval in milliseconds.
+    /// PLC 心跳间隔，单位为毫秒。
     /// </summary>
     int KeepAliveInterval { get; set; }
 
     /// <summary>
-    /// Address used for heartbeat read.
+    /// 心跳读取使用的物理地址；为空时不执行主动读取。
     /// </summary>
     string? KeepAliveAddress { get; set; }
 
     /// <summary>
-    /// Data read mode for the heartbeat address.
+    /// 心跳地址的数据读取方式。
     /// </summary>
     PlcKeepAliveMode KeepAliveMode { get; set; }
 }

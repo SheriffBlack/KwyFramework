@@ -90,10 +90,8 @@ public sealed class DiViewModel : BindableBase, INavigationAware
         lastStates.Clear();
         ioCard = TryGetMainIoCard();
 
-        IEnumerable<(int Index, string Name)> points = (ioCard as IIoPointRegistry)?.GetAllInputs()
-            .Where(point => !string.IsNullOrWhiteSpace(point.Name))
-            .OrderBy(point => point.Index)
-            ?? GetEnumDefinitions<Machine_Default_PLC.CardToPc>();
+        // 物理卡不保存点位业务名称；正式设备应由 IoPointDefinition 配置驱动此页面。
+        IEnumerable<(int Index, string Name)> points = GetEnumDefinitions<Machine_Default_PLC.CardToPc>();
 
         foreach ((int index, string name) in points)
         {

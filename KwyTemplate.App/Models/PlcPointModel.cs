@@ -1,5 +1,5 @@
 ﻿using Kwy.MVVM.Core;
-using KwyTemplate.Flow.Models;
+using Kwy.Device.Abstractions.PLC;
 
 namespace KwyTemplate.App.Models;
 
@@ -10,25 +10,25 @@ public sealed class PlcPointModel : BindableBase
     private string statusMessage = string.Empty;
     private DateTime? lastUpdatedAt;
 
-    public PlcPointModel(MachinePlcPointDefinition definition)
+    public PlcPointModel(PlcPointDefinition definition)
     {
         Definition = definition ?? throw new ArgumentNullException(nameof(definition));
-        WriteValueText = definition.DataType == typeof(bool) ? "False" : "0";
+        WriteValueText = definition.DataType == PlcDataType.Boolean ? "False" : "0";
     }
 
-    public MachinePlcPointDefinition Definition { get; }
+    public PlcPointDefinition Definition { get; }
 
-    public string Key => Definition.Key;
+    public string Key => Definition.Id;
 
     public string Address => Definition.Address;
 
-    public string DisplayName => Definition.DisplayName;
+    public string DisplayName => Definition.Name;
 
-    public string DataTypeName => ToDisplayTypeName(Definition.DataType);
+    public string DataTypeName => ToDisplayTypeName(Definition.ClrType);
 
-    public bool IsReadOnly => Definition.IsReadOnly;
+    public bool IsReadOnly => Definition.Access == PlcPointAccess.ReadOnly;
 
-    public bool CanWrite => !Definition.IsReadOnly;
+    public bool CanWrite => Definition.Access != PlcPointAccess.ReadOnly;
 
     public string ValueText
     {

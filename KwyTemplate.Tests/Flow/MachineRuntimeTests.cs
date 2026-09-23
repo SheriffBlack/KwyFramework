@@ -200,7 +200,6 @@ public sealed class MachineRuntimeTests
         public Dictionary<string, float> FloatReads { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, short> Int16Writes { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, int> Int32Writes { get; } = new(StringComparer.OrdinalIgnoreCase);
-        private readonly List<PlcPointInfoModel> points = [];
         public string DeviceId => DeviceIds.MainPlc;
         public string DeviceName => "Fake PLC";
         public bool IsConnected { get; set; } = true;
@@ -224,8 +223,6 @@ public sealed class MachineRuntimeTests
         public Task WriteInt32Async(string address, int value, CancellationToken cancellationToken = default) { Int32Writes[address] = value; return Task.CompletedTask; }
         public Task WriteFloatAsync(string address, float value, CancellationToken cancellationToken = default) { FloatReads[address] = value; return Task.CompletedTask; }
         public Task WriteBytesAsync(string address, byte[] data, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public void RegisterPoint(string address, string name, Type dataType, bool isReadOnly = false) => points.Add(new PlcPointInfoModel { Address = address, Name = name, DataType = dataType, IsReadOnly = isReadOnly });
-        public IEnumerable<PlcPointInfoModel> GetAllRegisteredPoints() => points;
         public void Dispose() { }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         private short ReadInt16(string address) => Int16Reads.GetValueOrDefault(address);

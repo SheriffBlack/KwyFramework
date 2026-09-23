@@ -6,14 +6,13 @@ using Kwy.Device.Abstractions.IO;
 namespace Kwy.Device.Core.IO;
 
 /// <summary>
-/// IO 板卡设备抽象基类
+/// 物理 IO 卡适配器基类。
+/// 仅封装通道校验、端口掩码写入、普通软件定时脉冲和可选硬件中断；不保存业务点位名称或工艺规则。
 /// </summary>
-public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterruptSource, IIoPointRegistry
+public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterruptSource
 {
     protected const int DefaultIoChannelCount = IoChannelGuard.MaxChannelCount;
 
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, string> _doNames = new();
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, string> _diNames = new();
     private readonly PulseOutputScheduler pulseScheduler;
 
     protected IoCardBase(string deviceId, string deviceName, IDeviceConfig config)
@@ -25,9 +24,7 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
             (channel, ex) => RaiseErrorOccurred($"Reset DO pulse channel {channel} failed: {ex.Message}", ex));
     }
 
-    // ==========================================
-    // IIoCardDevice 接口实现 (交由子类具体实现)
-    // ==========================================
+    // 具体厂商驱动负责单点读写和端口读取；基类提供通用的掩码操作兜底实现。
 
     public abstract void WriteDoBit(int channel, bool state);
 
@@ -76,11 +73,11 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
     public abstract bool[] ReadAllDi();
     public abstract bool[] ReadAllDo();
 
-    // 🌟 接口对齐：使用 ReadDiPortMask
+    // 所有驱动均以 64 位物理输入快照作为监视器的统一输入。
     public abstract ulong ReadDiPortMask();
 
     /// <summary>
-    /// 当硬件中断触发时抛出，携带最高 64 位 IO 快照
+    /// 驱动收到厂商硬件中断时发布，携带最多 64 位的物理 IO 快照。
     /// </summary>
     public event EventHandler<IoSignalSnapshot>? HardwareInterruptReceived;
 
@@ -92,42 +89,6 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
     }
 
 
-
-    // ==========================================
-    // 元数据扩展实现
-    // ==========================================
-
-    public void SetDoName(int channel, string name)
-    {
-        IoChannelGuard.ValidateChannel(channel, GetDigitalOutputChannelCount(), nameof(channel));
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("DO name cannot be empty.", nameof(name));
-        }
-
-        _doNames[channel] = name;
-    }
-
-    public IEnumerable<(int Index, string Name)> GetAllOutputs()
-        => _doNames.OrderBy(static item => item.Key)
-            .Select(static item => (item.Key, item.Value))
-            .ToArray();
-
-    public void SetDiName(int channel, string name)
-    {
-        IoChannelGuard.ValidateChannel(channel, GetDigitalInputChannelCount(), nameof(channel));
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("DI name cannot be empty.", nameof(name));
-        }
-
-        _diNames[channel] = name;
-    }
-
-    public IEnumerable<(int Index, string Name)> GetAllInputs()
-        => _diNames.OrderBy(static item => item.Key)
-            .Select(static item => (item.Key, item.Value))
-            .ToArray();
 
     public override async ValueTask DisposeAsync()
     {

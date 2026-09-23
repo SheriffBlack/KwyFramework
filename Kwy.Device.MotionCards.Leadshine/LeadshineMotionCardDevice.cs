@@ -10,10 +10,9 @@ namespace Kwy.Device.MotionCards.Leadshine;
 public sealed class LeadshineMotionCardDevice :
     MotionCardBase,
     IInterpolationMotionController,
-    IAxisDefinitionProvider,
+    IAxisChannelDefinitionProvider,
     IPositionCompareOutput,
     IIoCardDevice,
-    IIoPointRegistry,
     IBulkAxisSnapshotReader,
     IBufferedAxisSnapshotReader
 {
@@ -209,13 +208,14 @@ public sealed class LeadshineMotionCardDevice :
 
             double rawConverted = AxisEngineeringConverter.ToNativeVelocity(velocity, engineering);
             double nativeVelocity = Math.Abs(rawConverted) * 1000.0;
-            double Tacc = 0.1; // 0.1 second default acceleration time
+            // LTDMC 接口使用加速时间而非加速度；未提供有效加速度时采用 0.1 秒的保守默认值。
+            double Tacc = 0.1;
 
             ThrowIfFailed(
                 LTDMC.dmc_set_profile((ushort)config.CardNo, nativeAxis, 0, nativeVelocity, Tacc, Tacc, 0),
                 $"Set jog speed profile axis {axis} failed");
 
-            // dir: 0 for negative, 1 for positive direction
+            // LTDMC 的 dir：0 为负向，1 为正向。
             ushort dir = (ushort)(rawConverted >= 0 ? 1 : 0);
             ThrowIfFailed(
                 LTDMC.dmc_vmove((ushort)config.CardNo, nativeAxis, dir),
@@ -283,7 +283,7 @@ public sealed class LeadshineMotionCardDevice :
                 LTDMC.dmc_set_profile((ushort)config.CardNo, nativeAxis, lowVel, highVel, Tacc, Tdec, 0),
                 $"Set home profile axis {axis} failed");
 
-            // home_dir: 0 for positive direction, 1 for negative direction
+            // LTDMC 的 home_dir：0 为正向，1 为负向。
             ushort homeDir = (ushort)(rawVelocity >= 0 ? 0 : 1);
 
             ThrowIfFailed(
@@ -496,7 +496,7 @@ public sealed class LeadshineMotionCardDevice :
             SelectCard();
             ushort nativeAxis = (ushort)(axis - 1);
             double speed = LTDMC.dmc_read_current_speed((ushort)config.CardNo, nativeAxis);
-            // Speed returned by card is in pulse/s, FromNativeVelocity expects pulse/ms
+            // 板卡返回单位为 pulse/s，而工程换算器的底层速度单位为 pulse/ms。
             return AxisEngineeringConverter.FromNativeVelocity(speed / 1000.0, GetAxisEngineeringConfig(axis));
         });
     }
@@ -739,32 +739,6 @@ public sealed class LeadshineMotionCardDevice :
 
     public AxisEngineeringConfig GetAxisEngineeringConfig(short axis) => GetAxisDefinition(axis).Engineering;
 
-    public void SetDoName(int channel, string name)
-    {
-        IoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("DO name cannot be empty.", nameof(name));
-        }
-
-        doNames[channel] = name;
-    }
-
-    public IEnumerable<(int Index, string Name)> GetAllOutputs() => doNames.Select(pair => (pair.Key, pair.Value));
-
-    public void SetDiName(int channel, string name)
-    {
-        IoChannelGuard.ValidateChannel(channel, config.DiChannelCount, nameof(channel));
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("DI name cannot be empty.", nameof(name));
-        }
-
-        diNames[channel] = name;
-    }
-
-    public IEnumerable<(int Index, string Name)> GetAllInputs() => diNames.Select(pair => (pair.Key, pair.Value));
-
     public void WriteDoBit(int channel, bool state)
     {
         EnsureReady();
@@ -867,8 +841,9 @@ public sealed class LeadshineMotionCardDevice :
             ThrowIfFailed(LTDMC.dmc_hcmp_set_mode((ushort)config.CardNo, hcmp, 0), "Disable HCMP before configuration failed");
             ThrowIfFailed(LTDMC.dmc_hcmp_clear_points((ushort)config.CardNo, hcmp), "Clear HCMP points failed");
 
-            int ticks = (int)(pulseWidthUs * 20); // 50ns ticks. 20us * 20 = 400 ticks.
-            // cmp_source: 0 (Command Position), cmp_logic: 1 (positive high level pulse)
+            // LTDMC 比较输出以 50ns 为一个计数单位，例如 20us 对应 400 个计数。
+            int ticks = (int)(pulseWidthUs * 20);
+            // cmp_source：0 为指令位置；cmp_logic：1 为正高电平脉冲。
             ThrowIfFailed(
                 LTDMC.dmc_hcmp_set_config((ushort)config.CardNo, hcmp, (ushort)(axis - 1), 0, 1, ticks),
                 $"Configure HCMP for PSO axis {axis} failed");
@@ -909,8 +884,6 @@ public sealed class LeadshineMotionCardDevice :
         await base.DisposeAsync();
     }
 
-    private readonly Dictionary<int, string> doNames = new();
-    private readonly Dictionary<int, string> diNames = new();
 
     private ulong ReadLogicalDoMask()
     {
@@ -1128,7 +1101,7 @@ public sealed class LeadshineMotionCardDevice :
 
     private void SelectCard()
     {
-        // Leadshine CardNo is passed to specific functions directly, no card selection registry is required.
+        // LTDMC 的具体函数直接接收 CardNo，无需维护额外的选卡上下文。
     }
 
     private void EnsureReady()

@@ -4,11 +4,7 @@ public interface IDeviceRegistry : IAsyncDisposable, IDisposable
 {
     IReadOnlyCollection<IDevice> Devices { get; }
 
-    bool TryAdd(IDevice device);
-
-    void AddOrUpdate(IDevice device);
-
-    bool Remove(string deviceId, bool dispose = false);
+    void Add(IDevice device);
 
     bool TryGetDevice(string deviceId, out IDevice device);
 

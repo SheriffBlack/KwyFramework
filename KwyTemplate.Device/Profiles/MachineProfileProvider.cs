@@ -87,6 +87,22 @@ public static class MachineProfileValidator
         }
 
         var ioPoints = profile.IoPoints.ToDictionary(item => item.Key, StringComparer.OrdinalIgnoreCase);
+        string? mainPlcId = profile.Devices.FirstOrDefault(static item => item.Kind == ConfigurableDeviceKind.MainPlc)?.DeviceId;
+        foreach (IGrouping<string, MachinePlcPointProfile> group in profile.PlcPoints.GroupBy(item => item.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(group.Key) || group.Count() > 1)
+                throw new InvalidOperationException("Machine profile contains empty or duplicated PLC point keys.");
+
+            MachinePlcPointProfile point = group.Single();
+            string? deviceId = string.IsNullOrWhiteSpace(point.DeviceId) ? mainPlcId : point.DeviceId;
+            if (string.IsNullOrWhiteSpace(point.Address) || string.IsNullOrWhiteSpace(deviceId) || !deviceIds.Contains(deviceId))
+                throw new InvalidOperationException($"PLC point '{point.Key}' has an invalid address or DeviceId.");
+            if (!Enum.TryParse<Kwy.Device.Abstractions.PLC.PlcDataType>(point.DataType, true, out _))
+                throw new InvalidOperationException($"PLC point '{point.Key}' has unsupported data type '{point.DataType}'.");
+            if (point.Length == 0)
+                throw new InvalidOperationException($"PLC point '{point.Key}' has an invalid length.");
+        }
+
         foreach (MachineStationProfile station in profile.Stations)
         {
             if (station.InstrumentDeviceIds.Any(deviceId => !deviceIds.Contains(deviceId)))

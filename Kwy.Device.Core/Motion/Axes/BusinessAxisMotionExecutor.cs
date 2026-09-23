@@ -7,14 +7,16 @@ namespace Kwy.Device.Core.Motion;
 public sealed class BusinessAxisMotionExecutor : IBusinessAxisMotionExecutor
 {
     private readonly IMotionRuntimeRegistry runtimes;
+    private readonly IAxisDefinitionProvider axisDefinitions;
     private readonly ILogicalIoReader logicalIo;
     private readonly IMotionResourceLock resources;
     private readonly IMotionOperationTracker operations;
     private readonly IAxisHomeLifecycle homeLifecycle;
 
-    public BusinessAxisMotionExecutor(IMotionRuntimeRegistry runtimes, ILogicalIoReader logicalIo, IMotionResourceLock resources, IMotionOperationTracker operations, IAxisHomeLifecycle homeLifecycle)
+    public BusinessAxisMotionExecutor(IMotionRuntimeRegistry runtimes, IAxisDefinitionProvider axisDefinitions, ILogicalIoReader logicalIo, IMotionResourceLock resources, IMotionOperationTracker operations, IAxisHomeLifecycle homeLifecycle)
     {
         this.runtimes = runtimes ?? throw new ArgumentNullException(nameof(runtimes));
+        this.axisDefinitions = axisDefinitions ?? throw new ArgumentNullException(nameof(axisDefinitions));
         this.logicalIo = logicalIo ?? throw new ArgumentNullException(nameof(logicalIo));
         this.resources = resources ?? throw new ArgumentNullException(nameof(resources));
         this.operations = operations ?? throw new ArgumentNullException(nameof(operations));
@@ -24,12 +26,14 @@ public sealed class BusinessAxisMotionExecutor : IBusinessAxisMotionExecutor
     public Task<MotionCompletionResult> MoveAbsAsync(string axisId, double position, MotionProfile profile, MotionExecutionOptions? options = null, CancellationToken cancellationToken = default)
     {
         (IMotionDeviceRuntime runtime, AxisDefinition axis) = Resolve(axisId);
+        options ??= axis.Defaults.ToExecutionOptions();
         return ExecuteAsync(axis, new(MotionRequestKind.Absolute, new Dictionary<string, double> { [axis.Id] = position }, Profile: profile), () => runtime.AxisExecutor.MoveAbsAsync(axis.Channel, position, profile, options, cancellationToken), cancellationToken);
     }
 
     public Task<MotionCompletionResult> MoveRelAsync(string axisId, double distance, MotionProfile profile, MotionExecutionOptions? options = null, CancellationToken cancellationToken = default)
     {
         (IMotionDeviceRuntime runtime, AxisDefinition axis) = Resolve(axisId);
+        options ??= axis.Defaults.ToExecutionOptions();
         return ExecuteAsync(axis, new(MotionRequestKind.Relative, new Dictionary<string, double> { [axis.Id] = distance }, Profile: profile), () => runtime.AxisExecutor.MoveRelAsync(axis.Channel, distance, profile, options, cancellationToken), cancellationToken);
     }
 
@@ -103,18 +107,7 @@ public sealed class BusinessAxisMotionExecutor : IBusinessAxisMotionExecutor
     private (IMotionDeviceRuntime Runtime, AxisDefinition Axis) Resolve(string axisId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(axisId);
-        foreach (IMotionDeviceRuntime runtime in runtimes.Runtimes)
-        {
-            if (runtime.Card is not IAxisDefinitionProvider definitions)
-                continue;
-
-            foreach (AxisDefinition axis in definitions.Axes)
-            {
-                if (string.Equals(axis.Id, axisId, StringComparison.OrdinalIgnoreCase))
-                    return (runtime, axis);
-            }
-        }
-
-        throw new KeyNotFoundException($"Axis definition '{axisId}' was not found.");
+        AxisDefinition axis = axisDefinitions.GetRequired(axisId);
+        return (runtimes.GetRequired(axis.DeviceId), axis);
     }
 }

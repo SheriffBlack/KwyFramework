@@ -15,7 +15,6 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
     private readonly IMotionProfileController profileController;
     private readonly IMotionStateMonitor stateMonitor;
     private readonly IMotionAdmissionGuard safetyGuard;
-    private readonly IAxisDefinitionProvider? axisDefinitions;
     private readonly IAxisBrakeCoordinator? brakeCoordinator;
     private readonly ConcurrentDictionary<short, AxisOperation> activeOperations = new();
     private readonly ConcurrentDictionary<short, PositionCrossingWaiter> crossingWaiters = new();
@@ -32,7 +31,6 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         this.profileController = profileController ?? throw new ArgumentNullException(nameof(profileController));
         this.stateMonitor = stateMonitor ?? throw new ArgumentNullException(nameof(stateMonitor));
         this.safetyGuard = safetyGuard ?? throw new ArgumentNullException(nameof(safetyGuard));
-        axisDefinitions = controller as IAxisDefinitionProvider;
         this.brakeCoordinator = brakeCoordinator;
         stateMonitor.AxisSnapshotCaptured += OnAxisSnapshotCaptured;
     }
@@ -46,8 +44,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(profile);
-        options ??= axisDefinitions?.GetAxisDefinition(axis).Defaults.ToExecutionOptions()
-            ?? new MotionExecutionOptions();
+        options ??= new MotionExecutionOptions();
         options.Validate();
         await EnsureMonitorStartedAsync().ConfigureAwait(false);
 

@@ -5,7 +5,7 @@ namespace Kwy.Device.Core.Motion;
 /// <summary>按完整关节路径校验轴软限位与多轴禁入区，供控制器原生连续轨迹下发前预检使用。</summary>
 public sealed class JointTrajectorySafetyValidator : IJointTrajectorySafetyValidator
 {
-    public void Validate(JointTrajectory trajectory, MotionGroupDefinition group, IAxisDefinitionProvider axisDefinitions)
+    public void Validate(JointTrajectory trajectory, MotionGroupDefinition group, IAxisChannelDefinitionProvider axisDefinitions)
     {
         ArgumentNullException.ThrowIfNull(trajectory);
         ArgumentNullException.ThrowIfNull(group);

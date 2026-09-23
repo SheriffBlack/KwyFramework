@@ -88,8 +88,13 @@ public enum MachineIoPointDirection
 public sealed class MachinePlcPointProfile
 {
     public string Key { get; set; } = string.Empty;
+    public string? DeviceId { get; set; }
     public string Address { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string DataType { get; set; } = "Boolean";
     public bool IsReadOnly { get; set; }
+    public ushort Length { get; set; } = 1;
+    public string? Unit { get; set; }
+    public string? Group { get; set; }
+    public string? Description { get; set; }
 }

@@ -16,9 +16,10 @@
 
 | 类型 | 作用 |
 | --- | --- |
-| `IoCardBase` | IO 板卡基类，提供通用 DO 掩码写入、软件脉冲、点位命名和硬件中断事件。 |
+| `IoCardBase` | IO 板卡基类，提供通用 DO 掩码写入、普通软件定时脉冲和硬件中断事件。 |
 | `IIoCardDevice` | 物理 IO 卡能力，仅用于驱动、诊断和基础设施。 |
-| `ILogicalIoService` | 业务默认使用的逻辑点位服务，处理稳定 ID、极性、Owner 与安全输出。 |
+| `ILogicalIoReader` / `ILogicalIoWriter` | 业务默认使用的逻辑点位读写能力，处理稳定 ID、极性与 Owner。 |
+| `IProcessOutputStateController` | 将普通工艺输出收敛到 `ProcessSafeState`；不替代功能安全回路。 |
 | `IIoStateMonitor` / `IoStateMonitor` | 逻辑 IO 的初始化、状态监视和诊断服务。 |
 | `IoBitConverter` | `byte[]`、`bool[]`、`ulong mask` 之间的通用转换工具。 |
 | `IoChannelGuard` | 通道数量、端口数量、通道索引的统一校验工具。 |
@@ -134,41 +135,37 @@ ioCard.WriteDoPortMask(target, changed);
 
 如果厂商 SDK 支持端口批量写入，子类应重写 `WriteDoPortMask` 提升性能。否则基类会逐点调用 `WriteDoBit` 作为兜底。
 
-## IIoStateMonitor
+## 逻辑点位与状态监视
 
-`IIoStateMonitor` 把业务逻辑名映射到物理 IO 点位。业务服务应注入 `ILogicalIoService`；`IIoCardDevice` 只应由驱动、诊断或基础设施使用。
+`IoStateMonitor` 把业务逻辑名映射到物理 IO 点位。业务服务应分别注入 `ILogicalIoReader`、`ILogicalIoWriter` 或 `IProcessOutputStateController`；`IIoCardDevice` 只应由驱动、诊断或基础设施使用。
+
+`IoPointDefinition` 是唯一的业务点位模型。`IIoPointDefinitionProvider` 是对应的只读定义目录，职责与运动模块的 `IAxisDefinitionProvider` 一致：通过稳定 ID 查询配置定义，而不是让业务、HMI 或卡适配器重复维护字典。运动轴、回零和互锁配置仅保存其 `Id` 引用；运动卡带有板载 IO 时，轴定义和点位定义可引用同一 `DeviceId`。
 
 初始化：
 
 ```csharp
-IIoStateMonitor ioMonitor = serviceProvider.GetRequiredService<IIoStateMonitor>();
-
-ioMonitor.Initialize(
-    devices: new[] { ioCard },
-    diConfigs: new[]
+IIoPointDefinitionProvider definitions = new IoPointDefinitionProvider(
+[
+    new IoPointDefinition
     {
-        new IoPoint
-        {
-            Id = "machine.start",
-            Name = "启动按钮",
-            DeviceId = ioCard.DeviceId,
-            Kind = IoSignalKind.DigitalInput,
-            Channel = 0,
-            Inverted = false
-        }
+        Id = "machine.start",
+        Name = "启动按钮",
+        DeviceId = ioCard.DeviceId,
+        Kind = IoSignalKind.DigitalInput,
+        Channel = 0
     },
-    doConfigs: new[]
+    new IoPointDefinition
     {
-        new IoPoint
-        {
-            Id = "tower.green",
-            Name = "绿灯",
-            DeviceId = ioCard.DeviceId,
-            Kind = IoSignalKind.DigitalOutput,
-            Channel = 0,
-            Inverted = false
-        }
-    });
+        Id = "tower.green",
+        Name = "绿灯",
+        DeviceId = ioCard.DeviceId,
+        Kind = IoSignalKind.DigitalOutput,
+        Channel = 0
+    }
+]);
+
+IoStateMonitor ioMonitor = serviceProvider.GetRequiredService<IoStateMonitor>();
+ioMonitor.Initialize(devices: [ioCard], pointDefinitions: definitions);
 ```
 
 读取逻辑 DI：
@@ -186,10 +183,12 @@ ioMonitor.WriteDo("tower.green", true);
 逻辑脉冲：
 
 ```csharp
-ioMonitor.WritePulse("camera.trigger", 20);
+ioMonitor.WriteTimedPulse("camera.trigger", 20);
 ```
 
-`IIoStateMonitor` 会处理 `IoPoint.Inverted`：
+该脉冲由 Windows 定时器实现，只适合普通阀、指示灯等非实时工艺输出；飞拍、比较输出和功能安全必须使用控制器硬件能力。
+
+`IoStateMonitor` 会处理 `IoPointDefinition.Inverted`：
 
 ```text
 DI 读取：logical = physical ^ Inverted
@@ -198,7 +197,7 @@ DO 写入：physical = logical ^ Inverted
 
 ## 中断与扫描
 
-`IIoStateMonitor` 同时支持两种状态更新来源：
+`IoStateMonitor` 同时支持两种状态更新来源：
 
 ```text
 硬件中断是可选能力：只有实现 `IHardwareInterruptSource` 的 IO 驱动才发布 `HardwareInterruptReceived`。事件使用 `IoSignalSnapshot`，包含设备 ID、快照时间、来源及可选触发边沿。`IIoCardDevice` 本身只保证同步读写与快照能力；不支持中断的设备继续由 `IIoStateMonitor` 轮询。

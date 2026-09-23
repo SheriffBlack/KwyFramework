@@ -1,32 +1,32 @@
 namespace Kwy.Device.Abstractions.PLC;
 
 /// <summary>
-/// PLC heartbeat read mode.
+/// PLC 心跳地址的数据读取方式。
 /// </summary>
 public enum PlcKeepAliveMode
 {
     /// <summary>
-    /// Read a Boolean address.
+    /// 按布尔值读取。
     /// </summary>
     ReadBool,
 
     /// <summary>
-    /// Read a 16-bit integer address.
+    /// 按 16 位有符号整数读取。
     /// </summary>
     ReadInt16,
 
     /// <summary>
-    /// Read a 32-bit integer address.
+    /// 按 32 位有符号整数读取。
     /// </summary>
     ReadInt32,
 
     /// <summary>
-    /// Read a 32-bit floating-point address.
+    /// 按 32 位单精度浮点数读取。
     /// </summary>
     ReadFloat,
 
     /// <summary>
-    /// Read one byte/word block from the address.
+    /// 按原始字节块读取。
     /// </summary>
     ReadBytes
 }

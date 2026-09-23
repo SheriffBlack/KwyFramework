@@ -1,13 +1,11 @@
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.Equipment;
 using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Abstractions.Motion;
-using Kwy.Device.Abstractions.Sessions;
+using Kwy.Device.Abstractions.PLC;
 using Kwy.Device.Abstractions.Vision;
-using Kwy.Device.Core.Equipment;
 using Kwy.Device.Core.IO;
 using Kwy.Device.Core.Motion;
-using Kwy.Device.Core.Sessions;
+using Kwy.Device.Core.PLC;
 using Kwy.Device.Core.Vision;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,49 +14,41 @@ namespace Kwy.Device.Core;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddKwyDeviceCore(this IServiceCollection services)
+    public static IServiceCollection AddKwyDeviceCore(
+        this IServiceCollection services,
+        Action<IoStateMonitorOptions>? configureIoMonitor = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddSingleton<IDeviceFactory, DeviceFactory>();
-        services.TryAddSingleton<IDeviceRegistry, DeviceRegistry>();
-        services.TryAddSingleton<IIoStateMonitor, IoStateMonitor>();
-        services.TryAddSingleton<ILogicalIoService>(provider => provider.GetRequiredService<IIoStateMonitor>());
-        services.TryAddSingleton<ILogicalIoReader>(provider => provider.GetRequiredService<IIoStateMonitor>());
-        services.TryAddSingleton<ILogicalIoWriter>(provider => provider.GetRequiredService<IIoStateMonitor>());
-        services.TryAddSingleton<IIoSafetyController>(provider => provider.GetRequiredService<IIoStateMonitor>());
-        services.TryAddSingleton<IIoStateSubscription>(provider => provider.GetRequiredService<IIoStateMonitor>());
-        services.TryAddSingleton<IHardwareInterruptWaiter>(provider => provider.GetRequiredService<IIoStateMonitor>());
-        services.TryAddSingleton<ICameraRegistry, CameraRegistry>();
-        services.TryAddSingleton<DeviceSafetyOptions>();
-        services.TryAddSingleton<IDeviceStateSynchronizer, CompositeDeviceStateSynchronizer>();
-        services.TryAddSingleton<IDeviceSafetyGuard, CompositeDeviceSafetyGuard>();
-        services.TryAddSingleton<IDeviceRecoveryService, DeviceRecoveryService>();
-        services.TryAddSingleton<IEquipmentStateMachine, EquipmentStateMachine>();
-        services.TryAddSingleton<IEquipmentModeService, EquipmentModeService>();
-        services.TryAddSingleton<IEquipmentEventSink, InMemoryEquipmentEventSink>();
-        services.TryAddSingleton<IAlarmService, InMemoryAlarmService>();
-        services.TryAddSingleton<IAuditTrail, InMemoryAuditTrail>();
-        services.TryAddSingleton<IRecipeRepository, InMemoryRecipeRepository>();
-        services.TryAddSingleton<IRecipeValidator, DefaultRecipeValidator>();
-        services.TryAddSingleton<IRecipeApplier, NoOpRecipeApplier>();
-        services.TryAddSingleton<IRecipeService, RecipeService>();
-        services.TryAddSingleton<IEquipmentRecoveryOrchestrator, EquipmentRecoveryOrchestrator>();
-        services.TryAddSingleton<IEquipmentProcessController, EquipmentProcessController>();
-        services.TryAddSingleton<ITransactionManager, InMemoryTransactionManager>();
+        var ioMonitorOptions = new IoStateMonitorOptions();
+        configureIoMonitor?.Invoke(ioMonitorOptions);
+        ioMonitorOptions.Validate();
 
+        services.TryAddSingleton(ioMonitorOptions);
+        services.TryAddSingleton<IDeviceRegistry, DeviceRegistry>();
+        services.TryAddSingleton<IoStateMonitor>();
+        services.TryAddSingleton<IIoStateMonitor>(provider => provider.GetRequiredService<IoStateMonitor>());
+        services.TryAddSingleton<ILogicalIoReader>(provider => provider.GetRequiredService<IoStateMonitor>());
+        services.TryAddSingleton<ILogicalIoWriter>(provider => provider.GetRequiredService<IoStateMonitor>());
+        services.TryAddSingleton<IProcessOutputStateController>(provider => provider.GetRequiredService<IoStateMonitor>());
+        services.TryAddSingleton<IIoStateSubscription>(provider => provider.GetRequiredService<IoStateMonitor>());
+        services.TryAddSingleton<ILogicalIoInterruptWaiter>(provider => provider.GetRequiredService<IoStateMonitor>());
+        services.TryAddSingleton<ICameraRegistry, CameraRegistry>();
         return services;
     }
 
-    public static IServiceCollection AddKwyDeviceRecoveryFor<TDevice>(
-        this IServiceCollection services)
-        where TDevice : class, IDevice
+    /// <summary>
+    /// 注册设备的统一 IO 点位定义目录。
+    /// 调用方在连接完成后将同一目录传给 <see cref="IIoStateMonitor.Initialize"/>，由监视器校验实际设备与通道。
+    /// </summary>
+    public static IServiceCollection AddKwyIoPointDefinitions(
+        this IServiceCollection services,
+        IEnumerable<IoPointDefinition> definitions)
     {
         ArgumentNullException.ThrowIfNull(services);
-
-        services.Replace(ServiceDescriptor.Singleton<IDeviceStateSynchronizer>(provider =>
-            new DefaultDeviceStateSynchronizer(provider.GetRequiredService<TDevice>())));
-
+        IoPointDefinition[] items = definitions?.ToArray() ?? throw new ArgumentNullException(nameof(definitions));
+        services.AddSingleton<IoPointDefinitionProvider>(_ => new IoPointDefinitionProvider(items));
+        services.AddSingleton<IIoPointDefinitionProvider>(provider => provider.GetRequiredService<IoPointDefinitionProvider>());
         return services;
     }
 
@@ -79,6 +69,21 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    public static IServiceCollection AddKwyPlcPointDefinitions(
+        this IServiceCollection services,
+        IEnumerable<PlcPointDefinition> points)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        PlcPointDefinition[] definitions = points?.ToArray() ?? throw new ArgumentNullException(nameof(points));
+        var provider = new PlcPointDefinitionProvider(definitions);
+
+        services.AddSingleton<IPlcPointDefinitionProvider>(provider);
+        services.TryAddSingleton<LogicalPlcService>();
+        services.TryAddSingleton<ILogicalPlcReader>(provider => provider.GetRequiredService<LogicalPlcService>());
+        services.TryAddSingleton<ILogicalPlcWriter>(provider => provider.GetRequiredService<LogicalPlcService>());
+        return services;
+    }
+
     public static IServiceCollection AddKwyMotionServices(
         this IServiceCollection services,
         Action<MotionAdmissionOptions>? configureAdmission = null)
@@ -90,6 +95,9 @@ public static class ServiceCollectionExtensions
 
         services.TryAddSingleton(admissionOptions);
         services.TryAddSingleton<IMotionRuntimeRegistry, MotionRuntimeRegistry>();
+        services.TryAddSingleton<IAxisDefinitionProvider>(provider => new AxisDefinitionProvider(
+            provider.GetRequiredService<IMotionRuntimeRegistry>().Runtimes
+                .SelectMany(runtime => (runtime.Card as IAxisChannelDefinitionProvider)?.Axes ?? [])));
         services.TryAddSingleton<IMotionStateMonitor>(provider =>
             provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().StateMonitor);
         services.TryAddSingleton<IMotionStateProvider>(provider => provider.GetRequiredService<IMotionStateMonitor>());
@@ -113,7 +121,7 @@ public static class ServiceCollectionExtensions
                 profileController,
                 statusReader,
                 provider.GetRequiredService<IMotionAdmissionGuard>(),
-                card as IAxisDefinitionProvider,
+                card as IAxisChannelDefinitionProvider,
                 provider.GetRequiredService<IAxisHomeLifecycle>());
         });
         services.TryAddSingleton<IAdmittedAxisMotionController>(provider => provider.GetRequiredService<AdmittedAxisMotionController>());
@@ -137,11 +145,11 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddKwyMotionGroups(
         this IServiceCollection services,
         IEnumerable<MotionGroupDefinition> groups,
-        IEnumerable<IoPoint>? ioPoints = null)
+        IEnumerable<IoPointDefinition>? ioPoints = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         var groupDefinitions = groups?.ToArray() ?? throw new ArgumentNullException(nameof(groups));
-        var pointDefinitions = ioPoints?.ToArray() ?? Array.Empty<IoPoint>();
+        var pointDefinitions = ioPoints?.ToArray() ?? Array.Empty<IoPointDefinition>();
         services.AddSingleton<IMotionGroupDefinitionProvider>(_ => new MotionGroupDefinitionProvider(groupDefinitions));
         services.AddSingleton<IMotionConfigurationValidator>(provider => new MotionConfigurationValidator(
             provider.GetRequiredService<IMotionRuntimeRegistry>(),

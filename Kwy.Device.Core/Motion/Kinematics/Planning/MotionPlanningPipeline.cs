@@ -31,7 +31,7 @@ public sealed class MotionPlanningPipeline : IMotionPlanningPipeline
         MotionGroupDefinition group = groups.GetMotionGroup(mechanism.MotionGroupId);
         if (!group.AxisIds.SequenceEqual(mechanism.JointAxisIds, StringComparer.OrdinalIgnoreCase)) throw new InvalidOperationException($"Kinematic mechanism '{mechanism.Id}' joint axes do not match motion group '{group.Id}'.");
         IMotionDeviceRuntime runtime = runtimes.GetRequired(group.DeviceId);
-        if (runtime.Card is not IAxisDefinitionProvider axisDefinitions) throw new InvalidOperationException($"Motion group '{group.Id}' card has no axis definitions.");
+        if (runtime.Card is not IAxisChannelDefinitionProvider axisDefinitions) throw new InvalidOperationException($"Motion group '{group.Id}' card has no axis definitions.");
 
         var points = new List<JointTrajectoryPoint>();
         IReadOnlyDictionary<string, double>? previousJoints = null;

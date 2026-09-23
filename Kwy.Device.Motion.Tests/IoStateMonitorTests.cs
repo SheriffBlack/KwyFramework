@@ -14,25 +14,24 @@ public sealed class IoStateMonitorTests
     {
         using var monitor = new IoStateMonitor();
         var device = new TestIoCard("io-1");
-        monitor.Initialize([device], [Input("input.ready", "io-1", 0)], []);
+        monitor.Initialize([device], Definitions(Input("input.ready", "io-1", 0)));
 
         Assert.Throws<ArgumentException>(() =>
-            monitor.Initialize([device], [Input("input.invalid", "missing", 1)], []));
+            monitor.Initialize([device], Definitions(Input("input.invalid", "missing", 1))));
 
         device.SetInput(0, true, raiseInterrupt: true);
         Assert.True(monitor.ReadDi("input.ready"));
     }
 
     [Fact]
-    public void Initialize_RejectsDuplicateStableIdsAcrossInputsAndOutputs()
+    public void DefinitionProvider_RejectsDuplicateStableIds()
     {
         using var monitor = new IoStateMonitor();
         var device = new TestIoCard("io-1");
 
-        Assert.Throws<ArgumentException>(() => monitor.Initialize(
-            [device],
-            [Input("shared.point", "io-1", 0)],
-            [Output("shared.point", "io-1", 1)]));
+        Assert.Throws<ArgumentException>(() => Definitions(
+            Input("shared.point", "io-1", 0),
+            Output("shared.point", "io-1", 1)));
     }
 
     [Fact]
@@ -43,8 +42,7 @@ public sealed class IoStateMonitorTests
 
         Assert.Throws<ArgumentException>(() => monitor.Initialize(
             [device],
-            [Input("input.first", "io-1", 0), Input("input.second", "IO-1", 0)],
-            []));
+            Definitions(Input("input.first", "io-1", 0), Input("input.second", "IO-1", 0))));
     }
 
     [Fact]
@@ -54,7 +52,7 @@ public sealed class IoStateMonitorTests
         var device = new TestIoCard("io-1");
         string? changedId = null;
         monitor.OnIoStateChanged += (id, _) => changedId = id;
-        monitor.Initialize([device], [Input("input.ready", "io-1", 0) with { Name = "可修改显示名" }], []);
+        monitor.Initialize([device], Definitions(Input("input.ready", "io-1", 0) with { Name = "可修改显示名" }));
 
         device.SetInput(0, true, raiseInterrupt: true);
 
@@ -67,7 +65,7 @@ public sealed class IoStateMonitorTests
     {
         using var monitor = new IoStateMonitor();
         var device = new TestIoCard("io-1") { ThrowOnPortRead = true };
-        monitor.Initialize([device], [Input("input.ready", "io-1", 0)], []);
+        monitor.Initialize([device], Definitions(Input("input.ready", "io-1", 0)));
 
         Assert.Throws<KeyNotFoundException>(() => monitor.ReadDi("input.unknown"));
         Assert.False(monitor.TryReadDi("input.ready", out _));
@@ -78,11 +76,11 @@ public sealed class IoStateMonitorTests
     {
         using var monitor = new IoStateMonitor();
         var device = new TestIoCard("io-1");
-        monitor.Initialize([device], [Input("input.ready", "io-1", 0)], []);
+        monitor.Initialize([device], Definitions(Input("input.ready", "io-1", 0)));
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
-        Task wait = monitor.WaitForHardwareInterruptAsync("input.ready", false, cancellation.Token);
+        Task wait = monitor.WaitForInputInterruptAsync("input.ready", false, cancellation.Token);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => wait);
     }
@@ -97,7 +95,7 @@ public sealed class IoStateMonitorTests
         monitor.OnIoStateChanged += (_, _) => throw new InvalidOperationException("Subscriber failed.");
         monitor.OnIoStateChanged += (_, _) => secondSubscriberCalled = true;
         monitor.OnIoNotificationFailed += (_, exception) => callbackFailure = exception;
-        monitor.Initialize([device], [Input("input.ready", "io-1", 0)], []);
+        monitor.Initialize([device], Definitions(Input("input.ready", "io-1", 0)));
 
         device.SetInput(0, true, raiseInterrupt: true);
 
@@ -106,15 +104,14 @@ public sealed class IoStateMonitorTests
     }
 
     [Fact]
-    public void Initialize_RejectsPointPlacedInTheWrongSignalCollection()
+    public void DefinitionProvider_SeparatesPointDirections()
     {
         using var monitor = new IoStateMonitor();
         var device = new TestIoCard("io-1");
 
-        Assert.Throws<ArgumentException>(() => monitor.Initialize(
-            [device],
-            [Output("valve.open", "io-1", 0)],
-            []));
+        IIoPointDefinitionProvider definitions = Definitions(Output("valve.open", "io-1", 0));
+        Assert.Empty(definitions.GetByKind(IoSignalKind.DigitalInput));
+        Assert.Single(definitions.GetByKind(IoSignalKind.DigitalOutput));
     }
 
     [Fact]
@@ -122,12 +119,12 @@ public sealed class IoStateMonitorTests
     {
         using var monitor = new IoStateMonitor();
         var device = new TestIoCard("io-1");
-        IoPoint output = Output("valve.open", "io-1", 2) with
+        IoPointDefinition output = Output("valve.open", "io-1", 2) with
         {
             Owner = "station.transport",
             Inverted = true
         };
-        monitor.Initialize([device], [], [output]);
+        monitor.Initialize([device], Definitions(output));
 
         Assert.Throws<UnauthorizedAccessException>(() => monitor.WriteDo("valve.open", true));
         Assert.Throws<UnauthorizedAccessException>(() => monitor.WriteDo("valve.open", true, "station.other"));
@@ -137,26 +134,24 @@ public sealed class IoStateMonitorTests
     }
 
     [Fact]
-    public void ApplySafeOutputs_AppliesOnlyConfiguredLogicalSafeStates()
+    public void ApplyProcessSafeOutputs_AppliesOnlyConfiguredLogicalSafeStates()
     {
         using var monitor = new IoStateMonitor();
         var device = new TestIoCard("io-1");
         monitor.Initialize(
             [device],
-            [],
-            [
-                Output("valve.safe", "io-1", 0) with { Owner = "station-a", SafeState = false, Inverted = true },
-                Output("lamp.unmanaged", "io-1", 1)
-            ]);
+            Definitions(
+                Output("valve.safe", "io-1", 0) with { Owner = "station-a", ProcessSafeState = false, Inverted = true },
+                Output("lamp.unmanaged", "io-1", 1)));
         device.WriteDoBit(1, true);
 
-        monitor.ApplySafeOutputs();
+        monitor.ApplyProcessSafeOutputs();
 
         Assert.True(device.GetPhysicalOutput(0));
         Assert.True(device.GetPhysicalOutput(1));
     }
 
-    private static IoPoint Input(string id, string deviceId, int channel) => new()
+    private static IoPointDefinition Input(string id, string deviceId, int channel) => new()
     {
         Id = id,
         Name = id,
@@ -165,7 +160,7 @@ public sealed class IoStateMonitorTests
         Channel = channel
     };
 
-    private static IoPoint Output(string id, string deviceId, int channel) => new()
+    private static IoPointDefinition Output(string id, string deviceId, int channel) => new()
     {
         Id = id,
         Name = id,
@@ -173,6 +168,8 @@ public sealed class IoStateMonitorTests
         Kind = IoSignalKind.DigitalOutput,
         Channel = channel
     };
+
+    private static IIoPointDefinitionProvider Definitions(params IoPointDefinition[] items) => new IoPointDefinitionProvider(items);
 
     private sealed class TestIoCard(string deviceId) : IIoCardDevice, IHardwareInterruptSource
     {

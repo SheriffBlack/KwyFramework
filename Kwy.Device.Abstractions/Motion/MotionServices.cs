@@ -16,10 +16,13 @@ public interface IAxisEngineeringUnitProvider
     AxisEngineeringConfig GetAxisEngineeringConfig(short axis);
 }
 
-/// <summary>物理卡提供的业务轴定义，用于将稳定业务轴 ID 解析到实际通道。</summary>
-public interface IAxisDefinitionProvider : IAxisEngineeringUnitProvider
+/// <summary>
+/// 单张运动卡的轴通道配置查询能力。
+/// 参数为控制器物理通道号，仅供卡适配器与 Core 物理运行时使用；业务轴 ID 的解析由设备级 <see cref="IAxisDefinitionProvider"/> 负责。
+/// </summary>
+public interface IAxisChannelDefinitionProvider : IAxisEngineeringUnitProvider
 {
-    /// <summary>该物理卡承载的全部业务轴定义，供业务 ID 解析使用。</summary>
+    /// <summary>该物理卡承载的轴通道定义，仅供通道校验、工程单位换算和 Core 物理运行时使用。</summary>
     IReadOnlyCollection<AxisDefinition> Axes { get; }
 
     AxisDefinition GetAxisDefinition(short axis);

@@ -117,7 +117,7 @@ public sealed class Machine_Default_PLC : MachineBase
     /// 不良品盒手动开关。
     /// </summary>
     /// <returns></returns>
-    public IEnumerable<MachinePlcPointDefinition> GetCassetteSwitchPoints()
+    public IEnumerable<PlcPointDefinition> GetCassetteSwitchPoints()
         => GetPlcPoints(
             PlcPoints.BadProductBoxLock1Manual,
             PlcPoints.BadProductBoxLock2Manual,
@@ -129,7 +129,7 @@ public sealed class Machine_Default_PLC : MachineBase
     /// 报警监控点位。
     /// </summary>
     /// <returns></returns>
-    public IEnumerable<MachinePlcPointDefinition> GetAlarmMonitorPoints()
+    public IEnumerable<PlcPointDefinition> GetAlarmMonitorPoints()
         => GetPlcPoints(
             PlcPoints.WearingPartCountReachedAlarm,
             PlcPoints.AirPressureDetectionAlarm);
@@ -138,7 +138,7 @@ public sealed class Machine_Default_PLC : MachineBase
     /// 寄存器监控点位。
     /// </summary>
     /// <returns></returns>
-    public IEnumerable<MachinePlcPointDefinition> GetRegisterMonitorPoints()
+    public IEnumerable<PlcPointDefinition> GetRegisterMonitorPoints()
         => GetPlcPoints(
             PlcPoints.CurrentQuantity,
             PlcPoints.SetQuantity);
@@ -154,11 +154,6 @@ public sealed class Machine_Default_PLC : MachineBase
         if (Devices.TryGet<Kwy.Device.Abstractions.IO.IIoCardDevice>(DeviceIds.MainIoCard, out Kwy.Device.Abstractions.IO.IIoCardDevice? mainIoCard) && mainIoCard != null)
         {
             base.BindIoCard(mainIoCard);
-            if (mainIoCard is Kwy.Device.Core.IO.IIoPointRegistry pointRegistry)
-            {
-                RegisterCardToPcNames(pointRegistry);
-                RegisterPcToCardNames(pointRegistry);
-            }
         }
 
         if (Devices.TryGet<IMeasurementInstrument>(DeviceIds.Instrument("Dcr", 1), out IMeasurementInstrument? dcr))
@@ -167,22 +162,6 @@ public sealed class Machine_Default_PLC : MachineBase
         }
     }
 
-
-    private static void RegisterCardToPcNames(Kwy.Device.Core.IO.IIoPointRegistry card)
-    {
-        foreach (CardToPc input in Enum.GetValues<CardToPc>())
-        {
-            card.SetDiName((int)input, GetDescription(input));
-        }
-    }
-
-    private static void RegisterPcToCardNames(Kwy.Device.Core.IO.IIoPointRegistry card)
-    {
-        foreach (PcToCard output in Enum.GetValues<PcToCard>())
-        {
-            card.SetDoName((int)output, GetDescription(output));
-        }
-    }
 
     private void RegisterPlcPoints()
     {
@@ -283,8 +262,7 @@ public sealed class Machine_Default_PLC : MachineBase
             return;
         }
 
-        string heartbeatAddress = PlcAddressCache[(int)PlcPoints.PcOnlineHeartbeat];
-        _ = Plc.WriteBoolAsync(heartbeatAddress, true);
+        _ = WritePlcPointAsync(PlcPoints.PcOnlineHeartbeat, true);
     }
 
     /// <summary>
@@ -313,14 +291,14 @@ public sealed class Machine_Default_PLC : MachineBase
     /// <returns></returns>
     public override async Task<MachineExamineResult> ExecuteExamineStandardAsync(IProgress<MachineExamineMeasurement>? progress = null, CancellationToken cancellationToken = default)
     {
-        bool isOver = await WaitPlcSignalAsync(Plc, PlcAddressCache[(int)PlcPoints.PolarityTestOver], timeoutMs: 5000, cancellationToken: cancellationToken)
+        bool isOver = await WaitPlcPointAsync(PlcPoints.PolarityTestOver, true, timeoutMs: 5000, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         if (!isOver)
         {
             return MachineExamineResult.Failed();
         }
 
-        bool isReady = await WaitPlcSignalAsync(Plc, PlcAddressCache[(int)PlcPoints.PolarityTestOver], timeoutMs: 3000, cancellationToken: cancellationToken)
+        bool isReady = await WaitPlcPointAsync(PlcPoints.PolarityTestOver, true, timeoutMs: 3000, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         return isReady ? MachineExamineResult.Completed([]) : MachineExamineResult.Failed();
     }
@@ -332,16 +310,16 @@ public sealed class Machine_Default_PLC : MachineBase
     /// <returns></returns>
     public async Task RefreshRegisterSnapshotAsync(CancellationToken cancellationToken = default)
     {
-    /// 刷新寄存器快照。
+        if (Plc is not { IsConnected: true })
         {
             return;
         }
 
-        foreach (MachinePlcPointDefinition point in GetRegisterMonitorPoints())
+        foreach (PlcPointDefinition point in GetRegisterMonitorPoints())
         {
-            if (point.DataType == typeof(int))
+            if (point.DataType == PlcDataType.Int32)
             {
-                _ = await Plc.ReadInt32ArrayAsync(point.Address, 1, cancellationToken).ConfigureAwait(false);
+                _ = await ReadPlcPointAsync<int>(point.Id, cancellationToken).ConfigureAwait(false);
             }
         }
     }

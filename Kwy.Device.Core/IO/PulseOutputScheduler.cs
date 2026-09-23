@@ -1,7 +1,8 @@
 namespace Kwy.Device.Core.IO;
 
 /// <summary>
-/// Schedules resettable single-channel pulse output operations.
+/// 管理可重置的单通道软件定时脉冲。
+/// 同一通道再次触发时会取消前一次复位计时并重新计时；受 Windows 调度影响，不能用于实时触发或功能安全。
 /// </summary>
 public sealed class PulseOutputScheduler : IDisposable
 {
@@ -22,6 +23,7 @@ public sealed class PulseOutputScheduler : IDisposable
         this.onResetError = onResetError ?? throw new ArgumentNullException(nameof(onResetError));
     }
 
+    /// <summary>置位输出并在指定时长后复位。</summary>
     public void WritePulse(int channel, int durationMs)
     {
         if (durationMs < 0)
@@ -48,6 +50,7 @@ public sealed class PulseOutputScheduler : IDisposable
         _ = ResetPulseAsync(channel, durationMs, newToken);
     }
 
+    /// <summary>取消所有待复位任务；可选择同时将仍可访问的输出复位。</summary>
     public void CancelAll(bool resetOutputs = false)
     {
         List<(int Channel, CancellationTokenSource Token)> tokens;

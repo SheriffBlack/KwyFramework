@@ -28,7 +28,7 @@ public sealed class MotionAdmissionGuard : IMotionAdmissionGuard
     private readonly IMotionCard card;
     private readonly IMotionStateProvider stateProvider;
     private readonly MotionAdmissionOptions options;
-    private readonly IAxisDefinitionProvider? axisDefinitions;
+    private readonly IAxisChannelDefinitionProvider? axisDefinitions;
     private readonly IAxisHomeLifecycle? homeLifecycle;
 
     public MotionAdmissionGuard(IMotionCard card, IMotionStateProvider stateProvider, MotionAdmissionOptions options, IAxisHomeLifecycle? homeLifecycle = null)
@@ -36,7 +36,7 @@ public sealed class MotionAdmissionGuard : IMotionAdmissionGuard
         this.card = card ?? throw new ArgumentNullException(nameof(card));
         this.stateProvider = stateProvider ?? throw new ArgumentNullException(nameof(stateProvider));
         this.options = options ?? throw new ArgumentNullException(nameof(options));
-        axisDefinitions = card as IAxisDefinitionProvider;
+        axisDefinitions = card as IAxisChannelDefinitionProvider;
         this.homeLifecycle = homeLifecycle;
     }
 
@@ -160,7 +160,7 @@ public sealed class AdmittedAxisMotionController : IAdmittedAxisMotionController
     private readonly IMotionProfileController profileController;
     private readonly IAxisStatusReader statusReader;
     private readonly IMotionAdmissionGuard safetyGuard;
-    private readonly IAxisDefinitionProvider? definitions;
+    private readonly IAxisChannelDefinitionProvider? definitions;
     private readonly IAxisHomeLifecycle? homeLifecycle;
 
     public AdmittedAxisMotionController(
@@ -168,7 +168,7 @@ public sealed class AdmittedAxisMotionController : IAdmittedAxisMotionController
         IMotionProfileController profileController,
         IAxisStatusReader statusReader,
         IMotionAdmissionGuard safetyGuard,
-        IAxisDefinitionProvider? definitions = null,
+        IAxisChannelDefinitionProvider? definitions = null,
         IAxisHomeLifecycle? homeLifecycle = null)
     {
         this.inner = inner;

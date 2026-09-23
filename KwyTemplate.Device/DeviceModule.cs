@@ -4,6 +4,8 @@ using Kwy.Communicate.NI;
 using Kwy.Communicate.TcpSerial;
 using Kwy.Device.Core;
 using Kwy.Device.Abstractions;
+using Kwy.Device.Abstractions.PLC;
+using Kwy.Device.Core.PLC;
 using Kwy.MVVM.Modularity;
 using KwyTemplate.Contracts.Modularity;
 using KwyTemplate.Contracts.Services;
@@ -34,6 +36,11 @@ public sealed class DeviceModule : IModule
         services.TryAddSingleton<IDeviceConfigProvider>(provider => provider.GetRequiredService<DeviceConfigProvider>());
         services.TryAddSingleton<IMachineRuntimeOptionsProvider, MachineRuntimeOptionsProvider>();
         services.TryAddSingleton<IMachineProfileProvider, MachineProfileProvider>();
+        services.TryAddSingleton<IPlcPointDefinitionProvider>(provider => CreatePlcPointDefinitionProvider(
+            provider.GetRequiredService<IMachineProfileProvider>().GetActiveProfile()));
+        services.TryAddSingleton<LogicalPlcService>();
+        services.TryAddSingleton<ILogicalPlcReader>(provider => provider.GetRequiredService<LogicalPlcService>());
+        services.TryAddSingleton<ILogicalPlcWriter>(provider => provider.GetRequiredService<LogicalPlcService>());
         services.TryAddSingleton<DeviceCatalogSelectionOptions>(provider => new DeviceCatalogSelectionOptions
         {
             ActiveCatalogKey = ResolveActiveCatalogKey(provider.GetRequiredService<IMachineRuntimeOptionsProvider>().Get())
@@ -69,5 +76,40 @@ public sealed class DeviceModule : IModule
                 "Machine_4_HAHH" => nameof(Machine_4_HAHH_DeviceCatalog),
                 _ => nameof(Machine_Default_DeviceCatalog)
             };
+
+    private static IPlcPointDefinitionProvider CreatePlcPointDefinitionProvider(MachineProfile profile)
+    {
+        string? mainPlcId = profile.Devices
+            .FirstOrDefault(static item => item.Kind == ConfigurableDeviceKind.MainPlc)
+            ?.DeviceId;
+
+        PlcPointDefinition[] points = profile.PlcPoints.Select(point => new PlcPointDefinition
+        {
+            Id = point.Key,
+            Name = string.IsNullOrWhiteSpace(point.DisplayName) ? point.Key : point.DisplayName,
+            DeviceId = string.IsNullOrWhiteSpace(point.DeviceId)
+                ? mainPlcId ?? throw new InvalidOperationException($"PLC point '{point.Key}' has no DeviceId and no main PLC is configured.")
+                : point.DeviceId,
+            Address = point.Address,
+            DataType = ParsePlcDataType(point.DataType),
+            Access = point.IsReadOnly ? PlcPointAccess.ReadOnly : PlcPointAccess.ReadWrite,
+            Length = point.Length,
+            Unit = point.Unit,
+            Group = point.Group,
+            Description = point.Description
+        }).ToArray();
+
+        return new PlcPointDefinitionProvider(points);
+    }
+
+    private static PlcDataType ParsePlcDataType(string value)
+    {
+        if (Enum.TryParse(value, ignoreCase: true, out PlcDataType result))
+        {
+            return result;
+        }
+
+        throw new InvalidOperationException($"Unsupported PLC point data type: {value}.");
+    }
 }
 

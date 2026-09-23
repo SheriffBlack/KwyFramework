@@ -17,33 +17,29 @@ public sealed class IoStateMonitorContractTests
 
         Assert.Throws<ArgumentOutOfRangeException>(() => monitor.Initialize(
             [device],
-            [Input("sensor.invalid", 2)],
-            []));
+            Definitions(Input("sensor.invalid", 2))));
     }
 
     [Fact]
-    public void IoCardBase_UsesDeclaredCapabilitiesForMaskAndPointRegistry()
+    public void IoCardBase_UsesDeclaredCapabilitiesForOutputMask()
     {
         var card = new BaseCard();
         card.WriteDoPortMask(mask: 0b11, changedMask: ulong.MaxValue);
-        card.SetDoName(1, "Valve");
 
         Assert.True(card.GetOutput(0));
         Assert.True(card.GetOutput(1));
-        Assert.Single(card.GetAllOutputs());
-        Assert.Throws<ArgumentOutOfRangeException>(() => card.SetDoName(2, "Invalid"));
     }
 
     [Fact]
-    public async Task WritePulse_ReplacesEarlierPulseForTheSameLogicalOutput()
+    public async Task WriteTimedPulse_ReplacesEarlierPulseForTheSameLogicalOutput()
     {
         using var monitor = new IoStateMonitor();
         var device = new FakeIoCard();
-        monitor.Initialize([device], [], [Output("valve.open", 0)]);
+        monitor.Initialize([device], Definitions(Output("valve.open", 0)));
 
-        monitor.WritePulse("valve.open", 60);
+        monitor.WriteTimedPulse("valve.open", 60);
         await Task.Delay(25);
-        monitor.WritePulse("valve.open", 60);
+        monitor.WriteTimedPulse("valve.open", 60);
         await Task.Delay(45);
         Assert.True(device.GetOutput(0));
 
@@ -56,9 +52,9 @@ public sealed class IoStateMonitorContractTests
     {
         using var monitor = new IoStateMonitor();
         var device = new FakeIoCard { ThrowOnWrite = true };
-        monitor.Initialize([device], [], [Output("valve.safe", 0) with { SafeState = false }]);
+        monitor.Initialize([device], Definitions(Output("valve.safe", 0) with { ProcessSafeState = false }));
 
-        Assert.Throws<AggregateException>(monitor.ApplySafeOutputs);
+        Assert.Throws<AggregateException>(monitor.ApplyProcessSafeOutputs);
     }
 
     [Fact]
@@ -69,7 +65,7 @@ public sealed class IoStateMonitorContractTests
         using var observed = new ManualResetEventSlim();
         monitor.OnIoReadFailed += (_, _) => throw new InvalidOperationException("Test subscriber failure.");
         monitor.OnIoReadFailed += (_, _) => observed.Set();
-        monitor.Initialize([device], [Input("sensor.ready", 0)], []);
+        monitor.Initialize([device], Definitions(Input("sensor.ready", 0)));
 
         Assert.True(observed.Wait(TimeSpan.FromSeconds(1)));
     }
@@ -85,7 +81,7 @@ public sealed class IoStateMonitorContractTests
             if (snapshot.Source == IoSnapshotSource.HardwareInterrupt)
                 received = snapshot;
         };
-        monitor.Initialize([device], [Input("sensor.ready", 0)], []);
+        monitor.Initialize([device], Definitions(Input("sensor.ready", 0)));
 
         device.RaiseInterrupt(1, IoTriggerEdge.Rising);
 
@@ -95,15 +91,17 @@ public sealed class IoStateMonitorContractTests
         Assert.NotEqual(default, received.Timestamp);
     }
 
-    private static IoPoint Input(string id, int channel) => new()
+    private static IoPointDefinition Input(string id, int channel) => new()
     {
         Id = id, Name = id, DeviceId = "io-1", Kind = IoSignalKind.DigitalInput, Channel = channel
     };
 
-    private static IoPoint Output(string id, int channel) => new()
+    private static IoPointDefinition Output(string id, int channel) => new()
     {
         Id = id, Name = id, DeviceId = "io-1", Kind = IoSignalKind.DigitalOutput, Channel = channel
     };
+
+    private static IIoPointDefinitionProvider Definitions(params IoPointDefinition[] items) => new IoPointDefinitionProvider(items);
 
     private sealed class FakeIoCard(int inputCount = 8, int outputCount = 8) : IIoCardDevice, IHardwareInterruptSource
     {

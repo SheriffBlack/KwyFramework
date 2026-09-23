@@ -9,13 +9,16 @@ public enum IoSignalKind
     DigitalOutput
 }
 
-public enum IoSafetyClass
+/// <summary>
+/// 点位对工艺运行的重要程度。该分类用于诊断和软件策略，不能替代急停、门锁等硬件功能安全回路。
+/// </summary>
+public enum IoCriticality
 {
     /// <summary>普通工艺信号。</summary>
     Standard,
 
-    /// <summary>与安全状态有关，仅用于软件分类和诊断，不替代安全回路。</summary>
-    SafetyRelated,
+    /// <summary>工艺关键点位；失效时通常需要阻止自动运行或进入受控处置。</summary>
+    ProcessCritical,
 
     /// <summary>仅用于诊断和维护。</summary>
     DiagnosticOnly
@@ -25,7 +28,7 @@ public enum IoSafetyClass
 /// IO 点位的稳定逻辑身份与电气映射。
 /// 工艺等待、超时和互锁规则不属于点位本身。
 /// </summary>
-public sealed record IoPoint
+public sealed record IoPointDefinition
 {
     /// <summary>业务稳定 ID；流程、配方和事件均使用此值。</summary>
     public required string Id { get; init; }
@@ -42,13 +45,13 @@ public sealed record IoPoint
     public bool Inverted { get; init; }
 
     /// <summary>
-    /// 输出点的逻辑安全状态。null 表示通用安全复位不处理该点位；
-    /// 输入点不允许配置安全状态。
+    /// 输出点在软件停机、报警处置等场景下应收敛到的工艺状态。
+    /// null 表示不参与工艺输出收敛；这不是硬件功能安全状态，输入点不允许配置。
     /// </summary>
-    public bool? SafeState { get; init; }
+    public bool? ProcessSafeState { get; init; }
 
-    /// <summary>软件安全分类，仅用于流程约束和诊断，不能替代硬件安全回路。</summary>
-    public IoSafetyClass SafetyClass { get; init; }
+    /// <summary>工艺重要程度，用于流程准入和诊断，不能替代硬件安全回路。</summary>
+    public IoCriticality Criticality { get; init; }
     /// <summary>用于 UI、维护和报警分组的可选名称。</summary>
     public string? Group { get; init; }
     /// <summary>允许写入该 DO 的资源所有者；null 表示不启用 Owner 限制。</summary>
@@ -63,11 +66,11 @@ public sealed record IoPoint
         ArgumentException.ThrowIfNullOrWhiteSpace(Name);
         ArgumentException.ThrowIfNullOrWhiteSpace(DeviceId);
         if (!Enum.IsDefined(Kind)) throw new ArgumentOutOfRangeException(nameof(Kind));
-        if (!Enum.IsDefined(SafetyClass)) throw new ArgumentOutOfRangeException(nameof(SafetyClass));
+        if (!Enum.IsDefined(Criticality)) throw new ArgumentOutOfRangeException(nameof(Criticality));
         if (Channel < 0)
             throw new ArgumentOutOfRangeException(nameof(Channel), Channel, "Channel must be non-negative.");
 
-        if (Kind == IoSignalKind.DigitalInput && SafeState is not null)
-            throw new InvalidOperationException($"Input point '{Id}' cannot define SafeState.");
+        if (Kind == IoSignalKind.DigitalInput && ProcessSafeState is not null)
+            throw new InvalidOperationException($"Input point '{Id}' cannot define ProcessSafeState.");
     }
 }

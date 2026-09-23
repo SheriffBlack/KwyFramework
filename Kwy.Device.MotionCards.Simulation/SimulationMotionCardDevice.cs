@@ -17,7 +17,7 @@ public interface ISimulationMotionControl
 
 public sealed class SimulationMotionCardDevice :
     MotionCardBase,
-    IAxisDefinitionProvider,
+    IAxisChannelDefinitionProvider,
     ISimulationMotionControl
 {
     private readonly SimulationMotionCardConfig config;

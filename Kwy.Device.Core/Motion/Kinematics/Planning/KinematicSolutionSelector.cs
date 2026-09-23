@@ -5,7 +5,7 @@ namespace Kwy.Device.Core.Motion;
 /// <summary>在可达性、奇异度、软限位和当前关节位置约束下选择连续性最好的逆解。</summary>
 internal static class KinematicSolutionSelector
 {
-    public static IReadOnlyDictionary<string, double> Select(IReadOnlyList<KinematicSolution> candidates, KinematicMechanismDefinition mechanism, MotionGroupDefinition group, IMotionDeviceRuntime runtime, IAxisDefinitionProvider definitions, IReadOnlyDictionary<string, double>? referencePositions = null)
+    public static IReadOnlyDictionary<string, double> Select(IReadOnlyList<KinematicSolution> candidates, KinematicMechanismDefinition mechanism, MotionGroupDefinition group, IMotionDeviceRuntime runtime, IAxisChannelDefinitionProvider definitions, IReadOnlyDictionary<string, double>? referencePositions = null)
     {
         ArgumentNullException.ThrowIfNull(candidates);
         var eligible = new List<(IReadOnlyDictionary<string, double> Joints, double Score)>();

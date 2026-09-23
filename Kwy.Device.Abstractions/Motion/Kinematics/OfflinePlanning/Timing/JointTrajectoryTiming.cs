@@ -22,6 +22,6 @@ public interface IJointTrajectoryTimeParameterizer
     JointTrajectory Parameterize(
         JointTrajectory geometricTrajectory,
         IReadOnlyCollection<string> jointAxisIds,
-        IAxisDefinitionProvider axisDefinitions,
+        IAxisChannelDefinitionProvider axisDefinitions,
         JointTrajectoryTimingOptions? options = null);
 }

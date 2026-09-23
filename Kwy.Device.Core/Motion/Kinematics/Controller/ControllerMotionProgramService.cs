@@ -58,7 +58,7 @@ public sealed class ControllerMotionProgramService : IControllerMotionProgramSer
 
         MotionGroupDefinition group = groups.GetMotionGroup(mechanism.MotionGroupId);
         IMotionDeviceRuntime runtime = runtimes.GetRequired(group.DeviceId);
-        if (runtime.Card is not IAxisDefinitionProvider axisDefinitions)
+        if (runtime.Card is not IAxisChannelDefinitionProvider axisDefinitions)
             throw new NotSupportedException($"Motion card '{runtime.DeviceId}' does not provide axis definitions.");
         if (runtime.Card is not IControllerMotionProgramAdapter adapter)
         {
@@ -107,7 +107,7 @@ public sealed class ControllerMotionProgramService : IControllerMotionProgramSer
         }
     }
 
-    private void ValidateAdmission(MotionGroupDefinition group, IMotionDeviceRuntime runtime, IAxisDefinitionProvider definitions, IReadOnlyDictionary<string, double> targets)
+    private void ValidateAdmission(MotionGroupDefinition group, IMotionDeviceRuntime runtime, IAxisChannelDefinitionProvider definitions, IReadOnlyDictionary<string, double> targets)
     {
         var guard = new MotionAdmissionGuard(runtime.Card, runtime.StateMonitor, admissionOptions, homes);
         foreach (string axisId in group.AxisIds)
@@ -119,7 +119,7 @@ public sealed class ControllerMotionProgramService : IControllerMotionProgramSer
         }
     }
 
-    private static void EnsureStartPositionMatchesRuntime(JointTrajectory trajectory, MotionGroupDefinition group, IMotionDeviceRuntime runtime, IAxisDefinitionProvider definitions)
+    private static void EnsureStartPositionMatchesRuntime(JointTrajectory trajectory, MotionGroupDefinition group, IMotionDeviceRuntime runtime, IAxisChannelDefinitionProvider definitions)
     {
         JointTrajectoryPoint first = trajectory.Points[0];
         foreach (string axisId in group.AxisIds)
@@ -136,7 +136,7 @@ public sealed class ControllerMotionProgramService : IControllerMotionProgramSer
         }
     }
 
-    private static AxisDefinition FindAxis(IAxisDefinitionProvider definitions, string axisId)
+    private static AxisDefinition FindAxis(IAxisChannelDefinitionProvider definitions, string axisId)
         => definitions.Axes.SingleOrDefault(item => string.Equals(item.Id, axisId, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"Axis '{axisId}' is not defined on the motion card.");
 

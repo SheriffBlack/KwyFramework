@@ -131,7 +131,7 @@ public sealed class KinematicsPlanningTests
         Assert.Equal(2, result.LimitedJointVelocities["left.x"], 10);
     }
 
-    private sealed class TestAxisDefinitions(double maximumVelocity = 100) : IAxisDefinitionProvider
+    private sealed class TestAxisDefinitions(double maximumVelocity = 100) : IAxisChannelDefinitionProvider
     {
         public IReadOnlyCollection<AxisDefinition> Axes { get; } =
         [Create("left.x", 1, maximumVelocity), Create("left.y", 2, maximumVelocity)];

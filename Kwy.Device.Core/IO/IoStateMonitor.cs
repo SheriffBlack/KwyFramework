@@ -4,20 +4,21 @@ using System.Collections.Concurrent;
 namespace Kwy.Device.Core.IO;
 
 /// <summary>
-/// 全局 IO 管理器 (0.5 层)
-/// 负责抹平物理硬件差异，实现逻辑标签到物理引脚的动态映射
+/// 逻辑 IO 运行时服务。
+/// 负责校验 <see cref="IoPointDefinition"/> 映射、维护 DI 采集快照，并将业务 <c>pointId</c> 转换为物理设备和通道。
+/// 它是上位机软件的状态与工艺输出层，不承担确定实时控制或功能安全职责。
 /// </summary>
-public sealed class IoStateMonitor : IIoStateMonitor
+public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogicalIoWriter, IProcessOutputStateController, ILogicalIoInterruptWaiter
 {
-    // 存储所有的 IO 设备 (运动控制卡或专用 IO 卡)
+    // 当前配置中可用的物理 IO 设备，可以是独立 IO 卡或运动卡板载 IO。
     private readonly ConcurrentDictionary<string, IIoCardDevice> _devices = new();
 
-    // 稳定点位 ID -> 物理点位映射。
-    private readonly Dictionary<string, IoPoint> _diMap = new(StringComparer.OrdinalIgnoreCase);
+    // 稳定逻辑点位 ID 到物理点位定义的映射。
+    private readonly Dictionary<string, IoPointDefinition> _diMap = new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly Dictionary<string, IoPoint> _doMap = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IoPointDefinition> _doMap = new(StringComparer.OrdinalIgnoreCase);
 
-    // 🚀 优化三：缓存各张卡的物理掩码，以及上一次的状态用于对比 (升级为 64 位支持)
+    // 每张设备最近一次的物理 DI 快照，用于读取缓存状态和计算边沿变化。
     private readonly ConcurrentDictionary<string, ulong> _deviceMaskCache = new();
     private readonly object _maskSync = new();
     public event Action<string, bool>? OnIoStateChanged;
@@ -28,9 +29,8 @@ public sealed class IoStateMonitor : IIoStateMonitor
     private Task? _scanTask;
     private readonly ConcurrentDictionary<string, EventHandler<IoSignalSnapshot>> _interruptHandlers = new();
     private readonly ConcurrentDictionary<string, PulseOutputScheduler> _logicalPulseSchedulers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IoStateMonitorOptions _options;
     private bool _disposed;
-
-    public int PollingIntervalMs { get; set; } = 5;
 
     public event Action<string, Exception>? OnIoReadFailed;
 
@@ -40,25 +40,27 @@ public sealed class IoStateMonitor : IIoStateMonitor
 
     public event Action<IoSignalSnapshot>? OnIoSnapshotReceived;
 
-    public IoStateMonitor()
-    { }
+    public IoStateMonitor(IoStateMonitorOptions? options = null)
+    {
+        _options = options ?? new IoStateMonitorOptions();
+        _options.Validate();
+    }
 
     /// <summary>
-    /// 初始化并启动高频扫描
+    /// 校验物理设备与点位定义后启动状态采集。采集用于软件状态、HMI 和动作前检查，不是实时或功能安全机制。
     /// </summary>
-    public void Initialize(IEnumerable<IIoCardDevice> devices, IEnumerable<IoPoint> diConfigs, IEnumerable<IoPoint> doConfigs)
+    public void Initialize(IEnumerable<IIoCardDevice> devices, IIoPointDefinitionProvider pointDefinitions)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(devices);
-        ArgumentNullException.ThrowIfNull(diConfigs);
-        ArgumentNullException.ThrowIfNull(doConfigs);
+        ArgumentNullException.ThrowIfNull(pointDefinitions);
 
         IIoCardDevice[] deviceItems = devices.ToArray();
-        IoPoint[] diItems = diConfigs.ToArray();
-        IoPoint[] doItems = doConfigs.ToArray();
+        IoPointDefinition[] diItems = pointDefinitions.GetByKind(IoSignalKind.DigitalInput).ToArray();
+        IoPointDefinition[] doItems = pointDefinitions.GetByKind(IoSignalKind.DigitalOutput).ToArray();
         InitializationMaps maps = BuildAndValidateMaps(deviceItems, diItems, doItems);
 
-        // 候选配置全部校验通过后再替换运行状态，避免无效配置破坏现有监视器。
+        // 点位定义目录不归监视器所有；候选绑定全部校验通过后再替换运行状态，避免无效配置破坏已有采集。
         Reset();
 
         foreach (IIoCardDevice dev in deviceItems)
@@ -67,8 +69,7 @@ public sealed class IoStateMonitor : IIoStateMonitor
             // 为每张卡预分配一个数组（支持最大 64 通道）
             _fastReverseDiMap[dev.DeviceId] = new string[64];
 
-            // 🚀 核心架构升级：订阅硬件物理中断事件。
-            // 当硬件产生中断时，微秒级瞬间触发解析，同步更新内存缓存并广播 UI 状态更新事件，无需等待 5ms 轮询！
+            // 可选中断用于更快地更新上位机状态；回调、线程调度和订阅者均不具备确定实时性。
             if (dev is IHardwareInterruptSource interruptSource)
             {
                 EventHandler<IoSignalSnapshot> handler = (_, snapshot) => ProcessSignalSnapshot(snapshot);
@@ -77,12 +78,12 @@ public sealed class IoStateMonitor : IIoStateMonitor
             }
         }
 
-        foreach ((string id, IoPoint point) in maps.DiMap)
+        foreach ((string id, IoPointDefinition point) in maps.DiMap)
         {
             _diMap[id] = point;
             _fastReverseDiMap[point.DeviceId][point.Channel] = id;
         }
-        foreach ((string id, IoPoint point) in maps.DoMap)
+        foreach ((string id, IoPointDefinition point) in maps.DoMap)
         {
             _doMap[id] = point;
         }
@@ -92,8 +93,8 @@ public sealed class IoStateMonitor : IIoStateMonitor
 
     private static InitializationMaps BuildAndValidateMaps(
         IReadOnlyCollection<IIoCardDevice> devices,
-        IReadOnlyCollection<IoPoint> inputs,
-        IReadOnlyCollection<IoPoint> outputs)
+        IReadOnlyCollection<IoPointDefinition> inputs,
+        IReadOnlyCollection<IoPointDefinition> outputs)
     {
         var deviceMap = new Dictionary<string, IIoCardDevice>(StringComparer.OrdinalIgnoreCase);
         foreach (IIoCardDevice device in devices)
@@ -105,22 +106,22 @@ public sealed class IoStateMonitor : IIoStateMonitor
         }
 
         var allIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        Dictionary<string, IoPoint> diMap = ValidatePoints(inputs, IoSignalKind.DigitalInput, deviceMap, allIds, nameof(inputs));
-        Dictionary<string, IoPoint> doMap = ValidatePoints(outputs, IoSignalKind.DigitalOutput, deviceMap, allIds, nameof(outputs));
+        Dictionary<string, IoPointDefinition> diMap = ValidatePoints(inputs, IoSignalKind.DigitalInput, deviceMap, allIds, nameof(inputs));
+        Dictionary<string, IoPointDefinition> doMap = ValidatePoints(outputs, IoSignalKind.DigitalOutput, deviceMap, allIds, nameof(outputs));
         return new InitializationMaps(diMap, doMap);
     }
 
-    private static Dictionary<string, IoPoint> ValidatePoints(
-        IEnumerable<IoPoint> points,
+    private static Dictionary<string, IoPointDefinition> ValidatePoints(
+        IEnumerable<IoPointDefinition> points,
         IoSignalKind expectedKind,
         IReadOnlyDictionary<string, IIoCardDevice> devices,
         ISet<string> allIds,
         string parameterName)
     {
-        var result = new Dictionary<string, IoPoint>(StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, IoPointDefinition>(StringComparer.OrdinalIgnoreCase);
         var physicalChannels = new HashSet<(string DeviceId, int Channel)>(DeviceChannelComparer.Instance);
 
-        foreach (IoPoint point in points)
+        foreach (IoPointDefinition point in points)
         {
             ArgumentNullException.ThrowIfNull(point);
             point.Validate();
@@ -145,8 +146,8 @@ public sealed class IoStateMonitor : IIoStateMonitor
     }
 
     /// <summary>
-    /// 统一解析引脚掩码变化，同时支持【轮询线程】和【硬件中断回调】的高效调用。
-    /// 包含并发锁确保线程安全，并通过缓存对比实现自动去重。
+    /// 统一处理轮询与硬件通知产生的物理输入快照。
+    /// 在锁内更新缓存和计算变化，在锁外通知订阅者，避免业务回调阻塞状态采集。
     /// </summary>
     private void ProcessSignalSnapshot(IoSignalSnapshot snapshot)
     {
@@ -154,9 +155,13 @@ public sealed class IoStateMonitor : IIoStateMonitor
         string deviceId = snapshot.DeviceId;
         ulong currentMask = snapshot.Mask;
         List<(string PointId, bool State)>? changes = null;
-        // 🚀 使用锁确保当硬件中断线程与 5ms 扫描线程同时触发时，状态更新与事件广播依然绝对安全且不产生竞争
+        // 硬件通知线程和后台轮询可能并发到达，缓存更新与差异计算必须保持原子性。
         lock (_maskSync)
         {
+            // 设备被重配或停止后到达的旧中断快照不应重新写入缓存。
+            if (!_devices.ContainsKey(deviceId))
+                return;
+
             bool hasPrevious = _deviceMaskCache.TryGetValue(deviceId, out ulong lastMask);
             if (!hasPrevious || currentMask != lastMask)
             {
@@ -226,7 +231,7 @@ public sealed class IoStateMonitor : IIoStateMonitor
     }
 
     /// <summary>
-    /// 核心心脏：5ms 高频扫描 + 状态变更检测
+    /// 后台轮询并检测已配置点位的状态变化。
     /// </summary>
     private void StartHeartbeat()
     {
@@ -244,7 +249,7 @@ public sealed class IoStateMonitor : IIoStateMonitor
 
     private async Task RunScanLoopAsync(CancellationToken cancellationToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(Math.Max(PollingIntervalMs, 1)));
+        using var timer = new PeriodicTimer(_options.PollingInterval);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -281,20 +286,15 @@ public sealed class IoStateMonitor : IIoStateMonitor
         }
     }
 
-    // ==========================================
-    // 🚀 核心读写 API
-    // ==========================================
+    // 逻辑点位读写与硬件通知等待。
 
     /// <summary>
-    /// 【硬件中断模式】提供给极速飞拍、核心触发使用的“硬件中断等待”接口。
-    /// 完全绕过 5ms 轮询，通过 TaskCompletionSource 直连板卡底层的 PCI 中断回调。
-    /// 注意：如果板卡的指定通道物理上不支持中断，此方法将永远处于等待状态。
+    /// 等待逻辑 DI 的硬件中断通知。仅用于上位机流程协调，飞拍等确定时序必须使用控制器硬件触发。
     /// </summary>
-    /// <param name="label">逻辑 IO 名称，如 "DI_PLC_OK"</param>
+    /// <param name="label">逻辑输入点位 ID，例如 <c>transport.fixture.present</c>。</param>
     /// <param name="expectedState">期望等到的电平状态（true=高电平，false=低电平）</param>
     /// <param name="token">取消令牌</param>
-    /// <returns>异步任务，达到预期状态时瞬间完成 (微秒级延迟)</returns>
-    public Task WaitForHardwareInterruptAsync(string label, bool expectedState, System.Threading.CancellationToken token)
+    public Task WaitForInputInterruptAsync(string label, bool expectedState, CancellationToken token = default)
     {
         if (!_diMap.TryGetValue(label, out var point))
             throw new ArgumentException($"未定义的 DI 标签: {label}");
@@ -313,28 +313,6 @@ public sealed class IoStateMonitor : IIoStateMonitor
             point.Channel,
             expectedState ^ point.Inverted,
             token);
-    }
-
-    /// <summary>
-    /// 【硬件中断模式】直接通过物理设备和通道号等待中断（绕过逻辑名称与极性映射，直接读取物理电平）。
-    /// </summary>
-    /// <param name="device">物理板卡设备实例</param>
-    /// <param name="channel">输入通道索引 (最高 0-63)</param>
-    /// <param name="expectedState">期望的物理电平状态 (true=高电平，false=低电平)</param>
-    /// <param name="token">取消令牌</param>
-    /// <returns>异步任务，达到期望电平时完成</returns>
-    public Task WaitForHardwareInterruptAsync(IIoCardDevice device, int channel, bool expectedState, CancellationToken token)
-    {
-        if (device == null)
-            throw new ArgumentNullException(nameof(device));
-        IoChannelGuard.ValidateChannel(channel, device.DigitalInputCount, nameof(channel));
-
-        if (device is not IHardwareInterruptSource interruptSource)
-        {
-            throw new NotSupportedException($"IO device '{device.DeviceId}' does not provide hardware interrupt notifications.");
-        }
-
-        return WaitForHardwareInterruptCoreAsync(device, interruptSource, channel, expectedState, token);
     }
 
     private void PublishReadFailure(string deviceId, Exception exception)
@@ -401,7 +379,7 @@ public sealed class IoStateMonitor : IIoStateMonitor
     public bool TryReadDi(string pointId, out bool state)
     {
         state = false;
-        if (!_diMap.TryGetValue(pointId, out IoPoint? point)
+        if (!_diMap.TryGetValue(pointId, out IoPointDefinition? point)
             || !_deviceMaskCache.TryGetValue(point.DeviceId, out ulong mask))
             return false;
 
@@ -411,38 +389,46 @@ public sealed class IoStateMonitor : IIoStateMonitor
     }
 
     /// <summary>
-    /// 写入逻辑输出 (DO)
+    /// 按逻辑点位 ID 写入输出，并应用 Owner 与反相规则。
     /// </summary>
     public void WriteDo(string pointId, bool state, string? owner = null)
     {
-        IoPoint point = GetOutputForWrite(pointId, owner);
-        WriteLogicalOutput(point, state);
+        IoPointDefinition point = GetOutputForWrite(pointId, owner);
+        try
+        {
+            WriteLogicalOutput(point, state);
+        }
+        catch (Exception exception)
+        {
+            PublishWriteFailure(point.Id, exception);
+            throw;
+        }
     }
 
     /// <summary>
-    /// 写入逻辑输出高精度脉冲 (DO)
+    /// 写入逻辑输出的软件定时脉冲；同一输出再次触发会重新开始计时。
     /// </summary>
-    public void WritePulse(string pointId, int durationMs, string? owner = null)
+    public void WriteTimedPulse(string pointId, int durationMs, string? owner = null)
     {
         if (durationMs < 0)
             throw new ArgumentOutOfRangeException(nameof(durationMs), durationMs, "Pulse duration cannot be negative.");
 
-        IoPoint point = GetOutputForWrite(pointId, owner);
+        IoPointDefinition point = GetOutputForWrite(pointId, owner);
         PulseOutputScheduler scheduler = _logicalPulseSchedulers.GetOrAdd(point.Id, _ => CreateLogicalPulseScheduler(point));
         scheduler.WritePulse(0, durationMs);
     }
 
     /// <summary>
-    /// 将所有已配置安全状态的输出切换到逻辑安全值。
-    /// 安全处置是系统级操作，不受业务 Owner 限制。
+    /// 将所有配置了工艺安全状态的输出切换到对应逻辑值。
+    /// 此操作仅收敛普通工艺输出，不替代安全继电器或安全控制器；不受业务 Owner 限制。
     /// </summary>
-    public void ApplySafeOutputs()
+    public void ApplyProcessSafeOutputs()
     {
         ThrowIfDisposed();
         var failures = new List<Exception>();
-        foreach (IoPoint point in _doMap.Values)
+        foreach (IoPointDefinition point in _doMap.Values)
         {
-            if (point.SafeState is not { } safeState)
+            if (point.ProcessSafeState is not { } safeState)
                 continue;
 
             try
@@ -453,17 +439,18 @@ public sealed class IoStateMonitor : IIoStateMonitor
             }
             catch (Exception ex)
             {
-                failures.Add(new InvalidOperationException($"Failed to apply the safe state for DO '{point.Id}'.", ex));
+                PublishWriteFailure(point.Id, ex);
+                failures.Add(new InvalidOperationException($"Failed to apply the process safe state for DO '{point.Id}'.", ex));
             }
         }
 
         if (failures.Count > 0)
-            throw new AggregateException("One or more safe output states could not be applied.", failures);
+            throw new AggregateException("One or more process output states could not be applied.", failures);
     }
 
-    private IoPoint GetOutputForWrite(string pointId, string? owner)
+    private IoPointDefinition GetOutputForWrite(string pointId, string? owner)
     {
-        if (!_doMap.TryGetValue(pointId, out IoPoint? point))
+        if (!_doMap.TryGetValue(pointId, out IoPointDefinition? point))
             throw new ArgumentException($"Undefined DO point ID: {pointId}", nameof(pointId));
 
         if (!string.IsNullOrWhiteSpace(point.Owner)
@@ -475,7 +462,7 @@ public sealed class IoStateMonitor : IIoStateMonitor
         return point;
     }
 
-    private void WriteLogicalOutput(IoPoint point, bool state)
+    private void WriteLogicalOutput(IoPointDefinition point, bool state)
     {
         if (!_devices.TryGetValue(point.DeviceId, out IIoCardDevice? device))
             throw new InvalidOperationException($"IO device '{point.DeviceId}' is not available.");
@@ -483,7 +470,7 @@ public sealed class IoStateMonitor : IIoStateMonitor
         device.WriteDoBit(point.Channel, state ^ point.Inverted);
     }
 
-    private PulseOutputScheduler CreateLogicalPulseScheduler(IoPoint point)
+    private PulseOutputScheduler CreateLogicalPulseScheduler(IoPointDefinition point)
         => new(
             (_, state) => WriteLogicalOutput(point, state),
             () => !_disposed
@@ -501,9 +488,9 @@ public sealed class IoStateMonitor : IIoStateMonitor
     }
 
     /// <summary>
-    /// 批量刷新所有 DI (用于 UI 显示，性能更高)
+    /// 返回已采集的所有逻辑 DI 状态，不触发硬件刷新。
     /// </summary>
-    public IReadOnlyDictionary<string, bool> RefreshAllDi()
+    public IReadOnlyDictionary<string, bool> GetCapturedDiStates()
     {
         var result = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var label in _diMap.Keys)
@@ -576,8 +563,8 @@ public sealed class IoStateMonitor : IIoStateMonitor
     }
 
     private sealed record InitializationMaps(
-        Dictionary<string, IoPoint> DiMap,
-        Dictionary<string, IoPoint> DoMap);
+        Dictionary<string, IoPointDefinition> DiMap,
+        Dictionary<string, IoPointDefinition> DoMap);
 
     private sealed class DeviceChannelComparer : IEqualityComparer<(string DeviceId, int Channel)>
     {
