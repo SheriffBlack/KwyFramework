@@ -232,7 +232,7 @@ public sealed class AxisMotionExecutorTests
                 PollInterval = TimeSpan.FromMilliseconds(2)
             });
             await monitor.StartAsync();
-            var safety = new MotionSafetyGuard(card, monitor, new MotionSafetyOptions
+            var safety = new MotionAdmissionGuard(card, monitor, new MotionAdmissionOptions
             {
                 RequireHomedForPositioning = false,
                 MaximumSnapshotAge = TimeSpan.FromSeconds(1)

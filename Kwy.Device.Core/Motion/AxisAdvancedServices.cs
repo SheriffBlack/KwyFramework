@@ -2,6 +2,10 @@ using Kwy.Device.Abstractions.Motion;
 
 namespace Kwy.Device.Core.Motion;
 
+/// <summary>
+/// 在标定/工艺坐标与机械坐标之间应用零点偏移和静态误差补偿。
+/// 该服务用于动作前的坐标换算，不承担控制周期内的在线补偿。
+/// </summary>
 public sealed class AxisCoordinateTransformer : IAxisCoordinateTransformer
 {
     private readonly IAxisErrorCompensationProvider? compensationProvider;
@@ -45,6 +49,10 @@ public sealed class AxisCoordinateTransformer : IAxisCoordinateTransformer
     }
 }
 
+/// <summary>
+/// 垂直轴抱闸时序协调器。
+/// 按轴安全定义执行释放、延时、停止后的合闸及可选伺服失能，禁止工艺层直接操作抱闸输出。
+/// </summary>
 public sealed class AxisBrakeCoordinator : IAxisBrakeCoordinator
 {
     private readonly IAxisMotionController controller;
@@ -99,6 +107,7 @@ public sealed class AxisBrakeCoordinator : IAxisBrakeCoordinator
     }
 }
 
+/// <summary>对已知多轴目标进行静态禁入区校验；不承担运行过程的实时碰撞保护。</summary>
 public sealed class MultiAxisSafetyGuard : IMultiAxisSafetyGuard
 {
     private readonly IReadOnlyList<MultiAxisForbiddenZone> zones;
@@ -110,17 +119,18 @@ public sealed class MultiAxisSafetyGuard : IMultiAxisSafetyGuard
             zone.Validate();
     }
 
-    public MotionSafetyResult Validate(IReadOnlyDictionary<string, double> targetPositions)
+    public MotionAdmissionResult Validate(IReadOnlyDictionary<string, double> targetPositions)
     {
         ArgumentNullException.ThrowIfNull(targetPositions);
-        MotionSafetyViolation[] violations = zones
+        MotionAdmissionViolation[] violations = zones
             .Where(zone => zone.Contains(targetPositions))
-            .Select(zone => new MotionSafetyViolation("ForbiddenZone", $"Target is inside multi-axis forbidden zone '{zone.Id}'."))
+            .Select(zone => new MotionAdmissionViolation("ForbiddenZone", $"Target is inside multi-axis forbidden zone '{zone.Id}'."))
             .ToArray();
-        return violations.Length == 0 ? MotionSafetyResult.Allowed : new(violations);
+        return violations.Length == 0 ? MotionAdmissionResult.Allowed : new(violations);
     }
 }
 
+/// <summary>按旋转轴的周期、累计范围、方向偏好和禁入角度选择可执行的目标角度。</summary>
 public sealed class RotaryAxisPathPlanner : IRotaryAxisPathPlanner
 {
     public double ResolveTarget(AxisDefinition axis, double currentPosition, double requestedPosition)

@@ -3,6 +3,10 @@ using Kwy.Device.Abstractions.Motion;
 
 namespace Kwy.Device.Core.Motion;
 
+/// <summary>
+/// 维护业务轴的原点可信度，而非简单复述控制器回零状态。
+/// 控制器重连、伺服失能或外部移动后，自动定位必须重新取得有效原点。
+/// </summary>
 public sealed class AxisHomeLifecycle : IAxisHomeLifecycle
 {
     private readonly ConcurrentDictionary<string, AxisHomeLifecycleSnapshot> states = new(StringComparer.OrdinalIgnoreCase);

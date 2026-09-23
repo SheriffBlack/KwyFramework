@@ -2,6 +2,7 @@ using Kwy.Device.Abstractions.Motion;
 
 namespace Kwy.Device.Core.Motion;
 
+/// <summary>按设备 ID 保存全部运动卡运行时，避免多卡设备误用无键服务。</summary>
 public sealed class MotionRuntimeRegistry : IMotionRuntimeRegistry
 {
     private readonly IReadOnlyDictionary<string, IMotionDeviceRuntime> runtimes;

@@ -6,14 +6,15 @@ using Kwy.Device.Abstractions.Motion;
 namespace Kwy.Device.Core.Motion;
 
 /// <summary>
-/// Executes one state-monitored motion operation per axis.
+/// 单轴物理动作执行器：统一处理准入、等待、超时、稳定到位、停止和控制器故障。
+/// 轴号仅限 Core 与设备适配器；工艺层应通过业务轴执行器调用。
 /// </summary>
 public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
 {
     private readonly IAxisMotionController controller;
     private readonly IMotionProfileController profileController;
     private readonly IMotionStateMonitor stateMonitor;
-    private readonly IMotionSafetyGuard safetyGuard;
+    private readonly IMotionAdmissionGuard safetyGuard;
     private readonly IAxisDefinitionProvider? axisDefinitions;
     private readonly IAxisBrakeCoordinator? brakeCoordinator;
     private readonly ConcurrentDictionary<short, AxisOperation> activeOperations = new();
@@ -24,7 +25,7 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         IAxisMotionController controller,
         IMotionProfileController profileController,
         IMotionStateMonitor stateMonitor,
-        IMotionSafetyGuard safetyGuard,
+        IMotionAdmissionGuard safetyGuard,
         IAxisBrakeCoordinator? brakeCoordinator = null)
     {
         this.controller = controller ?? throw new ArgumentNullException(nameof(controller));
@@ -53,12 +54,6 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
         MotionAxisSnapshot snapshot = stateMonitor.GetAxisSnapshot(axis);
         int direction = Math.Sign(position - snapshot.Position);
         safetyGuard.ValidateAndThrow(new(axis, MotionRequestKind.Absolute, position, direction));
-        if (options.FollowingErrorLimit is { } followingErrorLimit
-            && Math.Abs(snapshot.Position - snapshot.EncoderPosition) > followingErrorLimit)
-        {
-            throw new MotionFollowingErrorException(axis, snapshot.Position, snapshot.EncoderPosition, followingErrorLimit);
-        }
-
         bool velocitySettled = options.SettlingVelocityThreshold is not { } velocityLimit
             || Math.Abs(snapshot.Velocity) <= velocityLimit;
         if (options.SettlingTime == TimeSpan.Zero
@@ -572,10 +567,9 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
 
         private Exception? GetFailure(MotionAxisSnapshot snapshot)
         {
-            if (options.FollowingErrorLimit is { } followingErrorLimit
-                && Math.Abs(snapshot.Position - snapshot.EncoderPosition) > followingErrorLimit)
+            if (snapshot.Fault is { Severity: AxisFaultSeverity.StopRequired or AxisFaultSeverity.SafetyCritical } fault)
             {
-                return new MotionFollowingErrorException(Axis, snapshot.Position, snapshot.EncoderPosition, followingErrorLimit);
+                return new MotionControllerFaultException(Axis, fault);
             }
 
             if (snapshot.IsAlarm)

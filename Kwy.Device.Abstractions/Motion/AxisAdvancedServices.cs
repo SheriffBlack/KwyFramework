@@ -61,7 +61,7 @@ public sealed record MultiAxisForbiddenZone(
 public interface IMultiAxisSafetyGuard
 {
     /// <summary>以 AxisDefinition.Id 为键校验多轴目标位置。</summary>
-    MotionSafetyResult Validate(IReadOnlyDictionary<string, double> targetPositions);
+    MotionAdmissionResult Validate(IReadOnlyDictionary<string, double> targetPositions);
 }
 
 /// <summary>为旋转轴选择合法目标角度，处理模周期、累计角度和缠绕禁区。</summary>

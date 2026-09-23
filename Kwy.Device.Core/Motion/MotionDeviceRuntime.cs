@@ -4,6 +4,10 @@ using Kwy.Communicate.Abstractions.Events;
 
 namespace Kwy.Device.Core.Motion;
 
+/// <summary>
+/// 一张物理运动控制卡在 Core 中的运行时组合，统一持有卡、状态监视器、轴执行器和回零可信度生命周期。
+/// 控制器进入新的连接会话时，会撤销该卡全部业务轴的原点可信度。
+/// </summary>
 public sealed class MotionDeviceRuntime : IMotionDeviceRuntime
 {
     private readonly IDisposable? executorDisposable;

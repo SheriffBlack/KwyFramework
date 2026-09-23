@@ -5,9 +5,9 @@ public sealed record CartesianTrajectoryProfile
 {
     public double LinearVelocity { get; init; } = 1;
     public double AngularVelocity { get; init; } = 10;
-    /// <summary>离散轨迹中相邻位置点的最大距离，用于后续逆解和控制器连续下发。</summary>
+    /// <summary>离线预检中相邻位置点的最大距离，用于逆解连续性和路径安全分析，不定义控制器周期。</summary>
     public double MaximumLinearSegmentLength { get; init; } = 0.1;
-    /// <summary>离散轨迹中相邻姿态点的最大夹角，避免姿态变化被粗采样。</summary>
+    /// <summary>离线预检中相邻姿态点的最大夹角，避免逆解分析遗漏姿态变化。</summary>
     public double MaximumAngularSegmentDegrees { get; init; } = 1;
 
     public void Validate()

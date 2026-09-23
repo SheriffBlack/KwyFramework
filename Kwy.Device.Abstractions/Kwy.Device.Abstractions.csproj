@@ -7,11 +7,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
+    <PackageReadmeFile>MOTION_ARCHITECTURE.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="D:\Desktop\Kwy_完整\Kwy\README.md" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Communicate.Abstractions\Kwy.Communicate.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Core\Kwy.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="MOTION_ARCHITECTURE.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

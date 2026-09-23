@@ -29,6 +29,6 @@ internal static class KinematicSolutionSelector
             if (inLimits) eligible.Add((candidate.JointPositions, score));
         }
         return eligible.OrderBy(item => item.Score).Select(item => item.Joints).FirstOrDefault()
-            ?? throw new MotionSafetyException([new("KinematicsUnreachable", $"No reachable, non-singular and in-limit inverse solution exists for mechanism '{mechanism.Id}'.")]);
+            ?? throw new MotionAdmissionDeniedException([new("KinematicsUnreachable", $"No reachable, non-singular and in-limit inverse solution exists for mechanism '{mechanism.Id}'.")]);
     }
 }

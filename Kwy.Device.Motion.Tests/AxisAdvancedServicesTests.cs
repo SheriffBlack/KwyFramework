@@ -74,7 +74,7 @@ public sealed class AxisAdvancedServicesTests
             })
         ]);
 
-        MotionSafetyResult result = guard.Validate(new Dictionary<string, double> { ["stage.x"] = 15, ["stage.y"] = 35 });
+        MotionAdmissionResult result = guard.Validate(new Dictionary<string, double> { ["stage.x"] = 15, ["stage.y"] = 35 });
 
         Assert.False(result.IsAllowed);
         Assert.Equal("ForbiddenZone", Assert.Single(result.Violations).Code);

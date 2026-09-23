@@ -9,7 +9,7 @@ namespace Kwy.Device.MotionCards.Leadshine;
 
 public sealed class LeadshineMotionCardDevice :
     MotionCardBase,
-    IAdvancedMotionCard,
+    IInterpolationMotionController,
     IAxisDefinitionProvider,
     IPositionCompareOutput,
     IIoCardDevice,
@@ -599,7 +599,8 @@ public sealed class LeadshineMotionCardDevice :
                 negLimit,
                 DateTimeOffset.Now,
                 servoOn,
-                homeState);
+                homeState,
+                MapAxisFault(alarm, posLimit, negLimit, homeState, status));
         });
     }
 
@@ -690,7 +691,8 @@ public sealed class LeadshineMotionCardDevice :
                     negLimit,
                     DateTimeOffset.Now,
                     servoOn,
-                    homeState);
+                    homeState,
+                    MapAxisFault(alarm, posLimit, negLimit, homeState, status));
             }
         });
     }

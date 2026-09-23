@@ -162,13 +162,13 @@ public sealed class StationService
 
 | 接口 | 职责 |
 | --- | --- |
-| `IStandardMotionCard` | 标准运动卡组合接口。 |
-| `IAdvancedMotionCard` | 高级运动卡组合接口，包含插补等能力。 |
+| `IMotionCard` | 运动控制卡生命周期与配置入口。 |
 | `IAxisMotionController` | 单轴运动控制。 |
 | `IAxisStatusReader` | 单轴状态读取。 |
 | `IMotionWaiter` | 等待轴停止、回零完成。 |
 | `IInterpolationMotionController` | 坐标系插补。 |
 | `IPositionCompareOutput` | 位置比较输出。 |
+| `IControllerMotionProgramAdapter` | 控制器原生连续轮廓程序的编译与执行。 |
 
 运动执行层还包含：
 
@@ -182,6 +182,8 @@ IAxisMotionExecutor
 IMotionSafetyGuard
   运动前安全校验。
 ```
+
+精密运动的完整职责边界、控制器原生程序路径与厂商接入约束见 [MOTION_ARCHITECTURE.md](MOTION_ARCHITECTURE.md)。
 
 ## 状态同步与安全聚合
 

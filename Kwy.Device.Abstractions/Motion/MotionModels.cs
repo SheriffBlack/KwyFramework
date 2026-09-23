@@ -125,8 +125,6 @@ public sealed class MotionExecutionOptions
 
     public double? SettlingVelocityThreshold { get; set; }
 
-    public double? FollowingErrorLimit { get; set; }
-
     public void Validate()
     {
         if (!double.IsFinite(PositionTolerance) || PositionTolerance < 0)
@@ -147,7 +145,6 @@ public sealed class MotionExecutionOptions
         if (SettlingTime < TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(SettlingTime));
         ValidateOptionalNonNegative(SettlingVelocityThreshold, nameof(SettlingVelocityThreshold));
-        ValidateOptionalNonNegative(FollowingErrorLimit, nameof(FollowingErrorLimit));
     }
 
     private static void ValidateOptionalNonNegative(double? value, string name)
@@ -235,14 +232,15 @@ public readonly record struct MotionRequest(
     int Direction = 0,
     bool RequiresHomed = true);
 
-/// <summary>一次运动被拒绝的可读原因，供报警、HMI 与日志统一显示。</summary>
-public sealed record MotionSafetyViolation(string Code, string Message);
+/// <summary>动作发出前的准入拒绝原因，供报警、人机界面与日志统一显示；不是控制器实时安全故障。</summary>
+public sealed record MotionAdmissionViolation(string Code, string Message);
 
-public sealed record MotionSafetyResult(IReadOnlyList<MotionSafetyViolation> Violations)
+/// <summary>动作准入检查结果。</summary>
+public sealed record MotionAdmissionResult(IReadOnlyList<MotionAdmissionViolation> Violations)
 {
     public bool IsAllowed => Violations.Count == 0;
 
-    public static MotionSafetyResult Allowed { get; } = new(Array.Empty<MotionSafetyViolation>());
+    public static MotionAdmissionResult Allowed { get; } = new(Array.Empty<MotionAdmissionViolation>());
 }
 
 /// <summary>配方或设备维护保存的命名位置集合，始终以业务轴 ID 绑定。</summary>

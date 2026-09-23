@@ -2,6 +2,7 @@ using Kwy.Device.Abstractions.Motion;
 using Kwy.Device.Core;
 using Kwy.Device.MotionCards.Googol;
 using Kwy.Device.MotionCards.Leadshine;
+using Kwy.Device.MotionCards.Simulation;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -42,6 +43,39 @@ public sealed class MotionRuntimeRegistryTests
         Assert.Same(
             registry.GetRequired("Motion.Main").AxisExecutor,
             provider.GetRequiredService<IAxisMotionExecutor>());
+    }
+
+    [Fact]
+    public void AutoModeGate_RejectsOfflineMotionController()
+    {
+        var services = new ServiceCollection();
+        services.AddKwyMotionServices();
+        services.AddKwySimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
+        services.AddKwyMotionGroups([]);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IMotionAutoModeGate gate = provider.GetRequiredService<IMotionAutoModeGate>();
+
+        MotionConfigurationException exception = Assert.Throws<MotionConfigurationException>(gate.EnsureReadyForAutoMode);
+        Assert.Contains(exception.Result.Issues, issue => issue.Code == "MotionControllerOffline");
+    }
+
+    [Fact]
+    public async Task AutoModeGate_RejectsStoppedStateMonitor()
+    {
+        var services = new ServiceCollection();
+        services.AddKwyMotionServices();
+        services.AddKwySimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
+        services.AddKwyMotionGroups([]);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        SimulationMotionCardDevice card = provider.GetRequiredService<SimulationMotionCardDevice>();
+        await card.ConnectAsync();
+        IMotionAutoModeGate gate = provider.GetRequiredService<IMotionAutoModeGate>();
+
+        MotionConfigurationException exception = Assert.Throws<MotionConfigurationException>(gate.EnsureReadyForAutoMode);
+        Assert.DoesNotContain(exception.Result.Issues, issue => issue.Code == "MotionControllerOffline");
+        Assert.Contains(exception.Result.Issues, issue => issue.Code == "MotionStateMonitorStopped");
     }
 
     private static void ConfigureAxis(GoogolMotionCardConfig config, string deviceId)

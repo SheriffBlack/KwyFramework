@@ -44,9 +44,11 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
         foreach (VirtualAxisDefinition axis in virtualAxisDefinitions)
         {
             try { axis.Validate(); } catch (Exception ex) { Error("VirtualAxisInvalid", $"Virtual axis '{axis.Id}': {ex.Message}"); }
-            if (axis.HostKind == VirtualAxisHostKind.Controller
-                && !runtimes.Runtimes.Any(runtime => string.Equals(runtime.DeviceId, axis.HostDeviceId, StringComparison.OrdinalIgnoreCase)))
+            IMotionDeviceRuntime? runtime = runtimes.Runtimes.SingleOrDefault(item => string.Equals(item.DeviceId, axis.HostDeviceId, StringComparison.OrdinalIgnoreCase));
+            if (runtime is null)
                 Error("VirtualAxisHostMissing", $"Virtual axis '{axis.Id}' references missing host device '{axis.HostDeviceId}'.");
+            else if (runtime.Card is not IMotionControllerCapabilities capabilities || !capabilities.Capabilities.SupportsControllerVirtualAxis)
+                Error("VirtualAxisCapability", $"Motion device '{axis.HostDeviceId}' does not provide a controller-hosted virtual axis.");
         }
         AddDuplicate(groups.MotionGroups.Select(group => $"{group.DeviceId}:{group.CoordinateSystemChannel}"), "CoordinateDuplicate", "Coordinate-system channel", issues);
         foreach (MotionGroupDefinition group in groups.MotionGroups)
@@ -86,7 +88,33 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
             else if (!master.Capabilities.HasFlag(AxisMotionCapability.SynchronizationMaster)) Error("SynchronizationMasterCapability", $"Axis '{masterAxisId}' is not enabled as a synchronization master.");
             if (follower is null) Error("SynchronizationFollowerMissing", $"{relationship} '{relationshipId}' references missing follower axis '{followerAxisId}'.");
             else if (!follower.Capabilities.HasFlag(AxisMotionCapability.SynchronizationFollower)) Error("SynchronizationFollowerCapability", $"Axis '{followerAxisId}' is not enabled as a synchronization follower.");
+            if (master is not null && follower is not null)
+            {
+                string masterDeviceId = GetHostDeviceId(master);
+                string followerDeviceId = GetHostDeviceId(follower);
+                if (!string.Equals(masterDeviceId, followerDeviceId, StringComparison.OrdinalIgnoreCase))
+                {
+                    Error("SynchronizationCrossDevice", $"{relationship} '{relationshipId}' spans '{masterDeviceId}' and '{followerDeviceId}', but real-time synchronization must be hosted by one controller.");
+                }
+                else
+                {
+                    IMotionDeviceRuntime? runtime = runtimes.Runtimes.SingleOrDefault(item => string.Equals(item.DeviceId, masterDeviceId, StringComparison.OrdinalIgnoreCase));
+                    bool supported = runtime?.Card is IMotionControllerCapabilities capabilities
+                        && (relationship == "electronic gear"
+                            ? capabilities.Capabilities.SupportsNativeElectronicGear
+                            : capabilities.Capabilities.SupportsNativeElectronicCam);
+                    if (!supported)
+                        Error("SynchronizationControllerCapability", $"Motion device '{masterDeviceId}' does not provide native {relationship} capability.");
+                }
+            }
         }
+
+        static string GetHostDeviceId(AxisResourceDefinition resource) => resource switch
+        {
+            AxisDefinition axis => axis.DeviceId,
+            VirtualAxisDefinition axis => axis.HostDeviceId,
+            _ => throw new NotSupportedException($"Unsupported axis resource '{resource.GetType().Name}'.")
+        };
     }
 
     public void ValidateAndThrow() { MotionConfigurationValidationResult result = Validate(); if (!result.IsValid) throw new MotionConfigurationException(result); }

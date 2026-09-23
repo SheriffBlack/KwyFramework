@@ -9,13 +9,17 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
     private readonly IMotionRuntimeRegistry runtimes;
     private readonly IMotionResourceLock resources;
     private readonly IMotionOperationTracker operations;
+    private readonly MotionAdmissionOptions admissionOptions;
+    private readonly IAxisHomeLifecycle homes;
 
-    public MotionGroupExecutor(IMotionGroupDefinitionProvider groups, IMotionRuntimeRegistry runtimes, IMotionResourceLock resources, IMotionOperationTracker operations)
+    public MotionGroupExecutor(IMotionGroupDefinitionProvider groups, IMotionRuntimeRegistry runtimes, IMotionResourceLock resources, IMotionOperationTracker operations, MotionAdmissionOptions admissionOptions, IAxisHomeLifecycle homes)
     {
         this.groups = groups ?? throw new ArgumentNullException(nameof(groups));
         this.runtimes = runtimes ?? throw new ArgumentNullException(nameof(runtimes));
         this.resources = resources ?? throw new ArgumentNullException(nameof(resources));
         this.operations = operations ?? throw new ArgumentNullException(nameof(operations));
+        this.admissionOptions = admissionOptions ?? throw new ArgumentNullException(nameof(admissionOptions));
+        this.homes = homes ?? throw new ArgumentNullException(nameof(homes));
     }
 
     public async Task MoveLinearAsync(LinearMoveCommand command, CancellationToken cancellationToken = default)
@@ -29,6 +33,7 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
         {
         double tolerance = command.Tolerance ?? group.DefaultTolerance;
         ValidateExecution(profile, tolerance, command.Timeout);
+        ValidateAdmission(group, runtime, targets);
         EnsureLinearPathIsSafe(group, runtime, targets);
         controller.InitCoordinateSystem(group.CoordinateSystemChannel, ResolveChannels(runtime, group));
         controller.MoveLinear(group.CoordinateSystemChannel, targets, profile.Velocity, profile.Acceleration);
@@ -53,6 +58,7 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
         {
         double tolerance = command.Tolerance ?? group.DefaultTolerance;
         ValidateExecution(profile, tolerance, command.Timeout);
+        ValidateAdmission(group, runtime, targets);
         EnsureArcPathIsSafe(group, runtime, targets, command.CenterPositions, command.Direction);
         controller.InitCoordinateSystem(group.CoordinateSystemChannel, ResolveChannels(runtime, group));
         controller.MoveArc(group.CoordinateSystemChannel, targets[0], targets[1], command.CenterPositions[group.AxisIds[0]], command.CenterPositions[group.AxisIds[1]], command.Direction == ArcDirection.Clockwise ? (short)0 : (short)1, profile.Velocity, profile.Acceleration);
@@ -80,7 +86,7 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
         var physical = ResolveChannels(runtime, group);
         var positions = group.AxisIds.Select(id => values[id]).ToArray();
         var map = group.AxisIds.Zip(positions).ToDictionary(item => item.First, item => item.Second, StringComparer.OrdinalIgnoreCase);
-        if (group.ForbiddenZones.Any(zone => zone.Contains(map))) throw new MotionSafetyException([new("MotionGroupForbiddenZone", $"Target enters a forbidden zone in group '{group.Id}'.")]);
+        if (group.ForbiddenZones.Any(zone => zone.Contains(map))) throw new MotionAdmissionDeniedException([new("MotionGroupForbiddenZone", $"Target enters a forbidden zone in group '{group.Id}'.")]);
         return (group, runtime, controller, positions);
     }
 
@@ -88,6 +94,18 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
     {
         IAxisDefinitionProvider axes = (IAxisDefinitionProvider)runtime.Card;
         return group.AxisIds.Select(id => axes.Axes.Single(axis => string.Equals(axis.Id, id, StringComparison.OrdinalIgnoreCase)).Channel).ToArray();
+    }
+
+    private void ValidateAdmission(MotionGroupDefinition group, IMotionDeviceRuntime runtime, IReadOnlyList<double> targets)
+    {
+        IAxisDefinitionProvider definitions = (IAxisDefinitionProvider)runtime.Card;
+        var guard = new MotionAdmissionGuard(runtime.Card, runtime.StateMonitor, admissionOptions, homes);
+        for (int index = 0; index < group.AxisIds.Count; index++)
+        {
+            AxisDefinition axis = definitions.Axes.Single(item => string.Equals(item.Id, group.AxisIds[index], StringComparison.OrdinalIgnoreCase));
+            double current = runtime.StateMonitor.GetAxisSnapshot(axis.Channel).Position;
+            guard.ValidateAndThrow(new(axis.Channel, MotionRequestKind.Absolute, targets[index], Math.Sign(targets[index] - current)));
+        }
     }
 
     private static void EnsureExactAxisSet(MotionGroupDefinition group, IReadOnlyDictionary<string, double> values, string parameterName)
@@ -156,6 +174,6 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
         return exit >= 0 && enter <= 1;
     }
 
-    private static MotionSafetyException ForbiddenPath(MotionGroupDefinition group, MultiAxisForbiddenZone zone)
-        => new([new MotionSafetyViolation("MotionGroupForbiddenPath", $"Path of group '{group.Id}' crosses forbidden zone '{zone.Id}'.")]);
+    private static MotionAdmissionDeniedException ForbiddenPath(MotionGroupDefinition group, MultiAxisForbiddenZone zone)
+        => new([new MotionAdmissionViolation("MotionGroupForbiddenPath", $"Path of group '{group.Id}' crosses forbidden zone '{zone.Id}'.")]);
 }

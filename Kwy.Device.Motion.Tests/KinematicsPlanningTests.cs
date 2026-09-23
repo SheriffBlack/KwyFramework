@@ -47,4 +47,102 @@ public sealed class KinematicsPlanningTests
         Assert.Equal(TimeSpan.FromSeconds(1), path.Points[^1].TimeFromStart);
         Assert.Equal(1, path.Points[^1].Pose.X, 10);
     }
+
+    [Fact]
+    public void JointTrajectory_RejectsNonMonotonicTimeOrIncompleteJointSet()
+    {
+        var trajectory = new JointTrajectory("left-head", 1,
+        [
+            new(TimeSpan.Zero, new Dictionary<string, double> { ["left.j1"] = 0, ["left.j2"] = 0 }),
+            new(TimeSpan.Zero, new Dictionary<string, double> { ["left.j1"] = 1, ["left.j2"] = 1 })
+        ]);
+
+        Assert.Throws<ArgumentException>(() => trajectory.Validate(["left.j1", "left.j2"]));
+    }
+
+    [Fact]
+    public void JointTrajectorySafetyValidator_RejectsPathCrossingForbiddenZone()
+    {
+        var group = new MotionGroupDefinition
+        {
+            Id = "left.xy", DisplayName = "Left XY", DeviceId = "motion-1", AxisIds = ["left.x", "left.y"], CoordinateSystemChannel = 0,
+            ForbiddenZones = [new MultiAxisForbiddenZone("fixture", new Dictionary<string, AxisForbiddenRange> { ["left.x"] = new(4, 6), ["left.y"] = new(4, 6) })]
+        };
+        var trajectory = new JointTrajectory("left-head", 1,
+        [
+            new(TimeSpan.Zero, new Dictionary<string, double> { ["left.x"] = 0, ["left.y"] = 0 }),
+            new(TimeSpan.FromSeconds(1), new Dictionary<string, double> { ["left.x"] = 10, ["left.y"] = 10 })
+        ]);
+
+        MotionAdmissionDeniedException exception = Assert.Throws<MotionAdmissionDeniedException>(() => new JointTrajectorySafetyValidator().Validate(trajectory, group, new TestAxisDefinitions()));
+
+        Assert.Equal("JointTrajectoryForbiddenPath", Assert.Single(exception.Violations).Code);
+    }
+
+    [Fact]
+    public void JointTrajectoryTimeParameterizer_StretchesSegmentToAxisVelocityLimit()
+    {
+        var trajectory = new JointTrajectory("left-head", 1,
+        [
+            new(TimeSpan.Zero, new Dictionary<string, double> { ["left.x"] = 0, ["left.y"] = 0 }),
+            new(TimeSpan.FromMilliseconds(1), new Dictionary<string, double> { ["left.x"] = 10, ["left.y"] = 0 })
+        ]);
+        var definitions = new TestAxisDefinitions(maximumVelocity: 2);
+
+        JointTrajectory timed = new JointTrajectoryTimeParameterizer().Parameterize(trajectory, ["left.x", "left.y"], definitions);
+
+        Assert.True(timed.Points[1].TimeFromStart >= TimeSpan.FromSeconds(5));
+        Assert.InRange(timed.Points[1].Velocities!["left.x"], 0, 2);
+    }
+
+    [Fact]
+    public void ControllerMotionProgramRequirements_RejectMissingNativeCapability()
+    {
+        var requirements = new ControllerMotionProgramRequirements
+        {
+            RequireNativeLookAhead = true,
+            RequireNativeJerkLimiting = true
+        };
+
+        Assert.Throws<NotSupportedException>(() => requirements.ValidateAgainst(new MotionControllerCapabilities
+        {
+            SupportsNativeContinuousContour = true,
+            SupportsNativeLookAhead = true
+        }));
+    }
+
+    [Fact]
+    public void CartesianVelocityLimiter_ScalesWholeCartesianVelocityForLimitingJoint()
+    {
+        var jacobian = new KinematicJacobian(
+            ["left.x", "left.y"],
+            [
+                [2d, 0, 0, 0, 0, 0],
+                [0d, 1, 0, 0, 0, 0]
+            ]);
+
+        CartesianVelocityLimitResult result = new CartesianVelocityLimiter().Limit(
+            jacobian,
+            new SpatialVelocity(new Vector3D(2, 0, 0), new Vector3D(0, 0, 0)),
+            new TestAxisDefinitions(maximumVelocity: 2).Axes);
+
+        Assert.Equal("left.x", result.LimitingAxisId);
+        Assert.Equal(0.5, result.Scale, 10);
+        Assert.Equal(2, result.LimitedJointVelocities["left.x"], 10);
+    }
+
+    private sealed class TestAxisDefinitions(double maximumVelocity = 100) : IAxisDefinitionProvider
+    {
+        public IReadOnlyCollection<AxisDefinition> Axes { get; } =
+        [Create("left.x", 1, maximumVelocity), Create("left.y", 2, maximumVelocity)];
+
+        public AxisDefinition GetAxisDefinition(short axis) => Axes.Single(item => item.Channel == axis);
+
+        private static AxisDefinition Create(string id, short channel, double maximumVelocity) => new()
+        {
+            Id = id, DisplayName = id, DeviceId = "motion-1", Channel = channel,
+            Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 1 },
+            Limits = new AxisLimitConfig { MinimumPosition = -20, MaximumPosition = 20, MaximumVelocity = maximumVelocity, MaximumAcceleration = 100, MaximumDeceleration = 100 }
+        };
+    }
 }

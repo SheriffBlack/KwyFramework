@@ -8,7 +8,14 @@ namespace Kwy.Device.Core.Motion;
 /// </summary>
 public abstract class MotionCardBase :
     DeviceBase,
-    IStandardMotionCard
+    IMotionCard,
+    IAxisMotionController,
+    IMotionProfileController,
+    IAxisStatusReader,
+    IAxisSnapshotReader,
+    IHomeStatusReader,
+    IAxisFaultReader,
+    IMotionWaiter
 {
     public IDeviceConfig Config => DeviceParameter;
 
@@ -62,13 +69,7 @@ public abstract class MotionCardBase :
     public virtual AxisFault? GetAxisFault(short axis)
     {
         int rawStatus = GetStatus(axis);
-        if (IsAlarm(axis))
-            return new(AxisFaultCode.ControllerAlarm, AxisFaultSeverity.StopRequired, "控制器报告轴报警。", rawStatus, "清除报警并确认驱动器及机械状态后再恢复。");
-        if (IsPositiveLimit(axis))
-            return new(AxisFaultCode.PositiveLimitReached, AxisFaultSeverity.StopRequired, "轴触发正限位。", rawStatus, "仅允许向负方向脱离限位。");
-        if (IsNegativeLimit(axis))
-            return new(AxisFaultCode.NegativeLimitReached, AxisFaultSeverity.StopRequired, "轴触发负限位。", rawStatus, "仅允许向正方向脱离限位。");
-        return null;
+        return MapAxisFault(IsAlarm(axis), IsPositiveLimit(axis), IsNegativeLimit(axis), GetHomeStatus(axis).State, rawStatus);
     }
 
     public virtual MotionAxisSnapshot GetAxisSnapshot(short axis)
@@ -193,6 +194,58 @@ public abstract class MotionCardBase :
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 将所有厂商已确认的公共状态统一映射为业务可用故障。
+    /// 派生适配器在读取单轴或批量快照时必须调用此方法，避免快照与 GetAxisFault 的语义分叉。
+    /// 未被 SDK 文档确认的私有错误位不得在此猜测解释。
+    /// </summary>
+    protected static AxisFault? MapAxisFault(
+        bool isAlarm,
+        bool isPositiveLimit,
+        bool isNegativeLimit,
+        HomeState homeState,
+        int rawStatus)
+    {
+        if (isAlarm)
+        {
+            return new AxisFault(
+                AxisFaultCode.ControllerAlarm,
+                AxisFaultSeverity.StopRequired,
+                "控制器报告轴报警。",
+                rawStatus,
+                "清除报警并确认驱动器及机械状态后再恢复。");
+        }
+
+        if (isPositiveLimit)
+        {
+            return new AxisFault(
+                AxisFaultCode.PositiveLimitReached,
+                AxisFaultSeverity.StopRequired,
+                "轴触发正限位。",
+                rawStatus,
+                "仅允许向负方向脱离限位。");
+        }
+
+        if (isNegativeLimit)
+        {
+            return new AxisFault(
+                AxisFaultCode.NegativeLimitReached,
+                AxisFaultSeverity.StopRequired,
+                "轴触发负限位。",
+                rawStatus,
+                "仅允许向正方向脱离限位。");
+        }
+
+        return homeState == HomeState.Failed
+            ? new AxisFault(
+                AxisFaultCode.HomingFailed,
+                AxisFaultSeverity.StopRequired,
+                "轴回零失败。",
+                rawStatus,
+                "检查原点开关、限位、回零方向与回零参数后重新回零。")
+            : null;
     }
 
     protected static void ValidateCompletionArguments(double targetPosition, double tolerance)

@@ -5,7 +5,7 @@ using Kwy.Device.Abstractions.Motion;
 namespace Kwy.Device.Core.Motion;
 
 /// <summary>
-/// Polls axis snapshots from a motion card and exposes cached state.
+/// 从运动控制卡轮询各轴快照数据，并对外暴露缓存后的轴状态。
 /// </summary>
 public sealed class MotionStateMonitor : IMotionStateMonitor
 {
@@ -66,7 +66,10 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            // The monitor loop owns an independent lifetime. The StartAsync token only gates startup.
+            // 自动模式前必须先成功取得首帧，不能仅启动后台任务后立即允许动作。
+            // 首帧读取失败会直接让初始化流程失败；运行期的临时读取错误仍由循环安全上报。
+            CaptureAll();
+            // 监视循环拥有独立生命周期；StartAsync 的取消令牌仅控制启动阶段。
             monitorCts = new CancellationTokenSource();
             monitorTask = RunAsync(monitorCts.Token);
         }
@@ -127,8 +130,6 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
 
     private async Task RunAsync(CancellationToken cancellationToken)
     {
-        CaptureAllSafely(cancellationToken);
-
         using var timer = new PeriodicTimer(options.PollInterval);
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
         {

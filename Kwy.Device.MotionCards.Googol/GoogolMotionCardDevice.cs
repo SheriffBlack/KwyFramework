@@ -9,7 +9,7 @@ namespace Kwy.Device.MotionCards.Googol;
 
 public sealed class GoogolMotionCardDevice :
     MotionCardBase,
-    IAdvancedMotionCard,
+    IInterpolationMotionController,
     IAxisDefinitionProvider,
     IPositionCompareOutput,
     IIoCardDevice,
@@ -582,19 +582,24 @@ public sealed class GoogolMotionCardDevice :
             HomeState homeState = ReadHomeStateForSnapshot(axis);
 
             AxisEngineeringConfig engineering = GetAxisEngineeringConfig(axis);
+            bool isMoving = (status & 0x400) != 0;
+            bool isAlarm = (status & 0x02) != 0;
+            bool isPositiveLimit = (status & 0x20) != 0;
+            bool isNegativeLimit = (status & 0x40) != 0;
             return new MotionAxisSnapshot(
                 axis,
                 AxisEngineeringConverter.FromNativePosition(nativePosition, engineering),
                 AxisEngineeringConverter.FromNativePosition(nativeEncoderPosition, engineering),
                 AxisEngineeringConverter.FromNativeVelocity(nativeVelocity, engineering),
                 status,
-                (status & 0x400) != 0,
-                (status & 0x02) != 0,
-                (status & 0x20) != 0,
-                (status & 0x40) != 0,
+                isMoving,
+                isAlarm,
+                isPositiveLimit,
+                isNegativeLimit,
                 DateTimeOffset.Now,
                 (status & 0x200) != 0,
-                homeState);
+                homeState,
+                MapAxisFault(isAlarm, isPositiveLimit, isNegativeLimit, homeState, status));
         });
     }
 
@@ -651,19 +656,24 @@ public sealed class GoogolMotionCardDevice :
                     int status = batchStatuses[index];
                     HomeState homeState = ReadHomeStateForSnapshot(axis);
                     AxisEngineeringConfig engineering = GetAxisEngineeringConfig(axis);
+                    bool isMoving = (status & 0x400) != 0;
+                    bool isAlarm = (status & 0x02) != 0;
+                    bool isPositiveLimit = (status & 0x20) != 0;
+                    bool isNegativeLimit = (status & 0x40) != 0;
                     destination[batchOffset + index] = new MotionAxisSnapshot(
                         axis,
                         AxisEngineeringConverter.FromNativePosition(batchProfilePositions[index], engineering),
                         AxisEngineeringConverter.FromNativePosition(batchEncoderPositions[index], engineering),
                         AxisEngineeringConverter.FromNativeVelocity(batchProfileVelocities[index], engineering),
                         status,
-                        (status & 0x400) != 0,
-                        (status & 0x02) != 0,
-                        (status & 0x20) != 0,
-                        (status & 0x40) != 0,
+                        isMoving,
+                        isAlarm,
+                        isPositiveLimit,
+                        isNegativeLimit,
                         capturedAt,
                         (status & 0x200) != 0,
-                        homeState);
+                        homeState,
+                        MapAxisFault(isAlarm, isPositiveLimit, isNegativeLimit, homeState, status));
                 }
             });
 

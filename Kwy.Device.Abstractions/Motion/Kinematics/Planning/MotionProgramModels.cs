@@ -42,21 +42,60 @@ public sealed record MotionProgram(
     }
 }
 
-/// <summary>时间参数化后的关节轨迹点；全部使用业务轴 ID 和工程单位，脉冲留在物理卡适配器。</summary>
+/// <summary>离线规划得到的关节轨迹点；全部使用业务轴 ID 和工程单位，脉冲留在物理卡适配器。</summary>
 public sealed record JointTrajectoryPoint(
     TimeSpan TimeFromStart,
     IReadOnlyDictionary<string, double> Positions,
     IReadOnlyDictionary<string, double>? Velocities = null,
     IReadOnlyDictionary<string, double>? Accelerations = null);
 
-/// <summary>可交给控制器连续执行能力的关节轨迹；生成后不可随坐标系动态更新而改变。</summary>
+/// <summary>
+/// 离线规划、可达性和安全预检使用的关节轨迹。
+/// 它不是通用实时执行命令；需要连续轮廓的控制器必须由厂商适配器编译为原生程序。
+/// </summary>
 public sealed record JointTrajectory(
     string MechanismId,
     long CoordinateFrameVersion,
-    IReadOnlyList<JointTrajectoryPoint> Points);
+    IReadOnlyList<JointTrajectoryPoint> Points)
+{
+    /// <summary>验证轨迹时间单调性与每个点的完整关节集合。</summary>
+    public void Validate(IReadOnlyCollection<string> jointAxisIds)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(MechanismId);
+        ArgumentNullException.ThrowIfNull(Points);
+        ArgumentNullException.ThrowIfNull(jointAxisIds);
+        if (CoordinateFrameVersion < 0) throw new ArgumentOutOfRangeException(nameof(CoordinateFrameVersion));
+        if (Points.Count == 0) throw new ArgumentException("A joint trajectory requires at least one point.", nameof(Points));
+        if (jointAxisIds.Count == 0 || jointAxisIds.Any(string.IsNullOrWhiteSpace) || jointAxisIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() != jointAxisIds.Count)
+            throw new ArgumentException("Joint axis IDs must be unique and non-empty.", nameof(jointAxisIds));
+        TimeSpan previous = TimeSpan.MinValue;
+        foreach (JointTrajectoryPoint point in Points)
+        {
+            if (point.TimeFromStart < TimeSpan.Zero || point.TimeFromStart <= previous)
+                throw new ArgumentException("Joint trajectory timestamps must be non-negative and strictly increasing.", nameof(Points));
+            previous = point.TimeFromStart;
+            ValidateValues(point.Positions, jointAxisIds, nameof(point.Positions));
+            if (point.Velocities is not null) ValidateValues(point.Velocities, jointAxisIds, nameof(point.Velocities));
+            if (point.Accelerations is not null) ValidateValues(point.Accelerations, jointAxisIds, nameof(point.Accelerations));
+        }
+    }
 
-/// <summary>规划管线入口：将多段笛卡尔程序转换为已校验、已时间参数化的关节轨迹。</summary>
+    private static void ValidateValues(IReadOnlyDictionary<string, double> values, IReadOnlyCollection<string> axisIds, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        if (values.Count != axisIds.Count || axisIds.Any(id => !values.TryGetValue(id, out double value) || !double.IsFinite(value)))
+            throw new ArgumentException("Every joint axis requires one finite value.", parameterName);
+    }
+}
+
+/// <summary>规划管线入口：将多段笛卡尔程序转换为已校验的关节轨迹，用于离线预检和厂商程序编译。</summary>
 public interface IMotionPlanningPipeline
 {
     Task<JointTrajectory> PlanAsync(MotionProgram program, CancellationToken cancellationToken = default);
+}
+
+/// <summary>完整关节轨迹的命令前安全校验；逐段检查，不能只校验最终目标点。</summary>
+public interface IJointTrajectorySafetyValidator
+{
+    void Validate(JointTrajectory trajectory, MotionGroupDefinition group, IAxisDefinitionProvider axisDefinitions);
 }

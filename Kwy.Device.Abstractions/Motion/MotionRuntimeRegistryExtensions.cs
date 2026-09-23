@@ -12,16 +12,6 @@ public static class MotionRuntimeRegistryExtensions
         return registry.GetRequired(deviceId).Card;
     }
 
-    public static IStandardMotionCard GetRequiredStandardMotionCard(this IMotionRuntimeRegistry registry, string deviceId)
-    {
-        return registry.GetRequiredCapability<IStandardMotionCard>(deviceId);
-    }
-
-    public static IAdvancedMotionCard GetRequiredAdvancedMotionCard(this IMotionRuntimeRegistry registry, string deviceId)
-    {
-        return registry.GetRequiredCapability<IAdvancedMotionCard>(deviceId);
-    }
-
     public static TCapability GetRequiredCapability<TCapability>(this IMotionRuntimeRegistry registry, string deviceId)
         where TCapability : class
     {

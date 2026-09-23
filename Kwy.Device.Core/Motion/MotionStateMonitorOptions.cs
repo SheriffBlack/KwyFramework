@@ -2,19 +2,22 @@ using Kwy.Device.Abstractions.Motion;
 
 namespace Kwy.Device.Core.Motion;
 
-/// <summary>
-/// Options for <see cref="MotionStateMonitor"/>.
-/// </summary>
+/// <summary>运动状态监视器配置，定义采样周期、受监视轴和首帧事件行为。</summary>
 public sealed class MotionStateMonitorOptions
 {
+    /// <summary>非实时状态轮询周期；仅用于监视、诊断与动作完成判断。</summary>
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromMilliseconds(50);
 
+    /// <summary>未单独指定轴集合时的起始物理轴通道。</summary>
     public short FirstAxis { get; set; } = 1;
 
+    /// <summary>未单独指定轴集合时连续监视的轴数量。</summary>
     public short AxisCount { get; set; } = 1;
 
+    /// <summary>需要监视的物理轴通道；设置后优先于起始通道和数量。</summary>
     public IReadOnlyCollection<short>? Axes { get; set; }
 
+    /// <summary>是否把首次采集的快照也发布为状态变化事件。</summary>
     public bool RaiseInitialSnapshotChanged { get; set; } = true;
 
     public IReadOnlyCollection<short> GetAxes()

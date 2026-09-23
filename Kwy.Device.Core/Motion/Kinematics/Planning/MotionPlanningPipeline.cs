@@ -54,6 +54,8 @@ public sealed class MotionPlanningPipeline : IMotionPlanningPipeline
             start = segment.EndPose;
         }
         if (frames.Version != frameVersion) throw new InvalidOperationException("Coordinate frames changed while planning; retry with a stable frame snapshot.");
-        return Task.FromResult(new JointTrajectory(mechanism.Id, frameVersion, points));
+        var trajectory = new JointTrajectory(mechanism.Id, frameVersion, points);
+        trajectory.Validate(group.AxisIds);
+        return Task.FromResult(trajectory);
     }
 }

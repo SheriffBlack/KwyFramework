@@ -34,10 +34,10 @@ public interface IHomeStatusReader
     HomeStatus GetHomeStatus(short axis);
 }
 
-/// <summary>物理轴运动前的统一安全校验，集中检查限位、回零、互锁与禁入区。</summary>
-public interface IMotionSafetyGuard
+/// <summary>物理轴动作发出前的统一准入校验，集中检查状态、回零、互锁与静态约束；不承担实时安全保护。</summary>
+public interface IMotionAdmissionGuard
 {
-    MotionSafetyResult Validate(MotionRequest request);
+    MotionAdmissionResult Validate(MotionRequest request);
 
     void ValidateAndThrow(MotionRequest request);
 }
@@ -64,8 +64,8 @@ public interface IMotionRuntimeRegistry
     IMotionDeviceRuntime GetRequiredSingle();
 }
 
-/// <summary>已接入统一安全守卫的物理单轴控制器；工艺层仍应优先使用业务执行器。</summary>
-public interface ISafeAxisMotionController : IAxisMotionController, IMotionProfileController
+/// <summary>已接入统一准入守卫的物理单轴控制器；工艺层仍应优先使用业务执行器。</summary>
+public interface IAdmittedAxisMotionController : IAxisMotionController, IMotionProfileController
 {
 }
 
@@ -175,15 +175,16 @@ public interface INamedPositionMotionService
     Task MoveToAsync(string name, MotionProfile profile, TimeSpan timeout, CancellationToken cancellationToken = default);
 }
 
-public sealed class MotionSafetyException : InvalidOperationException
+/// <summary>动作未通过 Core 准入检查；控制器实时故障应使用 AxisFault 或 MotionControllerFaultException。</summary>
+public sealed class MotionAdmissionDeniedException : InvalidOperationException
 {
-    public MotionSafetyException(IReadOnlyList<MotionSafetyViolation> violations)
+    public MotionAdmissionDeniedException(IReadOnlyList<MotionAdmissionViolation> violations)
         : base(string.Join("; ", violations.Select(item => item.Message)))
     {
         Violations = violations;
     }
 
-    public IReadOnlyList<MotionSafetyViolation> Violations { get; }
+    public IReadOnlyList<MotionAdmissionViolation> Violations { get; }
 }
 
 public sealed class MotionHomeException : InvalidOperationException
@@ -244,19 +245,19 @@ public sealed class MotionPositionException : MotionCompletionException
     public double Tolerance { get; }
 }
 
-public sealed class MotionFollowingErrorException : MotionCompletionException
+/// <summary>
+/// 控制器已在其实时内核中检测并上报的强类型轴故障。
+/// Core 只将其转换为动作失败和诊断信息，不以轮询方式模拟该故障的实时保护。
+/// </summary>
+public sealed class MotionControllerFaultException : MotionCompletionException
 {
-    public MotionFollowingErrorException(short axis, double plannedPosition, double encoderPosition, double limit)
-        : base(axis, $"Axis {axis} following error {Math.Abs(plannedPosition - encoderPosition)} exceeds limit {limit}.")
+    public MotionControllerFaultException(short axis, AxisFault fault)
+        : base(axis, $"Axis {axis} controller fault: {fault.Code}. {fault.Message}")
     {
-        PlannedPosition = plannedPosition;
-        EncoderPosition = encoderPosition;
-        Limit = limit;
+        Fault = fault ?? throw new ArgumentNullException(nameof(fault));
     }
 
-    public double PlannedPosition { get; }
-    public double EncoderPosition { get; }
-    public double Limit { get; }
+    public AxisFault Fault { get; }
 }
 
 public sealed class MotionServoDisabledException : MotionCompletionException

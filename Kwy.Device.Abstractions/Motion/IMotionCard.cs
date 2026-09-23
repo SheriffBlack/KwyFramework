@@ -7,26 +7,6 @@ public interface IMotionCard : IDevice, IConfigurableDevice
 {
 }
 
-/// <summary>常规物理卡能力集合，参数中的 short axis 都是卡内通道号。</summary>
-public interface IStandardMotionCard :
-    IMotionCard,
-    IAxisMotionController,
-    IMotionProfileController,
-    IAxisStatusReader,
-    IAxisSnapshotReader,
-    IHomeStatusReader,
-    IAxisFaultReader,
-    IMotionWaiter
-{
-}
-
-/// <summary>支持坐标系插补的物理卡能力；电子凸轮、齿轮等仍应以独立可选能力表达。</summary>
-public interface IAdvancedMotionCard :
-    IStandardMotionCard,
-    IInterpolationMotionController
-{
-}
-
 /// <summary>物理单轴控制能力，仅供设备适配器和 Core 执行器使用。</summary>
 public interface IAxisMotionController
 {
@@ -134,7 +114,10 @@ public interface IInterpolationMotionController
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>可选的位置比较输出能力，例如飞拍或点胶触发；参数均为物理卡层单位。</summary>
+/// <summary>
+/// 控制器硬件位置比较输出能力，例如飞拍或点胶触发；参数均为物理卡层单位。
+/// 调用只配置控制器比较规则，实际触发由控制器硬件完成，严禁用上位机轮询位置后输出 DO 替代。
+/// </summary>
 public interface IPositionCompareOutput
 {
     void EnablePso(short axis, double[] triggerPositions, double pulseScale = 10000.0, short pulseWidthUs = 20);

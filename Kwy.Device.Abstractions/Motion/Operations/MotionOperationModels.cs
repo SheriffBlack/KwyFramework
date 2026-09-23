@@ -15,7 +15,8 @@ public sealed record MotionOperationTarget(
     MotionRequestKind Kind,
     IReadOnlyDictionary<string, double>? TargetPositions = null,
     string? SensorPointId = null,
-    MotionProfile? Profile = null);
+    MotionProfile? Profile = null,
+    string? ProgramId = null);
 
 /// <summary>可追溯的运动命令生命周期快照。</summary>
 public sealed record MotionOperationSnapshot(

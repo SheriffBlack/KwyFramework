@@ -47,7 +47,6 @@ public sealed record AxisMotionDefaults
     public TimeSpan MotionTimeout { get; init; } = TimeSpan.FromSeconds(30);
     public TimeSpan SettlingTime { get; init; } = TimeSpan.Zero;
     public double? SettlingVelocityThreshold { get; init; }
-    public double? FollowingErrorLimit { get; init; }
 
     public void Validate()
     {
@@ -57,7 +56,6 @@ public sealed record AxisMotionDefaults
             throw new ArgumentOutOfRangeException(nameof(MotionTimeout));
         if (SettlingTime < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(SettlingTime));
         ValidateOptionalNonNegative(SettlingVelocityThreshold, nameof(SettlingVelocityThreshold));
-        ValidateOptionalNonNegative(FollowingErrorLimit, nameof(FollowingErrorLimit));
     }
 
     public MotionExecutionOptions ToExecutionOptions() => new()
@@ -65,8 +63,7 @@ public sealed record AxisMotionDefaults
         PositionTolerance = PositionTolerance,
         Timeout = MotionTimeout,
         SettlingTime = SettlingTime,
-        SettlingVelocityThreshold = SettlingVelocityThreshold,
-        FollowingErrorLimit = FollowingErrorLimit
+        SettlingVelocityThreshold = SettlingVelocityThreshold
     };
 
     private static void ValidateOptionalNonNegative(double? value, string name)

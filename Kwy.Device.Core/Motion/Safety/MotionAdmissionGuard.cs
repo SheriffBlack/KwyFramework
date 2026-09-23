@@ -3,7 +3,11 @@ using Kwy.Device.Abstractions.Motion;
 
 namespace Kwy.Device.Core.Motion;
 
-public sealed class MotionSafetyOptions
+/// <summary>
+/// 动作发出前的设备级准入配置。
+/// 仅用于拦截离线、未回零、限位或静态约束冲突等明显错误，不能替代控制器和安全硬件的实时保护。
+/// </summary>
+public sealed class MotionAdmissionOptions
 {
     public TimeSpan MaximumSnapshotAge { get; set; } = TimeSpan.FromMilliseconds(500);
 
@@ -14,19 +18,20 @@ public sealed class MotionSafetyOptions
     public IDictionary<short, (double Negative, double Positive)> SoftwareLimits { get; }
         = new Dictionary<short, (double Negative, double Positive)>();
 
-    public IList<Func<MotionRequest, MotionSafetyViolation?>> AdditionalRules { get; }
-        = new List<Func<MotionRequest, MotionSafetyViolation?>>();
+    public IList<Func<MotionRequest, MotionAdmissionViolation?>> AdditionalRules { get; }
+        = new List<Func<MotionRequest, MotionAdmissionViolation?>>();
 }
 
-public sealed class MotionSafetyGuard : IMotionSafetyGuard
+/// <summary>按轴快照、回零可信度和静态约束执行运动准入的统一守卫。</summary>
+public sealed class MotionAdmissionGuard : IMotionAdmissionGuard
 {
     private readonly IMotionCard card;
     private readonly IMotionStateProvider stateProvider;
-    private readonly MotionSafetyOptions options;
+    private readonly MotionAdmissionOptions options;
     private readonly IAxisDefinitionProvider? axisDefinitions;
     private readonly IAxisHomeLifecycle? homeLifecycle;
 
-    public MotionSafetyGuard(IMotionCard card, IMotionStateProvider stateProvider, MotionSafetyOptions options, IAxisHomeLifecycle? homeLifecycle = null)
+    public MotionAdmissionGuard(IMotionCard card, IMotionStateProvider stateProvider, MotionAdmissionOptions options, IAxisHomeLifecycle? homeLifecycle = null)
     {
         this.card = card ?? throw new ArgumentNullException(nameof(card));
         this.stateProvider = stateProvider ?? throw new ArgumentNullException(nameof(stateProvider));
@@ -35,13 +40,13 @@ public sealed class MotionSafetyGuard : IMotionSafetyGuard
         this.homeLifecycle = homeLifecycle;
     }
 
-    public MotionSafetyResult Validate(MotionRequest request)
+    public MotionAdmissionResult Validate(MotionRequest request)
     {
-        List<MotionSafetyViolation>? violations = null;
+        List<MotionAdmissionViolation>? violations = null;
 
         if (!card.IsConnected)
         {
-            return new(new[] { new MotionSafetyViolation("NotConnected", "Motion card is not connected.") });
+            return new(new[] { new MotionAdmissionViolation("NotConnected", "Motion card is not connected.") });
         }
 
         MotionAxisSnapshot snapshot;
@@ -51,7 +56,7 @@ public sealed class MotionSafetyGuard : IMotionSafetyGuard
         }
         catch (KeyNotFoundException)
         {
-            return new(new[] { new MotionSafetyViolation("NoSnapshot", $"Axis {request.Axis} has no state snapshot.") });
+            return new(new[] { new MotionAdmissionViolation("NoSnapshot", $"Axis {request.Axis} has no state snapshot.") });
         }
 
         if (DateTimeOffset.Now - snapshot.Timestamp > options.MaximumSnapshotAge)
@@ -62,6 +67,11 @@ public sealed class MotionSafetyGuard : IMotionSafetyGuard
         if (snapshot.IsAlarm)
         {
             AddViolation(ref violations, "AxisAlarm", $"Axis {request.Axis} is in alarm state.");
+        }
+
+        if (snapshot.Fault is { Severity: AxisFaultSeverity.StopRequired or AxisFaultSeverity.SafetyCritical } fault)
+        {
+            AddViolation(ref violations, "ControllerFault", $"Axis {request.Axis} reports controller fault '{fault.Code}': {fault.Message}");
         }
 
         if (options.RequireServoEnabled && !snapshot.IsServoEnabled)
@@ -117,43 +127,47 @@ public sealed class MotionSafetyGuard : IMotionSafetyGuard
 
         foreach (var rule in options.AdditionalRules)
         {
-            MotionSafetyViolation? violation = rule(request);
+            MotionAdmissionViolation? violation = rule(request);
             if (violation is not null)
             {
-                (violations ??= new List<MotionSafetyViolation>()).Add(violation);
+                (violations ??= new List<MotionAdmissionViolation>()).Add(violation);
             }
         }
 
-        return violations is null ? MotionSafetyResult.Allowed : new(violations);
+        return violations is null ? MotionAdmissionResult.Allowed : new(violations);
     }
 
     public void ValidateAndThrow(MotionRequest request)
     {
-        MotionSafetyResult result = Validate(request);
+        MotionAdmissionResult result = Validate(request);
         if (!result.IsAllowed)
         {
-            throw new MotionSafetyException(result.Violations);
+            throw new MotionAdmissionDeniedException(result.Violations);
         }
     }
 
-    private static void AddViolation(ref List<MotionSafetyViolation>? violations, string code, string message)
-        => (violations ??= new List<MotionSafetyViolation>()).Add(new(code, message));
+    private static void AddViolation(ref List<MotionAdmissionViolation>? violations, string code, string message)
+        => (violations ??= new List<MotionAdmissionViolation>()).Add(new(code, message));
 }
 
-public sealed class SafeAxisMotionController : ISafeAxisMotionController
+/// <summary>
+/// 为底层单轴控制器补充动作前准入检查的适配器。
+/// 供 Core 基础设施使用，工艺代码仍应依赖业务轴执行器而不是物理轴通道。
+/// </summary>
+public sealed class AdmittedAxisMotionController : IAdmittedAxisMotionController
 {
     private readonly IAxisMotionController inner;
     private readonly IMotionProfileController profileController;
     private readonly IAxisStatusReader statusReader;
-    private readonly IMotionSafetyGuard safetyGuard;
+    private readonly IMotionAdmissionGuard safetyGuard;
     private readonly IAxisDefinitionProvider? definitions;
     private readonly IAxisHomeLifecycle? homeLifecycle;
 
-    public SafeAxisMotionController(
+    public AdmittedAxisMotionController(
         IAxisMotionController inner,
         IMotionProfileController profileController,
         IAxisStatusReader statusReader,
-        IMotionSafetyGuard safetyGuard,
+        IMotionAdmissionGuard safetyGuard,
         IAxisDefinitionProvider? definitions = null,
         IAxisHomeLifecycle? homeLifecycle = null)
     {

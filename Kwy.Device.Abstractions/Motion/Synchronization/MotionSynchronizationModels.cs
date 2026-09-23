@@ -1,31 +1,15 @@
 namespace Kwy.Device.Abstractions.Motion;
 
-/// <summary>虚拟轴的执行位置；软件虚拟轴用于节拍/耦合主轴，控制器虚拟轴由厂商适配器实现。</summary>
-public enum VirtualAxisHostKind
-{
-    /// <summary>软件虚拟轴（在上位机C#运动模块内运算）</summary>
-    Software,
-
-    /// <summary>控制器硬件虚拟轴（运动卡/TwinCAT实时内核运算）</summary>
-    Controller
-}
-
-/// <summary>可作为插补、电子齿轮或电子凸轮主轴的逻辑虚拟轴。</summary>
+/// <summary>由控制器实时内核维护、可作为电子齿轮或电子凸轮主轴的逻辑虚拟轴。</summary>
 public sealed record VirtualAxisDefinition : AxisResourceDefinition
 {
-    /// <summary>虚拟轴的位置计算由软件还是由控制器实时维护。</summary>
-    public VirtualAxisHostKind HostKind { get; init; } = VirtualAxisHostKind.Software;
-    /// <summary>仅 Controller 模式需要，表示承载虚拟轴的控制器设备。</summary>
-    public string? HostDeviceId { get; init; }
+    /// <summary>承载该虚拟轴的实时控制器设备。</summary>
+    public required string HostDeviceId { get; init; }
 
     public void Validate()
     {
         ValidateCommon();
-        if (!Enum.IsDefined(HostKind)) throw new ArgumentOutOfRangeException(nameof(HostKind));
-        if (HostKind == VirtualAxisHostKind.Controller)
-            ArgumentException.ThrowIfNullOrWhiteSpace(HostDeviceId);
-        if (HostKind == VirtualAxisHostKind.Software && !string.IsNullOrWhiteSpace(HostDeviceId))
-            throw new InvalidOperationException("Software virtual axes must not bind a controller device.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(HostDeviceId);
     }
 }
 
@@ -39,7 +23,7 @@ public enum SynchronizationEngageMode
     AtMasterPosition
 }
 
-/// <summary>业务轴间的电子齿轮关系；比例为从轴单位 / 主轴单位。</summary>
+/// <summary>由同一实时控制器执行的业务轴电子齿轮关系；Core 仅保存配置并校验能力，不做周期性主从计算。</summary>
 public sealed record ElectronicGearDefinition
 {
     /// <summary>稳定配置 ID，例如 coupling.g-to-z。</summary>
@@ -70,7 +54,7 @@ public sealed record ElectronicGearDefinition
     }
 }
 
-/// <summary>业务轴间的电子凸轮关系；曲线内容由 CamProfileId 指向独立、可版本化的凸轮表。</summary>
+/// <summary>由同一实时控制器执行的业务轴电子凸轮关系；曲线内容由 CamProfileId 指向独立、可版本化的凸轮表。</summary>
 public sealed record ElectronicCamDefinition
 {
     /// <summary>稳定配置 ID，例如 transfer.pick-cam。</summary>

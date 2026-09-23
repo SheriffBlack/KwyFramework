@@ -35,13 +35,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMotionDeviceRuntime>(provider =>
         {
             GoogolMotionCardDevice card = device.Value;
-            var monitor = new MotionStateMonitor(card, stateMonitorOptions);
-            var safety = new MotionSafetyGuard(
+            return MotionRuntimeFactory.Create(
                 card,
-                monitor,
-                provider.GetService<MotionSafetyOptions>() ?? new MotionSafetyOptions());
-            var executor = new AxisMotionExecutor(card, card, monitor, safety);
-            return new MotionDeviceRuntime(card, monitor, executor, provider.GetService<IAxisHomeLifecycle>());
+                stateMonitorOptions,
+                provider.GetService<MotionAdmissionOptions>(),
+                provider.GetService<IAxisHomeLifecycle>());
         });
 
         return services;

@@ -25,7 +25,7 @@ public interface IMotionConfigurationValidator
     void ValidateAndThrow();
 }
 
-/// <summary>进入自动模式前的运动配置硬门禁。</summary>
+/// <summary>进入自动模式前的运动就绪硬门禁：校验配置、控制器连接和状态监视器。</summary>
 public interface IMotionAutoModeGate
 {
     void EnsureReadyForAutoMode();

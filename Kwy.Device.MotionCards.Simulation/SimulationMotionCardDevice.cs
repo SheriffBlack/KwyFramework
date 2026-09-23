@@ -199,19 +199,24 @@ public sealed class SimulationMotionCardDevice :
         => throw new NotSupportedException("The simulation motion card does not implement coordinate interpolation.");
 
     public override MotionAxisSnapshot GetAxisSnapshot(short axis)
-        => GetState(axis).Read(state => new MotionAxisSnapshot(
-            axis,
-            state.Position,
-            state.EncoderPosition,
-            state.Velocity,
-            CreateRawStatus(state),
-            state.Moving,
-            state.Alarm,
-            state.PositiveLimit,
-            state.NegativeLimit,
-            DateTimeOffset.Now,
-            state.ServoEnabled,
-            state.HomeState));
+        => GetState(axis).Read(state =>
+        {
+            int rawStatus = CreateRawStatus(state);
+            return new MotionAxisSnapshot(
+                axis,
+                state.Position,
+                state.EncoderPosition,
+                state.Velocity,
+                rawStatus,
+                state.Moving,
+                state.Alarm,
+                state.PositiveLimit,
+                state.NegativeLimit,
+                DateTimeOffset.Now,
+                state.ServoEnabled,
+                state.HomeState,
+                MapAxisFault(state.Alarm, state.PositiveLimit, state.NegativeLimit, state.HomeState, rawStatus));
+        });
 
     public void SetPosition(short axis, double position) => GetState(axis).Update(state =>
     {

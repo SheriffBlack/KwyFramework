@@ -4,6 +4,7 @@ using Kwy.Device.Abstractions.Motion;
 
 namespace Kwy.Device.Core.Motion;
 
+/// <summary>用于仿真、测试或未接入数据库时的内存命名位置仓储。</summary>
 public sealed class InMemoryNamedPositionRepository : INamedPositionRepository
 {
     private readonly ConcurrentDictionary<string, NamedPositionSet> positions = new(StringComparer.OrdinalIgnoreCase);
@@ -63,6 +64,10 @@ public sealed class InMemoryNamedPositionRepository : INamedPositionRepository
     }
 }
 
+/// <summary>
+/// 以 JSON 文件持久化维护位、换料位等命名位置。
+/// 文件读写通过单一异步锁串行化，避免多线程同时保存时损坏位置文件。
+/// </summary>
 public sealed class JsonNamedPositionRepository : INamedPositionRepository
 {
     private readonly string filePath;
@@ -174,6 +179,7 @@ public sealed class JsonNamedPositionRepository : INamedPositionRepository
     }
 }
 
+/// <summary>将命名位置中的业务轴目标逐一交给业务轴执行器，并保留统一的取消与超时语义。</summary>
 public sealed class NamedPositionMotionService : INamedPositionMotionService
 {
     private readonly INamedPositionRepository repository;

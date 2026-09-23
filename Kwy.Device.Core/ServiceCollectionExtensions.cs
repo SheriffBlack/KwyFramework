@@ -81,24 +81,24 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddKwyMotionServices(
         this IServiceCollection services,
-        Action<MotionSafetyOptions>? configureSafety = null)
+        Action<MotionAdmissionOptions>? configureAdmission = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var safetyOptions = new MotionSafetyOptions();
-        configureSafety?.Invoke(safetyOptions);
+        var admissionOptions = new MotionAdmissionOptions();
+        configureAdmission?.Invoke(admissionOptions);
 
-        services.TryAddSingleton(safetyOptions);
+        services.TryAddSingleton(admissionOptions);
         services.TryAddSingleton<IMotionRuntimeRegistry, MotionRuntimeRegistry>();
         services.TryAddSingleton<IMotionStateMonitor>(provider =>
             provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().StateMonitor);
         services.TryAddSingleton<IMotionStateProvider>(provider => provider.GetRequiredService<IMotionStateMonitor>());
-        services.TryAddSingleton<IMotionSafetyGuard>(provider =>
+        services.TryAddSingleton<IMotionAdmissionGuard>(provider =>
         {
             IMotionDeviceRuntime runtime = provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle();
-            return new MotionSafetyGuard(runtime.Card, runtime.StateMonitor, safetyOptions, provider.GetRequiredService<IAxisHomeLifecycle>());
+            return new MotionAdmissionGuard(runtime.Card, runtime.StateMonitor, admissionOptions, provider.GetRequiredService<IAxisHomeLifecycle>());
         });
-        services.TryAddSingleton<SafeAxisMotionController>(provider =>
+        services.TryAddSingleton<AdmittedAxisMotionController>(provider =>
         {
             IMotionCard card = provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().Card;
             if (card is not IAxisMotionController controller
@@ -108,15 +108,15 @@ public static class ServiceCollectionExtensions
                 throw new InvalidOperationException($"Motion card '{card.DeviceId}' does not provide standard single-axis motion capabilities.");
             }
 
-            return new SafeAxisMotionController(
+            return new AdmittedAxisMotionController(
                 controller,
                 profileController,
                 statusReader,
-                provider.GetRequiredService<IMotionSafetyGuard>(),
+                provider.GetRequiredService<IMotionAdmissionGuard>(),
                 card as IAxisDefinitionProvider,
                 provider.GetRequiredService<IAxisHomeLifecycle>());
         });
-        services.TryAddSingleton<ISafeAxisMotionController>(provider => provider.GetRequiredService<SafeAxisMotionController>());
+        services.TryAddSingleton<IAdmittedAxisMotionController>(provider => provider.GetRequiredService<AdmittedAxisMotionController>());
         services.TryAddSingleton<IAxisMotionExecutor>(provider =>
             provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().AxisExecutor);
         services.TryAddSingleton<IBusinessAxisMotionExecutor, BusinessAxisMotionExecutor>();
@@ -197,6 +197,18 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
             provider.GetRequiredService<IMotionRuntimeRegistry>(),
             provider.GetRequiredService<ICartesianTrajectoryPlanner>()));
+        services.TryAddSingleton<IJointTrajectorySafetyValidator, JointTrajectorySafetyValidator>();
+        services.AddSingleton<IControllerMotionProgramService>(provider => new ControllerMotionProgramService(
+            mechanismDefinitions,
+            provider.GetRequiredService<IMotionPlanningPipeline>(),
+            provider.GetRequiredService<ICoordinateFrameRegistry>(),
+            provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
+            provider.GetRequiredService<IMotionRuntimeRegistry>(),
+            provider.GetRequiredService<IMotionResourceLock>(),
+            provider.GetRequiredService<IMotionOperationTracker>(),
+            provider.GetRequiredService<IAxisHomeLifecycle>(),
+            provider.GetRequiredService<IJointTrajectorySafetyValidator>(),
+            provider.GetRequiredService<MotionAdmissionOptions>()));
         services.AddSingleton<IPoseMotionExecutor>(provider => new PoseMotionExecutor(
             mechanismDefinitions,
             provider.GetServices<IKinematicsSolver>(),
@@ -204,6 +216,18 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
             provider.GetRequiredService<IMotionGroupExecutor>(),
             provider.GetRequiredService<IMotionRuntimeRegistry>()));
+        return services;
+    }
+
+    /// <summary>
+    /// 注册离线规划辅助能力，用于仿真、配方预检和时间估算。
+    /// 这些服务不会驱动控制器周期性下发点位；连续轮廓应由厂商原生程序执行。
+    /// </summary>
+    public static IServiceCollection AddKwyOfflineMotionPlanning(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddSingleton<IJointTrajectoryTimeParameterizer, JointTrajectoryTimeParameterizer>();
+        services.TryAddSingleton<ICartesianVelocityLimiter, CartesianVelocityLimiter>();
         return services;
     }
 }

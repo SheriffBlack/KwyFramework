@@ -126,6 +126,24 @@ public sealed class MotionBehaviorTests
     }
 
     [Fact]
+    public async Task AxisSnapshot_MapsConfirmedControllerFaults()
+    {
+        await using var card = CreateCard();
+        await card.ConnectAsync();
+        card.ServoOn(1);
+
+        card.SetAlarm(1, true);
+        MotionAxisSnapshot alarm = card.GetAxisSnapshot(1);
+        Assert.Equal(AxisFaultCode.ControllerAlarm, alarm.Fault?.Code);
+        Assert.Equal(AxisFaultSeverity.StopRequired, alarm.Fault?.Severity);
+
+        card.SetAlarm(1, false);
+        card.SetLimit(1, positive: true, negative: false);
+        MotionAxisSnapshot limit = card.GetAxisSnapshot(1);
+        Assert.Equal(AxisFaultCode.PositiveLimitReached, limit.Fault?.Code);
+    }
+
+    [Fact]
     public async Task SimulationCard_RejectsMotionWhileAlarmIsInjected()
     {
         await using var card = CreateCard();
