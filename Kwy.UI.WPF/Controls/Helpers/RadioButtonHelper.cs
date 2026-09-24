@@ -7,62 +7,84 @@ using System.Windows.Data;
 namespace Kwy.UI.WPF.Controls.Helpers;
 
 /// <summary>
-/// RadioButton扩展，提供 BindTo 简化 ConverterParameter提供的参数为 Content
+/// 为 <see cref="RadioButton"/> 提供基于 <see cref="ContentControl.Content"/> 的值选择绑定。
 /// </summary>
-public class RadioButtonHelper
+public static class RadioButtonHelper
 {
-    /*
-        | 情况                                                | 能否写回 ViewModel |
-        | --------------------------------------------------- | ------------------ |
-        | 给附加属性加了 BindsTwoWayByDefault                 | ✅ 能             |
-        | 没加 BindsTwoWayByDefault，但 Binding.Mode=TwoWay   | ❌ 不能           |
-
-     */
+    private static readonly object UnsetBindToValue = new();
 
     public static readonly DependencyProperty BindToProperty = DependencyProperty.RegisterAttached(
         "BindTo",
         typeof(object),
         typeof(RadioButtonHelper),
         new FrameworkPropertyMetadata(
-            null,
+            UnsetBindToValue,
             FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
             OnBindToChanged
         )
     );
 
-    public static void SetBindTo(DependencyObject element, object value) =>
+    public static void SetBindTo(DependencyObject element, object? value) =>
         element.SetValue(BindToProperty, value);
 
-    public static object GetBindTo(DependencyObject element) => element.GetValue(BindToProperty);
+    public static object? GetBindTo(DependencyObject element)
+    {
+        object value = element.GetValue(BindToProperty);
+        return ReferenceEquals(value, UnsetBindToValue) ? null : value;
+    }
 
     private static void OnBindToChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is RadioButton radioButton)
+        if (d is not RadioButton radioButton)
         {
-            var binding = new MultiBinding
-            {
-                Converter = new EqualityConverter(),
-                ConverterParameter = radioButton.Content,
-                Mode = BindingMode.TwoWay,
-            };
+            return;
+        }
 
-            // ✅ 第一个绑定项：获取当前 RadioButton 的 BindTo 附加属性（即 VM 属性）
-            binding.Bindings.Add(
-                new Binding
-                {
-                    Path = new PropertyPath(BindToProperty),
-                    RelativeSource = new RelativeSource(RelativeSourceMode.Self),
-                    Mode = BindingMode.TwoWay,
-                }
-            );
+        EnsureCheckedHandler(radioButton);
+        var binding = new MultiBinding
+        {
+            Converter = new EqualityConverter(),
+            Mode = BindingMode.OneWay
+        };
+        binding.Bindings.Add(new Binding
+        {
+            Path = new PropertyPath(BindToProperty),
+            RelativeSource = new RelativeSource(RelativeSourceMode.Self),
+            Mode = BindingMode.OneWay
+        });
+        binding.Bindings.Add(new Binding
+        {
+            Path = new PropertyPath(nameof(ContentControl.Content)),
+            RelativeSource = new RelativeSource(RelativeSourceMode.Self),
+            Mode = BindingMode.OneWay
+        });
+        BindingOperations.SetBinding(radioButton, ToggleButton.IsCheckedProperty, binding);
+    }
 
-            // ✅ 第二个绑定项：RadioButton 自身的 Content
-            binding.Bindings.Add(
-                new Binding { Path = new PropertyPath("Content"), Source = radioButton }
-            );
+    private static readonly DependencyProperty IsCheckedHandlerAttachedProperty =
+        DependencyProperty.RegisterAttached(
+            "IsCheckedHandlerAttached",
+            typeof(bool),
+            typeof(RadioButtonHelper),
+            new PropertyMetadata(false));
 
-            // 设置 IsChecked 的多值绑定
-            BindingOperations.SetBinding(radioButton, ToggleButton.IsCheckedProperty, binding);
+    private static void EnsureCheckedHandler(RadioButton radioButton)
+    {
+        if ((bool)radioButton.GetValue(IsCheckedHandlerAttachedProperty))
+        {
+            return;
+        }
+
+        radioButton.Checked += OnRadioButtonChecked;
+        radioButton.SetValue(IsCheckedHandlerAttachedProperty, true);
+    }
+
+    private static void OnRadioButtonChecked(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton radioButton
+            && !Equals(GetBindTo(radioButton), radioButton.Content))
+        {
+            SetBindTo(radioButton, radioButton.Content);
         }
     }
 }

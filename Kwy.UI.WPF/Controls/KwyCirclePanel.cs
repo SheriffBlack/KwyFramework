@@ -38,7 +38,7 @@ public class KwyCirclePanel : Panel
             "Radius",
             typeof(double),
             typeof(KwyCirclePanel),
-            new PropertyMetadata(200.0, OnLayoutPropertyChanged),
+            new FrameworkPropertyMetadata(200.0, FrameworkPropertyMetadataOptions.AffectsMeasure),
             static value => value is double radius && double.IsFinite(radius) && radius >= 0);
 
     // 依赖属性：圆心X坐标（默认面板中心）

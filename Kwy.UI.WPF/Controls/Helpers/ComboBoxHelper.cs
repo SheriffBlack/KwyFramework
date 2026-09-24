@@ -6,13 +6,12 @@ using System.Windows.Controls.Primitives;
 namespace Kwy.UI.WPF.Controls.Helpers;
 
 /// <summary>
-/// ComboBox 附加属性助手。
-/// 使原生 ComboBox 无需继承即可获得 ItemsSource、SelectedItem、
-/// Icon 图标、IsEditable 等能力的快捷绑定支持。
+/// ComboBox 主题样式附加属性帮助类。
+/// 提供图标成员路径和基于图标状态的样式选择；数据绑定仍使用 ComboBox 原生属性。
 ///
 /// 用法：
 /// <code><![CDATA[
-///   <!-- 最简单的下拉框，带主题样式 -->
+///   <!-- 原生数据绑定 -->
 ///   <ComboBox ItemsSource="{Binding Speeds}"
 ///             SelectedItem="{Binding CurrentSpeed}" />
 ///
@@ -21,7 +20,7 @@ namespace Kwy.UI.WPF.Controls.Helpers;
 ///             SelectedItem="{Binding CurrentSpeed}"
 ///             helpers:IconHelper.Icon="&#xE700;" />
 ///
-///   <!-- 可编辑 + 带单位显示（嵌套在 KwyFormItem 中） -->
+///   <!-- 通过资源键选择样式 -->
 ///   <controls:KwyFormItem Label="量程">
 ///       <ComboBox ItemsSource="{Binding Ranges}"
 ///                 SelectedItem="{Binding CurrentRange}"
@@ -61,13 +60,20 @@ public static class ComboBoxHelper
             typeof(ComboBoxHelper),
             new PropertyMetadata(KwyResourceKeys.DefaultComboBoxStyle, OnStyleKeyChanged));
 
-    public static object GetStyleKey(DependencyObject obj) => obj.GetValue(StyleKeyProperty);
-    public static void SetStyleKey(DependencyObject obj, object value) => obj.SetValue(StyleKeyProperty, value);
+    public static object? GetStyleKey(DependencyObject obj) => obj.GetValue(StyleKeyProperty);
+    public static void SetStyleKey(DependencyObject obj, object? value) => obj.SetValue(StyleKeyProperty, value);
 
     private static void OnStyleKeyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is ComboBox cb && e.NewValue is object key)
+        if (d is not ComboBox cb || GetAutoStyle(cb)) return;
+        if (e.NewValue is object key)
+        {
             ApplyStyle(cb, key);
+        }
+        else
+        {
+            StyleApplicationHelper.RestoreStyle(cb);
+        }
     }
 
     // ── AutoStyle（自动根据有无 Icon 选择样式） ───────────────────────────
@@ -86,8 +92,19 @@ public static class ComboBoxHelper
 
     private static void OnAutoStyleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not ComboBox cb || !(bool)e.NewValue) return;
-        ApplyAutoStyle(cb);
+        if (d is not ComboBox cb) return;
+        if ((bool)e.NewValue)
+        {
+            ApplyAutoStyle(cb);
+        }
+        else if (GetStyleKey(cb) is object key)
+        {
+            ApplyStyle(cb, key);
+        }
+        else
+        {
+            StyleApplicationHelper.RestoreStyle(cb);
+        }
     }
 
     internal static void OnIconChanged(ComboBox comboBox)
@@ -124,13 +141,20 @@ public static class ComboBoxHelper
     {
         if (sender is not ComboBox cb) return;
         cb.Loaded -= OnLoaded;
-        DoApply(cb, GetStyleKey(cb));
+        if (GetAutoStyle(cb))
+        {
+            ApplyAutoStyle(cb);
+        }
+        else if (GetStyleKey(cb) is object key)
+        {
+            DoApply(cb, key);
+        }
     }
 
     private static void DoApply(ComboBox cb, object key)
     {
         var style = cb.TryFindResource(key) as Style
                  ?? Application.Current?.TryFindResource(key) as Style;
-        if (style != null) cb.Style = style;
+        if (style != null) StyleApplicationHelper.ApplyStyle(cb, style);
     }
 }

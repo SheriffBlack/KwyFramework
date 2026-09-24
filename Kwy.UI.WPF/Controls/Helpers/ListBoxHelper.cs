@@ -7,8 +7,8 @@ using System.Windows.Data;
 namespace Kwy.UI.WPF.Controls.Helpers;
 
 /// <summary>
-/// ListBox 附加属性助手。
-/// 提供自动滚动、交替行色、自定义样式等能力，无需继承 ListBox。
+/// ListBox 主题与交互附加属性帮助类。
+/// 提供主题样式、样式资源键，以及对自动滚动行为的简化入口，无需继承 ListBox。
 ///
 /// 用法：
 /// <code><![CDATA[
@@ -69,7 +69,7 @@ public static class ListBoxHelper
         }
         else
         {
-            lb.ClearValue(ListBox.ItemContainerStyleProperty);
+            StyleApplicationHelper.RestoreItemContainerStyle(lb);
         }
     }
 
@@ -85,13 +85,13 @@ public static class ListBoxHelper
         var style = lb.TryFindResource(KwyResourceKeys.ListBoxItemStyle) as Style
                  ?? Application.Current?.TryFindResource(KwyResourceKeys.ListBoxItemStyle) as Style;
         if (style != null)
-            lb.ItemContainerStyle = style;
+            StyleApplicationHelper.ApplyItemContainerStyle(lb, style);
     }
 
     // ── AutoScroll ───────────────────────────────────────────────────────
     /// <summary>
-    /// 设为 True 时，自动将 AutoScrollItemsControlBehavior 附加到 ListBox，
-    /// 使其在新增项时始终滚动到底部。
+    /// 设为 <see langword="true"/> 时，自动附加 <see cref="AutoScrollItemsControlBehavior"/>。
+    /// 适合仅需默认配置的场景；需调整防抖等高级选项时，应直接在 XAML 中使用该行为。
     /// </summary>
     public static readonly DependencyProperty AutoScrollProperty =
         DependencyProperty.RegisterAttached(
@@ -145,8 +145,15 @@ public static class ListBoxHelper
 
     private static void OnStyleKeyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not ListBox lb || e.NewValue is not object key) return;
-        if (lb.IsLoaded) DoApplyStyle(lb, key);
+        if (d is not ListBox lb) return;
+        if (e.NewValue is not object key)
+        {
+            StyleApplicationHelper.RestoreStyle(lb);
+        }
+        else if (lb.IsLoaded)
+        {
+            DoApplyStyle(lb, key);
+        }
         else
         {
             lb.Loaded -= OnStyleLoaded;
@@ -166,6 +173,6 @@ public static class ListBoxHelper
     {
         var style = lb.TryFindResource(key) as Style
                  ?? Application.Current?.TryFindResource(key) as Style;
-        if (style != null) lb.Style = style;
+        if (style != null) StyleApplicationHelper.ApplyStyle(lb, style);
     }
 }

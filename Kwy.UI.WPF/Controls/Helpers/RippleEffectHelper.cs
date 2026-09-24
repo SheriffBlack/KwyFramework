@@ -10,13 +10,19 @@ using System.Windows.Shapes;
 namespace Kwy.UI.WPF.Controls.Helpers;
 
 /// <summary>
-/// 水波纹效果辅助类 (真·极限性能释放版)
-/// 彻底抛弃 Behavior，按需创建波纹对象，做到 0 实例挂载开销！
+/// 水波纹效果附加属性帮助类。
+/// 用于在控件模板提供 <c>PART_RippleCanvas</c> 时按需创建波纹视觉元素。
 /// </summary>
 public static class RippleEffectHelper
 {
-    private static long _lastRippleTicks = 0;
     private static readonly long _cooldownTicks = TimeSpan.FromMilliseconds(50).Ticks;
+
+    private static readonly DependencyProperty LastRippleTicksProperty =
+        DependencyProperty.RegisterAttached(
+            "LastRippleTicks",
+            typeof(long),
+            typeof(RippleEffectHelper),
+            new PropertyMetadata(0L));
 
     public static readonly DependencyProperty IsEnabledProperty =
         DependencyProperty.RegisterAttached(
@@ -54,11 +60,12 @@ public static class RippleEffectHelper
 
     private static void Control_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        long currentTicks = DateTime.UtcNow.Ticks;
-        if (currentTicks - _lastRippleTicks < _cooldownTicks) return;
-        _lastRippleTicks = currentTicks;
-
         if (sender is not Control control) return;
+
+        long currentTicks = DateTime.UtcNow.Ticks;
+        long lastTicks = (long)control.GetValue(LastRippleTicksProperty);
+        if (currentTicks - lastTicks < _cooldownTicks) return;
+        control.SetValue(LastRippleTicksProperty, currentTicks);
 
         // 【按需查找 Canvas】
         // 只有被点击的那一瞬间，才回去找 Canvas。

@@ -55,8 +55,14 @@ public static class PasswordBoxHelper
         if (passwordBox.Password != newPassword)
         {
             passwordBox.SetValue(IsUpdatingProperty, true);
-            passwordBox.Password = newPassword;
-            passwordBox.SetValue(IsUpdatingProperty, false);
+            try
+            {
+                passwordBox.Password = newPassword;
+            }
+            finally
+            {
+                passwordBox.SetValue(IsUpdatingProperty, false);
+            }
         }
     }
 
@@ -101,8 +107,14 @@ public static class PasswordBoxHelper
         if (currentPassword != attachedPassword)
         {
             passwordBox.SetValue(IsUpdatingProperty, true);
-            SetPassword(passwordBox, currentPassword);
-            passwordBox.SetValue(IsUpdatingProperty, false);
+            try
+            {
+                SetPassword(passwordBox, currentPassword);
+            }
+            finally
+            {
+                passwordBox.SetValue(IsUpdatingProperty, false);
+            }
         }
     }
 
@@ -118,29 +130,4 @@ public static class PasswordBoxHelper
         SetIsPasswordChangedHandlerAttached(passwordBox, false);
     }
 
-    /// <summary>
-    /// 获取是否显示密码
-    /// </summary>
-    public static bool GetIsPasswordVisible(DependencyObject obj)
-    {
-        return (bool)obj.GetValue(IsPasswordVisibleProperty);
-    }
-
-    /// <summary>
-    /// 设置是否显示密码
-    /// </summary>
-    public static void SetIsPasswordVisible(DependencyObject obj, bool value)
-    {
-        obj.SetValue(IsPasswordVisibleProperty, value);
-    }
-
-    /// <summary>
-    /// 是否显示密码附加属性
-    /// </summary>
-    public static readonly DependencyProperty IsPasswordVisibleProperty =
-        DependencyProperty.RegisterAttached(
-            "IsPasswordVisible",
-            typeof(bool),
-            typeof(PasswordBoxHelper),
-            new FrameworkPropertyMetadata(false));
 }

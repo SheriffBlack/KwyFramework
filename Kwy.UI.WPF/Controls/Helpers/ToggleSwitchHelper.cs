@@ -49,13 +49,14 @@ public static class ToggleSwitchHelper
         if ((bool)e.NewValue)
         {
             // 读取 StyleKey（如果用户没有指定，用默认值）
-            object key = GetStyleKey(tb);
-            ApplyStyle(tb, key);
+            if (GetStyleKey(tb) is object key)
+            {
+                ApplyStyle(tb, key);
+            }
         }
         else
         {
-            // 还原为默认隐式样式
-            tb.ClearValue(FrameworkElement.StyleProperty);
+            StyleApplicationHelper.RestoreStyle(tb);
         }
     }
 
@@ -72,16 +73,23 @@ public static class ToggleSwitchHelper
             typeof(ToggleSwitchHelper),
             new PropertyMetadata(KwyResourceKeys.ToggleButtonSwitchNoContentStyle, OnStyleKeyChanged));
 
-    public static object GetStyleKey(DependencyObject obj) => obj.GetValue(StyleKeyProperty);
-    public static void SetStyleKey(DependencyObject obj, object value) => obj.SetValue(StyleKeyProperty, value);
+    public static object? GetStyleKey(DependencyObject obj) => obj.GetValue(StyleKeyProperty);
+    public static void SetStyleKey(DependencyObject obj, object? value) => obj.SetValue(StyleKeyProperty, value);
 
     private static void OnStyleKeyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not ToggleButton tb) return;
 
         // 只有在 IsSwitch = true 时才重新应用
-        if (GetIsSwitch(tb) && e.NewValue is object key)
+        if (!GetIsSwitch(tb)) return;
+        if (e.NewValue is object key)
+        {
             ApplyStyle(tb, key);
+        }
+        else
+        {
+            StyleApplicationHelper.RestoreStyle(tb);
+        }
     }
 
     // ── 内部工具 ─────────────────────────────────────────────────────────
@@ -107,7 +115,12 @@ public static class ToggleSwitchHelper
         tb.Loaded -= OnToggleButtonLoaded;
 
         if (GetIsSwitch(tb))
-            DoApply(tb, GetStyleKey(tb));
+        {
+            if (GetStyleKey(tb) is object key)
+            {
+                DoApply(tb, key);
+            }
+        }
     }
 
     private static void DoApply(ToggleButton tb, object key)
@@ -116,6 +129,6 @@ public static class ToggleSwitchHelper
                  ?? Application.Current?.TryFindResource(key) as Style;
 
         if (style != null)
-            tb.Style = style;
+            StyleApplicationHelper.ApplyStyle(tb, style);
     }
 }

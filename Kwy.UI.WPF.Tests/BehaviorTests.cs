@@ -10,6 +10,7 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
@@ -140,6 +141,35 @@ public sealed class BehaviorTests
         });
 
     [Fact]
+    public void CirclePanel_RadiusInvalidatesMeasure()
+        => RunInSta(() =>
+        {
+            var panel = new KwyCirclePanel { Radius = 100 };
+            panel.Measure(new Size(1000, 1000));
+            Assert.Equal(new Size(200, 200), panel.DesiredSize);
+
+            panel.Radius = 150;
+            panel.Measure(new Size(1000, 1000));
+            Assert.Equal(new Size(300, 300), panel.DesiredSize);
+        });
+
+    [Fact]
+    public void RadioButtonHelper_WritesCheckedContentBackToBindingSource()
+        => RunInSta(() =>
+        {
+            var selection = new SelectionState();
+            var radioButton = new RadioButton { Content = "B" };
+            BindingOperations.SetBinding(
+                radioButton,
+                RadioButtonHelper.BindToProperty,
+                new Binding(nameof(SelectionState.Value)) { Source = selection, Mode = BindingMode.TwoWay });
+
+            radioButton.RaiseEvent(new RoutedEventArgs(RadioButton.CheckedEvent, radioButton));
+
+            Assert.Equal("B", selection.Value);
+        });
+
+    [Fact]
     public void Percent_ExposesNormalizedStateWithoutFormattingInControlCode()
         => RunInSta(() =>
         {
@@ -246,6 +276,19 @@ public sealed class BehaviorTests
             Assert.True(SoftKeyboardService.GetIsEnabled(textBox));
             Assert.Equal(KwyKeyboardMode.Numeric, SoftKeyboardService.GetMode(textBox));
             Assert.True(SoftKeyboardService.GetIsEnabled(numberBox));
+        });
+
+    [Fact]
+    public void PasswordBoxHelper_SynchronizesAttachedPasswordInBothDirections()
+        => RunInSta(() =>
+        {
+            var passwordBox = new PasswordBox();
+
+            PasswordBoxHelper.SetPassword(passwordBox, "first");
+            Assert.Equal("first", passwordBox.Password);
+
+            passwordBox.Password = "second";
+            Assert.Equal("second", PasswordBoxHelper.GetPassword(passwordBox));
         });
 
     [Fact]
@@ -512,6 +555,11 @@ public sealed class BehaviorTests
         => new(KwyKeyboard.KeyInvokedEvent, key, shift, false, false, capsLock);
 
     private sealed record Choice(int Key, string DisplayName);
+
+    private sealed class SelectionState
+    {
+        public object? Value { get; set; }
+    }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static WeakReference CreateAndReleaseDataGrid(ObservableCollection<IDataGridColumnDescriptor> columns)
