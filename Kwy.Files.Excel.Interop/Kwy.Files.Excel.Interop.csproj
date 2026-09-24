@@ -22,5 +22,11 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Files.Excel.Abstractions\Kwy.Files.Excel.Abstractions.csproj" />
   </ItemGroup>
+	
+  <ItemGroup>
+    <None Update="DLL\office.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>
