@@ -18,6 +18,7 @@
     <Style TargetType="DataGrid">
         <!--  强制隐藏原生 RowHeader，避免选中时左侧出现系统蓝色行头区域。  -->
         <Setter Property="RowHeaderWidth" Value="0" />
+        <Setter Property="AlternationCount" Value="2" />
         <Setter Property="CanUserSortColumns" Value="False" />
         <Setter Property="CanUserReorderColumns" Value="False" />
         <Setter Property="EnableRowVirtualization" Value="True" />
@@ -75,7 +76,8 @@
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Padding" Value="{DynamicResource KwyDataGridHeaderPadding}" />
         <Setter Property="Height" Value="{DynamicResource KwyDataGridHeaderHeight}" />
-        <Setter Property="BorderThickness" Value="0,0,0.4,0.4" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WindowBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,1,1" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
@@ -89,11 +91,16 @@
         <Setter Property="MinHeight" Value="{DynamicResource KwyDataGridRowMinHeight}" />
         <!--  默认背景：偶数行使用控件背景色。  -->
         <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
-        <!--  左侧 3px 状态条：默认透明，选中时显示 PrimaryBrush。  -->
-        <Setter Property="BorderThickness" Value="3,0,0,0" />
+        <!--  行边框不占用列布局宽度，确保所有 CellStyle 均与列头对齐。  -->
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Style.Triggers>
-            <!--  奇数行使用页面背景色，形成轻微隔行效果。  -->
+            <!--  第一、三、五行固定使用浅色控件背景。  -->
+            <Trigger Property="AlternationIndex" Value="0">
+                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+            </Trigger>
+
+            <!--  第二、四、六行使用稍深的页面背景色。  -->
             <Trigger Property="AlternationIndex" Value="1">
                 <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
             </Trigger>
@@ -107,27 +114,34 @@
                 <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
             </MultiDataTrigger>
 
-            <!--  选中偶数行：保留原背景，并显示左侧 PrimaryBrush 状态条。  -->
+            <!--  选中状态使用背景色，避免边框改变 DataGridCellsPresenter 的布局宽度。  -->
             <MultiTrigger>
                 <MultiTrigger.Conditions>
                     <Condition Property="IsSelected" Value="True" />
                     <Condition Property="AlternationIndex" Value="0" />
                 </MultiTrigger.Conditions>
-                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
             </MultiTrigger>
 
-            <!--  选中奇数行：保留原背景，并显示左侧 PrimaryBrush 状态条。  -->
+            <!--  奇数行选中时使用相同的主题选中色。  -->
             <MultiTrigger>
                 <MultiTrigger.Conditions>
                     <Condition Property="IsSelected" Value="True" />
                     <Condition Property="AlternationIndex" Value="1" />
                 </MultiTrigger.Conditions>
-                <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
             </MultiTrigger>
         </Style.Triggers>
     </Style>
+
+    <!--
+        有边框表格的语义化行样式。当前完全复用 ModernDataGridRowStyle，
+        保留独立资源键以便后续扩展有边框表格的专属交互。
+    -->
+    <Style
+        x:Key="ModernBorderedDataGridRowStyle"
+        BasedOn="{StaticResource ModernDataGridRowStyle}"
+        TargetType="DataGridRow" />
 
     <!--
         DataGrid 单元格样式。
@@ -166,7 +180,7 @@
         x:Key="ModernBorderedDataGridCellStyle"
         BasedOn="{StaticResource ModernDataGridCellStyle}"
         TargetType="DataGridCell">
-        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WindowBorderBrush}" />
         <Setter Property="BorderThickness" Value="0,0,1,1" />
     </Style>
 
