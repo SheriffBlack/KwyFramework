@@ -21,8 +21,7 @@
             <Setter Property="SizeToContent" Value="WidthAndHeight" />
             <Setter Property="WindowStyle" Value="None" />
             <Setter Property="ResizeMode" Value="NoResize" />
-            <Setter Property="kwymvvm:Dialog.WindowStartupLocation" Value="CenterScreen" />
-
+            <Setter Property="kwymvvm:Dialog.WindowStartupLocation" Value="CenterOwner" />
             <Setter Property="TitleBarBackground" Value="{DynamicResource DialogTitleBarBrush}" />
             <Setter Property="Tag" Value="{DynamicResource DialogTitleBarBrush}" />
             <Style.Triggers>
@@ -60,68 +59,67 @@
                 <RowDefinition />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
-        <!--  图标区域  -->
-        <ContentPresenter
-            Grid.Row="0"
-            Grid.Column="0"
-            Width="60"
-            Margin="40,0,0,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Content="{Binding IconResource, Converter={StaticResource IconKeyToResourceConverter}}"
-            Visibility="{Binding DataContext.IsIconVisible, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <ContentPresenter.Resources>
-                <DataTemplate DataType="{x:Type system:String}">
-                    <TextBlock
-                        Foreground="{Binding Path=Tag, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
-                        Style="{StaticResource BtnVerticalStyleTextBlockIcon}"
-                        Text="{Binding}" />
-                </DataTemplate>
-                <DataTemplate DataType="{x:Type Geometry}">
-                    <Viewbox Width="44" Height="44">
-                        <Path Data="{Binding}" Fill="{Binding Path=Tag, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" />
-                    </Viewbox>
-                </DataTemplate>
-            </ContentPresenter.Resources>
-        </ContentPresenter>
-
-        <!--  消息文本区域  -->
-        <TextBlock
-            Grid.Row="0"
-            Grid.Column="1"
-            Margin="0,0,20,0"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Center"
-            FontSize="16"
-            Text="{Binding Message}"
-            TextWrapping="Wrap" />
-
-        <!--  按钮区域  -->
-            <DockPanel
+            <!--  图标区域  -->
+            <ContentPresenter
+                Grid.Row="0"
+                Grid.Column="0"
+                Width="60"
+                Margin="40,0,0,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Content="{Binding IconResource, Converter={StaticResource IconKeyToResourceConverter}}"
+                Visibility="{Binding DataContext.IsIconVisible, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ContentPresenter.Resources>
+                    <DataTemplate DataType="{x:Type system:String}">
+                        <TextBlock
+                            Foreground="{Binding Path=Tag, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                            Style="{StaticResource BtnVerticalStyleTextBlockIcon}"
+                            Text="{Binding}" />
+                    </DataTemplate>
+                    <DataTemplate DataType="{x:Type Geometry}">
+                        <Viewbox Width="44" Height="44">
+                            <Path Data="{Binding}" Fill="{Binding Path=Tag, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" />
+                        </Viewbox>
+                    </DataTemplate>
+                </ContentPresenter.Resources>
+            </ContentPresenter>
+            <!--  消息文本区域  -->
+            <TextBlock
+                Grid.Row="0"
+                Grid.Column="1"
+                Margin="0,0,20,0"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center"
+                FontSize="16"
+                Text="{Binding Message}"
+                TextWrapping="Wrap" />
+            <!--  按钮区域  -->
+            <StackPanel
                 Grid.Row="1"
                 Grid.ColumnSpan="2"
                 Margin="20,0,20,20"
-                HorizontalAlignment="Center">
-            <Button
-                Width="150"
-                Height="40"
-                Margin="0,0,40,0"
-                Command="{Binding ConfirmCommand}"
-                Content="{DynamicResource Common.Confirm}" />
-            <Button
-                Width="150"
-                Height="40"
-                Margin="0"
-                Command="{Binding CancelCommand}"
-                Content="{DynamicResource Common.Cancel}"
-                Visibility="{Binding ShowCancelButton, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            </DockPanel>
+                HorizontalAlignment="Center"
+                Orientation="Horizontal">
+                <Button
+                    Width="150"
+                    Height="40"
+                    Margin="0,0,12,0"
+                    Command="{Binding ConfirmCommand}"
+                    Content="{Binding ConfirmButtonText}"
+                    IsDefault="True" />
+                <Button
+                    Width="150"
+                    Height="40"
+                    Margin="0"
+                    Command="{Binding CancelCommand}"
+                    Content="{Binding CancelButtonText}"
+                    IsCancel="True"
+                    Visibility="{Binding ShowCancelButton, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </StackPanel>
         </Grid>
     </Grid>
 </UserControl>
-

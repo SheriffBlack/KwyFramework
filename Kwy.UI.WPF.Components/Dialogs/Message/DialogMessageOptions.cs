@@ -10,4 +10,8 @@ public sealed class DialogMessageOptions
     public DialogMessageIcon Icon { get; init; }
 
     public bool ShowCancelButton { get; init; }
+
+    public string? ConfirmButtonText { get; init; }
+
+    public string? CancelButtonText { get; init; }
 }

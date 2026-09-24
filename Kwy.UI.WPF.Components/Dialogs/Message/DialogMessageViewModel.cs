@@ -14,6 +14,8 @@ internal sealed class DialogMessageViewModel : BindableBase, IDialogAware
     private string message = string.Empty;
     private string title = string.Empty;
     private bool showCancelButton;
+    private string confirmButtonText = "确定";
+    private string cancelButtonText = "取消";
 
     public string Title
     {
@@ -44,6 +46,18 @@ internal sealed class DialogMessageViewModel : BindableBase, IDialogAware
     {
         get => showCancelButton;
         private set => SetProperty(ref showCancelButton, value);
+    }
+
+    public string ConfirmButtonText
+    {
+        get => confirmButtonText;
+        private set => SetProperty(ref confirmButtonText, value);
+    }
+
+    public string CancelButtonText
+    {
+        get => cancelButtonText;
+        private set => SetProperty(ref cancelButtonText, value);
     }
 
     public string? IconResource => DialogIcon switch
@@ -84,7 +98,16 @@ internal sealed class DialogMessageViewModel : BindableBase, IDialogAware
         Title = options.Title ?? string.Empty;
         DialogIcon = options.Icon;
         ShowCancelButton = options.ShowCancelButton;
+        ConfirmButtonText = string.IsNullOrWhiteSpace(options.ConfirmButtonText)
+            ? GetResourceText("Common.Confirm", "确定")
+            : options.ConfirmButtonText;
+        CancelButtonText = string.IsNullOrWhiteSpace(options.CancelButtonText)
+            ? GetResourceText("Common.Cancel", "取消")
+            : options.CancelButtonText;
     }
+
+    private static string GetResourceText(string key, string fallback)
+        => System.Windows.Application.Current?.TryFindResource(key) as string ?? fallback;
 
     private void Close(ButtonResult result)
         => RequestClose?.Invoke(new DialogResult(result));
