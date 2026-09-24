@@ -10,7 +10,15 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
     <PackageReference Include="Microsoft.Office.Interop.Excel" Version="16.0.18925.20022" />
   </ItemGroup>
-
+	
+  <ItemGroup>
+    <Reference Include="office">
+      <HintPath>DLL\office.dll</HintPath>
+      <Private>true</Private>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+  </ItemGroup>
+	
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Files.Excel.Abstractions\Kwy.Files.Excel.Abstractions.csproj" />
   </ItemGroup>
