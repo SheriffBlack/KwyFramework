@@ -1,8 +1,8 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers"
-    xmlns:dataGrids="clr-namespace:Kwy.UI.DataGrids;assembly=Kwy.UI">
+    xmlns:dataGrids="clr-namespace:Kwy.UI.DataGrids;assembly=Kwy.UI"
+    xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers">
 
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/BaseStyle.xaml" />
@@ -161,7 +161,16 @@
         </Setter>
     </Style>
 
-    <!--  Dynamic cells bind their CellValidationState to Tag; presentation stays in the theme.  -->
+    <!--  有边框的现代单元格：复用基础模板，仅增加右侧和底部分隔线。  -->
+    <Style
+        x:Key="ModernBorderedDataGridCellStyle"
+        BasedOn="{StaticResource ModernDataGridCellStyle}"
+        TargetType="DataGridCell">
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,1,1" />
+    </Style>
+
+    <!--  动态单元格将其 CellValidationState 绑定到 Tag；显示效果仍保持在主题中.  -->
     <Style
         x:Key="DynamicValidationDataGridCellStyle"
         BasedOn="{StaticResource ModernDataGridCellStyle}"
