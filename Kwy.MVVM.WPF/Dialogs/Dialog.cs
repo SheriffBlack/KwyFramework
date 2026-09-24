@@ -31,7 +31,7 @@ public static class Dialog
             "WindowStartupLocation",
             typeof(WindowStartupLocation),
             typeof(Dialog),
-            new PropertyMetadata(WindowStartupLocation.CenterScreen));
+            new PropertyMetadata(WindowStartupLocation.CenterOwner));
 
     public static WindowStartupLocation GetWindowStartupLocation(DependencyObject obj) => (WindowStartupLocation)obj.GetValue(WindowStartupLocationProperty);
 

@@ -1,129 +1,33 @@
 using Kwy.MVVM.Dialogs;
+using Kwy.MVVM.WPF.Mvvm;
 using Microsoft.Extensions.DependencyInjection;
+using System.Runtime.ExceptionServices;
 using System.Windows;
+using System.Windows.Data;
+using System.Windows.Threading;
 
 namespace Kwy.MVVM.WPF.Dialogs;
 
 /// <summary>
 /// WPF 平台的对话框服务实现。
-/// 这个类会把 "View名字" 解析为真正的窗体，塞在 Window 里面展示，并接管 ViewModel 的生命周期。
+/// 负责解析对话框视图、装配 ViewModel，并管理窗口生命周期。
 /// </summary>
-public class DialogService : IDialogService
+public sealed class DialogService : IDialogService
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceProvider serviceProvider;
 
     public DialogService(IServiceProvider serviceProvider)
     {
-        _serviceProvider = serviceProvider;
+        this.serviceProvider = serviceProvider;
     }
 
     public void Show(string name, IDialogParameters? parameters = null, Action<IDialogResult>? callback = null)
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher != null && !dispatcher.CheckAccess())
+        if (!TryDispatchToApplicationUiThread(() => Show(name, parameters, callback)))
         {
-            _ = dispatcher.BeginInvoke(() => Show(name, parameters, callback));
-            return;
+            var session = CreateSession(name, callback, isModal: false);
+            session.Start(parameters ?? new DialogParameters());
         }
-        // 1. 【极致性能】：O(1) 极速拉取 View (抛弃反射扫包)
-        var view = _serviceProvider.GetRequiredKeyedService<FrameworkElement>(name);
-
-        // 自动装配 ViewModel (如果 DataContext 为空)
-        if (view.DataContext == null)
-        {
-            Kwy.MVVM.WPF.Mvvm.ViewModelLocator.AutoWire(view);
-        }
-        var viewModel = view.DataContext as IDialogAware
-            ?? throw new InvalidOperationException($"对话框视图 '{name}' 的 DataContext 必须实现 {nameof(IDialogAware)}。");
-
-        // 2. 从 DI 容器获取弹窗的 Window 壳子
-        var window = _serviceProvider.GetRequiredService<IDialogWindow>();
-        window.Content = view;
-
-        // 3. 【零反射读取】：解析 XAML 附加属性
-        var windowStyle = Dialog.GetWindowStyle(view);
-        if (windowStyle != null && window is Window w)
-        {
-            w.Style = windowStyle;
-        }
-
-        // 默认居中父体，防止非模态弹窗跑到主程序后面去
-        var startupLocation = (WindowStartupLocation)view.GetValue(Dialog.WindowStartupLocationProperty);
-        if (window is Window w2)
-        {
-            w2.WindowStartupLocation = startupLocation;
-            w2.Owner = Application.Current?.MainWindow;
-        }
-
-        // 4. 【生命周期与极客级防漏防抖】
-        if (viewModel != null)
-        {
-            // 先触发打开事件，传递参数，让 ViewModel 有机会在此时解析 Title
-            viewModel.OnDialogOpened(parameters ?? new DialogParameters());
-
-            if (window is Window realWindow)
-            {
-                // 🚀 核心架构修复：将 Window 的数据上下文也设为 ViewModel，彻底激活 Window 层的 XAML 绑定（如 DataTrigger）
-                realWindow.DataContext = viewModel;
-
-                // 建立真正的 WPF 数据绑定，而不是只赋值一次
-                realWindow.SetBinding(Window.TitleProperty, new System.Windows.Data.Binding(nameof(IDialogAware.Title)) { Source = viewModel });
-
-                // 【状态锁】：防止代码主动 Close 和 右上角 X 触发两次 callback
-                bool isCallbackInvoked = false;
-
-                // 【局部函数】：代替匿名委托，避免不必要的堆分配，且方便精准解绑
-                void RequestCloseHandler(IDialogResult result)
-                {
-                    // 步骤一：立刻断开强引用！
-                    viewModel.RequestClose -= RequestCloseHandler;
-
-                    if (!isCallbackInvoked)
-                    {
-                        isCallbackInvoked = true;
-                        callback?.Invoke(result); // 执行业务侧的回调
-                    }
-
-                    // 这行代码会连带触发下方的 Closed 事件
-                    realWindow.Close();
-                }
-
-                // 订阅 ViewModel 的关闭请求
-                viewModel.RequestClose += RequestCloseHandler;
-
-                // 拦截关闭前事件
-                realWindow.Closing += (s, e) =>
-                {
-                    if (!viewModel.CanCloseDialog())
-                    {
-                        e.Cancel = true;
-                    }
-                };
-
-                // 拦截彻底关闭后事件 (兜底清理)
-                void WindowClosedHandler(object? sender, EventArgs e)
-                {
-                    // 彻底斩断 Window 和 ViewModel 之间的所有事件挂载
-                    realWindow.Closed -= WindowClosedHandler;
-                    viewModel.RequestClose -= RequestCloseHandler;
-
-                    viewModel.OnDialogClosed();
-
-                    // 【极限兜底】：如果用户没点确定/取消，而是直接点了右上角的 X
-                    // 此时业务侧如果不给个交代，很容易死等。我们默认返回 ButtonResult.None
-                    if (!isCallbackInvoked)
-                    {
-                        isCallbackInvoked = true;
-                        callback?.Invoke(new DialogResult(ButtonResult.None));
-                    }
-                }
-
-                realWindow.Closed += WindowClosedHandler;
-            }
-        }
-
-        // 5. 【非模态释放】：立刻显示，直接跑完当前方法，绝不阻塞当前 UI 线程
-        window.Show();
     }
 
     public Task<IDialogResult> ShowDialogAsync(string name, IDialogParameters? parameters = null)
@@ -131,182 +35,247 @@ public class DialogService : IDialogService
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher != null && !dispatcher.CheckAccess())
         {
-            return dispatcher.InvokeAsync(() => ShowDialogAsync(name, parameters)).Task.Unwrap();
+            return dispatcher.InvokeAsync(
+                () => ShowDialogAsync(name, parameters),
+                DispatcherPriority.Send).Task.Unwrap();
         }
-        var tcs = new TaskCompletionSource<IDialogResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var ownerWindow = Application.Current?.MainWindow;
 
-        // 1. 【极致性能】：使用 .NET 8 Keyed Services 直接以 O(1) 速度解析 View
-        var view = _serviceProvider.GetRequiredKeyedService<FrameworkElement>(name);
+        var completion = new TaskCompletionSource<IDialogResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            var session = CreateSession(
+                name,
+                result => completion.TrySetResult(result),
+                isModal: true,
+                failure => completion.TrySetException(failure));
+            session.Start(parameters ?? new DialogParameters());
+        }
+        catch (Exception exception)
+        {
+            completion.TrySetException(exception);
+        }
 
-        // 自动装配 ViewModel (如果 DataContext 为空)
+        return completion.Task;
+    }
+
+    private bool TryDispatchToApplicationUiThread(Action action)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.CheckAccess())
+        {
+            return false;
+        }
+
+        _ = dispatcher.BeginInvoke(action, DispatcherPriority.Send);
+        return true;
+    }
+
+    private DialogSession CreateSession(
+        string name,
+        Action<IDialogResult>? completed,
+        bool isModal,
+        Action<Exception>? failed = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        FrameworkElement view = serviceProvider.GetRequiredKeyedService<FrameworkElement>(name);
         if (view.DataContext == null)
         {
-            Mvvm.ViewModelLocator.AutoWire(view);
+            ViewModelLocator.AutoWire(view);
         }
+
         var viewModel = view.DataContext as IDialogAware
             ?? throw new InvalidOperationException($"对话框视图 '{name}' 的 DataContext 必须实现 {nameof(IDialogAware)}。");
+        IDialogWindow dialogWindow = serviceProvider.GetRequiredService<IDialogWindow>();
+        if (dialogWindow is not Window window)
+        {
+            throw new InvalidOperationException($"{nameof(IDialogWindow)} 的实现必须继承 {nameof(Window)}。");
+        }
 
-        // 2. 【架构融合】：从 DI 容器中解析自定义的弹窗壳子 (DefaultDialogWindow)
-        var window = _serviceProvider.GetRequiredService<IDialogWindow>();
         window.Content = view;
+        window.DataContext = viewModel;
+        window.Owner = ResolveOwnerWindow();
+        window.WindowStartupLocation = Dialog.GetWindowStartupLocation(view);
+        window.SetBinding(Window.TitleProperty, new Binding(nameof(IDialogAware.Title)) { Source = viewModel });
 
-        // 3. 【解析 XAML 附加属性】：读取 View 上配置的样式和启动位置
-        var windowStyle = Dialog.GetWindowStyle(view);
-        if (windowStyle != null && window is Window w)
+        if (Dialog.GetWindowStyle(view) is Style style)
         {
-            w.Style = windowStyle;
+            window.Style = style;
         }
 
-        // 默认居中父体，如果 View 上有写 kwy:Dialog.WindowStartupLocation="CenterScreen"，则覆盖
-        var startupLocation = (WindowStartupLocation)view.GetValue(Dialog.WindowStartupLocationProperty);
-        if (window is Window w2)
+        return new DialogSession(window, viewModel, completed, failed, isModal);
+    }
+
+    private static Window? ResolveOwnerWindow()
+    {
+        if (Application.Current == null)
         {
-            w2.WindowStartupLocation = startupLocation;
-            w2.Owner = ownerWindow;
+            return null;
         }
 
-        // 4. 生命周期与内存防漏绑定
-        if (viewModel != null)
-        {
-            // 先触发 ViewModel 打开事件，传递参数，让 ViewModel 解析出 Title
-            viewModel.OnDialogOpened(parameters ?? new DialogParameters());
+        return Application.Current.Windows
+            .OfType<Window>()
+            .FirstOrDefault(window => window.IsActive)
+            ?? Application.Current.MainWindow;
+    }
 
-            if (window is Window realWindow)
+    private sealed class DialogSession
+    {
+        private readonly Window window;
+        private readonly IDialogAware viewModel;
+        private readonly Action<IDialogResult>? completed;
+        private readonly Action<Exception>? failed;
+        private readonly bool isModal;
+        private IDisposable? ownerModalLease;
+        private bool hasBeenShown;
+        private bool isCloseRequested;
+        private bool isCompleted;
+        private IDialogResult? requestedResult;
+
+        public DialogSession(
+            Window window,
+            IDialogAware viewModel,
+            Action<IDialogResult>? completed,
+            Action<Exception>? failed,
+            bool isModal)
+        {
+            this.window = window;
+            this.viewModel = viewModel;
+            this.completed = completed;
+            this.failed = failed;
+            this.isModal = isModal;
+        }
+
+        public void Start(IDialogParameters parameters)
+        {
+            AttachHandlers();
+            try
             {
-                // 🚀 核心架构修复：将 Window 的数据上下文也设为 ViewModel，彻底激活 Window 层的 XAML 绑定（如 DataTrigger）
-                realWindow.DataContext = viewModel;
-
-                // 建立真正的动态绑定
-                realWindow.SetBinding(Window.TitleProperty, new System.Windows.Data.Binding(nameof(IDialogAware.Title)) { Source = viewModel });
-
-                var ownerHitTestChanged = false;
-                var previousOwnerHitTestVisible = true;
-                var ownerActivationHooked = false;
-                var isCloseRequested = false;
-                IDialogResult? requestedResult = null;
-
-                void DisableOwnerHitTest()
+                viewModel.OnDialogOpened(parameters);
+                if (isCloseRequested)
                 {
-                    if (ownerWindow == null || ownerWindow == realWindow)
-                    {
-                        return;
-                    }
-
-                    previousOwnerHitTestVisible = ownerWindow.IsHitTestVisible;
-                    ownerWindow.IsHitTestVisible = false;
-                    ownerHitTestChanged = true;
+                    Complete(requestedResult ?? new DialogResult(ButtonResult.None));
+                    return;
                 }
 
-                void RestoreOwnerHitTest()
+                if (isModal)
                 {
-                    if (!ownerHitTestChanged || ownerWindow == null)
-                    {
-                        return;
-                    }
-
-                    ownerWindow.IsHitTestVisible = previousOwnerHitTestVisible;
-                    ownerHitTestChanged = false;
+                    ownerModalLease = DialogOwnerModalCoordinator.Acquire(window.Owner, window);
                 }
 
-                void ReturnFocusToDialog()
+                hasBeenShown = true;
+                window.Show();
+
+                if (!isCompleted && window.IsVisible)
                 {
-                    if (!realWindow.IsVisible)
-                    {
-                        return;
-                    }
-
-                    _ = realWindow.Dispatcher.InvokeAsync(() =>
-                    {
-                        if (!realWindow.IsVisible)
-                        {
-                            return;
-                        }
-
-                        if (realWindow.WindowState == WindowState.Minimized)
-                        {
-                            realWindow.WindowState = WindowState.Normal;
-                        }
-
-                        realWindow.Activate();
-                        realWindow.Focus();
-                    });
+                    window.Activate();
+                    window.Focus();
                 }
-
-                void OwnerActivatedHandler(object? sender, EventArgs e)
-                {
-                    ReturnFocusToDialog();
-                }
-
-                void HookOwnerActivation()
-                {
-                    if (ownerWindow == null || ownerWindow == realWindow || ownerActivationHooked)
-                    {
-                        return;
-                    }
-
-                    ownerWindow.Activated += OwnerActivatedHandler;
-                    ownerActivationHooked = true;
-                }
-
-                void UnhookOwnerActivation()
-                {
-                    if (!ownerActivationHooked || ownerWindow == null)
-                    {
-                        return;
-                    }
-
-                    ownerWindow.Activated -= OwnerActivatedHandler;
-                    ownerActivationHooked = false;
-                }
-
-                void RequestCloseHandler(IDialogResult result)
-                {
-                    if (isCloseRequested)
-                    {
-                        return;
-                    }
-
-                    isCloseRequested = true;
-                    requestedResult = result;
-                    realWindow.Close();
-                }
-
-                viewModel.RequestClose += RequestCloseHandler;
-
-                realWindow.Closing += (s, e) =>
-                {
-                    if (!viewModel.CanCloseDialog())
-                    {
-                        e.Cancel = true;
-                        isCloseRequested = false;
-                        requestedResult = null;
-                    }
-                };
-
-                realWindow.Closed += (s, e) =>
-                {
-                    UnhookOwnerActivation();
-                    RestoreOwnerHitTest();
-                    viewModel.OnDialogClosed();
-                    viewModel.RequestClose -= RequestCloseHandler;
-                    if (!tcs.Task.IsCompleted)
-                    {
-                        tcs.TrySetResult(requestedResult ?? new DialogResult(ButtonResult.None));
-                    }
-                };
-
-                // 5. 真正的异步触发
-                _ = realWindow.Dispatcher.InvokeAsync(() =>
-                {
-                    HookOwnerActivation();
-                    DisableOwnerHitTest();
-                    realWindow.Show();
-                });
+            }
+            catch (Exception exception)
+            {
+                Fail(exception);
             }
         }
 
-        // 窗口关闭后，tcs.Task 肯定已经有了 Result
-        return tcs.Task;
+        private void AttachHandlers()
+        {
+            viewModel.RequestClose += OnRequestClose;
+            window.Closing += OnWindowClosing;
+            window.Closed += OnWindowClosed;
+        }
+
+        private void DetachHandlers()
+        {
+            viewModel.RequestClose -= OnRequestClose;
+            window.Closing -= OnWindowClosing;
+            window.Closed -= OnWindowClosed;
+        }
+
+        private void OnRequestClose(IDialogResult result)
+        {
+            ArgumentNullException.ThrowIfNull(result);
+            if (!window.Dispatcher.CheckAccess())
+            {
+                _ = window.Dispatcher.BeginInvoke(() => OnRequestClose(result), DispatcherPriority.Send);
+                return;
+            }
+
+            if (isCompleted || isCloseRequested)
+            {
+                return;
+            }
+
+            isCloseRequested = true;
+            requestedResult = result;
+            if (hasBeenShown)
+            {
+                window.Close();
+            }
+        }
+
+        private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (viewModel.CanCloseDialog())
+            {
+                return;
+            }
+
+            e.Cancel = true;
+            isCloseRequested = false;
+            requestedResult = null;
+        }
+
+        private void OnWindowClosed(object? sender, EventArgs e)
+            => Complete(requestedResult ?? new DialogResult(ButtonResult.None));
+
+        private void Complete(IDialogResult result)
+        {
+            if (isCompleted)
+            {
+                return;
+            }
+
+            isCompleted = true;
+            ownerModalLease?.Dispose();
+            ownerModalLease = null;
+            DetachHandlers();
+            try
+            {
+                viewModel.OnDialogClosed();
+            }
+            finally
+            {
+                completed?.Invoke(result);
+            }
+        }
+
+        private void Fail(Exception exception)
+        {
+            if (isCompleted)
+            {
+                return;
+            }
+
+            isCompleted = true;
+            ownerModalLease?.Dispose();
+            ownerModalLease = null;
+            DetachHandlers();
+            try
+            {
+                viewModel.OnDialogClosed();
+            }
+            finally
+            {
+                if (failed == null)
+                {
+                    ExceptionDispatchInfo.Capture(exception).Throw();
+                }
+                else
+                {
+                    failed(exception);
+                }
+            }
+        }
     }
 }

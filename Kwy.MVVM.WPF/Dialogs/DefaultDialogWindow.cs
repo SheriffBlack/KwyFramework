@@ -3,7 +3,7 @@
 namespace Kwy.MVVM.WPF.Dialogs;
 
 /// <summary>
-/// 弹窗容器的接口抽象。如果你希望用完全定制的无边框窗口作为容器，你可以自定义一个 Window 实现此接口并在服务中注册。
+/// 弹窗容器接口。实现类型必须继承 <see cref="Window"/>，可使用自定义无边框窗口替换默认实现。
 /// </summary>
 public interface IDialogWindow
 {
@@ -33,6 +33,8 @@ public class DefaultDialogWindow : Window, IDialogWindow
         SizeToContent = SizeToContent.WidthAndHeight;
         MinHeight = 150;
         MinWidth = 250;
+        ShowInTaskbar = false;
+        ShowActivated = true;
 
         // （可选）可以根据需求调整比如不允许改变大小：
         // ResizeMode = ResizeMode.NoResize;

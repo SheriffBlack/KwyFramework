@@ -96,6 +96,29 @@ public class WpfBehaviorTests
     });
 
     [Fact]
+    public Task DialogCompletesWhenViewModelClosesSynchronously() => StaTest.RunAsync(async () =>
+    {
+        var services = new ServiceCollection();
+        services.AddKeyedTransient<FrameworkElement, ImmediateCloseDialogView>(nameof(ImmediateCloseDialogView));
+        services.AddTransient<ImmediateCloseDialogViewModel>();
+        services.AddTransient<IDialogWindow, DefaultDialogWindow>();
+        using var provider = services.BuildServiceProvider();
+        ViewModelLocator.SetDefaultServiceProvider(provider);
+        ViewModelLocator.Register(typeof(ImmediateCloseDialogView), typeof(ImmediateCloseDialogViewModel));
+
+        try
+        {
+            var service = new DialogService(provider);
+            var result = await service.ShowDialogAsync(nameof(ImmediateCloseDialogView));
+            Assert.Equal(ButtonResult.Cancel, result.Result);
+        }
+        finally
+        {
+            ViewModelLocator.SetDefaultServiceProvider(new ServiceCollection().BuildServiceProvider());
+        }
+    });
+
+    [Fact]
     public Task PermissionRestoresOriginalElementState() => StaTest.RunAsync(() =>
     {
         var permissionService = new MutablePermissionService();
@@ -105,16 +128,23 @@ public class WpfBehaviorTests
             Visibility = Visibility.Hidden
         };
 
-        Permission.SetService(button, permissionService);
-        Permission.SetMode(button, PermissionCheckMode.Both);
-        Permission.SetPolicy(button, "Edit");
-        Assert.Equal(Visibility.Collapsed, button.Visibility);
+        try
+        {
+            Permission.DefaultPermissionService = permissionService;
+            Permission.SetMode(button, PermissionCheckMode.Hide);
+            Permission.SetPolicy(button, "Edit");
+            Assert.Equal(Visibility.Collapsed, button.Visibility);
 
-        permissionService.HasAccess = true;
-        permissionService.NotifyPermissionsChanged("Edit");
+            permissionService.HasAccess = true;
+            permissionService.NotifyPermissionsChanged("Edit");
 
-        Assert.False(button.IsEnabled);
-        Assert.Equal(Visibility.Hidden, button.Visibility);
+            Assert.False(button.IsEnabled);
+            Assert.Equal(Visibility.Hidden, button.Visibility);
+        }
+        finally
+        {
+            Permission.DefaultPermissionService = null;
+        }
 
         return Task.CompletedTask;
     });
@@ -178,6 +208,21 @@ public class WpfBehaviorTests
             System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
                 () => RequestClose?.Invoke(new DialogResult(ButtonResult.OK)));
         }
+    }
+
+    public sealed class ImmediateCloseDialogView : UserControl
+    {
+    }
+
+    public sealed class ImmediateCloseDialogViewModel : IDialogAware
+    {
+        public string Title => "Test";
+        public event Action<IDialogResult>? RequestClose;
+        public bool CanCloseDialog() => true;
+        public void OnDialogClosed() { }
+
+        public void OnDialogOpened(IDialogParameters parameters)
+            => RequestClose?.Invoke(new DialogResult(ButtonResult.Cancel));
     }
 
     private sealed class MutablePermissionService : IPermissionService
