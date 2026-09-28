@@ -1,5 +1,4 @@
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Abstractions.Motion;
 using Kwy.Device.Core.Motion;
 using Kwy.Device.MotionCards.Simulation;
@@ -144,12 +143,12 @@ public sealed class AxisMotionExecutorTests
     public async Task SeekSensorAsync_SupportsSoftwareAndHardwareStopModes()
     {
         await using ExecutorFixture fixture = await ExecutorFixture.CreateAsync();
-        var io = new TestIoCard();
+        bool sensorActive = false;
 
         Task<SensorSeekResult> softwareSeek = fixture.Executor.SeekSensorAsync(
             1,
-            io,
-            0,
+            "test.sensor",
+            () => sensorActive,
             velocity: 20,
             new SensorSeekOptions
             {
@@ -158,15 +157,15 @@ public sealed class AxisMotionExecutorTests
                 Timeout = TimeSpan.FromSeconds(2)
             });
         await Task.Delay(30);
-        io.SetInput(0, true, raiseInterrupt: false);
+        sensorActive = true;
         SensorSeekResult softwareResult = await softwareSeek;
         Assert.Equal(SensorStopMode.SoftwareStop, softwareResult.StopMode);
 
-        io.SetInput(0, false, raiseInterrupt: false);
+        sensorActive = false;
         Task<SensorSeekResult> hardwareSeek = fixture.Executor.SeekSensorAsync(
             1,
-            io,
-            0,
+            "test.sensor",
+            () => sensorActive,
             velocity: -20,
             new SensorSeekOptions
             {
@@ -175,7 +174,7 @@ public sealed class AxisMotionExecutorTests
             });
         await Task.Delay(30);
         fixture.Card.Stop(1); // Simulates the controller's hardware-bound stop input.
-        io.SetInput(0, true, raiseInterrupt: true);
+        sensorActive = true;
         SensorSeekResult hardwareResult = await hardwareSeek;
         Assert.Equal(SensorStopMode.ControllerHardwareStop, hardwareResult.StopMode);
     }
@@ -253,69 +252,5 @@ public sealed class AxisMotionExecutorTests
         }
     }
 
-    private sealed class TestIoCard : IIoCardDevice, IHardwareInterruptSource
-    {
-        private ulong inputs;
-
-        public string DeviceId => "TestIo";
-        public string DeviceName => "Test IO";
-        public ConnectionState State => ConnectionState.Connected;
-        public bool IsConnected => true;
-        public IDeviceConfig DeviceParameter { get; set; } = new TestConfig();
-        public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged
-        {
-            add { }
-            remove { }
-        }
-
-        public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred
-        {
-            add { }
-            remove { }
-        }
-
-        public event EventHandler<DeviceOperationEventArgs>? OperationOccurred
-        {
-            add { }
-            remove { }
-        }
-
-        public int DigitalInputCount => 64;
-        public int DigitalOutputCount => 64;
-        public event EventHandler<IoSignalSnapshot>? HardwareInterruptReceived;
-
-        public bool ReadDiBit(int channel) => (inputs & (1UL << channel)) != 0;
-        public bool[] ReadAllDi() => Enumerable.Range(0, 64).Select(ReadDiBit).ToArray();
-        public ulong ReadDiPortMask() => inputs;
-        public void WriteDoBit(int channel, bool state) => throw new NotSupportedException();
-        public void WriteDoPortMask(ulong mask) => throw new NotSupportedException();
-        public void WriteDoPortMask(ulong mask, ulong changedMask) => throw new NotSupportedException();
-        public bool[] ReadAllDo() => new bool[64];
-        public void WritePulse(int channel, int durationMs) => throw new NotSupportedException();
-        public void SetDoName(int channel, string name) { }
-        public IEnumerable<(int Index, string Name)> GetAllOutputs() => Array.Empty<(int, string)>();
-        public void SetDiName(int channel, string name) { }
-        public IEnumerable<(int Index, string Name)> GetAllInputs() => Array.Empty<(int, string)>();
-        public Task ConnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task ApplyConfigAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public void Dispose() { }
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-
-        public void SetInput(int channel, bool state, bool raiseInterrupt)
-        {
-            ulong bit = 1UL << channel;
-            inputs = state ? inputs | bit : inputs & ~bit;
-            if (raiseInterrupt)
-            {
-                HardwareInterruptReceived?.Invoke(this, new IoSignalSnapshot(DeviceId, inputs, DateTimeOffset.UtcNow, IoSnapshotSource.HardwareInterrupt));
-            }
-        }
-
-        private sealed class TestConfig : IDeviceConfig
-        {
-            public bool Validate() => true;
-        }
-    }
 }
 

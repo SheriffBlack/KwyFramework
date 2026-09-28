@@ -3,7 +3,6 @@ using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Abstractions.Motion;
 using Kwy.Device.Abstractions.PLC;
 using Kwy.Device.Abstractions.Camera;
-using Kwy.Device.Core.IO;
 using Kwy.Device.Core.Motion;
 using Kwy.Device.Core.PLC;
 using Kwy.Device.Core.Camera;
@@ -22,51 +21,12 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>注册逻辑 IO 点位监视、读写与安全输出服务。</summary>
-    public static IServiceCollection AddIoServices(
-        this IServiceCollection services,
-        Action<IoStateMonitorOptions>? configureIoMonitor = null)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.AddDeviceCore();
-
-        var ioMonitorOptions = new IoStateMonitorOptions();
-        configureIoMonitor?.Invoke(ioMonitorOptions);
-        ioMonitorOptions.Validate();
-
-        services.TryAddSingleton(ioMonitorOptions);
-        services.TryAddSingleton<IoStateMonitor>();
-        services.TryAddSingleton<IIoStateMonitor>(provider => provider.GetRequiredService<IoStateMonitor>());
-        services.TryAddSingleton<ILogicalIoReader>(provider => provider.GetRequiredService<IoStateMonitor>());
-        services.TryAddSingleton<ILogicalIoWriter>(provider => provider.GetRequiredService<IoStateMonitor>());
-        services.TryAddSingleton<IProcessOutputStateController>(provider => provider.GetRequiredService<IoStateMonitor>());
-        services.TryAddSingleton<IIoStateSubscription>(provider => provider.GetRequiredService<IoStateMonitor>());
-        services.TryAddSingleton<ILogicalIoInterruptWaiter>(provider => provider.GetRequiredService<IoStateMonitor>());
-        return services;
-    }
-
     /// <summary>注册相机注册表；厂商相机适配器应在此基础上注册一个或多个 <see cref="ICameraDevice"/>。</summary>
     public static IServiceCollection AddCameraServices(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddDeviceCore();
         services.TryAddSingleton<ICameraRegistry, CameraRegistry>();
-        return services;
-    }
-
-    /// <summary>
-    /// 注册设备的统一 IO 点位定义目录。
-    /// 调用方在连接完成后将同一目录传给 <see cref="IIoStateMonitor.Initialize"/>，由监视器校验实际设备与通道。
-    /// </summary>
-    public static IServiceCollection AddIoPointDefinitions(
-        this IServiceCollection services,
-        IEnumerable<IoPointDefinition> definitions)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.AddIoServices();
-        IoPointDefinition[] items = definitions?.ToArray() ?? throw new ArgumentNullException(nameof(definitions));
-        services.AddSingleton<IoPointDefinitionProvider>(_ => new IoPointDefinitionProvider(items));
-        services.AddSingleton<IIoPointDefinitionProvider>(provider => provider.GetRequiredService<IoPointDefinitionProvider>());
         return services;
     }
 

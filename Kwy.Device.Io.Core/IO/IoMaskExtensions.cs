@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.Core.IO;
+﻿namespace Kwy.Device.Io.Core;
 
 /// <summary>
 /// 物理 IO 状态掩码的位操作扩展方法。

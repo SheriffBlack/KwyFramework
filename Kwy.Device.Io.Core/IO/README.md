@@ -1,6 +1,6 @@
-# Kwy.Device.Core.IO
+# Kwy.Device.Io 模块
 
-`Kwy.Device.Core.IO` 是 Kwy 新设备框架里的通用 IO 基础层，不绑定具体厂商硬件。它负责统一 IO 抽象、64 点位模型、位运算工具、通道校验、逻辑点位映射和硬件中断转发。
+IO 按职责拆为两个包：`Kwy.Device.Io.Abstractions` 放置物理/逻辑 IO 契约与点位定义；`Kwy.Device.Io.Core` 放置点位监视、通道校验、位转换和物理卡基类。厂商适配器仅依赖这两个包，不应让业务流程直接使用物理通道。
 
 ## 核心目标
 
@@ -229,5 +229,5 @@ ioMonitor.OnIoSnapshotReceived += snapshot =>
 3. 默认按 64 点位模型返回 `ReadAllDi()` / `ReadAllDo()`。
 4. 使用 `IoBitConverter` 做端口字节与位快照转换。
 5. 使用 `IoChannelGuard` 做通道校验。
-6. 厂商 SDK 错误码留在厂商模块内处理，不要污染 `Kwy.Device.Core`。
+6. 厂商 SDK 错误码留在厂商模块内处理，不要污染 `Kwy.Device.Io.Core` 或抽象契约。
 7. 如果支持端口批量写入，重写 `WriteDoPortMask`。

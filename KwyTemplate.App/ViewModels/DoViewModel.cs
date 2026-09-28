@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
-using Kwy.Device.Core.IO;
+using Kwy.Device.Io.Core;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using KwyTemplate.App.Models;

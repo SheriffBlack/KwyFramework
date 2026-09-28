@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Abstractions.Motion;
 
 namespace Kwy.Device.Core.Motion;
@@ -130,84 +129,6 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
 
         waiter.Observe(stateMonitor.GetAxisSnapshot(axis));
         return await waiter.Task.ConfigureAwait(false);
-    }
-
-    public async Task<SensorSeekResult> SeekSensorAsync(
-        short axis,
-        IIoCardDevice ioDevice,
-        int channel,
-        double velocity,
-        SensorSeekOptions? options = null,
-        CancellationToken cancellationToken = default)
-    {
-        ThrowIfDisposed();
-        ArgumentNullException.ThrowIfNull(ioDevice);
-        if (channel is < 0 or >= 64)
-        {
-            throw new ArgumentOutOfRangeException(nameof(channel));
-        }
-
-        if (!double.IsFinite(velocity) || velocity == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(velocity));
-        }
-
-        options ??= new SensorSeekOptions();
-        options.Validate();
-        await EnsureMonitorStartedAsync().ConfigureAwait(false);
-        safetyGuard.ValidateAndThrow(new(axis, MotionRequestKind.Jog, Direction: Math.Sign(velocity), RequiresHomed: false));
-
-        var operation = new SensorSeekOperation(this, axis, $"physical.di.{channel}", options, cancellationToken);
-        AddOperation(operation);
-        EventHandler<IoSignalSnapshot>? handler = null;
-        IHardwareInterruptSource? interruptSource = null;
-        if (options.StopMode == SensorStopMode.ControllerHardwareStop)
-        {
-            handler = (_, snapshot) =>
-            {
-                bool state = (snapshot.Mask & (1UL << channel)) != 0;
-                if (state == options.ExpectedState)
-                {
-                    operation.SignalSensor();
-                }
-            };
-            interruptSource = ioDevice as IHardwareInterruptSource;
-            if (interruptSource is not null)
-            {
-                interruptSource.HardwareInterruptReceived += handler;
-            }
-        }
-
-        try
-        {
-            if (ioDevice.ReadDiBit(channel) == options.ExpectedState)
-            {
-                operation.SignalSensor();
-            }
-            else if (!operation.IsCompleted)
-            {
-                controller.MoveJog(axis, velocity);
-            }
-
-            if (!operation.IsCompleted)
-            {
-                _ = PollSensorAsync(() => ioDevice.ReadDiBit(channel), operation, options.PollInterval);
-            }
-
-            return await operation.Task.ConfigureAwait(false);
-        }
-        catch (Exception exception) when (!operation.IsCompleted)
-        {
-            operation.TrySetException(exception);
-            throw;
-        }
-        finally
-        {
-            if (handler is not null && interruptSource is not null)
-            {
-                interruptSource.HardwareInterruptReceived -= handler;
-            }
-        }
     }
 
     public async Task<SensorSeekResult> SeekSensorAsync(

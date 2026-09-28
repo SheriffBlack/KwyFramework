@@ -1,4 +1,4 @@
-namespace Kwy.Device.Core.IO;
+﻿namespace Kwy.Device.Io.Core;
 
 /// <summary>
 /// 逻辑 IO 状态采集选项。

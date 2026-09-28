@@ -1,8 +1,8 @@
-using csLTDMC;
+﻿using csLTDMC;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Abstractions.Motion;
-using Kwy.Device.Core.IO;
+using Kwy.Device.Io.Core;
 using Kwy.Device.Core.Motion;
 
 namespace Kwy.Device.MotionCards.Leadshine;

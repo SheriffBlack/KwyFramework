@@ -1,5 +1,3 @@
-using Kwy.Device.Abstractions.IO;
-
 namespace Kwy.Device.Abstractions.Motion;
 
 /// <summary>物理卡的带速度曲线定位能力；位置和轴号均为卡层值。</summary>
@@ -96,14 +94,10 @@ public interface IAxisMotionExecutor
         TimeSpan timeout,
         CancellationToken cancellationToken = default);
 
-    Task<SensorSeekResult> SeekSensorAsync(
-        short axis,
-        IIoCardDevice ioDevice,
-        int channel,
-        double velocity,
-        SensorSeekOptions? options = null,
-        CancellationToken cancellationToken = default);
-
+    /// <summary>
+    /// 使用传感器状态读取委托执行寻边。
+    /// 物理 IO 到逻辑点位的映射由 IO 模块完成，运动抽象不依赖具体 IO 卡或通道。
+    /// </summary>
     Task<SensorSeekResult> SeekSensorAsync(
         short axis,
         string sensorPointId,

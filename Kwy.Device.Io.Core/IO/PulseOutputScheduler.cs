@@ -1,4 +1,4 @@
-namespace Kwy.Device.Core.IO;
+﻿namespace Kwy.Device.Io.Core;
 
 /// <summary>
 /// 管理可重置的单通道软件定时脉冲。

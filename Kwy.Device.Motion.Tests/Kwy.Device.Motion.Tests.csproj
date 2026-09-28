@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Io.Core\Kwy.Device.Io.Core.csproj" />
     <ProjectReference Include="..\Kwy.Device.MotionCards.Simulation\Kwy.Device.MotionCards.Simulation.csproj" />
     <ProjectReference Include="..\Kwy.Device.MotionCards.Googol\Kwy.Device.MotionCards.Googol.csproj" />
     <ProjectReference Include="..\Kwy.Device.MotionCards.Leadshine\Kwy.Device.MotionCards.Leadshine.csproj" />

@@ -1,8 +1,8 @@
-using Kwy.Communicate.Abstractions.Enums;
+﻿using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
-using Kwy.Device.Core.IO;
+using Kwy.Device.Io.Core;
 using Xunit;
 
 namespace Kwy.Device.Io.Tests;
