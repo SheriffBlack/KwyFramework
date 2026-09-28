@@ -5,17 +5,27 @@ using Kwy.Device.Abstractions;
 namespace Kwy.Device.Core;
 
 /// <summary>
-/// Common device identity, lifecycle, state, and disposal behavior.
+/// 所有硬件设备共用的生命周期基类。
+/// 仅负责连接、断开、状态事件、异常上报和资源释放；不得在此加入 IO、运动、PLC、相机或仪表的领域规则。
 /// </summary>
 public abstract class DeviceBase : IDevice
 {
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(3);
     private readonly SemaphoreSlim lifecycleSemaphore = new(1, 1);
 
+    /// <summary>设备实例的稳定标识，由设备定义或组合根分配。</summary>
     public string DeviceId { get; protected set; }
+
+    /// <summary>面向操作人员的设备显示名称。</summary>
     public string DeviceName { get; protected set; }
+
+    /// <summary>设备已连接且底层通讯仍存活时为 <see langword="true"/>。</summary>
     public bool IsConnected => State == ConnectionState.Connected && IsConnectionAlive();
+
+    /// <summary>统一连接生命周期状态。</summary>
     public ConnectionState State { get; protected set; }
+
+    /// <summary>设备实例的可变运行配置；具体类型由各领域设备自行约束。</summary>
     public IDeviceConfig DeviceParameter { get; set; }
 
     public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged;
@@ -37,12 +47,19 @@ public abstract class DeviceBase : IDevice
         DeviceParameter = config ?? throw new ArgumentNullException(nameof(config));
     }
 
+    /// <summary>由具体设备打开 SDK、网络或串口连接。</summary>
     protected abstract Task ConnectCoreAsync(CancellationToken cancellationToken);
+
+    /// <summary>由具体设备停止后台任务并关闭底层连接。</summary>
     protected abstract Task DisconnectCoreAsync(CancellationToken cancellationToken);
+
+    /// <summary>检查底层连接是否仍可用，不承载领域状态判断。</summary>
     protected abstract bool IsConnectionAlive();
 
+    /// <summary>连接成功后的扩展点，例如启动该设备自己的状态采集任务。</summary>
     protected virtual Task OnConnectedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
+    /// <summary>断开前的扩展点，例如停止该设备自己的后台任务。</summary>
     protected virtual Task OnDisconnectingAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     protected async Task HandleDeviceFailureAsync(

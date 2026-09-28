@@ -4,7 +4,8 @@ using Kwy.Device.Abstractions;
 namespace Kwy.Device.Core;
 
 /// <summary>
-/// Stores application-owned device instances and provides lookup by id and capability.
+/// 应用已创建设备实例的注册表。
+/// 按稳定设备 ID 和能力接口查找实例，不负责创建设备、加载配置或处理任何领域语义。
 /// </summary>
 public sealed class DeviceRegistry : IDeviceRegistry
 {

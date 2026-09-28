@@ -12,6 +12,7 @@ Kwy.Device.Abstractions
 
 Kwy.Device.Core
     设备通用运行时：设备注册、连接生命周期和基础协调。
+    只允许跨领域能力进入；禁止放入 IO、运动、PLC、相机、仪表等领域语义。
 
 Kwy.Device.{Domain}.Abstractions
     领域公开模型、接口、能力声明和领域结果。
@@ -27,6 +28,8 @@ Kwy.Device.{Domain}.Simulation / Tests
 ```
 
 `Domain` 使用单数业务名，例如 `Camera`、`Instrument`、`IoCard`、`MotionCard`；`PLC` 是行业缩写，始终全大写。
+
+`Kwy.Device.Core` 不是“所有设备逻辑的默认目录”。当代码需要理解轴、点位、寄存器、图像、测量值或厂商能力时，它已经属于某个领域，必须放在对应的 `Kwy.Device.{Domain}.Core`。
 
 ## 2. 依赖方向
 
