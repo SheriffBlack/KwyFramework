@@ -7,6 +7,7 @@ namespace Kwy.Device.Core.Motion;
 public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
 {
     private readonly IMotionRuntimeRegistry runtimes;
+    private readonly IAxisDefinitionProvider axisDefinitions;
     private readonly IMotionGroupDefinitionProvider groups;
     private readonly IReadOnlyCollection<IoPointDefinition> ioPoints;
     private readonly IVirtualAxisDefinitionProvider? virtualAxes;
@@ -14,12 +15,14 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
 
     public MotionConfigurationValidator(
         IMotionRuntimeRegistry runtimes,
+        IAxisDefinitionProvider axisDefinitions,
         IMotionGroupDefinitionProvider groups,
         IEnumerable<IoPointDefinition>? ioPoints = null,
         IVirtualAxisDefinitionProvider? virtualAxes = null,
         IMotionSynchronizationDefinitionProvider? synchronizations = null)
     {
         this.runtimes = runtimes;
+        this.axisDefinitions = axisDefinitions;
         this.groups = groups;
         this.ioPoints = ioPoints?.ToArray() ?? Array.Empty<IoPointDefinition>();
         this.virtualAxes = virtualAxes;
@@ -29,7 +32,7 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
     public MotionConfigurationValidationResult Validate()
     {
         var issues = new List<MotionConfigurationIssue>();
-        AxisDefinition[] axes = runtimes.Runtimes.SelectMany(runtime => (runtime.Card as IAxisChannelDefinitionProvider)?.Axes ?? []).ToArray();
+        AxisDefinition[] axes = axisDefinitions.Definitions.ToArray();
         VirtualAxisDefinition[] virtualAxisDefinitions = virtualAxes?.VirtualAxes.ToArray() ?? [];
         AxisResourceDefinition[] resources = axes.Cast<AxisResourceDefinition>().Concat(virtualAxisDefinitions).ToArray();
         AddDuplicate(resources.Select(axis => axis.Id), "AxisIdDuplicate", "Business axis ID", issues);
@@ -37,7 +40,20 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
         foreach (AxisDefinition axis in axes)
         {
             try { axis.Validate(); } catch (Exception ex) { Error("AxisInvalid", $"Axis '{axis.Id}': {ex.Message}"); }
-            if (!runtimes.Runtimes.Any(runtime => string.Equals(runtime.DeviceId, axis.DeviceId, StringComparison.OrdinalIgnoreCase))) Error("AxisDeviceMissing", $"Axis '{axis.Id}' references missing device '{axis.DeviceId}'.");
+            IMotionDeviceRuntime? axisRuntime = runtimes.Runtimes.SingleOrDefault(runtime => string.Equals(runtime.DeviceId, axis.DeviceId, StringComparison.OrdinalIgnoreCase));
+            if (axisRuntime is null)
+            {
+                Error("AxisDeviceMissing", $"Axis '{axis.Id}' references missing device '{axis.DeviceId}'.");
+            }
+            else if (axisRuntime.Card is not IAxisChannelDefinitionProvider channels)
+            {
+                Error("AxisChannelProviderMissing", $"Motion device '{axis.DeviceId}' does not expose axis channel definitions.");
+            }
+            else
+            {
+                try { _ = channels.GetAxisDefinition(axis.Channel); }
+                catch (Exception) { Error("AxisChannelMissing", $"Axis '{axis.Id}' references unavailable channel '{axis.Channel}' on device '{axis.DeviceId}'."); }
+            }
             foreach (string interlock in axis.Safety.RequiredInterlocks)
                 if (ioPoints.Count > 0 && !ioPoints.Any(point => string.Equals(point.Id, interlock, StringComparison.OrdinalIgnoreCase))) Error("InterlockPointMissing", $"Axis '{axis.Id}' references missing IO interlock '{interlock}'.");
         }

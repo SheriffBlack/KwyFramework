@@ -217,12 +217,17 @@ public sealed class AxisMotionExecutorTests
 
         public static async Task<ExecutorFixture> CreateAsync()
         {
-            var card = new SimulationMotionCardDevice(new SimulationMotionCardConfig
+            var config = new SimulationMotionCardConfig
             {
                 AxisCount = 1,
                 UpdateInterval = TimeSpan.FromMilliseconds(2),
                 SimulationSpeedRatio = 10
-            });
+            };
+            var card = new SimulationMotionCardDevice(config, new AxisDefinitionProvider([new AxisDefinition
+            {
+                Id = "SimulationMotion.axis.1", DisplayName = "Axis 1", DeviceId = config.DeviceId, Channel = 1,
+                Engineering = new AxisEngineeringConfig()
+            }]));
             await card.ConnectAsync();
             card.ServoOn(1);
 

@@ -22,19 +22,18 @@ public static class ServiceCollectionExtensions
             throw new ArgumentException("Invalid Leadshine motion card configuration.", nameof(configure));
         }
 
-        var device = new Lazy<LeadshineMotionCardDevice>(() => new LeadshineMotionCardDevice(config));
-        services.AddSingleton(_ => device.Value);
+        services.AddSingleton<LeadshineMotionCardDevice>(provider => new LeadshineMotionCardDevice(
+            config,
+            provider.GetRequiredService<IAxisDefinitionProvider>()));
 
-        var stateMonitorOptions = new MotionStateMonitorOptions
-        {
-            Axes = config.Axes.Select(static axis => axis.Channel).ToArray()
-        };
+        var stateMonitorOptions = new MotionStateMonitorOptions();
         configureStateMonitor?.Invoke(stateMonitorOptions);
-        stateMonitorOptions.Validate();
 
         services.AddSingleton<IMotionDeviceRuntime>(provider =>
         {
-            LeadshineMotionCardDevice card = device.Value;
+            LeadshineMotionCardDevice card = provider.GetRequiredService<LeadshineMotionCardDevice>();
+            stateMonitorOptions.Axes = card.Axes.Select(static axis => axis.Channel).ToArray();
+            stateMonitorOptions.Validate();
             return MotionRuntimeFactory.Create(
                 card,
                 stateMonitorOptions,

@@ -84,6 +84,20 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// 注册设备级业务轴定义。
+    /// 应在注册运动卡前或后调用一次；同一 <see cref="AxisDefinition"/> 集合供业务轴执行、HMI、配置校验和运动组共同使用。
+    /// </summary>
+    public static IServiceCollection AddKwyAxisDefinitions(
+        this IServiceCollection services,
+        IEnumerable<AxisDefinition> definitions)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        AxisDefinition[] items = definitions?.ToArray() ?? throw new ArgumentNullException(nameof(definitions));
+        services.AddSingleton<IAxisDefinitionProvider>(_ => new AxisDefinitionProvider(items));
+        return services;
+    }
+
     public static IServiceCollection AddKwyMotionServices(
         this IServiceCollection services,
         Action<MotionAdmissionOptions>? configureAdmission = null)
@@ -95,6 +109,8 @@ public static class ServiceCollectionExtensions
 
         services.TryAddSingleton(admissionOptions);
         services.TryAddSingleton<IMotionRuntimeRegistry, MotionRuntimeRegistry>();
+        // 兼容当前厂商卡仍携带通用轴定义的过渡期。设备项目应通过 AddKwyAxisDefinitions 注册显式定义；
+        // 后注册的显式 Provider 会成为业务解析与校验使用的最终实例。
         services.TryAddSingleton<IAxisDefinitionProvider>(provider => new AxisDefinitionProvider(
             provider.GetRequiredService<IMotionRuntimeRegistry>().Runtimes
                 .SelectMany(runtime => (runtime.Card as IAxisChannelDefinitionProvider)?.Axes ?? [])));
@@ -153,6 +169,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMotionGroupDefinitionProvider>(_ => new MotionGroupDefinitionProvider(groupDefinitions));
         services.AddSingleton<IMotionConfigurationValidator>(provider => new MotionConfigurationValidator(
             provider.GetRequiredService<IMotionRuntimeRegistry>(),
+            provider.GetRequiredService<IAxisDefinitionProvider>(),
             provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
             pointDefinitions,
             provider.GetService<IVirtualAxisDefinitionProvider>(),

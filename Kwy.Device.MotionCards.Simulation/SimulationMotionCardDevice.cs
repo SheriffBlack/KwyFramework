@@ -21,34 +21,42 @@ public sealed class SimulationMotionCardDevice :
     ISimulationMotionControl
 {
     private readonly SimulationMotionCardConfig config;
+    private readonly IReadOnlyDictionary<short, AxisDefinition> axisDefinitions;
     private readonly ConcurrentDictionary<short, AxisState> axes = new();
     private volatile bool connected;
 
-    public SimulationMotionCardDevice(SimulationMotionCardConfig config)
+    public SimulationMotionCardDevice(SimulationMotionCardConfig config, IAxisDefinitionProvider definitions)
         : base(config.DeviceId, config.DeviceName, config)
     {
         this.config = config ?? throw new ArgumentNullException(nameof(config));
+        ArgumentNullException.ThrowIfNull(definitions);
         if (!config.Validate())
         {
             throw new ArgumentException("Invalid simulation motion card configuration.", nameof(config));
         }
+        axisDefinitions = definitions.Definitions
+            .Where(item => string.Equals(item.DeviceId, config.DeviceId, StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(item => item.Channel);
+        if (axisDefinitions.Count == 0)
+            throw new ArgumentException($"No device-level axis definitions were configured for '{config.DeviceId}'.", nameof(definitions));
+        if (axisDefinitions.Keys.Any(channel => channel < 1 || channel > config.AxisCount))
+            throw new ArgumentException($"An axis definition for '{config.DeviceId}' is outside the simulation channel range.", nameof(definitions));
 
-        for (short axis = 1; axis <= config.AxisCount; axis++)
+        foreach (AxisDefinition definition in axisDefinitions.Values)
         {
-            AxisDefinition definition = config.GetAxisDefinition(axis);
-            var state = new AxisState(axis);
+            var state = new AxisState(definition.Channel);
             state.Update(value =>
             {
                 value.NegativeSoftLimit = definition.Limits.MinimumPosition;
                 value.PositiveSoftLimit = definition.Limits.MaximumPosition;
             });
-            axes[axis] = state;
+            axes[definition.Channel] = state;
         }
     }
 
     public override string DeviceModel => "Simulation";
 
-    public IReadOnlyCollection<AxisDefinition> Axes => config.Axes.Values.ToArray();
+    public IReadOnlyCollection<AxisDefinition> Axes => axisDefinitions.Values.ToArray();
 
     protected override Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
@@ -74,7 +82,9 @@ public sealed class SimulationMotionCardDevice :
     public AxisDefinition GetAxisDefinition(short axis)
     {
         ValidateAxis(axis);
-        return config.GetAxisDefinition(axis);
+        return axisDefinitions.TryGetValue(axis, out AxisDefinition? definition)
+            ? definition
+            : throw new KeyNotFoundException($"Axis channel '{axis}' is not defined for '{DeviceId}'.");
     }
 
     public AxisEngineeringConfig GetAxisEngineeringConfig(short axis) => GetAxisDefinition(axis).Engineering;

@@ -22,19 +22,18 @@ public static class ServiceCollectionExtensions
             throw new ArgumentException("Invalid Googol motion card configuration.", nameof(configure));
         }
 
-        var device = new Lazy<GoogolMotionCardDevice>(() => new GoogolMotionCardDevice(config));
-        services.AddSingleton(_ => device.Value);
+        services.AddSingleton<GoogolMotionCardDevice>(provider => new GoogolMotionCardDevice(
+            config,
+            provider.GetRequiredService<IAxisDefinitionProvider>()));
 
-        var stateMonitorOptions = new MotionStateMonitorOptions
-        {
-            Axes = config.Axes.Select(static axis => axis.Channel).ToArray()
-        };
+        var stateMonitorOptions = new MotionStateMonitorOptions();
         configureStateMonitor?.Invoke(stateMonitorOptions);
-        stateMonitorOptions.Validate();
 
         services.AddSingleton<IMotionDeviceRuntime>(provider =>
         {
-            GoogolMotionCardDevice card = device.Value;
+            GoogolMotionCardDevice card = provider.GetRequiredService<GoogolMotionCardDevice>();
+            stateMonitorOptions.Axes = card.Axes.Select(static axis => axis.Channel).ToArray();
+            stateMonitorOptions.Validate();
             return MotionRuntimeFactory.Create(
                 card,
                 stateMonitorOptions,

@@ -34,27 +34,24 @@ public sealed class MotionBehaviorTests
     }
 
     [Fact]
-    public void SimulationConfig_IndexesEngineeringSettingsByPhysicalChannel()
+    public void AxisDefinitionProvider_IndexesEngineeringSettingsByPhysicalChannel()
     {
-        var config = new SimulationMotionCardConfig { AxisCount = 2 };
-        config.Axes[2] = CreateAxisDefinition("SimulationMotion", 2) with
+        AxisDefinition axis = CreateAxisDefinition("SimulationMotion", 2) with
         {
             Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 2_000 }
         };
 
-        Assert.True(config.Validate());
-        Assert.Equal(2_000, config.GetAxisDefinition(2).Engineering.PulsesPerUnit);
-        Assert.Equal(MotionUnit.Pulse, config.GetAxisDefinition(1).Engineering.Unit);
+        var definitions = new AxisDefinitionProvider([axis]);
+        Assert.True(definitions.TryGet(new AxisAddress("SimulationMotion", 2), out AxisDefinition found));
+        Assert.Equal(2_000, found.Engineering.PulsesPerUnit);
     }
 
     [Fact]
-    public void SimulationConfig_RejectsEngineeringSettingsOutsideConfiguredChannels()
+    public void AxisDefinitionProvider_RejectsDuplicatePhysicalChannels()
     {
-        var config = new SimulationMotionCardConfig { AxisCount = 2 };
-        config.Axes[3] = CreateAxisDefinition("SimulationMotion", 3);
-
-        Assert.False(config.Validate());
-        Assert.Throws<ArgumentOutOfRangeException>(() => config.GetAxisDefinition(3));
+        Assert.Throws<ArgumentException>(() => new AxisDefinitionProvider([
+            CreateAxisDefinition("SimulationMotion", 1),
+            CreateAxisDefinition("SimulationMotion", 1) with { Id = "SimulationMotion.axis.other" }]));
     }
 
     [Fact]
@@ -180,11 +177,9 @@ public sealed class MotionBehaviorTests
     }
 
     [Fact]
-    public void GoogolConfig_AcceptsCompatibleAxisAndCoordinateDefinitions()
+    public void GoogolConfig_AcceptsHardwareCoordinateChannels()
     {
         var config = new GoogolMotionCardConfig { AxisCount = 2 };
-        config.Axes.Add(CreateGoogolAxis(1));
-        config.Axes.Add(CreateGoogolAxis(2));
         config.CoordinateSystems.Add(new GoogolCoordinateSystemConfig
         {
             CoordinateSystem = 1,
@@ -197,52 +192,47 @@ public sealed class MotionBehaviorTests
     }
 
     [Fact]
-    public void GoogolConfig_RejectsCoordinateAxesWithDifferentScales()
+    public void GoogolConfig_DoesNotOwnEngineeringScaleDefinitions()
     {
         var config = new GoogolMotionCardConfig { AxisCount = 2 };
-        config.Axes.Add(CreateGoogolAxis(1));
-        AxisDefinition secondAxis = CreateGoogolAxis(2) with
-        {
-            Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 5_000 }
-        };
-        config.Axes.Add(secondAxis);
         config.CoordinateSystems.Add(new GoogolCoordinateSystemConfig
         {
             CoordinateSystem = 1,
             Axes = new short[] { 1, 2 }
         });
 
-        Assert.False(config.Validate());
+        Assert.True(config.Validate());
     }
 
     [Fact]
-    public void LeadshineConfig_SeparatesCommonAxisDefinitionFromVendorOptions()
+    public void LeadshineConfig_ContainsOnlyVendorAxisOptions()
     {
         var config = new LeadshineMotionCardConfig();
-        config.Axes.Add(CreateAxisDefinition("Leadshine-0", 1));
         config.AxisOptions[1] = new LeadshineAxisOptions { HomeMode = 3, EzCount = 1 };
 
         Assert.True(config.Validate());
-        Assert.Equal((short)1, config.GetAxisDefinition(1).Channel);
         Assert.Equal((ushort)3, config.GetAxisOptions(1).HomeMode);
     }
 
     [Fact]
-    public void LeadshineConfig_RejectsVendorOptionsForUndefinedAxis()
+    public void LeadshineConfig_AcceptsVendorOptionsForPhysicalAxis()
     {
         var config = new LeadshineMotionCardConfig();
         config.AxisOptions[1] = new LeadshineAxisOptions();
 
-        Assert.False(config.Validate());
+        Assert.True(config.Validate());
     }
 
     private static SimulationMotionCardDevice CreateCard()
-        => new(new SimulationMotionCardConfig
+    {
+        var config = new SimulationMotionCardConfig
         {
             AxisCount = 1,
             UpdateInterval = TimeSpan.FromMilliseconds(5),
             SimulationSpeedRatio = 10
-        });
+        };
+        return new(config, new AxisDefinitionProvider([CreateAxisDefinition(config.DeviceId, 1)]));
+    }
 
     private static AxisDefinition CreateGoogolAxis(short axis)
         => CreateAxisDefinition("Googol-0", axis) with

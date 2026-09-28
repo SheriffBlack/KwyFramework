@@ -19,16 +19,18 @@ public static class ServiceCollectionExtensions
             throw new ArgumentException("Invalid simulation motion card configuration.", nameof(configure));
         }
 
-        var device = new Lazy<SimulationMotionCardDevice>(() => new SimulationMotionCardDevice(config));
-        services.AddSingleton(_ => device.Value);
+        services.AddSingleton<SimulationMotionCardDevice>(provider => new SimulationMotionCardDevice(
+            config,
+            provider.GetRequiredService<IAxisDefinitionProvider>()));
 
-        var monitorOptions = new MotionStateMonitorOptions { FirstAxis = 1, AxisCount = config.AxisCount };
+        var monitorOptions = new MotionStateMonitorOptions();
         configureStateMonitor?.Invoke(monitorOptions);
-        monitorOptions.Validate();
         services.AddSingleton(monitorOptions);
         services.AddSingleton<IMotionDeviceRuntime>(provider =>
         {
-            SimulationMotionCardDevice card = device.Value;
+            SimulationMotionCardDevice card = provider.GetRequiredService<SimulationMotionCardDevice>();
+            monitorOptions.Axes = card.Axes.Select(static axis => axis.Channel).ToArray();
+            monitorOptions.Validate();
             return MotionRuntimeFactory.Create(
                 card,
                 monitorOptions,

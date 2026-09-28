@@ -564,9 +564,14 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
 
         private Exception? GetFailure(MotionAxisSnapshot snapshot)
         {
-            if (snapshot.Fault is { Severity: AxisFaultSeverity.StopRequired or AxisFaultSeverity.SafetyCritical } fault)
+            if (Direction > 0 && snapshot.IsPositiveLimit)
             {
-                return new MotionControllerFaultException(Axis, fault);
+                return new MotionLimitException(Axis, positive: true);
+            }
+
+            if (Direction < 0 && snapshot.IsNegativeLimit)
+            {
+                return new MotionLimitException(Axis, positive: false);
             }
 
             if (snapshot.IsAlarm)
@@ -579,14 +584,9 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
                 return new MotionServoDisabledException(Axis);
             }
 
-            if (Direction > 0 && snapshot.IsPositiveLimit)
+            if (snapshot.Fault is { Severity: AxisFaultSeverity.StopRequired or AxisFaultSeverity.SafetyCritical } fault)
             {
-                return new MotionLimitException(Axis, positive: true);
-            }
-
-            if (Direction < 0 && snapshot.IsNegativeLimit)
-            {
-                return new MotionLimitException(Axis, positive: false);
+                return new MotionControllerFaultException(Axis, fault);
             }
 
             if (!snapshot.IsMoving

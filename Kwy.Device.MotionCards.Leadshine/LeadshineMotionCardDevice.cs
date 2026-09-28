@@ -19,6 +19,7 @@ public sealed class LeadshineMotionCardDevice :
     private const int ChannelsPerIoPort = 32;
 
     private readonly LeadshineMotionCardConfig config;
+    private readonly IReadOnlyDictionary<short, AxisDefinition> axisDefinitions;
     private readonly object syncRoot = new();
     private volatile bool connected;
     private bool boardInitialized;
@@ -28,19 +29,29 @@ public sealed class LeadshineMotionCardDevice :
     private readonly Dictionary<short, PendingInterpolation> pendingInterpolations = new();
     private readonly PulseOutputScheduler pulseScheduler;
 
-    public LeadshineMotionCardDevice(LeadshineMotionCardConfig config)
-        : this(config.DeviceId ?? $"Leadshine-{config.CardNo}", config.Model, config)
+    public LeadshineMotionCardDevice(LeadshineMotionCardConfig config, IAxisDefinitionProvider definitions)
+        : this(config.DeviceId ?? $"Leadshine-{config.CardNo}", config.Model, config, definitions)
     {
     }
 
-    public LeadshineMotionCardDevice(string deviceId, string deviceName, LeadshineMotionCardConfig config)
+    public LeadshineMotionCardDevice(string deviceId, string deviceName, LeadshineMotionCardConfig config, IAxisDefinitionProvider definitions)
         : base(deviceId, deviceName, config)
     {
         this.config = config ?? throw new ArgumentNullException(nameof(config));
+        ArgumentNullException.ThrowIfNull(definitions);
         if (!config.Validate())
         {
             throw new ArgumentException("Invalid Leadshine motion card configuration.", nameof(config));
         }
+        axisDefinitions = definitions.Definitions
+            .Where(item => string.Equals(item.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(item => item.Channel);
+        if (axisDefinitions.Count == 0)
+            throw new ArgumentException($"No device-level axis definitions were configured for '{deviceId}'.", nameof(definitions));
+        if (axisDefinitions.Keys.Any(channel => channel < 1 || channel > config.AxisCount))
+            throw new ArgumentException($"An axis definition for '{deviceId}' is outside the controller channel range.", nameof(definitions));
+        if (config.AxisOptions.Keys.Any(channel => !axisDefinitions.ContainsKey(channel)))
+            throw new ArgumentException($"Leadshine axis options reference a channel without a device-level axis definition.", nameof(config));
 
         pulseScheduler = new PulseOutputScheduler(
             WriteDoBit,
@@ -51,7 +62,7 @@ public sealed class LeadshineMotionCardDevice :
     public override string DeviceModel => config.Model;
 
     /// <summary>运行时仅暴露轴定义快照，避免调用方修改设备配置集合。</summary>
-    public IReadOnlyCollection<AxisDefinition> Axes => config.Axes.ToArray();
+    public IReadOnlyCollection<AxisDefinition> Axes => axisDefinitions.Values.ToArray();
 
     public int DigitalInputCount => config.DiChannelCount;
 
@@ -84,7 +95,7 @@ public sealed class LeadshineMotionCardDevice :
                     ThrowIfFailed(LTDMC.dmc_download_configfile((ushort)config.CardNo, config.ConfigFilePath), $"Load Leadshine config file failed: {config.ConfigFilePath}");
                 }
 
-                foreach (AxisDefinition definition in config.Axes)
+                foreach (AxisDefinition definition in axisDefinitions.Values)
                 {
                     if (double.IsFinite(definition.Limits.MinimumPosition)
                         && double.IsFinite(definition.Limits.MaximumPosition))
@@ -253,7 +264,7 @@ public sealed class LeadshineMotionCardDevice :
     {
         EnsureReady();
         ValidateAxis(axis);
-        AxisDefinition definition = config.GetAxisDefinition(axis);
+        AxisDefinition definition = GetAxisDefinition(axis);
         LeadshineAxisOptions vendorOptions = config.GetAxisOptions(axis);
         AxisHomeDefinition home = definition.Home;
         if (!home.Enabled)
@@ -734,7 +745,9 @@ public sealed class LeadshineMotionCardDevice :
     public AxisDefinition GetAxisDefinition(short axis)
     {
         ValidateAxis(axis);
-        return config.GetAxisDefinition(axis);
+        return axisDefinitions.TryGetValue(axis, out AxisDefinition? definition)
+            ? definition
+            : throw new KeyNotFoundException($"Axis channel '{axis}' is not defined for '{DeviceId}'.");
     }
 
     public AxisEngineeringConfig GetAxisEngineeringConfig(short axis) => GetAxisDefinition(axis).Engineering;

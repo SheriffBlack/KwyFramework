@@ -17,6 +17,7 @@ public sealed class GoogolMotionCardDevice :
     IBufferedAxisSnapshotReader
 {
     private readonly GoogolMotionCardConfig config;
+    private readonly IReadOnlyDictionary<short, AxisDefinition> axisDefinitions;
     private readonly object syncRoot = new();
     private volatile bool connected;
     private bool sdkOpened;
@@ -29,19 +30,27 @@ public sealed class GoogolMotionCardDevice :
     private readonly double[] batchProfileVelocities;
     private readonly int[] batchStatuses;
 
-    public GoogolMotionCardDevice(GoogolMotionCardConfig config)
-        : this(config.DeviceId ?? $"Googol-{config.CardNo}", config.Model, config)
+    public GoogolMotionCardDevice(GoogolMotionCardConfig config, IAxisDefinitionProvider definitions)
+        : this(config.DeviceId ?? $"Googol-{config.CardNo}", config.Model, config, definitions)
     {
     }
 
-    public GoogolMotionCardDevice(string deviceId, string deviceName, GoogolMotionCardConfig config)
+    public GoogolMotionCardDevice(string deviceId, string deviceName, GoogolMotionCardConfig config, IAxisDefinitionProvider definitions)
         : base(deviceId, deviceName, config)
     {
         this.config = config ?? throw new ArgumentNullException(nameof(config));
+        ArgumentNullException.ThrowIfNull(definitions);
         if (!config.Validate())
         {
             throw new ArgumentException("Invalid Googol motion card configuration.", nameof(config));
         }
+        axisDefinitions = definitions.Definitions
+            .Where(item => string.Equals(item.DeviceId, deviceId, StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(item => item.Channel);
+        if (axisDefinitions.Count == 0)
+            throw new ArgumentException($"No device-level axis definitions were configured for '{deviceId}'.", nameof(definitions));
+        if (axisDefinitions.Keys.Any(channel => channel < 1 || channel > config.AxisCount))
+            throw new ArgumentException($"An axis definition for '{deviceId}' is outside the controller channel range.", nameof(definitions));
 
         batchProfilePositions = new double[config.SnapshotBatchSize];
         batchEncoderPositions = new double[config.SnapshotBatchSize];
@@ -57,7 +66,7 @@ public sealed class GoogolMotionCardDevice :
     public override string DeviceModel => config.Model;
 
     /// <summary>运行时仅暴露轴定义快照，避免调用方修改设备配置集合。</summary>
-    public IReadOnlyCollection<AxisDefinition> Axes => config.Axes.ToArray();
+    public IReadOnlyCollection<AxisDefinition> Axes => axisDefinitions.Values.ToArray();
 
     public int DigitalInputCount => config.DiChannelCount;
 
@@ -87,7 +96,7 @@ public sealed class GoogolMotionCardDevice :
                     ThrowIfFailed(mc.GT_LoadConfig(config.ConfigFilePath), $"Load Googol config file failed: {config.ConfigFilePath}");
                 }
 
-                foreach (AxisDefinition definition in config.Axes)
+                foreach (AxisDefinition definition in axisDefinitions.Values)
                 {
                     if (double.IsFinite(definition.Limits.MinimumPosition)
                         && double.IsFinite(definition.Limits.MaximumPosition))
@@ -271,7 +280,9 @@ public sealed class GoogolMotionCardDevice :
     public AxisDefinition GetAxisDefinition(short axis)
     {
         ValidateAxis(axis);
-        return config.GetAxisDefinition(axis);
+        return axisDefinitions.TryGetValue(axis, out AxisDefinition? definition)
+            ? definition
+            : throw new KeyNotFoundException($"Axis channel '{axis}' is not defined for '{DeviceId}'.");
     }
 
     public AxisEngineeringConfig GetAxisEngineeringConfig(short axis) => GetAxisDefinition(axis).Engineering;

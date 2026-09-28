@@ -15,6 +15,7 @@ public sealed class MotionRuntimeRegistryTests
     {
         var services = new ServiceCollection();
         services.AddKwyMotionServices();
+        services.AddKwyAxisDefinitions([CreateAxis("Motion.Googol"), CreateAxis("Motion.Leadshine")]);
         services.AddKwyGoogolMotionCard(config => ConfigureAxis(config, "Motion.Googol"));
         services.AddKwyLeadshineMotionCard(config => ConfigureAxis(config, "Motion.Leadshine"));
 
@@ -35,6 +36,7 @@ public sealed class MotionRuntimeRegistryTests
     {
         var services = new ServiceCollection();
         services.AddKwyMotionServices();
+        services.AddKwyAxisDefinitions([CreateAxis("Motion.Main")]);
         services.AddKwyGoogolMotionCard(config => ConfigureAxis(config, "Motion.Main"));
 
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -50,6 +52,7 @@ public sealed class MotionRuntimeRegistryTests
     {
         var services = new ServiceCollection();
         services.AddKwyMotionServices();
+        services.AddKwyAxisDefinitions([CreateAxis("Motion.Simulation")]);
         services.AddKwySimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
         services.AddKwyMotionGroups([]);
 
@@ -65,6 +68,7 @@ public sealed class MotionRuntimeRegistryTests
     {
         var services = new ServiceCollection();
         services.AddKwyMotionServices();
+        services.AddKwyAxisDefinitions([CreateAxis("Motion.Simulation")]);
         services.AddKwySimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
         services.AddKwyMotionGroups([]);
 
@@ -81,13 +85,11 @@ public sealed class MotionRuntimeRegistryTests
     private static void ConfigureAxis(GoogolMotionCardConfig config, string deviceId)
     {
         config.DeviceId = deviceId;
-        config.Axes.Add(CreateAxis(deviceId));
     }
 
     private static void ConfigureAxis(LeadshineMotionCardConfig config, string deviceId)
     {
         config.DeviceId = deviceId;
-        config.Axes.Add(CreateAxis(deviceId));
     }
 
     private static AxisDefinition CreateAxis(string deviceId) => new()

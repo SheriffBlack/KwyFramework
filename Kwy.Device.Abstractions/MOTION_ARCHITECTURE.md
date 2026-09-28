@@ -113,7 +113,7 @@ Kwy.Device.MotionCards.*
 1. 先阅读本文的实时边界、安全策略和三条执行路径；
 2. 从 `Axes/AxisDefinition.cs` 建立业务轴、单位、限位、回零和轴级约束；
 3. 从 `Groups/MotionGroupModels.cs` 建立插补轴顺序和多轴禁入区；
-4. 在项目启动处注册厂商卡、`AddKwyMotionServices(...)`、`AddKwyMotionGroups(...)`，再接入自动模式门禁；
+4. 在项目启动处注册 `AddKwyAxisDefinitions(...)`、厂商卡、`AddKwyMotionServices(...)`、`AddKwyMotionGroups(...)`，再接入自动模式门禁；
 5. 工艺代码仅注入 `IBusinessAxisMotionExecutor`、`IMotionGroupExecutor` 或 `IControllerMotionProgramService`。
 
 `Kinematics/OfflinePlanning` 中的代码仅服务于仿真、配方预检和预计时间；它不是控制器实时轨迹内核。不要因为目录名称相近而把它用于运行期点流控制。
@@ -135,7 +135,7 @@ IAxisChannelDefinitionProvider
 IMotionCard / IAxisMotionController
 ```
 
-工艺、配方、HMI 与运动组使用 `axisId`；`short channel` 只允许出现在 Core 物理运行时和厂商适配器中。当前设备级 `AxisDefinitionProvider` 会在运行时组装阶段汇集各张已配置运动卡的轴定义，并一次性校验业务 ID 与物理地址重复；它不会在每次业务运动时遍历所有控制卡。
+工艺、配方、HMI 与运动组使用 `axisId`；`short channel` 只允许出现在 Core 物理运行时和厂商适配器中。设备项目应通过 `AddKwyAxisDefinitions(...)` 注册唯一的 `AxisDefinition[]`；该目录是业务解析与启动校验的唯一来源。当前厂商卡的轴定义集合仅保留为迁移期的通道能力桥接，用于校验设备级定义引用的通道确实由该控制器提供；不得再在业务层直接使用它。
 
 ## 4. 物理能力接口
 
