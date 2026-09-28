@@ -19,7 +19,6 @@ public class HiokiLcr :
     IMeasurementLimitSetProvider,
     IMeasurementDisplayFormatter
 {
-    private const string DefaultModel = "HIOKI_LCR";
     private const string TriggerCommand = "*TRG;\n";
     private const string ReadResultCommand = ":MEAS?\n";
     private const string ReadAllResultCommand = ":MEAS? ALL\n";
@@ -28,8 +27,6 @@ public class HiokiLcr :
     private const string ExternalTriggerMode = "EXT";
     private static readonly TimeSpan CorrectionOperationCompleteTimeout = TimeSpan.FromSeconds(15);
     private string? activeLoadCorrectionType;
-
-    public override string DeviceModel => DefaultModel;
 
     public IReadOnlyList<string> SupportedLoadCorrectionTypes => HiokiLcrLoadTypes.All;
 

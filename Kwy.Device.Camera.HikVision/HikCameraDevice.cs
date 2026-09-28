@@ -20,8 +20,6 @@ public sealed class HikCameraDevice : CameraBase, ISoftwareTriggerCamera, ICamer
         config.ValidateAndThrow();
     }
 
-    public override string DeviceModel => "HIKVISION_CAMERA";
-
     protected override async Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

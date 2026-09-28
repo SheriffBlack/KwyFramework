@@ -22,8 +22,6 @@ public sealed class SerialBarcodeScannerDevice : DeviceBase, IBarcodeScannerDevi
     {
     }
 
-    public override string DeviceModel => "Serial Barcode Scanner";
-
     public string? LastCode { get; private set; }
 
     private BarcodeScannerConfig Config => (BarcodeScannerConfig)DeviceParameter;

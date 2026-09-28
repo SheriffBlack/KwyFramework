@@ -105,8 +105,6 @@ public sealed class CameraTests
 
         public int StopCount { get; private set; }
 
-        public override string DeviceModel => "FAKE";
-
         public void Publish(CameraFrame frame) => RaiseFrameArrived(frame);
 
         protected override Task ConnectCoreAsync(CancellationToken cancellationToken)

@@ -18,7 +18,6 @@ public class AdexDcr :
     IMeasurementInstrument, 
     IMeasurementLimitProvider
 {
-    private const string DefaultModel = "ADEX_DCR";
     private const string CommandTerminator = "\r\n";
     private const string RemoteModeCommand = "PEO02\r\n";
     private const string ReadResultCommand = "DT\r\n";
@@ -67,8 +66,6 @@ public class AdexDcr :
             MicroOhmUnit => value / 1_000_000d,
             _ => value
         };
-
-    public override string DeviceModel => DefaultModel;
 
     public AdexDcr(string deviceId, string deviceName, AdexDcrConfig deviceParameter, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
         : base(deviceId, deviceName, deviceParameter, protocolConfig, factory)

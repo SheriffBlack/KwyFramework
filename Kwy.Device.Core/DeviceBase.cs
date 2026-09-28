@@ -24,8 +24,6 @@ public abstract class DeviceBase : IDevice
 
     protected bool disposed;
 
-    public abstract string DeviceModel { get; }
-
     protected DeviceBase(string deviceId, string deviceName)
     {
         DeviceId = deviceId ?? throw new ArgumentNullException(nameof(deviceId));

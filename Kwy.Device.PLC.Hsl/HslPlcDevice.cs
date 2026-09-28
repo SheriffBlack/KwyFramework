@@ -15,8 +15,6 @@ public class HslPlcDevice : PlcDeviceBase, IModbusPlcReader
     private SemaphoreSlim ioSemaphore = new(1, 1);
     private bool connected;
 
-    public override string DeviceModel => $"{config.Brand}/{config.Transport}";
-
     public HslPlcDevice(string deviceId, string deviceName, HslPlcConfig config)
         : base(deviceId, deviceName, config)
     {

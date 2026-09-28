@@ -11,10 +11,6 @@ namespace Kwy.Device.Instruments.Dcr;
 /// </summary>
 public class AdexDcrConfig : IDeviceConfig
 {
-    [Browsable(false)]
-    [JsonIgnore]
-    public string SupportedModel => "ADEX_DCR";
-
     [Category("基础设置")]
     [CategoryKey("Instrument.Category.Basic")]
     [DisplayName("仪表型号")]

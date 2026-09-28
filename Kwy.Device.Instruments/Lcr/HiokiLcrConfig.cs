@@ -54,9 +54,6 @@ public class HiokiLcrConfig : IDeviceConfig
     [JsonIgnore]
     public bool IsSecondLoadTypeLocked => SecondFrequencyQEnabled;
 
-    [Browsable(false)]
-    public string SupportedModel => "HIOKI_LCR";
-
     // Keep this ungrouped and declared before all instrument parameters, so
     // the property grid renders the mode selector as the first compact row.
     [VisibleWhen(nameof(SupportsDualFrequency))]

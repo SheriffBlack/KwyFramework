@@ -27,8 +27,6 @@ public sealed class TcpMarkPrintDevice : DeviceBase, IMarkPrintDevice
         this.communicationFactory = communicationFactory ?? throw new ArgumentNullException(nameof(communicationFactory));
     }
 
-    public override string DeviceModel => "TCP Mark Printer";
-
     private MarkPrintConfig Config => (MarkPrintConfig)DeviceParameter;
 
     public async Task SetPrintStringAsync(string printString, CancellationToken cancellationToken = default)

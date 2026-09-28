@@ -55,8 +55,6 @@ public sealed class SimulationMotionCardDevice :
         }
     }
 
-    public override string DeviceModel => "Simulation";
-
     public IReadOnlyCollection<AxisDefinition> Axes => axisDefinitions.Values.ToArray();
 
     protected override Task ConnectCoreAsync(CancellationToken cancellationToken)

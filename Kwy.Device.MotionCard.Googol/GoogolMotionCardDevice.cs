@@ -64,8 +64,6 @@ public sealed class GoogolMotionCardDevice :
             (channel, ex) => RaiseErrorOccurred($"Reset GPO pulse channel {channel} failed: {ex.Message}", ex));
     }
 
-    public override string DeviceModel => config.Model;
-
     /// <summary>运行时仅暴露轴定义快照，避免调用方修改设备配置集合。</summary>
     public IReadOnlyCollection<AxisDefinition> Axes => axisDefinitions.Values.ToArray();
 

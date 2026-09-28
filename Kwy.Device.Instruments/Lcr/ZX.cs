@@ -7,10 +7,6 @@ namespace Kwy.Device.Instruments.Lcr;
 
 public class ZX : InstrumentBase, IMeasurementInstrument
 {
-    private const string DefaultModel = "ADEX_DCR";
-
-    public override string DeviceModel => DefaultModel;
-
     public ZX(string deviceId, string deviceName, IDeviceConfig deviceParameter, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
     : base(deviceId, deviceName, deviceParameter, protocolConfig, factory)
     {

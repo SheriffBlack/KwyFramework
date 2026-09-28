@@ -152,7 +152,6 @@ public sealed class IoStateMonitorContractTests
         private ulong outputs;
 
         public BaseCard() : base("base-io", "Base IO", new BaseConfig()) { }
-        public override string DeviceModel => "Test";
         public bool GetOutput(int channel) => (outputs & (1UL << channel)) != 0;
         public override void WriteDoBit(int channel, bool state)
         {

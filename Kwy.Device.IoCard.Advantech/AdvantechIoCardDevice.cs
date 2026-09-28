@@ -44,8 +44,6 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         this.sdkPort = sdkPort ?? throw new ArgumentNullException(nameof(sdkPort));
     }
 
-    public override string DeviceModel => config.Model;
-
     protected override Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
