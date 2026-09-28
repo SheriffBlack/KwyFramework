@@ -1,13 +1,13 @@
 ﻿using System.Collections.Concurrent;
 using System.ComponentModel;
 using Kwy.ComponentModel;
-using Kwy.Device.Plc.Abstractions;
-using Kwy.Device.Instruments.Abstractions;
+using Kwy.Device.Instrument.Abstractions;
 using KwyTemplate.Device;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Flow.Common;
 using KwyTemplate.Flow.DataDeals;
 using KwyTemplate.Flow.Models;
+using Kwy.Device.PLC.Abstractions.PLC;
 
 namespace KwyTemplate.Flow.Machines;
 
@@ -151,7 +151,7 @@ public sealed class Machine_Default_PLC : MachineBase
             BindPlc(mainPlc);
         }
 
-        if (Devices.TryGet<Kwy.Device.Io.Abstractions.IIoCardDevice>(DeviceIds.MainIoCard, out Kwy.Device.Io.Abstractions.IIoCardDevice? mainIoCard) && mainIoCard != null)
+        if (Devices.TryGet<Kwy.Device.IoCard.Abstractions.IIoCardDevice>(DeviceIds.MainIoCard, out Kwy.Device.IoCard.Abstractions.IIoCardDevice? mainIoCard) && mainIoCard != null)
         {
             base.BindIoCard(mainIoCard);
         }

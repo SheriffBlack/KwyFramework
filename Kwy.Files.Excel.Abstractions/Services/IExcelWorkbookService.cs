@@ -1,4 +1,7 @@
-namespace Kwy.Files.Excel.Abstractions;
+using Kwy.Files.Excel.Abstractions.Models;
+using Kwy.Files.Excel.Abstractions.Options;
+
+namespace Kwy.Files.Excel.Abstractions.Services;
 
 /// <summary>
 /// High-level workbook operations.

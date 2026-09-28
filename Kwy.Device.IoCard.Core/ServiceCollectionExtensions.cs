@@ -1,9 +1,10 @@
-﻿using Kwy.Device.Io.Abstractions;
+﻿using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Kwy.Device.IoCard.Core.IO;
 
-namespace Kwy.Device.Io.Core;
+namespace Kwy.Device.IoCard.Core;
 
 /// <summary>注册 IO 领域运行时服务；由设备组合根调用，不应由业务流程直接构造。</summary>
 public static class ServiceCollectionExtensions

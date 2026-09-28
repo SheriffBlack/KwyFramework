@@ -1,4 +1,4 @@
-namespace Kwy.Files.Excel.Abstractions;
+namespace Kwy.Files.Excel.Abstractions.Options;
 
 public sealed class ExcelTemplateCopyOptions
 {

@@ -1,4 +1,4 @@
-namespace Kwy.ComponentModel;
+namespace Kwy.ComponentModel.Attributes;
 
 /// <summary>
 /// Marks properties that should be displayed inline by metadata-driven editors.

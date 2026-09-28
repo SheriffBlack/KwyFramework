@@ -1,4 +1,4 @@
-﻿namespace Kwy.ComponentModel;
+﻿namespace Kwy.ComponentModel.Attributes;
 
 /// <summary>
 /// 显式指示 UI 引擎使用的输入控件类型

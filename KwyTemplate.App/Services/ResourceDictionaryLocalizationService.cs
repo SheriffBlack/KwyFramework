@@ -1,6 +1,6 @@
 using System.Windows;
 using System.Windows.Threading;
-using Kwy.ComponentModel;
+using Kwy.ComponentModel.Metadata;
 using KwyTemplate.Contracts.Localization;
 
 namespace KwyTemplate.App.Services;

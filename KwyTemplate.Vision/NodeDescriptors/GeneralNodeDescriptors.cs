@@ -1,4 +1,4 @@
-using Kwy.ComponentModel;
+using Kwy.ComponentModel.Parameters;
 using KwyTemplate.Vision.Models;
 
 namespace KwyTemplate.Vision.NodeDescriptors;

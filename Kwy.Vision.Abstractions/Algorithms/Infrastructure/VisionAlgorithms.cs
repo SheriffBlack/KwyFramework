@@ -1,6 +1,6 @@
 using Kwy.Vision.Abstractions.Results;
 
-namespace Kwy.Vision.Abstractions.Algorithms;
+namespace Kwy.Vision.Abstractions.Algorithms.Infrastructure;
 
 public interface IVisionAlgorithm
 {

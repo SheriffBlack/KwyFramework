@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using Kwy.MVVM.Dialogs;
 
-namespace Kwy.UI.WPF.Components.Dialogs;
+namespace Kwy.UI.WPF.Components.Dialogs.Input;
 
 /// <summary>
 /// 输入对话框结果。

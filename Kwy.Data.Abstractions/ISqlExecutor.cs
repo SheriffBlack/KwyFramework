@@ -1,6 +1,6 @@
 using System.Data.Common;
 
-namespace Kwy.Data.Sql;
+namespace Kwy.Data.Abstractions;
 
 public interface ISqlExecutor
 {

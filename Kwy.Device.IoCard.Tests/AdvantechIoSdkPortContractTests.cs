@@ -1,8 +1,8 @@
-﻿using Kwy.Device.Io.Abstractions;
-using Kwy.Device.IoCards.Advantech;
+﻿using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.IoCard.Advantech;
 using Xunit;
 
-namespace Kwy.Device.Io.Tests;
+namespace Kwy.Device.IoCard.Tests;
 
 /// <summary>验证 1730U 驱动只依赖窄 SDK Port，而非 DAQNavi 具体类型。</summary>
 public sealed class AdvantechIoSdkPortContractTests

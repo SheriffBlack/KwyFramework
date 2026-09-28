@@ -1,4 +1,4 @@
-using Kwy.UI.WPF.Components.Dialogs;
+using Kwy.UI.WPF.Components.Dialogs.Message;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Services;
 using KwyTemplate.Flow.Machines;

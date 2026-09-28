@@ -11,6 +11,7 @@ using System.Windows;
 
 using Kwy.ComponentModel;
 using Kwy.UI.Services.FileDialogs;
+using Kwy.ComponentModel.Parameters;
 
 namespace KwyTemplate.Vision.ViewModels.Items;
 

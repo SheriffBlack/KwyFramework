@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Automation.Peers;
 
-namespace Kwy.UI.WPF.Controls;
+namespace Kwy.UI.WPF.Controls.Toasts;
 
 /// <summary>
 /// Lightweight non-blocking message item.

@@ -1,4 +1,4 @@
-namespace Kwy.ComponentModel;
+namespace Kwy.ComponentModel.Attributes;
 
 /// <summary>
 /// Declares numeric editor hints for reflected property metadata.

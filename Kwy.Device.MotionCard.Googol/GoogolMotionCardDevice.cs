@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Io.Abstractions;
+﻿using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Io.Core;
 using System.Diagnostics;
 using Kwy.Device.MotionCard.Googol.DLL;

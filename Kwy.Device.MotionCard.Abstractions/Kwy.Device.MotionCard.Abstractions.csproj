@@ -8,6 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Io.Abstractions\Kwy.Device.IoCard.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.IoCard.Abstractions\Kwy.Device.IoCard.Abstractions.csproj" />
   </ItemGroup>
 </Project>

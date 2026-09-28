@@ -1,4 +1,4 @@
-﻿namespace Kwy.UI.WPF.Controls;
+﻿namespace Kwy.UI.WPF.Controls.Toasts;
 
 /// <summary>
 /// Toast host placement.

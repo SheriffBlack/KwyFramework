@@ -110,7 +110,7 @@ Kwy 以高内聚、低耦合为主要设计原则。每个模块只负责自己�
   Kwy.Communicate.Core
 
 设备与协议扩展层
-  Kwy.Device.PLCs.Hsl
+  Kwy.Device.PLC.Hsl
   Kwy.Device.MotionCards.Googol
   Kwy.Device.MotionCards.Leadshine
   Kwy.Device.Cameras.HikVision
@@ -227,7 +227,7 @@ Kwy 推荐以模块化 NuGet 包的方式使用。
 
 ```text
 Kwy.Communicate.FMdb
-Kwy.Device.PLCs.Hsl
+Kwy.Device.PLC.Hsl
 Kwy.UI.WPF.Components
 Kwy.Vision.Halcon
 ```

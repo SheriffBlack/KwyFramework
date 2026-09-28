@@ -1,6 +1,6 @@
 using System.Windows.Automation.Peers;
 
-namespace Kwy.UI.WPF.Controls;
+namespace Kwy.UI.WPF.Controls.Automation;
 
 /// <summary>
 /// Retains the standard list selection pattern for a radio-button group.

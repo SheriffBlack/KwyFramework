@@ -1,6 +1,7 @@
+using Kwy.UI.WPF.Controls.Toasts;
 using System.Windows.Automation.Peers;
 
-namespace Kwy.UI.WPF.Controls;
+namespace Kwy.UI.WPF.Controls.Automation;
 
 /// <summary>
 /// Gives an individual toast a readable fallback name when no automation name is supplied.

@@ -1,4 +1,4 @@
-﻿namespace Kwy.ComponentModel;
+﻿namespace Kwy.ComponentModel.Metadata;
 
 /// <summary>
 /// Broadcasts that metadata display text should be refreshed.

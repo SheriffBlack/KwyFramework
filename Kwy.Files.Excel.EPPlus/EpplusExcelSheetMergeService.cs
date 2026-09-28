@@ -1,4 +1,7 @@
 using Kwy.Files.Excel.Abstractions;
+using Kwy.Files.Excel.Abstractions.Models;
+using Kwy.Files.Excel.Abstractions.Options;
+using Kwy.Files.Excel.Abstractions.Services;
 
 namespace Kwy.Files.Excel.EPPlus;
 

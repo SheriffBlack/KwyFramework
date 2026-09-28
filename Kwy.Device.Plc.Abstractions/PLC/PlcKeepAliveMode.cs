@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.Plc.Abstractions;
+﻿namespace Kwy.Device.PLC.Abstractions.PLC;
 
 /// <summary>
 /// PLC 心跳地址的数据读取方式。

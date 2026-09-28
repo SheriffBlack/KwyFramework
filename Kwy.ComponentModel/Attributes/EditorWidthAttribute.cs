@@ -1,4 +1,4 @@
-namespace Kwy.ComponentModel;
+namespace Kwy.ComponentModel.Attributes;
 
 /// <summary>
 /// 指定属性编辑器的输入控件宽度。

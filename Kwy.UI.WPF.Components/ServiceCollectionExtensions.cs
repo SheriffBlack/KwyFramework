@@ -1,6 +1,8 @@
 ﻿using Kwy.MVVM.WPF.Dialogs;
 using Kwy.MVVM.WPF.Mvvm;
 using Kwy.UI.WPF.Components.Dialogs;
+using Kwy.UI.WPF.Components.Dialogs.Input;
+using Kwy.UI.WPF.Components.Dialogs.Message;
 using Kwy.UI.WPF.Components.Logging;
 using Kwy.UI.WPF.Components.Toasts;
 using Microsoft.Extensions.DependencyInjection;

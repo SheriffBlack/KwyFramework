@@ -2,10 +2,8 @@
 using System.Globalization;
 using System.Windows.Threading;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Plc.Abstractions;
 using Kwy.MVVM.Core;
 using Kwy.UI.DataGrids;
-using Kwy.UI.WPF.Components.Dialogs;
 using Kwy.UI.WPF.Components.Logging;
 using Kwy.UI.WPF.Controls.Helpers;
 using KwyTemplate.App.Models;
@@ -16,6 +14,8 @@ using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
 using System.Windows.Controls;
 using Kwy.UI.Enums;
+using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.UI.WPF.Components.Dialogs.Input;
 
 namespace KwyTemplate.App.ViewModels;
 

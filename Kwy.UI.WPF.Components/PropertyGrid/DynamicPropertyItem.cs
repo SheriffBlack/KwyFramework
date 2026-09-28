@@ -5,6 +5,8 @@ using System.Reflection;
 using Application = System.Windows.Application;
 using Kwy.ComponentModel;
 using Kwy.MVVM.Core;
+using Kwy.ComponentModel.Attributes;
+using Kwy.ComponentModel.Metadata;
 
 namespace Kwy.UI.WPF.Components.PropertyGrid;
 

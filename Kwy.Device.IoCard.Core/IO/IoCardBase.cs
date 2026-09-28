@@ -1,10 +1,10 @@
 ﻿using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Io.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Core;
 
-namespace Kwy.Device.Io.Core;
+namespace Kwy.Device.IoCard.Core.IO;
 
 /// <summary>
 /// 物理 IO 卡适配器基类。

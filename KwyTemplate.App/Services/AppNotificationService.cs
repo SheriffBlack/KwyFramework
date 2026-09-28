@@ -1,7 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Threading;
 using Kwy.UI.WPF.Components;
-using Kwy.UI.WPF.Components.Dialogs;
+using Kwy.UI.WPF.Components.Dialogs.Message;
 using Kwy.UI.WPF.Components.Logging;
 
 namespace KwyTemplate.App.Services;

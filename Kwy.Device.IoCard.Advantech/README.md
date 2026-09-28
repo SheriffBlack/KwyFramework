@@ -1,6 +1,6 @@
-# Kwy.Device.IoCards.Advantech
+# Kwy.Device.IoCard.Advantech
 
-`Kwy.Device.IoCards.Advantech` 是基于 Advantech DAQNavi `Automation.BDaq4.dll` 的数字 IO 卡实现。
+`Kwy.Device.IoCard.Advantech` 是基于 Advantech DAQNavi `Automation.BDaq4.dll` 的数字 IO 卡实现。
 
 它面向新 Kwy 设备框架：
 

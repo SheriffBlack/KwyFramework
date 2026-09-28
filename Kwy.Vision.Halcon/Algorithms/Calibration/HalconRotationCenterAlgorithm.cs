@@ -4,7 +4,7 @@ using Kwy.Vision.Abstractions.Algorithms;
 using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Results;
 
-namespace Kwy.Vision.Halcon.Algorithms;
+namespace Kwy.Vision.Halcon.Algorithms.Calibration;
 
 /// <summary>
 /// Calculates the rotation center by fitting a circle to a list of points representing the rotation path.

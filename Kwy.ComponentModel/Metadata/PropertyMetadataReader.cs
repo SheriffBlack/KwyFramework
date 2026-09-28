@@ -1,8 +1,9 @@
+using Kwy.ComponentModel.Attributes;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Reflection;
 
-namespace Kwy.ComponentModel;
+namespace Kwy.ComponentModel.Metadata;
 
 /// <summary>
 /// Reads and caches property metadata declared with System.ComponentModel and Kwy.ComponentModel attributes.

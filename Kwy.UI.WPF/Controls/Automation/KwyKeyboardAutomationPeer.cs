@@ -1,6 +1,6 @@
 using System.Windows.Automation.Peers;
 
-namespace Kwy.UI.WPF.Controls;
+namespace Kwy.UI.WPF.Controls.Automation;
 
 internal sealed class KwyKeyboardAutomationPeer : FrameworkElementAutomationPeer
 {

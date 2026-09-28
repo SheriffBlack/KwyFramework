@@ -1,5 +1,5 @@
 using System.Text;
-using Kwy.Files;
+using Kwy.Files.Ini;
 using Xunit;
 
 namespace Kwy.Files.Tests;

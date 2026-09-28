@@ -1,7 +1,7 @@
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
 
-namespace Kwy.UI.WPF.Controls;
+namespace Kwy.UI.WPF.Controls.Automation;
 
 internal sealed class KwyPercentAutomationPeer : FrameworkElementAutomationPeer, IRangeValueProvider
 {

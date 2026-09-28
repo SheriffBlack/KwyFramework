@@ -1,4 +1,7 @@
-namespace Kwy.Files.Excel.Abstractions;
+using Kwy.Files.Excel.Abstractions.Models;
+using Kwy.Files.Excel.Abstractions.Options;
+
+namespace Kwy.Files.Excel.Abstractions.Services;
 
 /// <summary>
 /// Represents an opened workbook session owned by an Excel provider.

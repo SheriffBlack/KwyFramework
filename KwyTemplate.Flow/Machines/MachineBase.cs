@@ -3,11 +3,9 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
-using Kwy.ComponentModel;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Io.Abstractions;
-using Kwy.Device.Instruments.Abstractions;
-using Kwy.Device.Plc.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.Instrument.Abstractions;
 using Kwy.Device.Plc.Core;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device;
@@ -16,6 +14,8 @@ using KwyTemplate.Flow.Common;
 using KwyTemplate.Flow.DataDeals;
 using KwyTemplate.Flow.Models;
 using KwyTemplate.MES.Abstract.Models;
+using Kwy.ComponentModel.Metadata;
+using Kwy.Device.PLC.Abstractions.PLC;
 
 namespace KwyTemplate.Flow.Machines;
 

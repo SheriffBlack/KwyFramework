@@ -1,4 +1,4 @@
-namespace Kwy.ComponentModel;
+namespace Kwy.ComponentModel.Attributes;
 
 /// <summary>
 /// Marks a property whose value change requires rebuilding the generated property grid.

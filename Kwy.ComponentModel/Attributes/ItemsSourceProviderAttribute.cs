@@ -1,4 +1,4 @@
-namespace Kwy.ComponentModel;
+namespace Kwy.ComponentModel.Attributes;
 
 /// <summary>
 /// 为 ComboBox、RadioButton 或单位选择提供动态候选数据源。

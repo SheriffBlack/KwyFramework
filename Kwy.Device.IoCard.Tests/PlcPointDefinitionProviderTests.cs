@@ -1,8 +1,8 @@
-﻿using Kwy.Device.Plc.Abstractions;
-using Kwy.Device.Plc.Core;
+﻿using Kwy.Device.Plc.Core;
+using Kwy.Device.PLC.Abstractions.PLC;
 using Xunit;
 
-namespace Kwy.Device.Io.Tests;
+namespace Kwy.Device.IoCard.Tests;
 
 public sealed class PlcPointDefinitionProviderTests
 {

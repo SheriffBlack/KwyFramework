@@ -1,4 +1,6 @@
-using Kwy.Files.Excel.Abstractions;
+using Kwy.Files.Excel.Abstractions.Models;
+using Kwy.Files.Excel.Abstractions.Options;
+using Kwy.Files.Excel.Abstractions.Services;
 using OfficeOpenXml;
 
 namespace Kwy.Files.Excel.EPPlus;
@@ -66,13 +68,13 @@ internal sealed class EpplusExcelWorkbookSession : IExcelWorkbookSession
         return Task.FromResult(new ExcelSheetData(worksheet.Name, rows));
     }
 
-    public Task<object?> ReadCellAsync(string sheetName, Kwy.Files.Excel.Abstractions.ExcelCellAddress address, CancellationToken cancellationToken = default)
+    public Task<object?> ReadCellAsync(string sheetName, Abstractions.Models.ExcelCellAddress address, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult<object?>(ResolveWorksheet(sheetName).Cells[address.Row, address.Column].Value);
     }
 
-    public Task WriteCellAsync(string sheetName, Kwy.Files.Excel.Abstractions.ExcelCellAddress address, object? value, CancellationToken cancellationToken = default)
+    public Task WriteCellAsync(string sheetName, Abstractions.Models.ExcelCellAddress address, object? value, CancellationToken cancellationToken = default)
     {
         ThrowIfReadOnly();
         cancellationToken.ThrowIfCancellationRequested();

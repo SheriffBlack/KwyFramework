@@ -1,6 +1,6 @@
 # Kwy.Device.Io 模块
 
-IO 按职责拆为两个包：`Kwy.Device.Io.Abstractions` 放置物理/逻辑 IO 契约与点位定义；`Kwy.Device.Io.Core` 放置点位监视、通道校验、位转换和物理卡基类。厂商适配器仅依赖这两个包，不应让业务流程直接使用物理通道。
+IO 按职责拆为两个包：`Kwy.Device.IoCard.Abstractions` 放置物理/逻辑 IO 契约与点位定义；`Kwy.Device.Io.Core` 放置点位监视、通道校验、位转换和物理卡基类。厂商适配器仅依赖这两个包，不应让业务流程直接使用物理通道。
 
 ## 核心目标
 

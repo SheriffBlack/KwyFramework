@@ -1,5 +1,6 @@
 using Kwy.Device.Core;
-using Kwy.Device.Plc.Abstractions;
+using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Core.PLC;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 

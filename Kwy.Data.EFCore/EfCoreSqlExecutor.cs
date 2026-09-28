@@ -1,6 +1,6 @@
 using System.Data;
 using System.Data.Common;
-using Kwy.Data.Sql;
+using Kwy.Data.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 

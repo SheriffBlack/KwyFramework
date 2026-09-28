@@ -5,10 +5,9 @@ using System.Globalization;
 using Kwy.Files;
 using Kwy.ComponentModel;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Io.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Io.Core;
-using Kwy.Device.Instruments.Abstractions;
-using Kwy.Device.Plc.Abstractions;
+using Kwy.Device.Instrument.Abstractions;
 using Kwy.Device.Instruments.Dcr;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Services;
@@ -19,6 +18,7 @@ using KwyTemplate.Flow.DataDeals;
 using KwyTemplate.Flow.Models;
 using KwyTemplate.Flow.Services;
 using KwyTemplate.MES.Abstract.Models;
+using Kwy.Device.PLC.Abstractions.PLC;
 
 namespace KwyTemplate.Flow.Machines;
 

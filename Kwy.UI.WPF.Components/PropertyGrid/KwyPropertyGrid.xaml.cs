@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
-using Kwy.ComponentModel;
+using Kwy.ComponentModel.Metadata;
 
 namespace Kwy.UI.WPF.Components.PropertyGrid;
 

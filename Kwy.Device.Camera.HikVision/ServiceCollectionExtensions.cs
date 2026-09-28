@@ -1,9 +1,9 @@
-﻿using Kwy.Device.Camera.Abstractions;
+﻿using Kwy.Device.Camera.Abstractions.Camera;
 using Kwy.Device.Camera.Core;
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kwy.Device.Cameras.HikVision;
+namespace Kwy.Device.Camera.HikVision;
 
 public static class ServiceCollectionExtensions
 {

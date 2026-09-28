@@ -5,7 +5,7 @@ using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Results;
 using Kwy.Vision.Halcon.Images;
 
-namespace Kwy.Vision.Halcon.Algorithms;
+namespace Kwy.Vision.Halcon.Algorithms.Measurement;
 
 public sealed class HalconLineMetrologyAlgorithm
     : HalconVisionAlgorithm<LineMetrologyRequest, LineMetrologyResult>

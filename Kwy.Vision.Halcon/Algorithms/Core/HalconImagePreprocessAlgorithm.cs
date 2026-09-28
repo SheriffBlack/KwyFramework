@@ -5,7 +5,7 @@ using Kwy.Vision.Abstractions.Results;
 using Kwy.Vision.Halcon.Images;
 using Kwy.Vision.Halcon.Internal;
 
-namespace Kwy.Vision.Halcon.Algorithms;
+namespace Kwy.Vision.Halcon.Algorithms.Core;
 
 public sealed class HalconImagePreprocessAlgorithm
     : HalconVisionAlgorithm<ImagePreprocessRequest, ImagePreprocessResult>

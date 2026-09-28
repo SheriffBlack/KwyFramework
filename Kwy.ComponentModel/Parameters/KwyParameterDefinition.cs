@@ -1,4 +1,6 @@
-namespace Kwy.ComponentModel;
+using Kwy.ComponentModel.Metadata;
+
+namespace Kwy.ComponentModel.Parameters;
 
 /// <summary>
 /// Describes an editable parameter independently from any specific UI framework.

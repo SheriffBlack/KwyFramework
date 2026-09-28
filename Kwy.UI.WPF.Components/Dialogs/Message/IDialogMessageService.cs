@@ -1,6 +1,6 @@
 using Kwy.MVVM.Dialogs;
 
-namespace Kwy.UI.WPF.Components.Dialogs;
+namespace Kwy.UI.WPF.Components.Dialogs.Message;
 
 /// <summary>
 /// 提供标准消息对话框。

@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Kwy.Communicate.Abstractions;
 using Kwy.ComponentModel;
-using Kwy.Device.Instruments.Abstractions;
-using Kwy.Device.Instruments.Core;
+using Kwy.Device.Instrument.Abstractions;
+using Kwy.Device.Instrument.Core;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;

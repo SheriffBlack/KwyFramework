@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace Kwy.Data.Sql;
+namespace Kwy.Data.Abstractions;
 
 public sealed record SqlCommandDefinition(
     string Sql,

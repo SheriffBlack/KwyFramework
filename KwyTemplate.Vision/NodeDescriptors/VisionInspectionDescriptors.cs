@@ -1,5 +1,7 @@
 using Kwy.ComponentModel;
-using Kwy.Vision.Abstractions.Algorithms;
+using Kwy.ComponentModel.Parameters;
+using Kwy.Vision.Abstractions.Algorithms.Core;
+using Kwy.Vision.Abstractions.Algorithms.Measurement;
 using KwyTemplate.Vision.Models;
 
 namespace KwyTemplate.Vision.NodeDescriptors;

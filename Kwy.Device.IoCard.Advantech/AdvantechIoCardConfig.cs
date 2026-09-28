@@ -1,6 +1,6 @@
 using Kwy.Device.Abstractions;
 
-namespace Kwy.Device.IoCards.Advantech;
+namespace Kwy.Device.IoCard.Advantech;
 
 /// <summary>
 /// Advantech digital IO card configuration.

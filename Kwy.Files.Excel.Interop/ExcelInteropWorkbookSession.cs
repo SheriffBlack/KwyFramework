@@ -1,4 +1,6 @@
-﻿using Kwy.Files.Excel.Abstractions;
+﻿using Kwy.Files.Excel.Abstractions.Models;
+using Kwy.Files.Excel.Abstractions.Options;
+using Kwy.Files.Excel.Abstractions.Services;
 using Kwy.Files.Excel.Interop.Interop;
 using OfficeExcel = global::Microsoft.Office.Interop.Excel;
 

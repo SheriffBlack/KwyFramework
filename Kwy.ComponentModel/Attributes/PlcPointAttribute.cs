@@ -1,4 +1,4 @@
-﻿namespace Kwy.ComponentModel;
+﻿namespace Kwy.ComponentModel.Attributes;
 
 [AttributeUsage(AttributeTargets.Field)]
 public class PlcPointAttribute : Attribute

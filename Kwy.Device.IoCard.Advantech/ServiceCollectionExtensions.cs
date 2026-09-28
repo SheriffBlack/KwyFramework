@@ -1,7 +1,7 @@
-﻿using Kwy.Device.Io.Abstractions;
+﻿using Kwy.Device.IoCard.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Kwy.Device.IoCards.Advantech;
+namespace Kwy.Device.IoCard.Advantech;
 
 public static class ServiceCollectionExtensions
 {

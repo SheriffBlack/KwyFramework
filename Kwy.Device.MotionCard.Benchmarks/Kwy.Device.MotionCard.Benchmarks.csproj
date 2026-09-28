@@ -10,7 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Motion.Abstractions\Kwy.Device.MotionCard.Abstractions.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Motion.Core\Kwy.Device.MotionCard.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Device.MotionCard.Abstractions\Kwy.Device.MotionCard.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.MotionCard.Core\Kwy.Device.MotionCard.Core.csproj" />
   </ItemGroup>
 </Project>

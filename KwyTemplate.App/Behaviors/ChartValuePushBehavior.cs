@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Windows;
-using Kwy.ComponentModel;
+using Kwy.ComponentModel.Metadata;
 using Kwy.UI.WPF.Charts.OxyPlot.Controls;
 using KwyTemplate.App.Models;
 

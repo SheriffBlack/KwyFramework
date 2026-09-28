@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Kwy.Data.Sql;
+using Kwy.Data.Abstractions;
 
 namespace Kwy.Data.EFCore;
 

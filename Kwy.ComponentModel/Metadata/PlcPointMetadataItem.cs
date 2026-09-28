@@ -1,4 +1,4 @@
-namespace Kwy.ComponentModel;
+namespace Kwy.ComponentModel.Metadata;
 
 /// <summary>
 /// Describes a PLC point declared on an enum field.

@@ -1,9 +1,9 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Kwy.Converter;
 using Kwy.Communicate.Abstractions;
-using Kwy.Device.Instruments.Core;
+using Kwy.Device.Instrument.Core;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Instruments.Abstractions;
+using Kwy.Device.Instrument.Abstractions;
 using System.Globalization;
 using System.Text;
 

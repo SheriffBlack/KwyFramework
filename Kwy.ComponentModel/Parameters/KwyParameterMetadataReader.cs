@@ -1,7 +1,8 @@
+using Kwy.ComponentModel.Metadata;
 using System.ComponentModel;
 using System.Reflection;
 
-namespace Kwy.ComponentModel;
+namespace Kwy.ComponentModel.Parameters;
 
 /// <summary>
 /// Converts CLR property metadata into generic Kwy parameter definitions.

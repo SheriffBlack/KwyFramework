@@ -1,5 +1,5 @@
 ﻿using Kwy.Device.Abstractions;
-using Kwy.Device.IoCards.Advantech;
+using Kwy.Device.IoCard.Advantech;
 
 using KwyTemplate.Device.Devices;
 

@@ -1,7 +1,7 @@
 using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Images;
 
-namespace Kwy.Vision.Abstractions.Algorithms;
+namespace Kwy.Vision.Abstractions.Algorithms.Core;
 
 public sealed record BlobInspectionRequest(
     IVisionImage Image,

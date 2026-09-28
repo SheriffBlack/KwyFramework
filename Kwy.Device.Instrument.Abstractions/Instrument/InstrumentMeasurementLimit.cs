@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace Kwy.Device.Instruments.Abstractions;
+namespace Kwy.Device.Instrument.Abstractions.Instrument;
 
 /// <summary>
 /// Instrument-side measurement limit exposed in the same engineering unit as the measured value.

@@ -3,7 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Automation.Peers;
 using System.Windows.Media;
 
-namespace Kwy.UI.WPF.Controls;
+namespace Kwy.UI.WPF.Controls.Toasts;
 
 /// <summary>
 /// Hosts lightweight toast messages.

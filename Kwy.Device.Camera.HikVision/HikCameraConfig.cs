@@ -1,6 +1,6 @@
-﻿using Kwy.Device.Camera.Abstractions;
+﻿using Kwy.Device.Camera.Abstractions.Camera;
 
-namespace Kwy.Device.Cameras.HikVision;
+namespace Kwy.Device.Camera.HikVision;
 
 /// <summary>海康相机的厂商专属配置。</summary>
 public sealed class HikCameraConfig : CameraConfig

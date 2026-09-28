@@ -1,4 +1,6 @@
-namespace Kwy.Files.Excel.Abstractions;
+using Kwy.Files.Excel.Abstractions.Options;
+
+namespace Kwy.Files.Excel.Abstractions.Services;
 
 /// <summary>
 /// Template-oriented Excel operations.

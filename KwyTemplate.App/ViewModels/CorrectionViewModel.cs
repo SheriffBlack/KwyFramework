@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using Kwy.Converter;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Instruments.Abstractions;
+using Kwy.Device.Instrument.Abstractions;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using KwyTemplate.App.Messages;

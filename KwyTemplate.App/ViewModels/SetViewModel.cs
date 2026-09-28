@@ -4,7 +4,7 @@ using Kwy.Device.Abstractions;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Messaging;
 using Kwy.MVVM.Regions;
-using Kwy.UI.WPF.Components.Dialogs;
+using Kwy.UI.WPF.Components.Dialogs.Message;
 using KwyTemplate.App.Messages;
 using KwyTemplate.App.Models;
 using KwyTemplate.App.Runtime;

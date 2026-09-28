@@ -4,7 +4,6 @@ using Kwy.Communicate.NI;
 using Kwy.Communicate.TcpSerial;
 using Kwy.Device.Core;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Plc.Abstractions;
 using Kwy.Device.Plc.Core;
 using Kwy.MVVM.Modularity;
 using KwyTemplate.Contracts.Modularity;
@@ -14,6 +13,8 @@ using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Profiles;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Core.PLC;
 
 namespace KwyTemplate.Device;
 

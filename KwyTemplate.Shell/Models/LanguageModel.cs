@@ -1,4 +1,4 @@
-﻿using Kwy.ComponentModel;
+﻿using Kwy.ComponentModel.Metadata;
 using KwyTemplate.Contracts.Localization;
 
 namespace KwyTemplate.Shell.Models;

@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Io.Abstractions;
+﻿using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -15,7 +15,7 @@ using Kwy.Device.MotionCard.Abstractions.Motion.Configuration;
 using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.OfflinePlanning.Timing;
 using Kwy.Device.MotionCard.Core.Motion.Synchronization;
 using Kwy.Device.MotionCard.Core.Motion.Groups;
-using Kwy.Device.Motion.Core;
+using Kwy.Device.MotionCard.Core;
 using Kwy.Device.MotionCard.Core.Motion.Operations;
 using Kwy.Device.MotionCard.Core.Motion;
 using Kwy.Device.MotionCard.Core.Motion.Kinematics;

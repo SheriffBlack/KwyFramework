@@ -1,7 +1,7 @@
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Dialogs;
 
-namespace Kwy.UI.WPF.Components.Dialogs;
+namespace Kwy.UI.WPF.Components.Dialogs.Message;
 
 internal static class DialogMessageParameterNames
 {

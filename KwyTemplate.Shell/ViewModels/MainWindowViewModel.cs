@@ -1,10 +1,8 @@
-﻿using Kwy.Device.Plc.Abstractions;
-using Kwy.Device.Abstractions;
+﻿using Kwy.Device.Abstractions;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Messaging;
 using Kwy.MVVM.Regions;
 using Kwy.UI;
-using Kwy.UI.WPF.Components.Dialogs;
 using KwyTemplate.App.Models;
 using KwyTemplate.App.Services;
 using KwyTemplate.Contracts.Localization;
@@ -14,6 +12,8 @@ using KwyTemplate.Security.Identity;
 using KwyTemplate.Shell.Models;
 using System.Diagnostics;
 using System.Windows.Media;
+using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.UI.WPF.Components.Dialogs.Message;
 
 namespace KwyTemplate.Shell.ViewModels;
 

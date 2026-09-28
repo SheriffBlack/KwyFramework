@@ -2,7 +2,7 @@
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Dialogs;
 
-namespace Kwy.UI.WPF.Components.Dialogs;
+namespace Kwy.UI.WPF.Components.Dialogs.Input;
 
 internal sealed class InputDialogService : IInputDialogService
 {

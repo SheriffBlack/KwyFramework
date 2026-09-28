@@ -1,10 +1,11 @@
 using System.Diagnostics;
 using HalconDotNet;
 using Kwy.Vision.Abstractions.Algorithms;
+using Kwy.Vision.Abstractions.Algorithms.Calibration;
 using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Results;
 
-namespace Kwy.Vision.Halcon.Algorithms;
+namespace Kwy.Vision.Halcon.Algorithms.Calibration;
 
 /// <summary>Calculates a 2D affine mapping from image pixels to a planar world coordinate system.</summary>
 public sealed class HalconPlanarCalibrationAlgorithm

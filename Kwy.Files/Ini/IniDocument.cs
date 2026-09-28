@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 
-namespace Kwy.Files;
+namespace Kwy.Files.Ini;
 
 /// <summary>
 /// 表示一个 INI 文档，并保留原始 section、键、注释、空行和顺序。

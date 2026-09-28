@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Motion.Core;
+﻿using Kwy.Device.MotionCard.Core;
 using Kwy.Device.MotionCard.Abstractions.Motion;
 using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
 using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;

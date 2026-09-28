@@ -10,7 +10,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Io.Abstractions\Kwy.Device.IoCard.Abstractions.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Motion.Abstractions\Kwy.Device.MotionCard.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.IoCard.Abstractions\Kwy.Device.IoCard.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.MotionCard.Abstractions\Kwy.Device.MotionCard.Abstractions.csproj" />
   </ItemGroup>
 </Project>

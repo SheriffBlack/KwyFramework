@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
-using Kwy.Files.Excel.Abstractions;
+using Kwy.Files.Excel.Abstractions.Services;
 
 namespace Kwy.Files.Excel.Interop;
 

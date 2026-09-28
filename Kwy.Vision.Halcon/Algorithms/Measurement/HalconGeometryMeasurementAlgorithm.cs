@@ -3,7 +3,7 @@ using Kwy.Vision.Abstractions.Algorithms;
 using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Results;
 
-namespace Kwy.Vision.Halcon.Algorithms;
+namespace Kwy.Vision.Halcon.Algorithms.Measurement;
 
 public sealed class HalconGeometryMeasurementAlgorithm
     : HalconVisionAlgorithm<GeometryMeasurementRequest, GeometryMeasurementResult>

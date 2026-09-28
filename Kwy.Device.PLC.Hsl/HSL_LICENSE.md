@@ -1,6 +1,6 @@
 # HslCommunication 授权说明
 
-`Kwy.Device.PLCs.Hsl` 当前内置 HslCommunication 授权码：
+`Kwy.Device.PLC.Hsl` 当前内置 HslCommunication 授权码：
 
 ```csharp
 Authorization.SetAuthorizationCode("e0397905-7455-4533-8c7a-3ec89b68b2a7");

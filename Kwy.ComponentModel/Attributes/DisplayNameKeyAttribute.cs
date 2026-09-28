@@ -1,4 +1,4 @@
-﻿namespace Kwy.ComponentModel;
+﻿namespace Kwy.ComponentModel.Attributes;
 
 /// <summary>
 /// Specifies the localization resource key used to display a property name.

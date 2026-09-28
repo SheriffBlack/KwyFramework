@@ -2,7 +2,7 @@ using HalconDotNet;
 using Kwy.Vision.Abstractions.Algorithms;
 using Kwy.Vision.Abstractions.Geometry;
 
-namespace Kwy.Vision.Halcon.Algorithms;
+namespace Kwy.Vision.Halcon.Algorithms.Internal;
 
 internal static class HalconFittingUtilities
 {

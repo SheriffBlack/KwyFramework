@@ -3,7 +3,7 @@ using System.Windows.Threading;
 using Kwy.Communicate.NI;
 using Kwy.Communicate.TcpSerial.Configs;
 using Kwy.Device.Abstractions;
-using Kwy.Device.IoCards.Advantech;
+using Kwy.Device.IoCard.Advantech;
 using Kwy.Device.PLC.Hsl;
 using Kwy.MVVM.Core;
 using KwyTemplate.Contracts.Localization;

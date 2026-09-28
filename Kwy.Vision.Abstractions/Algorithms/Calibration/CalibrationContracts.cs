@@ -1,6 +1,6 @@
 using Kwy.Vision.Abstractions.Geometry;
 
-namespace Kwy.Vision.Abstractions.Algorithms;
+namespace Kwy.Vision.Abstractions.Algorithms.Calibration;
 
 public sealed record VisionPointCorrespondence(
     VisionPoint ImagePoint,

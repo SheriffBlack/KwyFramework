@@ -1,6 +1,6 @@
 ﻿using Kwy.Device.Abstractions;
 using Kwy.Device.PLC.Hsl;
-using Kwy.Device.PLCs.Hsl;
+using Kwy.Device.PLC.Hsl;
 
 using KwyTemplate.Device.Devices;
 

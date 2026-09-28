@@ -6,7 +6,6 @@ using KwyTemplate.Vision.ViewModels.Items;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using Kwy.UI.WPF.Components;
-using Kwy.UI.WPF.Components.Dialogs;
 using Kwy.UI.WPF.Services.FileDialogs;
 using Kwy.Vision.Abstractions.DeepLearning;
 using Kwy.Vision.Abstractions.Results;
@@ -20,6 +19,7 @@ using KwyTemplate.Vision.Executors;
 using Kwy.Vision.WPF.Sources;
 using KwyTemplate.Vision.Batch;
 using Kwy.UI.Services.FileDialogs;
+using Kwy.UI.WPF.Components.Dialogs.Message;
 
 namespace KwyTemplate.Vision.ViewModels;
 

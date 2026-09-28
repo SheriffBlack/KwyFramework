@@ -1,4 +1,6 @@
-namespace Kwy.Files.Excel.Abstractions;
+using Kwy.Files.Excel.Abstractions.Models;
+
+namespace Kwy.Files.Excel.Abstractions.Options;
 
 public sealed class ExcelSaveOptions
 {

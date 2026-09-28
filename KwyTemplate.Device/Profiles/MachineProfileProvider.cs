@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using Kwy.Device.PLC.Abstractions.PLC;
+using System.Text.Json;
 
 namespace KwyTemplate.Device.Profiles;
 
@@ -97,7 +98,7 @@ public static class MachineProfileValidator
             string? deviceId = string.IsNullOrWhiteSpace(point.DeviceId) ? mainPlcId : point.DeviceId;
             if (string.IsNullOrWhiteSpace(point.Address) || string.IsNullOrWhiteSpace(deviceId) || !deviceIds.Contains(deviceId))
                 throw new InvalidOperationException($"PLC point '{point.Key}' has an invalid address or DeviceId.");
-            if (!Enum.TryParse<Kwy.Device.Plc.Abstractions.PlcDataType>(point.DataType, true, out _))
+            if (!Enum.TryParse<PlcDataType>(point.DataType, true, out _))
                 throw new InvalidOperationException($"PLC point '{point.Key}' has unsupported data type '{point.DataType}'.");
             if (point.Length == 0)
                 throw new InvalidOperationException($"PLC point '{point.Key}' has an invalid length.");

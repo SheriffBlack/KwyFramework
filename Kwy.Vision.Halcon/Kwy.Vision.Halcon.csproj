@@ -17,4 +17,8 @@
     <None Include="DLL\halcon.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.Vision.Abstractions\Kwy.Vision.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

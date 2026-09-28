@@ -1,6 +1,6 @@
-﻿using Kwy.Device.Io.Abstractions;
+﻿using Kwy.Device.IoCard.Abstractions;
 
-namespace Kwy.Device.IoCards.Advantech;
+namespace Kwy.Device.IoCard.Advantech;
 
 /// <summary>
 /// 1730U 所需 DAQNavi 数字量能力的窄适配端口。

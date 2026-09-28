@@ -9,8 +9,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
     <ProjectReference Include="..\Kwy.Converter\Kwy.Converter.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Instruments.Abstractions\Kwy.Device.Instrument.Abstractions.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Instruments.Core\Kwy.Device.Instrument.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Instrument.Abstractions\Kwy.Device.Instrument.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Instrument.Core\Kwy.Device.Instrument.Core.csproj" />
   </ItemGroup>
 
 </Project>

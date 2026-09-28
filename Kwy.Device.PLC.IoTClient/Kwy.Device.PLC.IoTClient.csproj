@@ -2,8 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Plc.Abstractions\Kwy.Device.Plc.Abstractions.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Plc.Core\Kwy.Device.Plc.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Device.PLC.Abstractions\Kwy.Device.PLC.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.PLC.Core\Kwy.Device.PLC.Core.csproj" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
   </ItemGroup>
 

@@ -1,10 +1,10 @@
 ﻿using Kwy.Device.Abstractions;
-using Kwy.Device.Plc.Abstractions;
 using Kwy.Device.Core;
 using Kwy.Licensing.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Kwy.Device.PLC.Hsl.Licensing;
+using Kwy.Device.PLC.Abstractions.PLC;
 
 namespace Kwy.Device.PLC.Hsl;
 

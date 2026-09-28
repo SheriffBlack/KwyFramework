@@ -1,4 +1,4 @@
-using Kwy.UI.WPF.Controls;
+using Kwy.UI.WPF.Controls.Toasts;
 using System.Windows;
 
 namespace Kwy.UI.WPF.Components.Toasts;

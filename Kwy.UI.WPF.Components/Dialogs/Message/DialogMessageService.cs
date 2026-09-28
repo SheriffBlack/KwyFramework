@@ -1,9 +1,7 @@
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Dialogs;
-using Kwy.UI.WPF.Components.Dialogs;
-using Kwy.UI.WPF.Components;
 
-namespace Kwy.UI.WPF.Components.Dialogs;
+namespace Kwy.UI.WPF.Components.Dialogs.Message;
 
 internal sealed class DialogMessageService : IDialogMessageService
 {

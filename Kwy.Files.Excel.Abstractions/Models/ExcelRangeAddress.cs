@@ -1,4 +1,4 @@
-namespace Kwy.Files.Excel.Abstractions;
+namespace Kwy.Files.Excel.Abstractions.Models;
 
 /// <summary>
 /// 1-based Excel rectangular range address.

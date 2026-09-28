@@ -1,5 +1,5 @@
 ﻿using Kwy.Device.Abstractions;
-using Kwy.Device.Io.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Io.Core;
 using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
 using Kwy.Device.MotionCard.Abstractions.Motion;

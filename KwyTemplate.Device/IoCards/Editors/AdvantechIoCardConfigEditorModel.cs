@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using Kwy.ComponentModel;
-using Kwy.Device.IoCards.Advantech;
+using Kwy.Device.IoCard.Advantech;
 
 namespace KwyTemplate.Device.IoCards.Editors;
 

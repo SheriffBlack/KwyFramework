@@ -579,7 +579,7 @@ if (!result.IsRecovered)
 
 ## HSL PLC 接入示例
 
-`Kwy.Device.PLCs.Hsl` 已接入 PLC 心跳、状态同步、安全联锁和恢复服务。
+`Kwy.Device.PLC.Hsl` 已接入 PLC 心跳、状态同步、安全联锁和恢复服务。
 
 注册示例：
 

@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using Kwy.Converter;
-using Kwy.Device.Instruments.Abstractions;
+using Kwy.Device.Instrument.Abstractions;
 using KwyTemplate.App.Orchestration;
 using KwyTemplate.App.Runtime;
 using KwyTemplate.App.Services;

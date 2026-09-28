@@ -1,6 +1,6 @@
-# Kwy.Device.PLCs.Hsl
+# Kwy.Device.PLC.Hsl
 
-`Kwy.Device.PLCs.Hsl` 基于 HslCommunication 封装 PLC 设备，接入 Kwy 设备层统一生命周期、读写接口、状态同步、安全联锁和恢复服务。
+`Kwy.Device.PLC.Hsl` 基于 HslCommunication 封装 PLC 设备，接入 Kwy 设备层统一生命周期、读写接口、状态同步、安全联锁和恢复服务。
 
 ## 设计分层
 

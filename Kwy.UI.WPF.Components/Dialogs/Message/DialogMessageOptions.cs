@@ -1,4 +1,4 @@
-namespace Kwy.UI.WPF.Components.Dialogs;
+namespace Kwy.UI.WPF.Components.Dialogs.Message;
 
 /// <summary>
 /// 标准消息对话框的显示选项。

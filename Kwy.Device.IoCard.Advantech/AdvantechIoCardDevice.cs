@@ -1,7 +1,8 @@
-﻿using Kwy.Device.Io.Abstractions;
+﻿using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Io.Core;
+using Kwy.Device.IoCard.Advantech;
 
-namespace Kwy.Device.IoCards.Advantech;
+namespace Kwy.Device.IoCard.Advantech;
 
 /// <summary>
 /// Advantech PCI/DAQNavi digital IO card implementation.

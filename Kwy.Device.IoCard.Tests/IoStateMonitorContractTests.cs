@@ -1,11 +1,11 @@
 ﻿using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Io.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Io.Core;
 using Xunit;
 
-namespace Kwy.Device.Io.Tests;
+namespace Kwy.Device.IoCard.Tests;
 
 public sealed class IoStateMonitorContractTests
 {

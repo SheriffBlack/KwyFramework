@@ -1,4 +1,4 @@
-using Kwy.UI.WPF.Controls;
+using Kwy.UI.WPF.Controls.Toasts;
 using System.Collections.Concurrent;
 using System.Windows;
 using System.Windows.Media;

@@ -1,4 +1,4 @@
-using Kwy.Data.Sql;
+using Kwy.Data.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Kwy.Data.EFCore;

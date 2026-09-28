@@ -10,6 +10,6 @@
     <ProjectReference Include="..\Kwy.Communicate.Abstractions\Kwy.Communicate.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Instruments.Abstractions\Kwy.Device.Instrument.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Instrument.Abstractions\Kwy.Device.Instrument.Abstractions.csproj" />
   </ItemGroup>
 </Project>

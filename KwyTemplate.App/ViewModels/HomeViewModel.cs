@@ -1,6 +1,6 @@
 ﻿using Kwy.MVVM.Core;
 using Kwy.MVVM.Messaging;
-using Kwy.Device.Instruments.Abstractions;
+using Kwy.Device.Instrument.Abstractions;
 using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Components.Logging;
 using Kwy.UI.WPF.Components.Toasts;
@@ -31,6 +31,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 using KwyTemplate.Contracts.Navigation;
+using Kwy.UI.WPF.Components.Dialogs.Input;
 
 namespace KwyTemplate.App.ViewModels;
 

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Kwy.Files;
+namespace Kwy.Files.Ini;
 
 /// <summary>
 /// INI 文件读取、写入、解析和序列化工具类。

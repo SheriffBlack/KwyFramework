@@ -1,7 +1,7 @@
 ﻿using Automation.BDaq;
-using Kwy.Device.Io.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 
-namespace Kwy.Device.IoCards.Advantech;
+namespace Kwy.Device.IoCard.Advantech;
 
 /// <summary>DAQNavi 的 1730U 数字量适配实现。</summary>
 public sealed class DaqNaviAdvantechIoSdkPort : IAdvantechIoSdkPort

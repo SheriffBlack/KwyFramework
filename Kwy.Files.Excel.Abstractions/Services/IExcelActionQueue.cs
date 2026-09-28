@@ -1,4 +1,4 @@
-namespace Kwy.Files.Excel.Abstractions;
+namespace Kwy.Files.Excel.Abstractions.Services;
 
 /// <summary>
 /// Serializes Excel automation operations. Interop providers can use an STA implementation.

@@ -1,4 +1,4 @@
-using Kwy.Device.Instruments.Abstractions;
+using Kwy.Device.Instrument.Abstractions;
 using Kwy.Device.Instruments.Lcr;
 
 namespace KwyTemplate.Flow.DataDeals;

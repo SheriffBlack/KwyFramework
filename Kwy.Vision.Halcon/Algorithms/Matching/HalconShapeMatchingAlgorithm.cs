@@ -7,7 +7,7 @@ using Kwy.Vision.Halcon.Images;
 using Kwy.Vision.Halcon.Internal;
 using Kwy.Vision.Halcon.Models;
 
-namespace Kwy.Vision.Halcon.Algorithms;
+namespace Kwy.Vision.Halcon.Algorithms.Matching;
 
 public sealed class HalconShapeMatchingAlgorithm
     : HalconVisionAlgorithm<ShapeMatchingRequest, ShapeMatchingResult>

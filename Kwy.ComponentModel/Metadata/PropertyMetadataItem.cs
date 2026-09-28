@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace Kwy.ComponentModel;
+namespace Kwy.ComponentModel.Metadata;
 
 /// <summary>
 /// Describes a public property and the UI metadata declared on it.

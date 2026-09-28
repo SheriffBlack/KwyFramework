@@ -31,7 +31,7 @@ IReadOnlyList<LicenseActivationResult> results = await activationService.Activat
 
 具体 SDK 激活逻辑放在对应功能包里，例如：
 
-- `Kwy.Device.PLCs.Hsl` 中实现 `HslCommunicationLicenseActivator`。
+- `Kwy.Device.PLC.Hsl` 中实现 `HslCommunicationLicenseActivator`。
 - 未来 `Kwy.Vision.Halcon` 可以实现 `HalconLicenseActivator`。
 - 未来 Cimetrix 扩展包可以实现自己的激活器。
 

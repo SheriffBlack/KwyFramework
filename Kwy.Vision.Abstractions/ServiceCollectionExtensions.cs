@@ -1,4 +1,4 @@
-using Kwy.Vision.Abstractions.Algorithms;
+using Kwy.Vision.Abstractions.Algorithms.Infrastructure;
 using Kwy.Vision.Abstractions.DeepLearning;
 using Kwy.Vision.Abstractions.Images;
 using Kwy.Vision.Abstractions.Runtime;

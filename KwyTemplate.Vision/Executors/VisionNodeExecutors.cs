@@ -1,4 +1,8 @@
-using Kwy.Vision.Abstractions.Algorithms;
+using Kwy.Vision.Abstractions.Algorithms.Core;
+using Kwy.Vision.Abstractions.Algorithms.Fitting;
+using Kwy.Vision.Abstractions.Algorithms.Infrastructure;
+using Kwy.Vision.Abstractions.Algorithms.Matching;
+using Kwy.Vision.Abstractions.Algorithms.Measurement;
 using Kwy.Vision.Abstractions.DeepLearning;
 using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Images;

@@ -4,7 +4,7 @@ using Kwy.Vision.Abstractions.Algorithms;
 using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Results;
 
-namespace Kwy.Vision.Halcon.Algorithms;
+namespace Kwy.Vision.Halcon.Algorithms.Calibration;
 
 /// <summary>
 /// Calculates the rigid coordinate transformation from a reference pose to the current pose using vector_angle_to_rigid.

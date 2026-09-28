@@ -1,6 +1,10 @@
 using Kwy.Vision.Abstractions;
 using Kwy.Vision.Abstractions.Runtime;
-using Kwy.Vision.Halcon.Algorithms;
+using Kwy.Vision.Halcon.Algorithms.Calibration;
+using Kwy.Vision.Halcon.Algorithms.Core;
+using Kwy.Vision.Halcon.Algorithms.Fitting;
+using Kwy.Vision.Halcon.Algorithms.Matching;
+using Kwy.Vision.Halcon.Algorithms.Measurement;
 using Kwy.Vision.Halcon.Images;
 using Kwy.Vision.Halcon.Models;
 using Microsoft.Extensions.DependencyInjection;

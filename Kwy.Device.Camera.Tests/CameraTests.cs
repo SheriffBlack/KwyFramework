@@ -1,5 +1,5 @@
-﻿using Kwy.Device.Camera.Abstractions;
-using Kwy.Device.Camera.Core;
+﻿using Kwy.Device.Camera.Abstractions.Camera;
+using Kwy.Device.Camera.Core.Camera;
 using Kwy.Device.Cameras.HikVision;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
