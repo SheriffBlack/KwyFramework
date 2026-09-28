@@ -1,8 +1,8 @@
-using Kwy.Device.Abstractions.Vision;
+using Kwy.Device.Abstractions.Camera;
 
 namespace Kwy.Device.Cameras.HikVision;
 
-/// <summary>HikVision-specific camera configuration.</summary>
+/// <summary>海康相机的厂商专属配置。</summary>
 public sealed class HikCameraConfig : CameraConfig
 {
     public bool ConfigureOptimalPacketSize { get; set; } = true;

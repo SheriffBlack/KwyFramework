@@ -2,11 +2,11 @@ using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Abstractions.Motion;
 using Kwy.Device.Abstractions.PLC;
-using Kwy.Device.Abstractions.Vision;
+using Kwy.Device.Abstractions.Camera;
 using Kwy.Device.Core.IO;
 using Kwy.Device.Core.Motion;
 using Kwy.Device.Core.PLC;
-using Kwy.Device.Core.Vision;
+using Kwy.Device.Core.Camera;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -14,18 +14,27 @@ namespace Kwy.Device.Core;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddDeviceCore(
+    public static IServiceCollection AddDeviceCore(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.TryAddSingleton<IDeviceRegistry, DeviceRegistry>();
+        return services;
+    }
+
+    /// <summary>注册逻辑 IO 点位监视、读写与安全输出服务。</summary>
+    public static IServiceCollection AddIoServices(
         this IServiceCollection services,
         Action<IoStateMonitorOptions>? configureIoMonitor = null)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.AddDeviceCore();
 
         var ioMonitorOptions = new IoStateMonitorOptions();
         configureIoMonitor?.Invoke(ioMonitorOptions);
         ioMonitorOptions.Validate();
 
         services.TryAddSingleton(ioMonitorOptions);
-        services.TryAddSingleton<IDeviceRegistry, DeviceRegistry>();
         services.TryAddSingleton<IoStateMonitor>();
         services.TryAddSingleton<IIoStateMonitor>(provider => provider.GetRequiredService<IoStateMonitor>());
         services.TryAddSingleton<ILogicalIoReader>(provider => provider.GetRequiredService<IoStateMonitor>());
@@ -33,6 +42,14 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IProcessOutputStateController>(provider => provider.GetRequiredService<IoStateMonitor>());
         services.TryAddSingleton<IIoStateSubscription>(provider => provider.GetRequiredService<IoStateMonitor>());
         services.TryAddSingleton<ILogicalIoInterruptWaiter>(provider => provider.GetRequiredService<IoStateMonitor>());
+        return services;
+    }
+
+    /// <summary>注册相机注册表；厂商相机适配器应在此基础上注册一个或多个 <see cref="ICameraDevice"/>。</summary>
+    public static IServiceCollection AddCameraServices(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddDeviceCore();
         services.TryAddSingleton<ICameraRegistry, CameraRegistry>();
         return services;
     }
@@ -46,6 +63,7 @@ public static class ServiceCollectionExtensions
         IEnumerable<IoPointDefinition> definitions)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.AddIoServices();
         IoPointDefinition[] items = definitions?.ToArray() ?? throw new ArgumentNullException(nameof(definitions));
         services.AddSingleton<IoPointDefinitionProvider>(_ => new IoPointDefinitionProvider(items));
         services.AddSingleton<IIoPointDefinitionProvider>(provider => provider.GetRequiredService<IoPointDefinitionProvider>());
@@ -69,18 +87,28 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>注册逻辑 PLC 点位读写服务。</summary>
+    public static IServiceCollection AddPlcServices(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddDeviceCore();
+        services.TryAddSingleton<LogicalPlcService>();
+        services.TryAddSingleton<ILogicalPlcReader>(provider => provider.GetRequiredService<LogicalPlcService>());
+        services.TryAddSingleton<ILogicalPlcWriter>(provider => provider.GetRequiredService<LogicalPlcService>());
+        return services;
+    }
+
+    /// <summary>注册 PLC 业务点位定义，并启用逻辑 PLC 服务。</summary>
     public static IServiceCollection AddPlcPointDefinitions(
         this IServiceCollection services,
         IEnumerable<PlcPointDefinition> points)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.AddPlcServices();
         PlcPointDefinition[] definitions = points?.ToArray() ?? throw new ArgumentNullException(nameof(points));
         var provider = new PlcPointDefinitionProvider(definitions);
 
         services.AddSingleton<IPlcPointDefinitionProvider>(provider);
-        services.TryAddSingleton<LogicalPlcService>();
-        services.TryAddSingleton<ILogicalPlcReader>(provider => provider.GetRequiredService<LogicalPlcService>());
-        services.TryAddSingleton<ILogicalPlcWriter>(provider => provider.GetRequiredService<LogicalPlcService>());
         return services;
     }
 
@@ -103,6 +131,7 @@ public static class ServiceCollectionExtensions
         Action<MotionAdmissionOptions>? configureAdmission = null)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.AddDeviceCore();
 
         var admissionOptions = new MotionAdmissionOptions();
         configureAdmission?.Invoke(admissionOptions);

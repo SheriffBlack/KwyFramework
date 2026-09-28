@@ -1,9 +1,9 @@
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.Vision;
+using Kwy.Device.Abstractions.Camera;
 
-namespace Kwy.Device.Core.Vision;
+namespace Kwy.Device.Core.Camera;
 
-/// <summary>Provides a single-flight acquisition lifecycle and managed-frame publication.</summary>
+/// <summary>提供单飞采集生命周期与托管帧发布能力的相机基类。</summary>
 public abstract class CameraBase : DeviceBase, ICameraDevice, IFrameSource
 {
     private readonly SemaphoreSlim grabbingSemaphore = new(1, 1);

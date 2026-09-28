@@ -1,6 +1,6 @@
-using Kwy.Device.Abstractions.Vision;
+using Kwy.Device.Abstractions.Camera;
 
-namespace Kwy.Device.Core.Vision;
+namespace Kwy.Device.Core.Camera;
 
 public sealed class CameraRegistry : ICameraRegistry
 {

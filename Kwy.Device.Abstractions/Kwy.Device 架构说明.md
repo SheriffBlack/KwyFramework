@@ -46,7 +46,7 @@ Kwy.Device.Cameras.*
 | IO | `IIoCardDevice` | IO 卡或可提供 DI/DO 的设备。 |
 | Motion | `IMotionCard` | 运动控制卡。 |
 | PLC | `IPlcDevice` | PLC 设备。 |
-| Vision | `ICameraDevice` | 相机、光源等视觉设备。 |
+| Camera | `ICameraDevice` | 相机采集设备。光源应在后续独立为照明设备模块。 |
 
 一个真实硬件可以同时实现多个能力接口。例如运动控制卡可能同时实现运动能力和 IO 能力。
 
@@ -154,7 +154,7 @@ public sealed class StationService
 }
 ```
 
-新项目应通过 `AddDeviceCore()` 注册 `IIoStateMonitor`，再由 DI 注入使用，便于测试、仿真和多站点隔离。
+新项目应通过 `AddIoServices()` 注册 `IIoStateMonitor`，再由 DI 注入使用，便于测试、仿真和多站点隔离。
 
 ## Motion 能力拆分
 

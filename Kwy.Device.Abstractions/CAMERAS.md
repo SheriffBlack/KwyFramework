@@ -80,7 +80,7 @@ IFrameSource frames = registry.GetRequiredCapability<IFrameSource>("Camera.Top")
 
 ## 注册海康相机
 
-首先注册设备基础服务和海康相机：
+注册海康相机：
 
 ```csharp
 services.AddHikVisionCamera(config =>
@@ -101,7 +101,7 @@ services.AddHikVisionCamera(config =>
 });
 ```
 
-`AddHikVisionCamera()` 内部会确保 `AddDeviceCore()` 已注册，因此业务项目不需要为了相机重复调用。
+`AddHikVisionCamera()` 内部会确保 `AddCameraServices()` 已注册，因此业务项目不需要为了相机重复调用。
 
 ## 注册多个相机
 

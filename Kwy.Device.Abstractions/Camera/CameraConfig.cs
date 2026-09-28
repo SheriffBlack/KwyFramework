@@ -1,4 +1,4 @@
-namespace Kwy.Device.Abstractions.Vision;
+namespace Kwy.Device.Abstractions.Camera;
 
 public enum CameraTransportType
 {
@@ -16,7 +16,7 @@ public enum CameraTriggerSource
     Line3
 }
 
-/// <summary>Vendor-independent camera selection and acquisition settings.</summary>
+/// <summary>厂商无关的相机选择与采集配置。</summary>
 public class CameraConfig : IDeviceConfig
 {
     public string DeviceId { get; set; } = "Camera.Main";
@@ -29,7 +29,7 @@ public class CameraConfig : IDeviceConfig
 
     public string? SerialNumber { get; set; }
 
-    /// <summary>Exposure time in microseconds.</summary>
+    /// <summary>曝光时间，单位为微秒。</summary>
     public double ExposureTimeUs { get; set; } = 10_000;
 
     public double Gain { get; set; }
@@ -38,10 +38,10 @@ public class CameraConfig : IDeviceConfig
 
     public CameraTriggerSource TriggerSource { get; set; } = CameraTriggerSource.Software;
 
-    /// <summary>SDK receive timeout used by blocking frame retrieval.</summary>
+    /// <summary>同步取帧时传给厂商 SDK 的接收超时。</summary>
     public TimeSpan FrameReceiveTimeout { get; set; } = TimeSpan.FromSeconds(1);
 
-    /// <summary>Vendor SDK internal frame-buffer node count.</summary>
+    /// <summary>厂商 SDK 内部帧缓存节点数。</summary>
     public int FrameBufferCount { get; set; } = 4;
 
     public virtual bool Validate()

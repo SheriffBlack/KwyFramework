@@ -1,10 +1,10 @@
 using System.Buffers;
 
-namespace Kwy.Device.Abstractions.Vision;
+namespace Kwy.Device.Abstractions.Camera;
 
 /// <summary>
-/// A managed camera frame whose pixel memory is independent from the vendor SDK buffer.
-/// Frame event subscribers may retain the frame after the callback by calling <see cref="Retain"/>.
+/// 托管相机帧；像素内存独立于厂商 SDK 缓冲区。
+/// 事件订阅者若需在回调结束后继续使用帧，必须调用 <see cref="Retain"/>。
 /// </summary>
 public sealed class CameraFrame : IDisposable
 {
@@ -131,12 +131,12 @@ public sealed class CameraFrame : IDisposable
     }
 }
 
-/// <summary>Basic camera identity, lifecycle, and configuration capability.</summary>
+/// <summary>相机的基础身份、连接生命周期与配置能力。</summary>
 public interface ICameraDevice : IDevice, IConfigurableDevice
 {
 }
 
-/// <summary>Continuous or triggered frame-stream capability.</summary>
+/// <summary>连续采集或触发采集的帧流能力。</summary>
 public interface IFrameSource
 {
     event EventHandler<CameraFrame>? FrameArrived;
@@ -150,13 +150,13 @@ public interface IFrameSource
     Task<CameraFrame> WaitForNextFrameAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Software-trigger capability. Not every camera or acquisition mode supports it.</summary>
+/// <summary>软件触发能力；并非所有相机或采集模式都支持。</summary>
 public interface ISoftwareTriggerCamera
 {
     Task ExecuteSoftwareTriggerAsync(CancellationToken cancellationToken = default);
 }
 
-/// <summary>Common camera parameter capability expressed in vendor-independent units.</summary>
+/// <summary>以厂商无关工程单位表示的常用相机参数能力。</summary>
 public interface ICameraParameterController
 {
     Task SetExposureTimeAsync(double exposureTimeUs, CancellationToken cancellationToken = default);
@@ -164,7 +164,7 @@ public interface ICameraParameterController
     Task SetGainAsync(double gain, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Resolves cameras by stable application device ID.</summary>
+/// <summary>按稳定业务设备 ID 查找相机。</summary>
 public interface ICameraRegistry
 {
     IReadOnlyCollection<ICameraDevice> Cameras { get; }
