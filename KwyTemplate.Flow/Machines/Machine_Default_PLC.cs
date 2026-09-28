@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.ComponentModel;
 using Kwy.ComponentModel;
-using Kwy.Device.Abstractions.PLC;
+using Kwy.Device.Plc.Abstractions;
 using Kwy.Device.Instruments.Abstractions;
 using KwyTemplate.Device;
 using KwyTemplate.Device.Devices;

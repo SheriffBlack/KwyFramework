@@ -1,5 +1,5 @@
-using Kwy.Device.Abstractions.PLC;
-using Kwy.Device.Core.PLC;
+﻿using Kwy.Device.Plc.Abstractions;
+using Kwy.Device.Plc.Core;
 using Xunit;
 
 namespace Kwy.Device.Io.Tests;

@@ -21,6 +21,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Licensing.Abstractions\Kwy.Licensing.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Plc.Abstractions\Kwy.Device.Plc.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Plc.Core\Kwy.Device.Plc.Core.csproj" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
   </ItemGroup>
 

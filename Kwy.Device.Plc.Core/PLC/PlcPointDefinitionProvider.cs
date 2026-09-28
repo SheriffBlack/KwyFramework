@@ -1,6 +1,6 @@
-using Kwy.Device.Abstractions.PLC;
+﻿using Kwy.Device.Plc.Abstractions;
 
-namespace Kwy.Device.Core.PLC;
+namespace Kwy.Device.Plc.Core;
 
 /// <summary>
 /// PLC 点位定义的只读查询实现。

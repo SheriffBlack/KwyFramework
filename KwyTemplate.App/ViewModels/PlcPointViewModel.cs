@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.Windows.Threading;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.PLC;
+using Kwy.Device.Plc.Abstractions;
 using Kwy.MVVM.Core;
 using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Components.Dialogs;

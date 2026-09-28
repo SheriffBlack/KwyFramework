@@ -14,6 +14,8 @@
     <ProjectReference Include="..\Kwy.Communicate.TcpSerial\Kwy.Communicate.TcpSerial.csproj" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Plc.Abstractions\Kwy.Device.Plc.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Plc.Core\Kwy.Device.Plc.Core.csproj" />
     <ProjectReference Include="..\Kwy.Device.Instruments\Kwy.Device.Instruments.csproj" />
     <ProjectReference Include="..\Kwy.Device.IoCards.Advantech\Kwy.Device.IoCards.Advantech.csproj" />
     <ProjectReference Include="..\Kwy.Files\Kwy.Files.csproj" />

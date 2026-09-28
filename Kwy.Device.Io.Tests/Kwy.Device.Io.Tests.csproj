@@ -17,6 +17,8 @@
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
     <ProjectReference Include="..\Kwy.Device.Io.Abstractions\Kwy.Device.Io.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Io.Core\Kwy.Device.Io.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Plc.Abstractions\Kwy.Device.Plc.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Plc.Core\Kwy.Device.Plc.Core.csproj" />
     <ProjectReference Include="..\Kwy.Device.IoCards.Advantech\Kwy.Device.IoCards.Advantech.csproj" />
   </ItemGroup>
 </Project>

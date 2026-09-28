@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Abstractions.PLC;
+﻿using Kwy.Device.Plc.Abstractions;
 using Kwy.Device.Abstractions;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Messaging;

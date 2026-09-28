@@ -1,5 +1,5 @@
-using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.PLC;
+﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Plc.Abstractions;
 using Kwy.Device.Core;
 using Kwy.Device.PLCs.Hsl.Licensing;
 using Kwy.Licensing.Abstractions;

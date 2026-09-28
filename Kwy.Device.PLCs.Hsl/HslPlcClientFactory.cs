@@ -1,4 +1,4 @@
-using System.IO.Ports;
+﻿using System.IO.Ports;
 using HslCommunication;
 using HslCommunication.Core;
 using HslCommunication.Core.Device;
@@ -9,7 +9,7 @@ using HslCommunication.Profinet.Omron;
 using HslCommunication.Profinet.Panasonic;
 using HslCommunication.Profinet.Siemens;
 using Kwy.Communicate.Abstractions.Enums;
-using Kwy.Device.Abstractions.PLC;
+using Kwy.Device.Plc.Abstractions;
 using Kwy.Device.PLCs.Hsl.Licensing;
 using Kwy.Licensing.Abstractions;
 

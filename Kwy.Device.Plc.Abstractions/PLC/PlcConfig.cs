@@ -1,6 +1,7 @@
+﻿using Kwy.Device.Abstractions;
 using Kwy.Communicate.Abstractions.Enums;
 
-namespace Kwy.Device.Abstractions.PLC;
+namespace Kwy.Device.Plc.Abstractions;
 
 /// <summary>
 /// PLC 连接所使用的传输方式。

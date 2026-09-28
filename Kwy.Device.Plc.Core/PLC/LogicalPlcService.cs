@@ -1,7 +1,7 @@
-using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.PLC;
+﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Plc.Abstractions;
 
-namespace Kwy.Device.Core.PLC;
+namespace Kwy.Device.Plc.Core;
 
 /// <summary>
 /// PLC 业务点位读写服务。负责把稳定点位 ID 解析为设备与物理地址，并执行权限和类型校验。

@@ -1,4 +1,5 @@
-﻿namespace Kwy.Device.Abstractions.PLC;
+﻿using Kwy.Device.Abstractions;
+namespace Kwy.Device.Plc.Abstractions;
 
 /// <summary>PLC 物理地址读取能力；业务流程应优先使用 <see cref="ILogicalPlcReader"/> 按点位 ID 读取。</summary>
 public interface IPlcReader

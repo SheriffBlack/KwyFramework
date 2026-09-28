@@ -8,7 +8,7 @@ using Kwy.Device.Abstractions;
 using Kwy.Device.Io.Abstractions;
 using Kwy.Device.Io.Core;
 using Kwy.Device.Instruments.Abstractions;
-using Kwy.Device.Abstractions.PLC;
+using Kwy.Device.Plc.Abstractions;
 using Kwy.Device.Instruments.Dcr;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Services;
