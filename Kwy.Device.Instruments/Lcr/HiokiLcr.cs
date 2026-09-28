@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using Kwy.Converter;
 using Kwy.Communicate.Abstractions;
 using Kwy.Device.Instruments.Core;
@@ -91,13 +91,13 @@ public class HiokiLcr :
         limits[testName] = new InstrumentMeasurementLimit(lowerLimit, normalizedUpperLimit, displayUnit);
     }
 
-    public HiokiLcr(string deviceId, string deviceName, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
-        : base(deviceId, deviceName, protocolConfig, factory)
+    public HiokiLcr(string deviceId, string deviceName, HiokiLcrConfig deviceParameter, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
+        : base(deviceId, deviceName, deviceParameter, protocolConfig, factory)
     {
     }
 
-    public HiokiLcr(string deviceId, string deviceName, ICommunicationClient protocol)
-        : base(deviceId, deviceName, protocol)
+    public HiokiLcr(string deviceId, string deviceName, HiokiLcrConfig deviceParameter, ICommunicationClient protocol)
+        : base(deviceId, deviceName, deviceParameter, protocol)
     {
     }
 

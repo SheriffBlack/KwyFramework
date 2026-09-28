@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
@@ -21,24 +21,27 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
 
     public IProtocolConfig ProtocolConfig { get; }
 
-    protected InstrumentBase(string deviceId, string deviceName, ICommunicationClient protocol)
+    protected InstrumentBase(string deviceId, string deviceName, IDeviceConfig deviceParameter, ICommunicationClient protocol)
         : base(deviceId, deviceName)
     {
+        ArgumentNullException.ThrowIfNull(deviceParameter);
         this.protocol = protocol ?? throw new ArgumentNullException(nameof(protocol));
         transport = protocol as IByteTransport
             ?? throw new ArgumentException("Instrument communication must support IByteTransport.", nameof(protocol));
         ProtocolConfig = protocol.Config;
-        DeviceParameter = ConfigFactory.CreateConfigFor(DeviceModel);
+        DeviceParameter = deviceParameter;
         SubscribeProtocolEvents();
     }
 
     protected InstrumentBase(
         string deviceId,
         string deviceName,
+        IDeviceConfig deviceParameter,
         IProtocolConfig protocolConfig,
         ICommunicationFactory? factory = null)
         : base(deviceId, deviceName)
     {
+        ArgumentNullException.ThrowIfNull(deviceParameter);
         ArgumentNullException.ThrowIfNull(protocolConfig);
         ArgumentNullException.ThrowIfNull(factory);
 
@@ -46,7 +49,7 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         protocol = factory.CreateClient(protocolConfig);
         transport = protocol as IByteTransport
             ?? throw new InvalidOperationException("Instrument communication must support IByteTransport.");
-        DeviceParameter = ConfigFactory.CreateConfigFor(DeviceModel);
+        DeviceParameter = deviceParameter;
         SubscribeProtocolEvents();
     }
 

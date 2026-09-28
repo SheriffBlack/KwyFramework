@@ -1,4 +1,5 @@
-using Kwy.Device.Abstractions.Camera;
+﻿using Kwy.Device.Camera.Abstractions;
+using Kwy.Device.Camera.Core;
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
 

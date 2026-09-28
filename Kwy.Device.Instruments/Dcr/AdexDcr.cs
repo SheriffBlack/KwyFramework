@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using Kwy.Communicate.Abstractions;
 using Kwy.ComponentModel;
 using Kwy.Device.Instruments.Abstractions;
@@ -70,13 +70,13 @@ public class AdexDcr :
 
     public override string DeviceModel => DefaultModel;
 
-    public AdexDcr(string deviceId, string deviceName, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
-        : base(deviceId, deviceName, protocolConfig, factory)
+    public AdexDcr(string deviceId, string deviceName, AdexDcrConfig deviceParameter, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
+        : base(deviceId, deviceName, deviceParameter, protocolConfig, factory)
     {
     }
 
-    public AdexDcr(string deviceId, string deviceName, ICommunicationClient protocol)
-        : base(deviceId, deviceName, protocol)
+    public AdexDcr(string deviceId, string deviceName, AdexDcrConfig deviceParameter, ICommunicationClient protocol)
+        : base(deviceId, deviceName, deviceParameter, protocol)
     {
     }
 

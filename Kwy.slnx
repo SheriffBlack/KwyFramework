@@ -41,24 +41,34 @@
   <Project Path="Kwy.Data.Sql.Sqlite/Kwy.Data.Sql.Sqlite.csproj" Id="90f1b2b8-b357-4840-8122-1295488f9c96" />
   <Project Path="Kwy.Data.Sql/Kwy.Data.Sql.csproj" Id="e239543a-3281-4d87-b617-175dbdb726bc" />
   <Project Path="Kwy.Device.Abstractions/Kwy.Device.Abstractions.csproj" />
+  <Project Path="Kwy.Device.Camera.Abstractions/Kwy.Device.Camera.Abstractions.csproj" />
+  <Project Path="Kwy.Device.Camera.Core/Kwy.Device.Camera.Core.csproj" />
   <Project Path="Kwy.Device.Camera.Tests/Kwy.Device.Camera.Tests.csproj" />
   <Project Path="Kwy.Device.Cameras.Basler/Kwy.Device.Cameras.Basler.csproj" Id="ede3fccf-3732-4b64-885f-e8c908441c30" />
   <Project Path="Kwy.Device.Cameras.Dahua/Kwy.Device.Cameras.Dahua.csproj" Id="648f1170-0840-4f83-8b56-a413a2686d28" />
   <Project Path="Kwy.Device.Cameras.Halcon/Kwy.Device.Cameras.Halcon.csproj" Id="14ee5c25-9d0d-4522-a960-5c1de01dc556" />
   <Project Path="Kwy.Device.Cameras.HikVision/Kwy.Device.Cameras.HikVision.csproj" Id="04cc9402-e3b3-470c-aa3e-c3ec71460964" />
   <Project Path="Kwy.Device.Core/Kwy.Device.Core.csproj" Id="48e87eba-648f-49c8-a84f-cf0a5d98b069" />
+  <Project Path="Kwy.Device.Instruments.Abstractions/Kwy.Device.Instruments.Abstractions.csproj" />
+  <Project Path="Kwy.Device.Instruments.Core/Kwy.Device.Instruments.Core.csproj" />
   <Project Path="Kwy.Device.Instruments/Kwy.Device.Instruments.csproj" />
+  <Project Path="Kwy.Device.Io.Abstractions/Kwy.Device.Io.Abstractions.csproj" />
+  <Project Path="Kwy.Device.Io.Core/Kwy.Device.Io.Core.csproj" />
   <Project Path="Kwy.Device.Io.Tests/Kwy.Device.Io.Tests.csproj" />
   <Project Path="Kwy.Device.IoCards.Advantech/Kwy.Device.IoCards.Advantech.csproj" Id="665abd38-5ef9-443c-874a-9b577da013a3" />
   <Project Path="Kwy.Device.IoCards.Leadshine/Kwy.Device.IoCards.Leadshine.csproj" Id="15aad508-1f53-4b44-a4ab-9188723d625e" />
   <Project Path="Kwy.Device.IoCards/Kwy.Device.IoCards.csproj" />
+  <Project Path="Kwy.Device.Motion.Abstractions/Kwy.Device.Motion.Abstractions.csproj" />
   <Project Path="Kwy.Device.Motion.Benchmarks/Kwy.Device.Motion.Benchmarks.csproj" />
+  <Project Path="Kwy.Device.Motion.Core/Kwy.Device.Motion.Core.csproj" />
   <Project Path="Kwy.Device.Motion.Tests/Kwy.Device.Motion.Tests.csproj" />
   <Project Path="Kwy.Device.MotionCards.Googol/Kwy.Device.MotionCards.Googol.csproj" Id="4db6d6d7-7041-4f9e-96cd-2e4e3a7a587c" />
   <Project Path="Kwy.Device.MotionCards.Leadshine/Kwy.Device.MotionCards.Leadshine.csproj" Id="ba4a18f1-456d-4b3c-8366-504becca2cc1" />
   <Project Path="Kwy.Device.MotionCards.Simulation/Kwy.Device.MotionCards.Simulation.csproj" />
   <Project Path="Kwy.Device.MotionCards.ZMotion/Kwy.Device.MotionCards.ZMotion.csproj" Id="97a0abb8-3092-41af-a5d6-c3719c91db7b" />
   <Project Path="Kwy.Device.Peripherals/Kwy.Device.Peripherals.csproj" Id="22e10305-92fd-4702-8b2f-c9e79bf6adba" />
+  <Project Path="Kwy.Device.Plc.Abstractions/Kwy.Device.Plc.Abstractions.csproj" />
+  <Project Path="Kwy.Device.Plc.Core/Kwy.Device.Plc.Core.csproj" />
   <Project Path="Kwy.Device.PLCs.Hsl/Kwy.Device.PLCs.Hsl.csproj" Id="befad0b3-1d27-4133-8c48-97e5c3a80eb8" />
   <Project Path="Kwy.Device.PLCs.IoTClient/Kwy.Device.PLCs.IoTClient.csproj" Id="492ff429-2407-438e-8a40-3f580faaeb6a" />
   <Project Path="Kwy.Device.Semiconductor.Gem/Kwy.Device.Semiconductor.Gem.csproj" />

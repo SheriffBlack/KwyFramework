@@ -1,4 +1,5 @@
-namespace Kwy.Device.Abstractions.Camera;
+﻿using Kwy.Device.Abstractions;
+namespace Kwy.Device.Camera.Abstractions;
 
 public enum CameraTransportType
 {

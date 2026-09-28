@@ -1,6 +1,7 @@
+﻿using Kwy.Device.Abstractions;
 using System.Buffers;
 
-namespace Kwy.Device.Abstractions.Camera;
+namespace Kwy.Device.Camera.Abstractions;
 
 /// <summary>
 /// 托管相机帧；像素内存独立于厂商 SDK 缓冲区。

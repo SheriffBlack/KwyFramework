@@ -1,4 +1,4 @@
-using Kwy.Device.Abstractions.Camera;
+﻿using Kwy.Device.Camera.Abstractions;
 
 namespace Kwy.Device.Cameras.HikVision;
 

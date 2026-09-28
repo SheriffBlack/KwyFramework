@@ -1,5 +1,5 @@
-﻿using Kwy.Device.Abstractions.Camera;
-using Kwy.Device.Core.Camera;
+﻿using Kwy.Device.Camera.Abstractions;
+using Kwy.Device.Camera.Core;
 using MvCameraControl;
 using System.Runtime.ExceptionServices;
 

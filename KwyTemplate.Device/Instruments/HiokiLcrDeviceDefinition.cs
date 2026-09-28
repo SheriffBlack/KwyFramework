@@ -30,13 +30,9 @@ public sealed class HiokiLcrDeviceDefinition : InstrumentDeviceDefinition
         var instrument = new HiokiLcr(
             DeviceId,
             DeviceName,
+            (HiokiLcrConfig)DeviceParameter!,
             ConnectionConfig,
             GetRequiredService<ICommunicationFactory>(services));
-        if (DeviceParameter is not null)
-        {
-            instrument.DeviceParameter = DeviceParameter;
-        }
-
         return instrument;
     }
 }

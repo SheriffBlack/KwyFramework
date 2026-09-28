@@ -22,13 +22,9 @@ public sealed class AdexDcrDeviceDefinition : InstrumentDeviceDefinition
         var instrument = new AdexDcr(
             DeviceId,
             DeviceName,
+            (AdexDcrConfig)DeviceParameter!,
             ConnectionConfig,
             GetRequiredService<ICommunicationFactory>(services));
-        if (DeviceParameter is not null)
-        {
-            instrument.DeviceParameter = DeviceParameter;
-        }
-
         return instrument;
     }
 }

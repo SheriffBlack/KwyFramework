@@ -1,7 +1,8 @@
-using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.Camera;
+﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Core;
+using Kwy.Device.Camera.Abstractions;
 
-namespace Kwy.Device.Core.Camera;
+namespace Kwy.Device.Camera.Core;
 
 /// <summary>提供单飞采集生命周期与托管帧发布能力的相机基类。</summary>
 public abstract class CameraBase : DeviceBase, ICameraDevice, IFrameSource

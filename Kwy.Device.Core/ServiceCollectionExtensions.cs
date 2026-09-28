@@ -1,6 +1,4 @@
 ﻿using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.Camera;
-using Kwy.Device.Core.Camera;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -13,14 +11,6 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton<IDeviceRegistry, DeviceRegistry>();
-        return services;
-    }
-
-    public static IServiceCollection AddCameraServices(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.AddDeviceCore();
-        services.TryAddSingleton<ICameraRegistry, CameraRegistry>();
         return services;
     }
 

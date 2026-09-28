@@ -1,4 +1,5 @@
 ﻿using Kwy.Communicate.Abstractions;
+using Kwy.Device.Abstractions;
 using Kwy.Device.Instruments.Abstractions;
 using Kwy.Device.Instruments.Core;
 
@@ -13,13 +14,13 @@ public class ZX :
     public override string DeviceModel => DefaultModel;
 
 
-    public ZX(string deviceId, string deviceName, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
-    : base(deviceId, deviceName, protocolConfig, factory)
+    public ZX(string deviceId, string deviceName, IDeviceConfig deviceParameter, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
+    : base(deviceId, deviceName, deviceParameter, protocolConfig, factory)
     {
     }
 
-    public ZX(string deviceId, string deviceName, ICommunicationClient protocol)
-        : base(deviceId, deviceName, protocol)
+    public ZX(string deviceId, string deviceName, IDeviceConfig deviceParameter, ICommunicationClient protocol)
+        : base(deviceId, deviceName, deviceParameter, protocol)
     {
     }
 
