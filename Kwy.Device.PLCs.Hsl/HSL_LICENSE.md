@@ -13,7 +13,7 @@ Authorization.SetAuthorizationCode("e0397905-7455-4533-8c7a-3ec89b68b2a7");
 创建 HSL PLC 客户端前，模块会自动执行一次默认授权。业务项目只需要正常注册和连接 PLC：
 
 ```csharp
-services.AddKwyHslPlc(
+services.AddHslPlc(
     deviceId: "PLC.Main",
     deviceName: "主 PLC",
     configure: options =>

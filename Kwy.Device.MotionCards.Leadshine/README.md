@@ -20,10 +20,10 @@
 ## 配置
 
 ```csharp
-services.AddKwyDeviceCore();
-services.AddKwyMotionServices();
+services.AddDeviceCore();
+services.AddMotionServices();
 
-services.AddKwyLeadshineMotionCard(options =>
+services.AddLeadshineMotionCard(options =>
 {
     options.DeviceId = "Motion.Leadshine";
     options.CardNo = 0;

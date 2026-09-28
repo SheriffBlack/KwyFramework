@@ -30,7 +30,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddKwyHslPlc(
+    public static IServiceCollection AddHslPlc(
         this IServiceCollection services,
         string deviceId,
         string deviceName,
@@ -41,7 +41,7 @@ public static class ServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(deviceName);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddKwyDeviceCore();
+        services.AddDeviceCore();
 
         var config = new HslPlcConfig();
         configure(config);

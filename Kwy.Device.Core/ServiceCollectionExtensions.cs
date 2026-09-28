@@ -14,7 +14,7 @@ namespace Kwy.Device.Core;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddKwyDeviceCore(
+    public static IServiceCollection AddDeviceCore(
         this IServiceCollection services,
         Action<IoStateMonitorOptions>? configureIoMonitor = null)
     {
@@ -41,7 +41,7 @@ public static class ServiceCollectionExtensions
     /// 注册设备的统一 IO 点位定义目录。
     /// 调用方在连接完成后将同一目录传给 <see cref="IIoStateMonitor.Initialize"/>，由监视器校验实际设备与通道。
     /// </summary>
-    public static IServiceCollection AddKwyIoPointDefinitions(
+    public static IServiceCollection AddIoPointDefinitions(
         this IServiceCollection services,
         IEnumerable<IoPointDefinition> definitions)
     {
@@ -52,7 +52,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddKwyMotionStateMonitor(
+    public static IServiceCollection AddMotionStateMonitor(
         this IServiceCollection services,
         Action<MotionStateMonitorOptions>? configure = null)
     {
@@ -69,7 +69,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddKwyPlcPointDefinitions(
+    public static IServiceCollection AddPlcPointDefinitions(
         this IServiceCollection services,
         IEnumerable<PlcPointDefinition> points)
     {
@@ -88,7 +88,7 @@ public static class ServiceCollectionExtensions
     /// 注册设备级业务轴定义。
     /// 应在注册运动卡前或后调用一次；同一 <see cref="AxisDefinition"/> 集合供业务轴执行、HMI、配置校验和运动组共同使用。
     /// </summary>
-    public static IServiceCollection AddKwyAxisDefinitions(
+    public static IServiceCollection AddAxisDefinitions(
         this IServiceCollection services,
         IEnumerable<AxisDefinition> definitions)
     {
@@ -98,7 +98,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddKwyMotionServices(
+    public static IServiceCollection AddMotionServices(
         this IServiceCollection services,
         Action<MotionAdmissionOptions>? configureAdmission = null)
     {
@@ -109,11 +109,6 @@ public static class ServiceCollectionExtensions
 
         services.TryAddSingleton(admissionOptions);
         services.TryAddSingleton<IMotionRuntimeRegistry, MotionRuntimeRegistry>();
-        // 兼容当前厂商卡仍携带通用轴定义的过渡期。设备项目应通过 AddKwyAxisDefinitions 注册显式定义；
-        // 后注册的显式 Provider 会成为业务解析与校验使用的最终实例。
-        services.TryAddSingleton<IAxisDefinitionProvider>(provider => new AxisDefinitionProvider(
-            provider.GetRequiredService<IMotionRuntimeRegistry>().Runtimes
-                .SelectMany(runtime => (runtime.Card as IAxisChannelDefinitionProvider)?.Axes ?? [])));
         services.TryAddSingleton<IMotionStateMonitor>(provider =>
             provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().StateMonitor);
         services.TryAddSingleton<IMotionStateProvider>(provider => provider.GetRequiredService<IMotionStateMonitor>());
@@ -158,7 +153,7 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>注册启动期运动组配置、配置校验与自动模式门禁。</summary>
-    public static IServiceCollection AddKwyMotionGroups(
+    public static IServiceCollection AddMotionGroups(
         this IServiceCollection services,
         IEnumerable<MotionGroupDefinition> groups,
         IEnumerable<IoPointDefinition>? ioPoints = null)
@@ -180,7 +175,7 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>注册虚拟轴、电子齿轮与电子凸轮的设备配置定义。</summary>
-    public static IServiceCollection AddKwyMotionSynchronizations(
+    public static IServiceCollection AddMotionSynchronizations(
         this IServiceCollection services,
         IEnumerable<VirtualAxisDefinition>? virtualAxes = null,
         IEnumerable<ElectronicGearDefinition>? electronicGears = null,
@@ -203,7 +198,7 @@ public static class ServiceCollectionExtensions
     /// 注册空间坐标与机构运动入口。
     /// 调用方需额外注册对应机构的 IKinematicsSolver；框架不假设任何六轴机构的几何尺寸或逆解公式。
     /// </summary>
-    public static IServiceCollection AddKwySpatialMotion(
+    public static IServiceCollection AddSpatialMotion(
         this IServiceCollection services,
         IEnumerable<CoordinateFrameDefinition> coordinateFrames,
         IEnumerable<KinematicMechanismDefinition> mechanisms)
@@ -248,7 +243,7 @@ public static class ServiceCollectionExtensions
     /// 注册离线规划辅助能力，用于仿真、配方预检和时间估算。
     /// 这些服务不会驱动控制器周期性下发点位；连续轮廓应由厂商原生程序执行。
     /// </summary>
-    public static IServiceCollection AddKwyOfflineMotionPlanning(this IServiceCollection services)
+    public static IServiceCollection AddOfflineMotionPlanning(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton<IJointTrajectoryTimeParameterizer, JointTrajectoryTimeParameterizer>();

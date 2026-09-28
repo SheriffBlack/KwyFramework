@@ -7,7 +7,7 @@ namespace Kwy.Device.MotionCards.Googol;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddKwyGoogolMotionCard(
+    public static IServiceCollection AddGoogolMotionCard(
         this IServiceCollection services,
         Action<GoogolMotionCardConfig>? configure = null,
         Action<MotionStateMonitorOptions>? configureStateMonitor = null)

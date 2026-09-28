@@ -113,7 +113,7 @@ Kwy.Device.MotionCards.*
 1. 先阅读本文的实时边界、安全策略和三条执行路径；
 2. 从 `Axes/AxisDefinition.cs` 建立业务轴、单位、限位、回零和轴级约束；
 3. 从 `Groups/MotionGroupModels.cs` 建立插补轴顺序和多轴禁入区；
-4. 在项目启动处注册 `AddKwyAxisDefinitions(...)`、厂商卡、`AddKwyMotionServices(...)`、`AddKwyMotionGroups(...)`，再接入自动模式门禁；
+4. 在项目启动处注册 `AddAxisDefinitions(...)`、厂商卡、`AddMotionServices(...)`、`AddMotionGroups(...)`，再接入自动模式门禁；
 5. 工艺代码仅注入 `IBusinessAxisMotionExecutor`、`IMotionGroupExecutor` 或 `IControllerMotionProgramService`。
 
 `Kinematics/OfflinePlanning` 中的代码仅服务于仿真、配方预检和预计时间；它不是控制器实时轨迹内核。不要因为目录名称相近而把它用于运行期点流控制。
@@ -135,7 +135,7 @@ IAxisChannelDefinitionProvider
 IMotionCard / IAxisMotionController
 ```
 
-工艺、配方、HMI 与运动组使用 `axisId`；`short channel` 只允许出现在 Core 物理运行时和厂商适配器中。设备项目应通过 `AddKwyAxisDefinitions(...)` 注册唯一的 `AxisDefinition[]`；该目录是业务解析与启动校验的唯一来源。当前厂商卡的轴定义集合仅保留为迁移期的通道能力桥接，用于校验设备级定义引用的通道确实由该控制器提供；不得再在业务层直接使用它。
+工艺、配方、HMI 与运动组使用 `axisId`；`short channel` 只允许出现在 Core 物理运行时和厂商适配器中。设备项目必须通过 `AddAxisDefinitions(...)` 注册唯一的 `AxisDefinition[]`；该目录是业务解析与启动校验的唯一来源。厂商卡构造时按 `DeviceId` 筛选此目录，并在卡内部建立 `channel → AxisDefinition` 映射，用于工程单位换算与硬件通道校验；厂商配置不得再保存通用轴定义。
 
 ## 4. 物理能力接口
 
@@ -248,7 +248,7 @@ Valid -> Invalidated
 
 Core 可以进行静态坐标变换、TCP/工件偏移、逆解候选选择、关节限位、奇异性预警、路径禁入区预检和节拍估算。
 
-`AddKwyOfflineMotionPlanning()` 注册的时间参数化、雅可比速度分析只用于仿真、配方预检、预计时间和风险提示；它们不向控制器周期性下发速度或位置。
+`AddOfflineMotionPlanning()` 注册的时间参数化、雅可比速度分析只用于仿真、配方预检、预计时间和风险提示；它们不向控制器周期性下发速度或位置。
 
 | 能力 | Core 可做 | 必须由实时域做 |
 | --- | --- | --- |
@@ -332,7 +332,7 @@ Core 可以进行静态坐标变换、TCP/工件偏移、逆解候选选择、�
 - 同步关系绑定同一控制器且控制器声明对应原生能力；
 - 配置错误时禁止自动模式，而不是运行到该动作才报错。
 
-调用 `AddKwyMotionGroups(...)` 后，`IMotionAutoModeGate` 会进入标准设备流程：`EquipmentModeService` 切换到 `Auto`、`DryRun` 或 `Production` 时先校验；`EquipmentProcessController` 的初始化、启动和恢复运行前也会再次校验。标准流程会先确认控制器在线并启动每张卡的状态监视器；`StartAsync` 成功返回前必须完成首帧快照采集。若校验失败，设备不会进入 `Ready` 或 `Running`，并转入需要人工处理的状态。项目若绕过这些标准入口，必须在自己的等价入口显式调用该门禁。
+调用 `AddMotionGroups(...)` 后，`IMotionAutoModeGate` 会进入标准设备流程：`EquipmentModeService` 切换到 `Auto`、`DryRun` 或 `Production` 时先校验；`EquipmentProcessController` 的初始化、启动和恢复运行前也会再次校验。标准流程会先确认控制器在线并启动每张卡的状态监视器；`StartAsync` 成功返回前必须完成首帧快照采集。若校验失败，设备不会进入 `Ready` 或 `Running`，并转入需要人工处理的状态。项目若绕过这些标准入口，必须在自己的等价入口显式调用该门禁。
 
 ## 13. 厂商适配器规范
 

@@ -24,7 +24,7 @@ public sealed class DeviceModule : IModule
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddKwyDeviceCore();
+        services.AddDeviceCore();
         services.TryAddSingleton<ICommunicationFactory>(_ =>
         {
             var factory = new CommunicationFactory();

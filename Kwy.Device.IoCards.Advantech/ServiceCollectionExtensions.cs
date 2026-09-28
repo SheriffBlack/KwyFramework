@@ -5,7 +5,7 @@ namespace Kwy.Device.IoCards.Advantech;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddKwyAdvantechIoCard(
+    public static IServiceCollection AddAdvantechIoCard(
         this IServiceCollection services,
         Action<AdvantechIoCardConfig>? configure = null)
     {

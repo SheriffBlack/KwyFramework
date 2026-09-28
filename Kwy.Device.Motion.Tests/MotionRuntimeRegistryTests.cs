@@ -14,10 +14,10 @@ public sealed class MotionRuntimeRegistryTests
     public void MultipleCards_AreResolvedByDeviceId()
     {
         var services = new ServiceCollection();
-        services.AddKwyMotionServices();
-        services.AddKwyAxisDefinitions([CreateAxis("Motion.Googol"), CreateAxis("Motion.Leadshine")]);
-        services.AddKwyGoogolMotionCard(config => ConfigureAxis(config, "Motion.Googol"));
-        services.AddKwyLeadshineMotionCard(config => ConfigureAxis(config, "Motion.Leadshine"));
+        services.AddMotionServices();
+        services.AddAxisDefinitions([CreateAxis("Motion.Googol"), CreateAxis("Motion.Leadshine")]);
+        services.AddGoogolMotionCard(config => ConfigureAxis(config, "Motion.Googol"));
+        services.AddLeadshineMotionCard(config => ConfigureAxis(config, "Motion.Leadshine"));
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IMotionRuntimeRegistry registry = provider.GetRequiredService<IMotionRuntimeRegistry>();
@@ -35,9 +35,9 @@ public sealed class MotionRuntimeRegistryTests
     public void SingleCard_KeepsUnkeyedExecutorConvenience()
     {
         var services = new ServiceCollection();
-        services.AddKwyMotionServices();
-        services.AddKwyAxisDefinitions([CreateAxis("Motion.Main")]);
-        services.AddKwyGoogolMotionCard(config => ConfigureAxis(config, "Motion.Main"));
+        services.AddMotionServices();
+        services.AddAxisDefinitions([CreateAxis("Motion.Main")]);
+        services.AddGoogolMotionCard(config => ConfigureAxis(config, "Motion.Main"));
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IMotionRuntimeRegistry registry = provider.GetRequiredService<IMotionRuntimeRegistry>();
@@ -51,10 +51,10 @@ public sealed class MotionRuntimeRegistryTests
     public void AutoModeGate_RejectsOfflineMotionController()
     {
         var services = new ServiceCollection();
-        services.AddKwyMotionServices();
-        services.AddKwyAxisDefinitions([CreateAxis("Motion.Simulation")]);
-        services.AddKwySimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
-        services.AddKwyMotionGroups([]);
+        services.AddMotionServices();
+        services.AddAxisDefinitions([CreateAxis("Motion.Simulation")]);
+        services.AddSimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
+        services.AddMotionGroups([]);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IMotionAutoModeGate gate = provider.GetRequiredService<IMotionAutoModeGate>();
@@ -67,10 +67,10 @@ public sealed class MotionRuntimeRegistryTests
     public async Task AutoModeGate_RejectsStoppedStateMonitor()
     {
         var services = new ServiceCollection();
-        services.AddKwyMotionServices();
-        services.AddKwyAxisDefinitions([CreateAxis("Motion.Simulation")]);
-        services.AddKwySimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
-        services.AddKwyMotionGroups([]);
+        services.AddMotionServices();
+        services.AddAxisDefinitions([CreateAxis("Motion.Simulation")]);
+        services.AddSimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
+        services.AddMotionGroups([]);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         SimulationMotionCardDevice card = provider.GetRequiredService<SimulationMotionCardDevice>();

@@ -160,10 +160,10 @@ config.CoordinateSystems.Add(new GoogolCoordinateSystemConfig
 ## IOC 注册
 
 ```csharp
-services.AddKwyDeviceCore();
-services.AddKwyMotionServices();
+services.AddDeviceCore();
+services.AddMotionServices();
 
-services.AddKwyGoogolMotionCard(options =>
+services.AddGoogolMotionCard(options =>
 {
     options.DeviceId = "Motion.Googol";
     options.CardNo = 0;
@@ -193,7 +193,7 @@ services.AddKwyGoogolMotionCard(options =>
 });
 ```
 
-`AddKwyMotionServices()` 注册安全检查、运行时注册表、单卡便捷入口和命名点位服务；`AddKwyGoogolMotionCard()` 为该固高卡注册独立的状态监控器与轴执行器。只使用厂商底层接口时可以不调用 `AddKwyMotionServices()`。
+`AddMotionServices()` 注册安全检查、运行时注册表、单卡便捷入口和命名点位服务；`AddGoogolMotionCard()` 为该固高卡注册独立的状态监控器与轴执行器。只使用厂商底层接口时可以不调用 `AddMotionServices()`。
 
 固高当前使用 `GT_GetDi` / `GT_GetDo` 的单个 32 位公共 IO 镜像，因此 `DiChannelCount` 和 `DoChannelCount` 最大为 32。Kwy 的 `ulong` 快照是统一容器，不会把不存在的 32..63 通道映射回 0..31。
 

@@ -6,7 +6,7 @@ namespace Kwy.Device.MotionCards.Simulation;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddKwySimulationMotionCard(
+    public static IServiceCollection AddSimulationMotionCard(
         this IServiceCollection services,
         Action<SimulationMotionCardConfig>? configure = null,
         Action<MotionStateMonitorOptions>? configureStateMonitor = null)

@@ -87,7 +87,7 @@ await ioCard.DisconnectAsync();
 业务项目可以直接注册 Advantech IO 卡：
 
 ```csharp
-services.AddKwyAdvantechIoCard(options =>
+services.AddAdvantechIoCard(options =>
 {
     options.DeviceDescription = "PCI-1730,BID#0";
     options.Model = "PCI-1730";

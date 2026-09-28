@@ -14,9 +14,9 @@
 ## TCP 连接示例
 
 ```csharp
-services.AddKwyDeviceCore();
+services.AddDeviceCore();
 
-services.AddKwyHslPlc(
+services.AddHslPlc(
     deviceId: "PLC.Main",
     deviceName: "主 PLC",
     configure: options =>
@@ -38,7 +38,7 @@ services.AddKwyHslPlc(
 ## 串口 RTU 连接示例
 
 ```csharp
-services.AddKwyHslPlc(
+services.AddHslPlc(
     deviceId: "PLC.Main",
     deviceName: "主 PLC",
     configure: options =>
@@ -85,7 +85,7 @@ await plc.ConnectAsync(cancellationToken);
 如果通过 DI 注册：
 
 ```csharp
-services.AddKwyHslPlc(
+services.AddHslPlc(
     deviceId: "PLC.Main",
     deviceName: "松下 AFPXHC40T",
     configure: options =>

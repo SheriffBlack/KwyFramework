@@ -154,7 +154,7 @@ public sealed class StationService
 }
 ```
 
-新项目应通过 `AddKwyDeviceCore()` 注册 `IIoStateMonitor`，再由 DI 注入使用，便于测试、仿真和多站点隔离。
+新项目应通过 `AddDeviceCore()` 注册 `IIoStateMonitor`，再由 DI 注入使用，便于测试、仿真和多站点隔离。
 
 ## Motion 能力拆分
 
@@ -584,9 +584,9 @@ if (!result.IsRecovered)
 注册示例：
 
 ```csharp
-services.AddKwyDeviceCore();
+services.AddDeviceCore();
 
-services.AddKwyHslPlc(
+services.AddHslPlc(
     deviceId: "MainPlc",
     deviceName: "主 PLC",
     configure: options =>
@@ -628,7 +628,7 @@ var result = await recoveryService.RecoverAsync(
 Core 注册：
 
 ```csharp
-services.AddKwyDeviceCore();
+services.AddDeviceCore();
 ```
 
 它会注册：
@@ -679,7 +679,7 @@ flowchart LR
 注册示例：
 
 ```csharp
-services.AddKwyDeviceCore();
+services.AddDeviceCore();
 services.AddSingleton<ISecsClient>(secsClient);
 services.AddSingleton<GemRegistry>();
 services.AddSingleton<IGemEquipment, GemEquipmentService>();
@@ -736,5 +736,5 @@ services.AddKwyDeviceGemBridge(options =>
 4. 对外只暴露 Kwy 抽象接口。
 5. 如果设备同时具备多种能力，可以实现多个能力接口。
 6. 如果设备需要恢复闭环，提供 `IDeviceStateSynchronizer` 和 `IDeviceSafetyGuard` 实现。
-7. 在厂商项目中提供 `AddKwyXxxDevice(...)` IOC 注册扩展。
+7. 在厂商项目中提供 `AddXxxDevice(...)` IOC 注册扩展。
 8. 在文档中说明硬件驱动、配置参数、生命周期、心跳、状态同步、安全联锁和资源释放。

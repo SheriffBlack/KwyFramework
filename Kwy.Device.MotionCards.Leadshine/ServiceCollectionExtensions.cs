@@ -7,7 +7,7 @@ namespace Kwy.Device.MotionCards.Leadshine;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddKwyLeadshineMotionCard(
+    public static IServiceCollection AddLeadshineMotionCard(
         this IServiceCollection services,
         Action<LeadshineMotionCardConfig>? configure = null,
         Action<MotionStateMonitorOptions>? configureStateMonitor = null)

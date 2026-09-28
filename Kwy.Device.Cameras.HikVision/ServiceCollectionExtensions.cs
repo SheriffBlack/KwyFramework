@@ -7,7 +7,7 @@ namespace Kwy.Device.Cameras.HikVision;
 public static class ServiceCollectionExtensions
 {
     /// <summary>Registers one HikVision camera. Call repeatedly for multiple cameras.</summary>
-    public static IServiceCollection AddKwyHikVisionCamera(
+    public static IServiceCollection AddHikVisionCamera(
         this IServiceCollection services,
         Action<HikCameraConfig> configure)
     {
@@ -18,7 +18,7 @@ public static class ServiceCollectionExtensions
         configure(config);
         config.ValidateAndThrow();
 
-        services.AddKwyDeviceCore();
+        services.AddDeviceCore();
         services.AddSingleton<ICameraDevice>(_ => new HikCameraDevice(config));
         return services;
     }
