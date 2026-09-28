@@ -1,6 +1,6 @@
 ﻿using Kwy.MVVM.Core;
 using Kwy.MVVM.Messaging;
-using Kwy.Device.Abstractions.Instrument;
+using Kwy.Device.Instruments.Abstractions;
 using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Components.Logging;
 using Kwy.UI.WPF.Components.Toasts;

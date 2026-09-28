@@ -1,6 +1,6 @@
 ﻿using Kwy.Communicate.Abstractions;
-using Kwy.Device.Abstractions.Instrument;
-using Kwy.Device.Core.Instrument;
+using Kwy.Device.Instruments.Abstractions;
+using Kwy.Device.Instruments.Core;
 
 namespace Kwy.Device.Instruments.Lcr;
 

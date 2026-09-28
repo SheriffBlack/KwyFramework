@@ -1,4 +1,4 @@
-namespace Kwy.Device.Abstractions.Instrument;
+namespace Kwy.Device.Instruments.Abstractions;
 
 /// <summary>
 /// 仪表校正能力接口。

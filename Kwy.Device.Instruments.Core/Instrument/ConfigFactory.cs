@@ -1,7 +1,7 @@
 ﻿using Kwy.Device.Abstractions;
 using System.Reflection;
 
-namespace Kwy.Device.Core.Instrument;
+namespace Kwy.Device.Instruments.Core;
 
 public class ConfigFactory
 {

@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using Kwy.ComponentModel;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.IO;
-using Kwy.Device.Abstractions.Instrument;
+using Kwy.Device.Instruments.Abstractions;
 using Kwy.Device.Abstractions.PLC;
 using Kwy.Device.Core.PLC;
 using KwyTemplate.Contracts.Localization;

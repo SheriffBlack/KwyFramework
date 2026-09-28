@@ -1,4 +1,4 @@
-using Kwy.Device.Abstractions.Instrument;
+using Kwy.Device.Instruments.Abstractions;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using KwyTemplate.App.Models;

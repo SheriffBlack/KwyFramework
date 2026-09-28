@@ -1,4 +1,6 @@
-namespace Kwy.Device.Abstractions.Instrument;
+using Kwy.Device.Abstractions;
+
+namespace Kwy.Device.Instruments.Abstractions;
 
 public interface ICommandInstrument
 {

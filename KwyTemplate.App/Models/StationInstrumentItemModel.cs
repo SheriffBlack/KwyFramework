@@ -1,5 +1,5 @@
 using System.Globalization;
-using Kwy.Device.Abstractions.Instrument;
+using Kwy.Device.Instruments.Abstractions;
 using Kwy.MVVM.Core;
 using KwyTemplate.Flow.DataDeals;
 

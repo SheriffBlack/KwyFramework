@@ -2,10 +2,11 @@ using System.Buffers;
 using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.Instrument;
+using Kwy.Device.Core;
+using Kwy.Device.Instruments.Abstractions;
 using System.Text;
 
-namespace Kwy.Device.Core.Instrument;
+namespace Kwy.Device.Instruments.Core;
 
 /// <summary>
 /// Base class for byte-transport instruments. All command, query, trigger, and result operations are serialized.

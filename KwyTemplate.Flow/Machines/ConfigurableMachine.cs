@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Kwy.Device.Abstractions.Instrument;
+using Kwy.Device.Instruments.Abstractions;
 using Kwy.Device.Abstractions.PLC;
 using Kwy.Device.Abstractions.IO;
 using Kwy.Device.Core.IO;

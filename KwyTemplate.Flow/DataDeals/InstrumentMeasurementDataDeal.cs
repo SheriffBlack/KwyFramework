@@ -1,4 +1,4 @@
-using Kwy.Device.Abstractions.Instrument;
+using Kwy.Device.Instruments.Abstractions;
 using KwyTemplate.Flow.Common;
 using KwyTemplate.Flow.Models;
 
