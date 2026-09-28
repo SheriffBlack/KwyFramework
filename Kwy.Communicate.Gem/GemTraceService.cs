@@ -1,4 +1,4 @@
-using Kwy.Communicate.Secs;
+using Secs4Net;
 
 namespace Kwy.Communicate.Gem;
 
@@ -20,12 +20,12 @@ public sealed class GemTraceService
             throw new KeyNotFoundException($"Trace {traceId} is not registered.");
         }
 
-        var values = new Dictionary<GemVid, SecsItem>();
+        var values = new Dictionary<GemVid, Item>();
         foreach (GemVid vid in trace.VariableIds)
         {
             values[vid] = registry.Variables.TryGetValue(vid.Value, out var variable)
                 ? variable.Value
-                : SecsItem.A(string.Empty);
+                : Item.A(string.Empty);
         }
 
         var sample = new GemTraceSample(traceId, sampleNumber, DateTimeOffset.Now, values);

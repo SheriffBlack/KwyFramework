@@ -23,8 +23,8 @@ Gem300
 Gem
   负责 GEM E30 的变量、事件、报警、配方和远程命令。
 
-Secs
-  负责 SECS / HSMS 消息通信。
+Gem
+  基于 Secs4Net 负责 SECS / HSMS 消息通信和 Kwy 统一通信生命周期。
 ```
 
 真实项目中，Gem300 对象状态变化通常会映射为 GEM Collection Event，再通过 SECS 上报给 Host。

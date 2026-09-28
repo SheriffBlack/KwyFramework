@@ -1,16 +1,16 @@
-using Kwy.Communicate.Secs;
+using Secs4Net;
 
 namespace Kwy.Communicate.Gem;
 
 public sealed class GemEquipmentService : IGemEquipment
 {
-    private readonly ISecsClient secsClient;
+    private readonly ISecsGemClient secsClient;
     private readonly GemRegistry registry;
     private readonly GemTraceService traceService;
     private readonly GemSpoolingService spoolingService;
 
     public GemEquipmentService(
-        ISecsClient secsClient,
+        ISecsGemClient secsClient,
         GemRegistry registry,
         GemTraceService? traceService = null,
         GemSpoolingService? spoolingService = null,
@@ -42,9 +42,14 @@ public sealed class GemEquipmentService : IGemEquipment
             await secsClient.ConnectAsync(cancellationToken);
         }
 
-        await secsClient.SendPrimaryAsync(
-            SecsMessageFactory.EstablishCommunicationRequest(LocalEndpoint.Model ?? "KWY", LocalEndpoint.SoftwareRevision ?? "1.0"),
-            cancellationToken);
+        using var request = GemMessageFactory.EstablishCommunicationsRequest(
+            LocalEndpoint.Model ?? "KWY",
+            LocalEndpoint.SoftwareRevision ?? "1.0");
+        using SecsMessage? reply = await secsClient.SendAsync(request, cancellationToken);
+        if (reply is null || reply.S != 1 || reply.F != 14)
+        {
+            throw new InvalidOperationException("Expected an S1F14 Establish Communications Acknowledge response.");
+        }
 
         CommunicationState = GemCommunicationState.Communicating;
     }
@@ -118,11 +123,17 @@ public sealed class GemEquipmentService : IGemEquipment
     {
         try
         {
-            await secsClient.SendPrimaryAsync(message, cancellationToken);
+            using SecsMessage? reply = await secsClient.SendAsync(message, cancellationToken);
+            message.Dispose();
         }
         catch when (spoolingService.Options.Enabled)
         {
             spoolingService.Enqueue(message);
+            throw;
+        }
+        catch
+        {
+            message.Dispose();
             throw;
         }
     }

@@ -1,6 +1,19 @@
 # Kwy.Communicate.Gem
 
-`Kwy.Communicate.Gem` 是 SEMI E30 GEM 行为层，基于 `Kwy.Communicate.Secs`。
+`Kwy.Communicate.Gem` 是 SEMI E30 GEM 行为层，直接使用 Secs4Net 原生消息类型。
+`SecsGemClient` 通过 `CommunicationClientBase` 接入 Kwy 统一通信生命周期。
+
+生产环境注册：
+
+```csharp
+services.AddKwyGem(new SecsGemClientConfig
+{
+    Host = "192.168.1.100",
+    Port = 5000,
+    DeviceId = 0,
+    IsActive = true
+});
+```
 
 当前模块提供：
 

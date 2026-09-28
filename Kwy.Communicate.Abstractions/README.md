@@ -96,9 +96,8 @@ Kwy.Communicate.*
 | `Kwy.Communicate.NI` | `GpibConfig`、字节流、命令查询 | 当前实现 |
 | `Kwy.Communicate.OpcUa` | `OpcUaConfig`、节点读写、订阅消息 | 当前实现 |
 | `Kwy.Communicate.FMdb` | `MdbConfig`、异步 Modbus 领域操作 | 其他分支 / 扩展模块 |
-| `Kwy.Communicate.Secs` | HSMS/SECS-II 配置、消息、`SecsItem`、`ISecsClient` | 预留基础层 |
-| `Kwy.Communicate.Secs.Secs4Net` | Secs4Net 适配为 `ISecsClient` | 预留适配层 |
-| `Kwy.Communicate.Gem` | SEMI E30 通信/控制状态、报警、报告、变量、配方、远程命令 | 预留行为层 |
+| `Kwy.Communicate.Secs` | HSMS/SECS-II 学习用参考实现 | 非生产 |
+| `Kwy.Communicate.Gem` | Secs4Net 生产通信、Kwy 生命周期与 SEMI E30 行为 | 当前实现 |
 | `Kwy.Communicate.Gem300` | Carrier、LoadPort、SlotMap、Substrate、ProcessJob、ControlJob | 预留对象模型层 |
 | `Kwy.Communicate.Visa` | VISA 仪器通信 | 预留项目 |
 
@@ -135,13 +134,10 @@ await client.ConnectAsync(cancellationToken);
 
 ```text
 Kwy.Communicate.Secs
-  HSMS / SECS-II 基础通信与消息模型。
-
-Kwy.Communicate.Secs.Secs4Net
-  对第三方 Secs4Net 的适配；第三方类型不向上泄漏。
+  仅用于学习 HSMS / SECS-II，不进入生产依赖链。
 
 Kwy.Communicate.Gem
-  SEMI E30 行为：状态、报警、事件、报告、变量、配方、远程命令。
+  直接使用 Secs4Net，纳入 Kwy 统一生命周期，并实现 SEMI E30 行为。
 
 Kwy.Communicate.Gem300
   300mm 自动化对象：载具、端口、晶圆、ProcessJob、ControlJob。

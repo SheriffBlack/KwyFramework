@@ -103,8 +103,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Communicate.Grpc.Contra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Communicate.Grpc.Service", "Kwy.Communicate.Grpc.Service\Kwy.Communicate.Grpc.Service.csproj", "{5C253B0F-B499-4740-8B37-DA8E4F9BD7B6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Communicate.Secs.Secs4Net", "Kwy.Communicate.Secs.Secs4Net\Kwy.Communicate.Secs.Secs4Net.csproj", "{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Communicate.Visa", "Kwy.Communicate.Visa\Kwy.Communicate.Visa.csproj", "{1C1D4C16-1706-4A42-A9EC-A82C6D390D7B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Data.EFCore.SqlServer", "Kwy.Data.EFCore.SqlServer\Kwy.Data.EFCore.SqlServer.csproj", "{8EC01D48-F124-497C-A996-26A3E30152B7}"
@@ -807,18 +805,6 @@ Global
 		{5C253B0F-B499-4740-8B37-DA8E4F9BD7B6}.Release|x64.Build.0 = Release|Any CPU
 		{5C253B0F-B499-4740-8B37-DA8E4F9BD7B6}.Release|x86.ActiveCfg = Release|Any CPU
 		{5C253B0F-B499-4740-8B37-DA8E4F9BD7B6}.Release|x86.Build.0 = Release|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Debug|x64.Build.0 = Debug|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Debug|x86.Build.0 = Debug|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Release|x64.ActiveCfg = Release|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Release|x64.Build.0 = Release|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Release|x86.ActiveCfg = Release|Any CPU
-		{60E90E6D-18E3-40AD-A7F8-9D8929A682EF}.Release|x86.Build.0 = Release|Any CPU
 		{1C1D4C16-1706-4A42-A9EC-A82C6D390D7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1C1D4C16-1706-4A42-A9EC-A82C6D390D7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C1D4C16-1706-4A42-A9EC-A82C6D390D7B}.Debug|x64.ActiveCfg = Debug|Any CPU

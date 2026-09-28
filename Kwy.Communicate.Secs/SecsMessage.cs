@@ -8,9 +8,27 @@ public sealed record SecsMessage(
     uint SystemBytes = 0,
     string? Name = null)
 {
-    public bool IsPrimary => Function % 2 == 1;
+    public SecsMessage(
+        SecsMessageCode messageCode,
+        bool ReplyExpected = false,
+        SecsItem? Data = null,
+        uint SystemBytes = 0,
+        string? Name = null)
+        : this(
+            messageCode.Stream,
+            messageCode.Function,
+            ReplyExpected,
+            Data,
+            SystemBytes,
+            Name)
+    {
+    }
 
-    public string SxFy => $"S{Stream}F{Function}";
+    public SecsMessageCode MessageCode => new(Stream, Function);
+
+    public bool IsPrimary => MessageCode.IsPrimary;
+
+    public string SxFy => MessageCode.ToString();
 
     public SecsMessage WithSystemBytes(uint systemBytes) => this with { SystemBytes = systemBytes };
 }

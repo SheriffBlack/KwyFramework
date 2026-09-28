@@ -1,57 +1,68 @@
-using Kwy.Communicate.Secs;
+using Secs4Net;
+using static Secs4Net.Item;
 
 namespace Kwy.Communicate.Gem;
 
 public static class GemMessageFactory
 {
     public static SecsMessage AreYouThereRequest()
-        => new(1, 1, true, Name: "AreYouThereRequest");
+        => Create(1, 1, true, "AreYouThereRequest");
 
     public static SecsMessage AreYouThereResponse()
-        => new(1, 2, Name: "AreYouThereResponse");
+        => Create(1, 2, false, "AreYouThereResponse");
+
+    public static SecsMessage EstablishCommunicationsRequest(string model, string softwareRevision)
+        => Create(1, 13, true, "EstablishCommunicationsRequest", L(A(model), A(softwareRevision)));
 
     public static SecsMessage SelectedEquipmentStatusRequest(params GemVid[] vids)
-        => new(1, 3, true, SecsItem.L(vids.Select(id => SecsItem.U4(id.Value)).ToArray()), Name: "SelectedEquipmentStatusRequest");
+        => Create(1, 3, true, "SelectedEquipmentStatusRequest", L(vids.Select(id => U4(id.Value)).ToArray()));
 
     public static SecsMessage SelectedEquipmentStatusData(IEnumerable<GemVariable> variables)
-        => new(1, 4, false, SecsItem.L(variables.Select(item => item.Value).ToArray()), Name: "SelectedEquipmentStatusData");
+        => Create(1, 4, false, "SelectedEquipmentStatusData", L(variables.Select(item => item.Value).ToArray()));
 
     public static SecsMessage RemoteCommand(GemRemoteCommand command)
-        => new(2, 41, true, SecsItem.L(
-            SecsItem.A(command.CommandName),
-            SecsItem.L(command.Parameters.Select(pair => SecsItem.L(SecsItem.A(pair.Key), pair.Value)).ToArray())),
-            Name: "HostCommandSend");
+        => Create(2, 41, true, "HostCommandSend", L(
+            A(command.CommandName),
+            L(command.Parameters.Select(pair => L(A(pair.Key), pair.Value)).ToArray())));
 
     public static SecsMessage AlarmReport(GemAlarm alarm)
-        => new(5, 1, true, SecsItem.L(SecsItem.B((byte)alarm.State), SecsItem.U4(alarm.AlarmId), SecsItem.A(alarm.Text)), Name: "AlarmReportSend");
+        => Create(5, 1, true, "AlarmReportSend", L(B((byte)alarm.State), U4(alarm.AlarmId), A(alarm.Text)));
 
     public static SecsMessage EventReport(uint eventId, IReadOnlyList<GemReport> reports, GemRegistry registry)
     {
-        SecsItem[] reportItems = reports
-            .Select(report => SecsItem.L(
-                SecsItem.U4(report.ReportId),
-                SecsItem.L(report.VariableIds.Select(id => registry.Variables.TryGetValue(id, out var variable) ? variable.Value : SecsItem.A(string.Empty)).ToArray())))
+        Item[] reportItems = reports
+            .Select(report => L(
+                U4(report.ReportId),
+                L(report.VariableIds.Select(id => registry.Variables.TryGetValue(id, out var variable)
+                    ? variable.Value
+                    : A(string.Empty)).ToArray())))
             .ToArray();
 
-        return new SecsMessage(6, 11, true, SecsItem.L(SecsItem.U4(eventId), SecsItem.L(reportItems)), Name: "EventReportSend");
+        return Create(6, 11, true, "EventReportSend", L(U4(eventId), L(reportItems)));
     }
 
     public static SecsMessage TerminalMessage(GemTerminalMessage message)
-        => new(10, 1, true, SecsItem.L(SecsItem.B(message.TerminalId), SecsItem.A(message.Text)), Name: "TerminalRequest");
+        => Create(10, 1, true, "TerminalRequest", L(B(message.TerminalId), A(message.Text)));
 
     public static SecsMessage ProcessProgramLoadInquire(string ppid, uint length)
-        => new(7, 1, true, SecsItem.L(SecsItem.A(ppid), SecsItem.U4(length)), Name: "ProcessProgramLoadInquire");
+        => Create(7, 1, true, "ProcessProgramLoadInquire", L(A(ppid), U4(length)));
 
     public static SecsMessage ProcessProgramSend(GemRecipe recipe)
-        => new(7, 3, true, SecsItem.L(SecsItem.A(recipe.Ppid), recipe.Body), Name: "ProcessProgramSend");
+        => Create(7, 3, true, "ProcessProgramSend", L(A(recipe.Ppid), recipe.Body));
 
     public static SecsMessage ProcessProgramRequest(string ppid)
-        => new(7, 5, true, SecsItem.A(ppid), Name: "ProcessProgramRequest");
+        => Create(7, 5, true, "ProcessProgramRequest", A(ppid));
 
     public static SecsMessage TraceDataSend(GemTraceSample sample)
-        => new(6, 1, true, SecsItem.L(
-            SecsItem.U4(sample.TraceId),
-            SecsItem.U4(sample.SampleNumber),
-            SecsItem.L(sample.Values.Select(pair => SecsItem.L(SecsItem.U4(pair.Key.Value), pair.Value)).ToArray())),
-            Name: "TraceDataSend");
+        => Create(6, 1, true, "TraceDataSend", L(
+            U4(sample.TraceId),
+            U4(sample.SampleNumber),
+            L(sample.Values.Select(pair => L(U4(pair.Key.Value), pair.Value)).ToArray())));
+
+    private static SecsMessage Create(byte stream, byte function, bool replyExpected, string name, Item? item = null)
+        => new(stream, function, replyExpected)
+        {
+            Name = name,
+            SecsItem = item
+        };
 }

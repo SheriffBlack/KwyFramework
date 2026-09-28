@@ -563,24 +563,20 @@ GPIB 的 `KeepAliveCommand` 需要由业务根据具体仪表选择，例如支�
 
 ```text
 Kwy.Communicate.Secs
-  HSMS / SECS-II 基础层
-  负责连接配置、SECS 消息、Item 数据结构、事务收发和客户端抽象。
-
-Kwy.Communicate.Secs.Secs4Net
-  Secs4Net 适配层
-  引用 Secs4Net，实现真实 HSMS/SECS 通信，并适配为 Kwy 的 ISecsClient。
+  HSMS / SECS-II 学习用参考实现，不进入生产依赖链。
 
 Kwy.Communicate.Gem
   SEMI E30 行为层
-  负责 Communication State、Control State、Alarm、Collection Event、Report、Variable、Recipe、Remote Command、Trace、Spooling。
+  直接使用 Secs4Net 完成真实 HSMS/SECS 通信，通过 CommunicationClientBase 接入 Kwy 生命周期，
+  并负责 Communication State、Control State、Alarm、Collection Event、Report、Variable、Recipe、Remote Command、Trace、Spooling。
 
 Kwy.Communicate.Gem300
   GEM300 对象模型层
   负责 Carrier、LoadPort、SlotMap、Substrate、ProcessJob、ControlJob 等 300mm 自动化对象。
 ```
 
-当前 `Secs` 层提供 `InMemorySecsClient`，用于上层 GEM/GEM300 的开发和测试。真实 HSMS 通信由 `Kwy.Communicate.Secs.Secs4Net` 适配器实现 `ISecsClient`，这样上层 GEM/GEM300 不直接依赖第三方库。
+当前 `Secs` 项目只作为协议学习代码。真实 HSMS/SECS 通信位于 `Kwy.Communicate.Gem`，直接使用 Secs4Net 原生消息和事务上下文。
 
 当前实现已经提供半导体标准所需的核心对象模型，但不等同于 SEMI 认证。正式项目仍需要根据客户/EAP/MES 的 SML、VID/CEID/RPTID 表、Alarm 表、Recipe 规则和 GEM300 场景进行一致性测试。
 
-Secs4Net 官方说明其提供 SECS-II / HSMS-SS / GEM 的 .NET 实现，安装包为 `Secs4Net`。Kwy 只在适配器项目中引用该包，避免第三方类型泄漏到 GEM/GEM300 上层。
+Secs4Net 官方说明其提供 SECS-II / HSMS-SS / GEM 的 .NET 实现，安装包为 `Secs4Net`。生产 GEM 层直接使用其消息与事务 API。

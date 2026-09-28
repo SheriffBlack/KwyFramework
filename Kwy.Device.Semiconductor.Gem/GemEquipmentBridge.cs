@@ -1,6 +1,6 @@
 using Kwy.Communicate.Gem;
-using Kwy.Communicate.Secs;
 using Kwy.Device.Abstractions.Equipment;
+using Secs4Net;
 using System.Collections.Concurrent;
 
 namespace Kwy.Device.Semiconductor.Gem;
@@ -104,19 +104,19 @@ public sealed class GemEquipmentBridge : IGemEquipmentBridge
     private IReadOnlyList<GemVariable> GetStateVariables(EquipmentStateChangedEventArgs args)
         => new[]
         {
-            CreateVariable(options.StateVid, "EquipmentState", SecsItem.A(args.CurrentState.ToString())),
-            CreateVariable(options.PreviousStateVid, "PreviousEquipmentState", SecsItem.A(args.PreviousState.ToString())),
-            CreateVariable(options.StateReasonVid, "EquipmentStateReason", SecsItem.A(args.Reason ?? string.Empty))
+            CreateVariable(options.StateVid, "EquipmentState", Item.A(args.CurrentState.ToString())),
+            CreateVariable(options.PreviousStateVid, "PreviousEquipmentState", Item.A(args.PreviousState.ToString())),
+            CreateVariable(options.StateReasonVid, "EquipmentStateReason", Item.A(args.Reason ?? string.Empty))
         };
 
     private IReadOnlyList<GemVariable> GetEquipmentEventVariables(EquipmentEvent equipmentEvent)
         => new[]
         {
-            CreateVariable(options.EventCodeVid, "EquipmentEventCode", SecsItem.A(equipmentEvent.Code)),
-            CreateVariable(options.EventMessageVid, "EquipmentEventMessage", SecsItem.A(equipmentEvent.Message)),
-            CreateVariable(options.EventKindVid, "EquipmentEventKind", SecsItem.A(equipmentEvent.Kind.ToString())),
-            CreateVariable(options.EventSeverityVid, "EquipmentEventSeverity", SecsItem.A(equipmentEvent.Severity.ToString())),
-            CreateVariable(options.EventSourceVid, "EquipmentEventSource", SecsItem.A(equipmentEvent.Source ?? string.Empty))
+            CreateVariable(options.EventCodeVid, "EquipmentEventCode", Item.A(equipmentEvent.Code)),
+            CreateVariable(options.EventMessageVid, "EquipmentEventMessage", Item.A(equipmentEvent.Message)),
+            CreateVariable(options.EventKindVid, "EquipmentEventKind", Item.A(equipmentEvent.Kind.ToString())),
+            CreateVariable(options.EventSeverityVid, "EquipmentEventSeverity", Item.A(equipmentEvent.Severity.ToString())),
+            CreateVariable(options.EventSourceVid, "EquipmentEventSource", Item.A(equipmentEvent.Source ?? string.Empty))
         };
 
     private void EnsureEventReportRegistered(
@@ -147,7 +147,7 @@ public sealed class GemEquipmentBridge : IGemEquipmentBridge
             new[] { new GemRptid(rptid) }));
     }
 
-    private static GemVariable CreateVariable(uint id, string name, SecsItem value)
+    private static GemVariable CreateVariable(uint id, string name, Item value)
         => new(id, name, value);
 
     private void OnStateChanged(object? sender, EquipmentStateChangedEventArgs e)

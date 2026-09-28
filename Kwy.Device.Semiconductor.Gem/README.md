@@ -10,14 +10,14 @@
 flowchart LR
     Device["Kwy.Device.Abstractions"] --> Bridge["Kwy.Device.Semiconductor.Gem"]
     Gem["Kwy.Communicate.Gem"] --> Bridge
-    Secs["Kwy.Communicate.Secs / Secs4Net"] --> Gem
+    Secs["Secs4Net + Kwy lifecycle"] --> Gem
 ```
 
 ## 使用方式
 
 ```csharp
 services.AddDeviceCore();
-services.AddSingleton<ISecsClient>(secsClient);
+services.AddKwyGem(secsConfig);
 services.AddSingleton<GemRegistry>();
 services.AddSingleton<IGemEquipment, GemEquipmentService>();
 

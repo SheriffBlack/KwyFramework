@@ -1,4 +1,4 @@
-using Kwy.Communicate.Secs;
+using Secs4Net;
 
 namespace Kwy.Communicate.Gem;
 

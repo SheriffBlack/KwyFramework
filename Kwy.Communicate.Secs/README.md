@@ -1,6 +1,9 @@
 # Kwy.Communicate.Secs
 
-`Kwy.Communicate.Secs` 是 SECS / HSMS / SECS-II 基础层。
+`Kwy.Communicate.Secs` 是用于学习 SECS / HSMS / SECS-II 协议的参考实现。
+
+> 该项目不用于生产环境，也不在 `Kwy.Communicate.Gem` / `Gem300` 的生产依赖链上。
+> 实际项目请使用 `Kwy.Communicate.Gem`，其底层由 Secs4Net 实现。
 
 当前模块提供：
 
@@ -24,4 +27,19 @@ Gem300
   负责 E39/E40/E87/E90/E94 对象模型：Carrier、Substrate、ProcessJob、ControlJob。
 ```
 
-后续真实 HSMS 通信建议通过 Secs4Net adapter 实现 `ISecsClient`，避免上层 GEM/GEM300 直接依赖第三方库。
+本项目保留简化的消息、Item、会话状态和内存客户端，用于理解协议和编写教学测试。
+
+## 协议类型
+
+- `HsmsMessageType` 对应 HSMS 报头的 `SType`，用于区分 Data、Select、Linktest 等消息。
+- `SecsMessageCode` 表示一个完整的 SxFy 组合，并提供常用标准消息常量。
+- 自定义消息可以直接使用 `new SecsMessageCode(stream, function)`。
+
+```csharp
+var standardMessage = new SecsMessage(
+    SecsMessageCode.S1F1AreYouThere,
+    ReplyExpected: true);
+
+var equipmentSpecificMessage = new SecsMessage(
+    new SecsMessageCode(6, 101));
+```

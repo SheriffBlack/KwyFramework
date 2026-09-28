@@ -1,4 +1,4 @@
-using Kwy.Communicate.Secs;
+using Secs4Net;
 
 namespace Kwy.Communicate.Gem;
 
@@ -43,7 +43,7 @@ public sealed record GemAlarmHistoryItem(
 
 public sealed record GemRecipeDefinition(
     string Ppid,
-    SecsItem Body,
+    Item Body,
     GemRecipeState State = GemRecipeState.Created,
     string? Version = null,
     DateTimeOffset? UpdatedAt = null);
@@ -66,7 +66,7 @@ public sealed record GemTraceSample(
     uint TraceId,
     uint SampleNumber,
     DateTimeOffset Timestamp,
-    IReadOnlyDictionary<GemVid, SecsItem> Values);
+    IReadOnlyDictionary<GemVid, Item> Values);
 
 public sealed record GemSpooledMessage(
     long Sequence,
