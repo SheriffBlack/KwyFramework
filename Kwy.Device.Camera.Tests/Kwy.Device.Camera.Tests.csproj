@@ -22,6 +22,6 @@
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
     <ProjectReference Include="..\Kwy.Device.Camera.Abstractions\Kwy.Device.Camera.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Camera.Core\Kwy.Device.Camera.Core.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Cameras.HikVision\Kwy.Device.Cameras.HikVision.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Cameras.HikVision\Kwy.Device.Camera.HikVision.csproj" />
   </ItemGroup>
 </Project>

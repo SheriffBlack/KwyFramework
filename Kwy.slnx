@@ -44,10 +44,10 @@
   <Project Path="Kwy.Device.Camera.Abstractions/Kwy.Device.Camera.Abstractions.csproj" />
   <Project Path="Kwy.Device.Camera.Core/Kwy.Device.Camera.Core.csproj" />
   <Project Path="Kwy.Device.Camera.Tests/Kwy.Device.Camera.Tests.csproj" />
-  <Project Path="Kwy.Device.Cameras.Basler/Kwy.Device.Cameras.Basler.csproj" Id="ede3fccf-3732-4b64-885f-e8c908441c30" />
-  <Project Path="Kwy.Device.Cameras.Dahua/Kwy.Device.Cameras.Dahua.csproj" Id="648f1170-0840-4f83-8b56-a413a2686d28" />
-  <Project Path="Kwy.Device.Cameras.Halcon/Kwy.Device.Cameras.Halcon.csproj" Id="14ee5c25-9d0d-4522-a960-5c1de01dc556" />
-  <Project Path="Kwy.Device.Cameras.HikVision/Kwy.Device.Cameras.HikVision.csproj" Id="04cc9402-e3b3-470c-aa3e-c3ec71460964" />
+  <Project Path="Kwy.Device.Cameras.Basler/Kwy.Device.Camera.Basler.csproj" Id="ede3fccf-3732-4b64-885f-e8c908441c30" />
+  <Project Path="Kwy.Device.Cameras.Dahua/Kwy.Device.Camera.Dahua.csproj" Id="648f1170-0840-4f83-8b56-a413a2686d28" />
+  <Project Path="Kwy.Device.Cameras.Halcon/Kwy.Device.Camera.Halcon.csproj" Id="14ee5c25-9d0d-4522-a960-5c1de01dc556" />
+  <Project Path="Kwy.Device.Cameras.HikVision/Kwy.Device.Camera.HikVision.csproj" Id="04cc9402-e3b3-470c-aa3e-c3ec71460964" />
   <Project Path="Kwy.Device.Core/Kwy.Device.Core.csproj" Id="48e87eba-648f-49c8-a84f-cf0a5d98b069" />
   <Project Path="Kwy.Device.Instruments.Abstractions/Kwy.Device.Instruments.Abstractions.csproj" />
   <Project Path="Kwy.Device.Instruments.Core/Kwy.Device.Instruments.Core.csproj" />
