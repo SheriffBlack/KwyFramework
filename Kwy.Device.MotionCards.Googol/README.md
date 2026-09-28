@@ -104,30 +104,33 @@ var config = new GoogolMotionCardConfig
     DigitalIoActiveLow = true
 };
 
-config.Axes.Add(new AxisDefinition
+var axisDefinitions = new[]
 {
-    Id = "stage.x",
-    DisplayName = "X",
-    DeviceId = "Googol-0",
-    Channel = 1,
-    Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 10_000 },
-    Limits = new AxisLimitConfig
+    new AxisDefinition
     {
-        MinimumPosition = -10,
-        MaximumPosition = 300,
-        MaximumVelocity = 200,
-        MaximumAcceleration = 1_000,
-        MaximumDeceleration = 1_000
-    },
-    Home = new AxisHomeDefinition
-    {
-        Position = 0,
-        SearchVelocity = 20,
-        Acceleration = 100,
-        Offset = 0,
-        Timeout = TimeSpan.FromSeconds(60)
+        Id = "stage.x",
+        DisplayName = "X",
+        DeviceId = "Googol-0",
+        Channel = 1,
+        Engineering = new AxisEngineeringConfig { Unit = MotionUnit.Millimeter, PulsesPerUnit = 10_000 },
+        Limits = new AxisLimitConfig
+        {
+            MinimumPosition = -10,
+            MaximumPosition = 300,
+            MaximumVelocity = 200,
+            MaximumAcceleration = 1_000,
+            MaximumDeceleration = 1_000
+        },
+        Home = new AxisHomeDefinition
+        {
+            Position = 0,
+            SearchVelocity = 20,
+            Acceleration = 100,
+            Offset = 0,
+            Timeout = TimeSpan.FromSeconds(60)
+        }
     }
-});
+};
 
 config.CoordinateSystems.Add(new GoogolCoordinateSystemConfig
 {
@@ -150,11 +153,10 @@ config.CoordinateSystems.Add(new GoogolCoordinateSystemConfig
 | `ConfigFilePath` | 固高配置文件路径，默认 `gts.cfg`。 |
 | `ResetOnConnect` | 连接时是否调用 `GT_Reset()`。 |
 | `LoadConfigOnConnect` | 连接时是否调用 `GT_LoadConfig()`。 |
-| `AxisCount` | 轴数量，默认 8。 |
+| `AxisCount` | 控制卡提供的物理轴数量，默认 8；业务轴由设备级 `AxisDefinition` 配置统一维护。 |
 | `DiChannelCount` | GPI 通道数量，默认 16。 |
 | `DoChannelCount` | GPO 通道数量，默认 16。 |
 | `DigitalIoActiveLow` | GTS 常见 IO 为低电平有效，默认 `true`。 |
-| `Axes` | 显式配置的工程轴定义；状态监视器仅轮询这些轴。未配置的物理轴不对业务层暴露。 |
 | `CoordinateSystems` | 每个坐标系的轴组合、最大合成速度、最大合成加速度和平滑时间。 |
 
 ## IOC 注册
@@ -162,20 +164,8 @@ config.CoordinateSystems.Add(new GoogolCoordinateSystemConfig
 ```csharp
 services.AddDeviceCore();
 services.AddMotionServices();
-
-services.AddGoogolMotionCard(options =>
-{
-    options.DeviceId = "Motion.Googol";
-    options.CardNo = 0;
-    options.OpenChannel = 0;
-    options.OpenParameter = 1;
-    options.Model = "GTS-800";
-    options.ConfigFilePath = "gts.cfg";
-    options.AxisCount = 8;
-    options.DiChannelCount = 16;
-    options.DoChannelCount = 16;
-    options.DigitalIoActiveLow = true;
-    options.Axes.Add(new AxisDefinition
+services.AddAxisDefinitions([
+    new AxisDefinition
     {
         Id = "stage.x",
         DisplayName = "X",
@@ -189,7 +179,21 @@ services.AddGoogolMotionCard(options =>
             Acceleration = 100,
             Timeout = TimeSpan.FromSeconds(60)
         }
-    });
+    }
+]);
+
+services.AddGoogolMotionCard(options =>
+{
+    options.DeviceId = "Motion.Googol";
+    options.CardNo = 0;
+    options.OpenChannel = 0;
+    options.OpenParameter = 1;
+    options.Model = "GTS-800";
+    options.ConfigFilePath = "gts.cfg";
+    options.AxisCount = 8;
+    options.DiChannelCount = 16;
+    options.DoChannelCount = 16;
+    options.DigitalIoActiveLow = true;
 });
 ```
 

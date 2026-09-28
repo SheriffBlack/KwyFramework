@@ -684,7 +684,7 @@ services.AddSingleton<ISecsClient>(secsClient);
 services.AddSingleton<GemRegistry>();
 services.AddSingleton<IGemEquipment, GemEquipmentService>();
 
-services.AddKwyDeviceGemBridge(options =>
+services.AddGemEquipmentBridge(options =>
 {
     options.StateChangedCeid = 1000;
     options.EventIds["RecipeApplied"] = 2101;

@@ -16,12 +16,12 @@ flowchart LR
 ## 使用方式
 
 ```csharp
-services.AddKwyDeviceCore();
+services.AddDeviceCore();
 services.AddSingleton<ISecsClient>(secsClient);
 services.AddSingleton<GemRegistry>();
 services.AddSingleton<IGemEquipment, GemEquipmentService>();
 
-services.AddKwyDeviceGemBridge(options =>
+services.AddGemEquipmentBridge(options =>
 {
     options.StateChangedCeid = 1000;
     options.EventIds["RecipeApplied"] = 2101;
@@ -29,7 +29,7 @@ services.AddKwyDeviceGemBridge(options =>
 });
 ```
 
-调用 `AddKwyDeviceGemBridge()` 后，设备层的 `IEquipmentEventSink` 会替换为 GEM 桥接实现。`IAlarmService`、`IAuditTrail`、`IEquipmentProcessController` 发布的事件会进入桥接层，并按配置映射为 GEM 上报。
+调用 `AddGemEquipmentBridge()` 后，设备层的 `IEquipmentEventSink` 会替换为 GEM 桥接实现。`IAlarmService`、`IAuditTrail`、`IEquipmentProcessController` 发布的事件会进入桥接层，并按配置映射为 GEM 上报。
 
 ## 映射规则
 

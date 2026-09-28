@@ -7,7 +7,7 @@ namespace Kwy.Device.Semiconductor.Gem;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddKwyDeviceGemBridge(
+    public static IServiceCollection AddGemEquipmentBridge(
         this IServiceCollection services,
         Action<GemEquipmentBridgeOptions>? configure = null)
     {

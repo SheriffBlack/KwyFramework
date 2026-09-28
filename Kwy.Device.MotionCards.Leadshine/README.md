@@ -23,18 +23,9 @@
 services.AddDeviceCore();
 services.AddMotionServices();
 
-services.AddLeadshineMotionCard(options =>
-{
-    options.DeviceId = "Motion.Leadshine";
-    options.CardNo = 0;
-    options.ConfigFilePath = "dmc.cfg";
-    options.ResetOnConnect = true;
-    options.LoadConfigOnConnect = true;
-    options.DiChannelCount = 16;
-    options.DoChannelCount = 16;
-    options.DigitalIoActiveLow = true;
-
-    options.Axes.Add(new AxisDefinition
+// 业务轴定义是设备级配置，不属于雷赛厂商配置。
+services.AddAxisDefinitions([
+    new AxisDefinition
     {
         Id = "stage.x",
         DisplayName = "X",
@@ -62,7 +53,19 @@ services.AddLeadshineMotionCard(options =>
             Offset = 0,
             Timeout = TimeSpan.FromSeconds(60)
         }
-    });
+    }
+]);
+
+services.AddLeadshineMotionCard(options =>
+{
+    options.DeviceId = "Motion.Leadshine";
+    options.CardNo = 0;
+    options.ConfigFilePath = "dmc.cfg";
+    options.ResetOnConnect = true;
+    options.LoadConfigOnConnect = true;
+    options.DiChannelCount = 16;
+    options.DoChannelCount = 16;
+    options.DigitalIoActiveLow = true;
     options.AxisOptions[1] = new LeadshineAxisOptions { HomeMode = 1 };
 });
 ```

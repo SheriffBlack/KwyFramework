@@ -17,7 +17,7 @@ Kwy.Device.Core
 Kwy.Device.Cameras.HikVision
   HikCameraConfig
   HikCameraDevice
-  AddKwyHikVisionCamera()
+  AddHikVisionCamera()
 ```
 
 依赖方向如下：
@@ -83,7 +83,7 @@ IFrameSource frames = registry.GetRequiredCapability<IFrameSource>("Camera.Top")
 首先注册设备基础服务和海康相机：
 
 ```csharp
-services.AddKwyHikVisionCamera(config =>
+services.AddHikVisionCamera(config =>
 {
     config.DeviceId = "Camera.Top";
     config.DeviceName = "顶部检测相机";
@@ -101,21 +101,21 @@ services.AddKwyHikVisionCamera(config =>
 });
 ```
 
-`AddKwyHikVisionCamera()` 内部会确保 `AddKwyDeviceCore()` 已注册，因此业务项目不需要为了相机重复调用。
+`AddHikVisionCamera()` 内部会确保 `AddDeviceCore()` 已注册，因此业务项目不需要为了相机重复调用。
 
 ## 注册多个相机
 
-每次调用 `AddKwyHikVisionCamera()` 注册一个独立相机实例：
+每次调用 `AddHikVisionCamera()` 注册一个独立相机实例：
 
 ```csharp
-services.AddKwyHikVisionCamera(config =>
+services.AddHikVisionCamera(config =>
 {
     config.DeviceId = "Camera.Top";
     config.DeviceName = "顶部相机";
     config.SerialNumber = "TOP-SN";
 });
 
-services.AddKwyHikVisionCamera(config =>
+services.AddHikVisionCamera(config =>
 {
     config.DeviceId = "Camera.Bottom";
     config.DeviceName = "底部相机";
@@ -264,7 +264,7 @@ await parameters.SetGainAsync(3.0, cancellationToken);
 例如：
 
 ```csharp
-services.AddKwyHikVisionCamera(config =>
+services.AddHikVisionCamera(config =>
 {
     config.DeviceId = "Camera.Top";
     config.SerialNumber = "TOP-SN";
@@ -303,12 +303,12 @@ await camera.DisconnectAsync(cancellationToken);
 Kwy.Device.Cameras.Dahua
   DahuaCameraConfig : CameraConfig
   DahuaCameraDevice : CameraBase
-  AddKwyDahuaCamera()
+  AddDahuaCamera()
 
 Kwy.Device.Cameras.Basler
   BaslerCameraConfig : CameraConfig
   BaslerCameraDevice : CameraBase
-  AddKwyBaslerCamera()
+  AddBaslerCamera()
 ```
 
 实现原则：

@@ -47,13 +47,13 @@ public sealed class CameraTests
     public void HikVisionRegistration_SupportsMultipleIndependentCameras()
     {
         var services = new ServiceCollection();
-        services.AddKwyHikVisionCamera(config =>
+        services.AddHikVisionCamera(config =>
         {
             config.DeviceId = "Camera.Top";
             config.DeviceName = "Top";
             config.SerialNumber = "TOP-SN";
         });
-        services.AddKwyHikVisionCamera(config =>
+        services.AddHikVisionCamera(config =>
         {
             config.DeviceId = "Camera.Bottom";
             config.DeviceName = "Bottom";
