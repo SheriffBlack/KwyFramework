@@ -1,9 +1,10 @@
 ﻿using Kwy.Device.MotionCard.Core;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Core.Motion.Safety;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Core.Axes;
+using Kwy.Device.MotionCard.Core.Safety;
 
-namespace Kwy.Device.MotionCard.Core.Motion;
+namespace Kwy.Device.MotionCard.Core;
 
 /// <summary>
 /// 统一装配一张物理运动卡的 Core 运行时。

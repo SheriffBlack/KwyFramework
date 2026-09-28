@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Kinematics;
 
 /// <summary>高精度空间计算使用的 double 三维向量；避免 System.Numerics.Vector3 的 float 精度损失。</summary>
 public readonly record struct Vector3D(double X, double Y, double Z)

@@ -1,9 +1,9 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Groups;
+using Kwy.Device.MotionCard.Abstractions.Kinematics;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Kinematics.Planning;
+namespace Kwy.Device.MotionCard.Core.Kinematics.Planning;
 
 /// <summary>首个规划管线：将多段笛卡尔直线转换为已校验的关节轨迹，不直接下发控制器。</summary>
 public sealed class MotionPlanningPipeline : IMotionPlanningPipeline

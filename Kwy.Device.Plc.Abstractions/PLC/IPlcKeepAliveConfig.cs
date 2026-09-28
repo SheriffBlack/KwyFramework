@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.PLC.Abstractions.PLC;
+﻿namespace Kwy.Device.PLC.Abstractions;
 
 /// <summary>
 /// PLC 协议层心跳配置。

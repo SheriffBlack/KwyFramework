@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Axes;
 
 /// <summary>物理控制卡上的轴地址；业务稳定标识必须使用 AxisDefinition.Id，而不是此地址。</summary>
 public readonly record struct AxisAddress(string DeviceId, short Channel)

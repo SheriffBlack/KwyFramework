@@ -1,10 +1,10 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
-using Kwy.Device.MotionCard.Abstractions.Motion.Operations;
-using Kwy.Device.MotionCard.Core.Motion.Safety;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Groups;
+using Kwy.Device.MotionCard.Abstractions.Operations;
+using Kwy.Device.MotionCard.Core.Safety;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Groups;
+namespace Kwy.Device.MotionCard.Core.Groups;
 
 /// <summary>将业务运动组命令转换为同一卡上的物理插补调用。</summary>
 public sealed class MotionGroupExecutor : IMotionGroupExecutor
@@ -40,7 +40,7 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
         ValidateAdmission(group, runtime, targets);
         EnsureLinearPathIsSafe(group, runtime, targets);
         controller.InitCoordinateSystem(group.CoordinateSystemChannel, ResolveChannels(runtime, group));
-        controller.MoveLinear(group.CoordinateSystemChannel, targets, profile.Velocity, profile.Acceleration);
+        controller.MoveLinear(group.CoordinateSystemChannel, targets, profile);
         controller.StartInterpolation(group.CoordinateSystemChannel);
         await controller.WaitForCoordinateSystemCompletedAsync(group.CoordinateSystemChannel, targets, tolerance, command.Timeout ?? TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
         operations.Complete(operation, MotionOperationState.Succeeded);
@@ -65,7 +65,7 @@ public sealed class MotionGroupExecutor : IMotionGroupExecutor
         ValidateAdmission(group, runtime, targets);
         EnsureArcPathIsSafe(group, runtime, targets, command.CenterPositions, command.Direction);
         controller.InitCoordinateSystem(group.CoordinateSystemChannel, ResolveChannels(runtime, group));
-        controller.MoveArc(group.CoordinateSystemChannel, targets[0], targets[1], command.CenterPositions[group.AxisIds[0]], command.CenterPositions[group.AxisIds[1]], command.Direction == ArcDirection.Clockwise ? (short)0 : (short)1, profile.Velocity, profile.Acceleration);
+        controller.MoveArc(group.CoordinateSystemChannel, targets[0], targets[1], command.CenterPositions[group.AxisIds[0]], command.CenterPositions[group.AxisIds[1]], command.Direction == ArcDirection.Clockwise ? (short)0 : (short)1, profile);
         controller.StartInterpolation(group.CoordinateSystemChannel);
         await controller.WaitForCoordinateSystemCompletedAsync(group.CoordinateSystemChannel, targets, tolerance, command.Timeout ?? TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
         operations.Complete(operation, MotionOperationState.Succeeded);

@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Axes;
 
 /// <summary>业务与报警系统使用的轴故障类别，不直接暴露厂商状态字位定义。</summary>
 public enum AxisFaultCode

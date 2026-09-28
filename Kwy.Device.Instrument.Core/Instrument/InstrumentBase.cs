@@ -6,7 +6,7 @@ using Kwy.Device.Core;
 using Kwy.Device.Instrument.Abstractions;
 using System.Text;
 
-namespace Kwy.Device.Instrument.Core.Instrument;
+namespace Kwy.Device.Instrument.Core;
 
 /// <summary>
 /// Base class for byte-transport instruments. All command, query, trigger, and result operations are serialized.

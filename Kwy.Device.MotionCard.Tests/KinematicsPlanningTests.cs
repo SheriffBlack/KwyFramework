@@ -1,9 +1,9 @@
 ﻿using Kwy.Device.MotionCard.Core;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.OfflinePlanning.Jacobian;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Kinematics;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.OfflinePlanning.Jacobian;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
 using Xunit;
 
 namespace Kwy.Device.MotionCard.Tests;

@@ -1,9 +1,9 @@
 ﻿using Kwy.Device.Abstractions;
 using Kwy.Device.Core;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Core.Motion;
+namespace Kwy.Device.MotionCard.Core;
 
 /// <summary>
 /// 运动控制卡抽象基类

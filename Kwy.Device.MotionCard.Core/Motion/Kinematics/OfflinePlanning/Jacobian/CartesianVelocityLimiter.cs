@@ -1,7 +1,7 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.OfflinePlanning.Jacobian;
+﻿using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.OfflinePlanning.Jacobian;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Kinematics.OfflinePlanning.Jacobian;
+namespace Kwy.Device.MotionCard.Core.Kinematics.OfflinePlanning.Jacobian;
 
 /// <summary>以最先达到速度上限的关节为准，等比例缩放笛卡尔速度，保持路径方向不变。</summary>
 public sealed class CartesianVelocityLimiter : ICartesianVelocityLimiter

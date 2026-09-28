@@ -14,7 +14,7 @@ using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
 using System.Windows.Controls;
 using Kwy.UI.Enums;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 using Kwy.UI.WPF.Components.Dialogs.Input;
 
 namespace KwyTemplate.App.ViewModels;

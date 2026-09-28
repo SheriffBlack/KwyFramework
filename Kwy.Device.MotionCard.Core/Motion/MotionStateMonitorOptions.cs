@@ -1,6 +1,6 @@
 ﻿using Kwy.Device.MotionCard.Abstractions;
 
-namespace Kwy.Device.MotionCard.Core.Motion;
+namespace Kwy.Device.MotionCard.Core;
 
 /// <summary>运动状态监视器配置，定义采样周期、受监视轴和首帧事件行为。</summary>
 public sealed class MotionStateMonitorOptions

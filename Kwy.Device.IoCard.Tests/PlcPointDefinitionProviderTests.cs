@@ -1,5 +1,5 @@
-﻿using Kwy.Device.Plc.Core;
-using Kwy.Device.PLC.Abstractions.PLC;
+﻿using Kwy.Device.PLC.Core;
+using Kwy.Device.PLC.Abstractions;
 using Xunit;
 
 namespace Kwy.Device.IoCard.Tests;

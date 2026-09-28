@@ -1,9 +1,9 @@
 ﻿using Kwy.Device.Abstractions;
 using Kwy.Device.Core;
 using Kwy.Communicate.Abstractions.Enums;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 
-namespace Kwy.Device.PLC.Core.PLC;
+namespace Kwy.Device.PLC.Core;
 
 /// <summary>
 /// 异步 PLC 设备基类，提供设备生命周期与协议层心跳管理。

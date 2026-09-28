@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
+﻿using Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion.Controller;
+namespace Kwy.Device.MotionCard.Abstractions.Controller;
 
 /// <summary>
 /// 运动控制器经确认可用的原生能力。

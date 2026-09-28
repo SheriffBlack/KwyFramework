@@ -2,29 +2,28 @@
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Kwy.Device.MotionCard.Abstractions.Motion.Operations;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Controller;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
-using Kwy.Device.MotionCard.Abstractions.Motion.Synchronization;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.OfflinePlanning.Jacobian;
-using Kwy.Device.MotionCard.Abstractions.Motion.Configuration;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.OfflinePlanning.Timing;
-using Kwy.Device.MotionCard.Core.Motion.Synchronization;
-using Kwy.Device.MotionCard.Core.Motion.Groups;
-using Kwy.Device.MotionCard.Core;
-using Kwy.Device.MotionCard.Core.Motion.Operations;
-using Kwy.Device.MotionCard.Core.Motion;
-using Kwy.Device.MotionCard.Core.Motion.Kinematics;
-using Kwy.Device.MotionCard.Core.Motion.Kinematics.OfflinePlanning.Timing;
-using Kwy.Device.MotionCard.Core.Motion.Kinematics.Planning;
-using Kwy.Device.MotionCard.Core.Motion.Configuration;
-using Kwy.Device.MotionCard.Core.Motion.Axes;
-using Kwy.Device.MotionCard.Core.Motion.Safety;
-using Kwy.Device.MotionCard.Core.Motion.Kinematics.OfflinePlanning.Jacobian;
+using Kwy.Device.MotionCard.Abstractions.Operations;
+using Kwy.Device.MotionCard.Abstractions.Groups;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Controller;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
+using Kwy.Device.MotionCard.Abstractions.Synchronization;
+using Kwy.Device.MotionCard.Abstractions.Kinematics;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.OfflinePlanning.Jacobian;
+using Kwy.Device.MotionCard.Abstractions.Configuration;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.OfflinePlanning.Timing;
+using Kwy.Device.MotionCard.Core.Synchronization;
+using Kwy.Device.MotionCard.Core.Groups;
+using Kwy.Device.MotionCard.Core.Operations;
+using Kwy.Device.MotionCard.Core.Kinematics.Controller;
+using Kwy.Device.MotionCard.Core.Kinematics;
+using Kwy.Device.MotionCard.Core.Kinematics.OfflinePlanning.Timing;
+using Kwy.Device.MotionCard.Core.Kinematics.Planning;
+using Kwy.Device.MotionCard.Core.Configuration;
+using Kwy.Device.MotionCard.Core.Axes;
+using Kwy.Device.MotionCard.Core.Safety;
+using Kwy.Device.MotionCard.Core.Kinematics.OfflinePlanning.Jacobian;
 
 namespace Kwy.Device.MotionCard.Core;
 
@@ -57,7 +56,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddMotionServices(
+    public static IServiceCollection AddMotionCardCore(
         this IServiceCollection services,
         Action<MotionAdmissionOptions>? configureAdmission = null)
     {
@@ -112,7 +111,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddMotionGroups(
+    public static IServiceCollection AddMotionGroupDefinitions(
         this IServiceCollection services,
         IEnumerable<MotionGroupDefinition> groups,
         IEnumerable<IoPointDefinition>? ioPoints = null)
@@ -133,7 +132,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddMotionSynchronizations(
+    public static IServiceCollection AddMotionSynchronizationDefinitions(
         this IServiceCollection services,
         IEnumerable<VirtualAxisDefinition>? virtualAxes = null,
         IEnumerable<ElectronicGearDefinition>? electronicGears = null,

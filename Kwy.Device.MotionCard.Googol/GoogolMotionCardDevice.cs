@@ -1,10 +1,10 @@
 ﻿using Kwy.Device.IoCard.Abstractions;
-using Kwy.Device.Io.Core;
+using Kwy.Device.IoCard.Core;
 using System.Diagnostics;
 using Kwy.Device.MotionCard.Googol.DLL;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Core.Motion;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Core;
 
 namespace Kwy.Device.MotionCard.Googol;
 
@@ -359,9 +359,9 @@ public sealed class GoogolMotionCardDevice :
                 profile2 = axes.Length > 1 ? axes[1] : (short)0,
                 profile3 = axes.Length > 2 ? axes[2] : (short)0,
                 profile4 = axes.Length > 3 ? axes[3] : (short)0,
-                synVelMax = ToCoordinateVelocity(coordinateConfig.MaximumVelocity, axes),
-                synAccMax = ToCoordinateAcceleration(coordinateConfig.MaximumAcceleration, axes),
-                evenTime = coordinateConfig.SmoothingTime
+                synVelMax = ToCoordinateVelocity(coordinateConfig.SynchronousVelocityLimit, axes),
+                synAccMax = ToCoordinateAcceleration(coordinateConfig.SynchronousAccelerationLimit, axes),
+                evenTime = coordinateConfig.CornerSmoothingTime
             };
 
             ThrowIfFailed(mc.GT_SetCrdPrm(crdIndex, ref prm), $"Set coordinate {crdIndex} parameters failed");
@@ -370,14 +370,16 @@ public sealed class GoogolMotionCardDevice :
         });
     }
 
-    public void MoveLinear(short crdIndex, double[] positions, double velocity, double acc)
+    public void MoveLinear(short crdIndex, double[] positions, MotionProfile profile)
     {
         EnsureReady();
         ValidateCoordinate(crdIndex);
         ArgumentNullException.ThrowIfNull(positions);
-        ValidateVelocity(velocity, nameof(velocity));
+        ArgumentNullException.ThrowIfNull(profile);
+        ValidateVelocity(profile.Velocity, nameof(profile));
+        EnsureSmoothingSupported(crdIndex, profile);
         short[] axes = GetInitializedCoordinateAxes(crdIndex, positions.Length);
-        ValidateCoordinateMotion(axes, positions, velocity, acc);
+        ValidateCoordinateMotion(axes, positions, profile);
 
         Execute(() =>
         {
@@ -385,8 +387,8 @@ public sealed class GoogolMotionCardDevice :
             int[] nativePositions = positions
                 .Select((position, index) => ToIntPosition(AxisEngineeringConverter.ToNativePosition(position, GetAxisEngineeringConfig(axes[index]))))
                 .ToArray();
-            double nativeVelocity = ToCoordinateVelocity(velocity, axes);
-            double nativeAcceleration = ToCoordinateAcceleration(acc, axes);
+            double nativeVelocity = ToCoordinateVelocity(profile.Velocity, axes);
+            double nativeAcceleration = ToCoordinateAcceleration(profile.Acceleration, axes);
             short result = nativePositions.Length switch
             {
                 2 => mc.GT_LnXY(crdIndex, nativePositions[0], nativePositions[1], nativeVelocity, nativeAcceleration, 0, 0),
@@ -399,13 +401,15 @@ public sealed class GoogolMotionCardDevice :
         });
     }
 
-    public void MoveArc(short crdIndex, double x, double y, double xCenter, double yCenter, short dir, double velocity, double acc)
+    public void MoveArc(short crdIndex, double x, double y, double xCenter, double yCenter, short dir, MotionProfile profile)
     {
         EnsureReady();
         ValidateCoordinate(crdIndex);
-        ValidateVelocity(velocity, nameof(velocity));
+        ArgumentNullException.ThrowIfNull(profile);
+        ValidateVelocity(profile.Velocity, nameof(profile));
+        EnsureSmoothingSupported(crdIndex, profile);
         short[] axes = GetInitializedCoordinateAxes(crdIndex, 2);
-        ValidateCoordinateMotion(axes, new[] { x, y }, velocity, acc);
+        ValidateCoordinateMotion(axes, new[] { x, y }, profile);
 
         Execute(() =>
         {
@@ -420,8 +424,8 @@ public sealed class GoogolMotionCardDevice :
                     AxisEngineeringConverter.ToNativePosition(xCenter, xEngineering),
                     AxisEngineeringConverter.ToNativePosition(yCenter, yEngineering),
                     dir,
-                    ToCoordinateVelocity(velocity, axes),
-                    ToCoordinateAcceleration(acc, axes),
+                    ToCoordinateVelocity(profile.Velocity, axes),
+                    ToCoordinateAcceleration(profile.Acceleration, axes),
                     0,
                     0),
                 $"Add arc interpolation to coordinate {crdIndex} failed");
@@ -1074,7 +1078,23 @@ public sealed class GoogolMotionCardDevice :
         }
     }
 
-    private void ValidateCoordinateMotion(short[] axes, double[] positions, double velocity, double acceleration)
+    private void EnsureSmoothingSupported(short coordinateSystem, MotionProfile profile)
+    {
+        if (profile.Smoothing != MotionSmoothingMode.RequireNativeSCurve)
+        {
+            return;
+        }
+
+        GoogolCoordinateSystemConfig coordinate = config.GetCoordinateSystemConfig(coordinateSystem)
+            ?? throw new InvalidOperationException($"Coordinate system {coordinateSystem} is not configured.");
+        if (coordinate.CornerSmoothingTime <= 0)
+        {
+            throw new NotSupportedException(
+                $"Googol coordinate system {coordinateSystem} has no native S-curve smoothing configuration.");
+        }
+    }
+
+    private void ValidateCoordinateMotion(short[] axes, double[] positions, MotionProfile profile)
     {
         for (int index = 0; index < axes.Length; index++)
         {
@@ -1086,8 +1106,9 @@ public sealed class GoogolMotionCardDevice :
                 throw new ArgumentOutOfRangeException(nameof(positions), position, $"Axis {axes[index]} interpolation target is outside configured travel limits.");
             }
 
-            ValidateAxisVelocity(axes[index], velocity);
-            ValidateMaximum(axes[index], acceleration, definition.Limits.MaximumAcceleration, nameof(acceleration));
+            ValidateAxisVelocity(axes[index], profile.Velocity);
+            ValidateMaximum(axes[index], profile.Acceleration, definition.Limits.MaximumAcceleration, nameof(profile.Acceleration));
+            ValidateMaximum(axes[index], profile.Deceleration, definition.Limits.MaximumDeceleration, nameof(profile.Deceleration));
         }
     }
 

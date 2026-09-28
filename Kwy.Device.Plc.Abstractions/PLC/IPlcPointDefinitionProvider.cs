@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.PLC.Abstractions.PLC;
+﻿namespace Kwy.Device.PLC.Abstractions;
 
 /// <summary>
 /// PLC 点位定义的只读查询入口。

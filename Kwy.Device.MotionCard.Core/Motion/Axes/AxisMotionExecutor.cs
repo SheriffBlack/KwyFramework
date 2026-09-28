@@ -1,9 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Axes;
+namespace Kwy.Device.MotionCard.Core.Axes;
 
 /// <summary>
 /// 单轴物理动作执行器：统一处理准入、等待、超时、稳定到位、停止和控制器故障。

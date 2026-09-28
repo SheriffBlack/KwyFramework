@@ -1,9 +1,9 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Groups;
+using Kwy.Device.MotionCard.Abstractions.Kinematics;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Kinematics.Planning;
+namespace Kwy.Device.MotionCard.Core.Kinematics.Planning;
 
 /// <summary>在可达性、奇异度、软限位和当前关节位置约束下选择连续性最好的逆解。</summary>
 internal static class KinematicSolutionSelector

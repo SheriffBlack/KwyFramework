@@ -1,7 +1,7 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
+﻿using Kwy.Device.MotionCard.Abstractions.Kinematics;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Kinematics.Planning;
+namespace Kwy.Device.MotionCard.Core.Kinematics.Planning;
 
 /// <summary>以位置线性插值和四元数 SLERP 生成笛卡尔直线轨迹。</summary>
 public sealed class CartesianTrajectoryPlanner : ICartesianTrajectoryPlanner

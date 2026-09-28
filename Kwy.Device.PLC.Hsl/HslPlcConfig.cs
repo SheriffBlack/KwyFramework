@@ -1,4 +1,4 @@
-﻿using Kwy.Device.PLC.Abstractions.PLC;
+﻿using Kwy.Device.PLC.Abstractions;
 
 namespace Kwy.Device.PLC.Hsl;
 

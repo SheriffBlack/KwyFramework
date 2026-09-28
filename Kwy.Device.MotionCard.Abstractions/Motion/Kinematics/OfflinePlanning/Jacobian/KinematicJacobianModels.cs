@@ -1,7 +1,7 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
+﻿using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Kinematics;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.OfflinePlanning.Jacobian;
+namespace Kwy.Device.MotionCard.Abstractions.Kinematics.OfflinePlanning.Jacobian;
 
 /// <summary>
 /// 内部笛卡尔速度：线速度使用位置工程单位/秒，角速度使用弧度/秒。

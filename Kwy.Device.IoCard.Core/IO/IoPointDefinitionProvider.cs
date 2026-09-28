@@ -1,6 +1,6 @@
 ﻿using Kwy.Device.IoCard.Abstractions;
 
-namespace Kwy.Device.IoCard.Core.IO;
+namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 基于设备配置创建的 IO 点位定义目录。

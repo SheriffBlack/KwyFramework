@@ -1,18 +1,15 @@
-﻿using Kwy.Communicate.Abstractions;
+using Kwy.Communicate.Abstractions;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Instrument.Abstractions;
 using Kwy.Device.Instrument.Core;
 
 namespace Kwy.Device.Instruments.Lcr;
 
-public class ZX :
-    InstrumentBase,
-    IMeasurementInstrument
+public class ZX : InstrumentBase, IMeasurementInstrument
 {
     private const string DefaultModel = "ADEX_DCR";
 
     public override string DeviceModel => DefaultModel;
-
 
     public ZX(string deviceId, string deviceName, IDeviceConfig deviceParameter, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
     : base(deviceId, deviceName, deviceParameter, protocolConfig, factory)
@@ -23,7 +20,6 @@ public class ZX :
         : base(deviceId, deviceName, deviceParameter, protocol)
     {
     }
-
 
     public ValueTask<InstrumentMeasurementResult> ReadMeasurementAsync(CancellationToken cancellationToken = default)
     {

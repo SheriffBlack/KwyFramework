@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Core.Motion;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Core;
 
 namespace Kwy.Device.MotionCard.Simulation;
 

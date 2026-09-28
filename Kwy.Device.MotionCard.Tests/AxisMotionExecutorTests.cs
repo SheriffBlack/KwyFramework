@@ -1,12 +1,13 @@
 ﻿using Kwy.Device.Abstractions;
 using Kwy.Device.MotionCard.Core;
-using Kwy.Device.MotionCards.Simulation;
+using Kwy.Device.MotionCard.Core.Axes;
+using Kwy.Device.MotionCard.Simulation;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using System.Diagnostics;
 using Xunit;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
 
 namespace Kwy.Device.MotionCard.Tests;
 

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using Kwy.Device.MotionCard.Abstractions.Motion.Operations;
+using Kwy.Device.MotionCard.Abstractions.Operations;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Groups;
+namespace Kwy.Device.MotionCard.Core.Groups;
 
 /// <summary>以排序锁序获取多个业务轴，避免单轴与插补组互相抢占和死锁。</summary>
 public sealed class MotionResourceLock : IMotionResourceLock

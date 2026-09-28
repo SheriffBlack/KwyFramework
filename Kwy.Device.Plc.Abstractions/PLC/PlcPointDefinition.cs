@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.PLC.Abstractions.PLC;
+﻿namespace Kwy.Device.PLC.Abstractions;
 
 /// <summary>PLC 点位支持的标准数据类型。</summary>
 public enum PlcDataType

@@ -2,8 +2,8 @@
 using HslCommunication.Core;
 using HslCommunication.ModBus;
 using Kwy.Device.Abstractions;
-using Kwy.Device.PLC.Abstractions.PLC;
-using Kwy.Device.PLC.Core.PLC;
+using Kwy.Device.PLC.Abstractions;
+using Kwy.Device.PLC.Core;
 
 namespace Kwy.Device.PLC.Hsl;
 

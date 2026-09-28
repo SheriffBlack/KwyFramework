@@ -12,7 +12,7 @@ using KwyTemplate.Security.Identity;
 using KwyTemplate.Shell.Models;
 using System.Diagnostics;
 using System.Windows.Media;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 using Kwy.UI.WPF.Components.Dialogs.Message;
 
 namespace KwyTemplate.Shell.ViewModels;

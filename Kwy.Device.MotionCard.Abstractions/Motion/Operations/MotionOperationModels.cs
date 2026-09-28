@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Operations;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Operations;
 
 /// <summary>运动动作的统一生命周期状态；用于追溯，不替代厂商实时状态字。</summary>
 public enum MotionOperationState

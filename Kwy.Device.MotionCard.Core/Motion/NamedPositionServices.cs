@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.Json;
-using Kwy.Device.MotionCard.Abstractions.Motion;
+using Kwy.Device.MotionCard.Abstractions;
 
-namespace Kwy.Device.MotionCard.Core.Motion;
+namespace Kwy.Device.MotionCard.Core;
 
 /// <summary>用于仿真、测试或未接入数据库时的内存命名位置仓储。</summary>
 public sealed class InMemoryNamedPositionRepository : INamedPositionRepository

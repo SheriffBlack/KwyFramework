@@ -1,7 +1,7 @@
 ﻿using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 using KwyTemplate.App.Runtime;
 using KwyTemplate.Contracts.Services;
 using KwyTemplate.Device;

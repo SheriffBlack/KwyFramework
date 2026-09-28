@@ -1,9 +1,9 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.OfflinePlanning.Timing;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.OfflinePlanning.Timing;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Kinematics.OfflinePlanning.Timing;
+namespace Kwy.Device.MotionCard.Core.Kinematics.OfflinePlanning.Timing;
 
 /// <summary>基于各轴速度/加减速度上限的保守离线时间估算器，不参与控制器实时点流。</summary>
 public sealed class JointTrajectoryTimeParameterizer : IJointTrajectoryTimeParameterizer

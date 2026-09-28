@@ -1,8 +1,8 @@
 ﻿using Kwy.Device.Abstractions;
 using Kwy.Communicate.Abstractions.Events;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion;
+namespace Kwy.Device.MotionCard.Abstractions;
 
 /// <summary>物理运动控制卡的设备生命周期入口；工艺层不应直接依赖它。</summary>
 public interface IMotionCard : IDevice, IConfigurableDevice
@@ -96,9 +96,11 @@ public interface IInterpolationMotionController
 {
     void InitCoordinateSystem(short crdIndex, short[] axes);
 
-    void MoveLinear(short crdIndex, double[] positions, double velocity, double acc);
+    /// <summary>向控制器坐标系追加直线段；完整速度曲线由控制器适配器原生执行。</summary>
+    void MoveLinear(short crdIndex, double[] positions, MotionProfile profile);
 
-    void MoveArc(short crdIndex, double x, double y, double xCenter, double yCenter, short dir, double velocity, double acc);
+    /// <summary>向控制器坐标系追加圆弧段；完整速度曲线由控制器适配器原生执行。</summary>
+    void MoveArc(short crdIndex, double x, double y, double xCenter, double yCenter, short dir, MotionProfile profile);
 
     void StartInterpolation(short crdIndex);
 

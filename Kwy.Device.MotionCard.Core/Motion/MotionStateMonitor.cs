@@ -1,9 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using Kwy.Communicate.Abstractions.Events;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Core.Motion;
+namespace Kwy.Device.MotionCard.Core;
 
 /// <summary>
 /// 从运动控制卡轮询各轴快照数据，并对外暴露缓存后的轴状态。

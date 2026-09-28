@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.IoCard.Core.IO;
+﻿namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 管理可重置的单通道软件定时脉冲。

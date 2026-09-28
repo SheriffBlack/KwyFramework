@@ -1,13 +1,13 @@
 ﻿using Kwy.Device.Core;
 using Kwy.Device.MotionCard.Core;
-using Kwy.Device.MotionCards.Googol;
-using Kwy.Device.MotionCards.Leadshine;
-using Kwy.Device.MotionCards.Simulation;
+using Kwy.Device.MotionCard.Googol;
+using Kwy.Device.MotionCard.Leadshine;
+using Kwy.Device.MotionCard.Simulation;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Configuration;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Configuration;
 
 namespace Kwy.Device.MotionCard.Tests;
 
@@ -17,7 +17,7 @@ public sealed class MotionRuntimeRegistryTests
     public void MultipleCards_AreResolvedByDeviceId()
     {
         var services = new ServiceCollection();
-        services.AddMotionServices();
+        services.AddMotionCardCore();
         services.AddAxisDefinitions([CreateAxis("Motion.Googol"), CreateAxis("Motion.Leadshine")]);
         services.AddGoogolMotionCard(config => ConfigureAxis(config, "Motion.Googol"));
         services.AddLeadshineMotionCard(config => ConfigureAxis(config, "Motion.Leadshine"));
@@ -38,7 +38,7 @@ public sealed class MotionRuntimeRegistryTests
     public void SingleCard_KeepsUnkeyedExecutorConvenience()
     {
         var services = new ServiceCollection();
-        services.AddMotionServices();
+        services.AddMotionCardCore();
         services.AddAxisDefinitions([CreateAxis("Motion.Main")]);
         services.AddGoogolMotionCard(config => ConfigureAxis(config, "Motion.Main"));
 
@@ -54,10 +54,10 @@ public sealed class MotionRuntimeRegistryTests
     public void AutoModeGate_RejectsOfflineMotionController()
     {
         var services = new ServiceCollection();
-        services.AddMotionServices();
+        services.AddMotionCardCore();
         services.AddAxisDefinitions([CreateAxis("Motion.Simulation")]);
         services.AddSimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
-        services.AddMotionGroups([]);
+        services.AddMotionGroupDefinitions([]);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IMotionAutoModeGate gate = provider.GetRequiredService<IMotionAutoModeGate>();
@@ -70,10 +70,10 @@ public sealed class MotionRuntimeRegistryTests
     public async Task AutoModeGate_RejectsStoppedStateMonitor()
     {
         var services = new ServiceCollection();
-        services.AddMotionServices();
+        services.AddMotionCardCore();
         services.AddAxisDefinitions([CreateAxis("Motion.Simulation")]);
         services.AddSimulationMotionCard(config => config.DeviceId = "Motion.Simulation");
-        services.AddMotionGroups([]);
+        services.AddMotionGroupDefinitions([]);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         SimulationMotionCardDevice card = provider.GetRequiredService<SimulationMotionCardDevice>();

@@ -1,13 +1,13 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Controller;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
-using Kwy.Device.MotionCard.Abstractions.Motion.Operations;
-using Kwy.Device.MotionCard.Core.Motion.Safety;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Controller;
+using Kwy.Device.MotionCard.Abstractions.Groups;
+using Kwy.Device.MotionCard.Abstractions.Kinematics;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
+using Kwy.Device.MotionCard.Abstractions.Operations;
+using Kwy.Device.MotionCard.Core.Safety;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Kinematics.Controller;
+namespace Kwy.Device.MotionCard.Core.Kinematics.Controller;
 
 /// <summary>
 /// 连续轮廓程序的设备级门面。

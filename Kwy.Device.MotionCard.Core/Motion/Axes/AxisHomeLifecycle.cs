@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Axes;
+namespace Kwy.Device.MotionCard.Core.Axes;
 
 /// <summary>
 /// 维护业务轴的原点可信度，而非简单复述控制器回零状态。

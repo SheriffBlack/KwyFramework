@@ -1,12 +1,12 @@
 ﻿using Kwy.Device.IoCard.Abstractions;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Configuration;
-using Kwy.Device.MotionCard.Abstractions.Motion.Controller;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
-using Kwy.Device.MotionCard.Abstractions.Motion.Synchronization;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Configuration;
+using Kwy.Device.MotionCard.Abstractions.Controller;
+using Kwy.Device.MotionCard.Abstractions.Groups;
+using Kwy.Device.MotionCard.Abstractions.Synchronization;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Configuration;
+namespace Kwy.Device.MotionCard.Core.Configuration;
 
 /// <summary>跨卡、跨轴、跨运动组的启动期配置一致性校验。</summary>
 public sealed class MotionConfigurationValidator : IMotionConfigurationValidator

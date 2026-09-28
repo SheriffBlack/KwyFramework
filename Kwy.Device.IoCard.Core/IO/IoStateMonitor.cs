@@ -1,7 +1,7 @@
 ﻿using Kwy.Device.IoCard.Abstractions;
 using System.Collections.Concurrent;
 
-namespace Kwy.Device.IoCard.Core.IO;
+namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 逻辑 IO 运行时服务。

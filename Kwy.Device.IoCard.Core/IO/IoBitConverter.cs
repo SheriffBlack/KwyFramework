@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.IoCard.Core.IO;
+﻿namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 在厂商端口字节数组、逐点布尔数组与 64 位掩码之间进行转换。

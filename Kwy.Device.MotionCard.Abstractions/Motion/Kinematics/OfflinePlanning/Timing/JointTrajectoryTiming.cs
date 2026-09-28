@@ -1,7 +1,7 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.OfflinePlanning.Timing;
+namespace Kwy.Device.MotionCard.Abstractions.Kinematics.OfflinePlanning.Timing;
 
 /// <summary>关节轨迹时间参数化的速度缩放。取值范围 (0, 1]，用于工艺降速而不突破轴级硬上限。</summary>
 public sealed record JointTrajectoryTimingOptions

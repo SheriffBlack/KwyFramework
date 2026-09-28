@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
+﻿using Kwy.Device.MotionCard.Abstractions;
 
-namespace Kwy.Device.MotionCard.Core.Motion;
+namespace Kwy.Device.MotionCard.Core;
 
 /// <summary>
 /// 负责工程单位与控制器原生脉冲单位之间的唯一换算入口。

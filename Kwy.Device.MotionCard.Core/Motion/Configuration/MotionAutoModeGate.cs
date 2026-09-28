@@ -1,7 +1,7 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Configuration;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Configuration;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Configuration;
+namespace Kwy.Device.MotionCard.Core.Configuration;
 
 /// <summary>
 /// 自动模式的运动就绪门禁：除静态配置外，还要求控制器已连接、状态监视器已取得首帧。

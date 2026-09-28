@@ -32,6 +32,7 @@
   <Project Path="Kwy.Communicate.TcpSerial/Kwy.Communicate.TcpSerial.csproj" Id="e8f74b40-830b-44eb-bde5-95abe7039746" />
   <Project Path="Kwy.Communicate.Visa/Kwy.Communicate.Visa.csproj" Id="0984d861-9c50-408f-8b4c-d781f85c453f" />
   <Project Path="Kwy.ComponentModel/Kwy.ComponentModel.csproj" Id="dd0666de-5489-457e-a91d-cf47073aec86" />
+  <Project Path="Kwy.Converter/Kwy.Converter.csproj" />
   <Project Path="Kwy.Core/Kwy.Core.csproj" Id="5c2f67c8-aa50-46dd-aae4-e68fb09d31fe" />
   <Project Path="Kwy.Data.Abstractions/Kwy.Data.Abstractions.csproj" Id="986acb37-018c-41f8-a599-ddc8f5a07580" />
   <Project Path="Kwy.Data.Core/Kwy.Data.Core.csproj" Id="f98bef74-e2ec-4ad5-9549-acbbfe0902f1" />
@@ -65,9 +66,8 @@
   <Project Path="Kwy.Device.MotionCard.Leadshine/Kwy.Device.MotionCard.Leadshine.csproj" Id="ba4a18f1-456d-4b3c-8366-504becca2cc1" />
   <Project Path="Kwy.Device.MotionCard.Simulation/Kwy.Device.MotionCard.Simulation.csproj" />
   <Project Path="Kwy.Device.MotionCard.ZMotion/Kwy.Device.MotionCard.ZMotion.csproj" Id="97a0abb8-3092-41af-a5d6-c3719c91db7b" />
-  <Project Path="Kwy.Device.Peripherals/Kwy.Device.Peripherals.csproj" Id="22e10305-92fd-4702-8b2f-c9e79bf6adba" />
-  <Project Path="Kwy.Device.PLC.Abstractions/Kwy.Device.Plc.Abstractions.csproj" DisplayName="Kwy.Device.PLC.Abstractions" />
-  <Project Path="Kwy.Device.PLC.Core/Kwy.Device.Plc.Core.csproj" DisplayName="Kwy.Device.PLC.Core" />
+  <Project Path="Kwy.Device.PLC.Abstractions/Kwy.Device.PLC.Abstractions.csproj" />
+  <Project Path="Kwy.Device.PLC.Core/Kwy.Device.PLC.Core.csproj" />
   <Project Path="Kwy.Device.PLC.Hsl/Kwy.Device.PLC.Hsl.csproj" Id="befad0b3-1d27-4133-8c48-97e5c3a80eb8" />
   <Project Path="Kwy.Device.PLC.IoTClient/Kwy.Device.PLC.IoTClient.csproj" Id="492ff429-2407-438e-8a40-3f580faaeb6a" />
   <Project Path="Kwy.Device.Semiconductor.Gem/Kwy.Device.Semiconductor.Gem.csproj" />

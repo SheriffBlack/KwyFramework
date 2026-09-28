@@ -1,9 +1,9 @@
 ﻿using Kwy.Device.IoCard.Abstractions;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Operations;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Operations;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Axes;
+namespace Kwy.Device.MotionCard.Core.Axes;
 
 /// <summary>将业务 AxisDefinition.Id 解析为所属运行时与物理轴通道。</summary>
 public sealed class BusinessAxisMotionExecutor : IBusinessAxisMotionExecutor

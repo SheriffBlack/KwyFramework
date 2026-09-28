@@ -1,7 +1,7 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Groups;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Groups;
+namespace Kwy.Device.MotionCard.Core.Groups;
 
 /// <summary>启动时加载的运动组定义提供者；重复 ID 在构造时即失败。</summary>
 public sealed class MotionGroupDefinitionProvider : IMotionGroupDefinitionProvider

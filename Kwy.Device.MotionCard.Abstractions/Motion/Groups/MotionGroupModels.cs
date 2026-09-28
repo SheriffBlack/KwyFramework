@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Groups;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Groups;
 
 /// <summary>同一物理卡上可插补的一组业务轴。</summary>
 public sealed record MotionGroupDefinition

@@ -1,6 +1,6 @@
 ﻿using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
-using Kwy.Device.Io.Core;
+using Kwy.Device.IoCard.Core;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Xunit;

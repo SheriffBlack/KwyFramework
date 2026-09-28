@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+﻿using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion;
+namespace Kwy.Device.MotionCard.Abstractions;
 
 /// <summary>业务坐标使用的工程单位；控制卡脉冲换算由 <see cref="AxisEngineeringConfig"/> 统一处理。</summary>
 public enum MotionUnit
@@ -38,10 +38,27 @@ public sealed record AxisEngineeringConfig
     }
 }
 
+/// <summary>业务动作对控制器速度曲线的要求。</summary>
+public enum MotionSmoothingMode
+{
+    /// <summary>采用控制器坐标系已配置的默认速度曲线。</summary>
+    ControllerDefault,
+
+    /// <summary>
+    /// 必须使用控制器原生 S 曲线。控制器或当前坐标系未配置该能力时，动作必须被拒绝，
+    /// 不能由上位机定时循环模拟平滑轨迹。
+    /// </summary>
+    RequireNativeSCurve
+}
+
 /// <summary>一次运动的速度曲线约束；业务传工程单位，设备层负责转换并限制在轴能力内。</summary>
 public sealed record MotionProfile
 {
-    public MotionProfile(double velocity, double acceleration, double deceleration)
+    public MotionProfile(
+        double velocity,
+        double acceleration,
+        double deceleration,
+        MotionSmoothingMode smoothing = MotionSmoothingMode.ControllerDefault)
     {
         if (!double.IsFinite(velocity) || velocity <= 0)
         {
@@ -58,9 +75,15 @@ public sealed record MotionProfile
             throw new ArgumentOutOfRangeException(nameof(deceleration), deceleration, "Deceleration must be finite and greater than 0.");
         }
 
+        if (!Enum.IsDefined(smoothing))
+        {
+            throw new ArgumentOutOfRangeException(nameof(smoothing));
+        }
+
         Velocity = velocity;
         Acceleration = acceleration;
         Deceleration = deceleration;
+        Smoothing = smoothing;
     }
 
     public double Velocity { get; }
@@ -68,6 +91,9 @@ public sealed record MotionProfile
     public double Acceleration { get; }
 
     public double Deceleration { get; }
+
+    /// <summary>本次动作对控制器原生平滑能力的要求。</summary>
+    public MotionSmoothingMode Smoothing { get; }
 }
 
 /// <summary>控制器报告的本次回零状态；其可信度应同时参考 <see cref="AxisHomeValidity"/>。</summary>

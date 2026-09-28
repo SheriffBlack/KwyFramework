@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.IoCard.Core.IO;
+﻿namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// IO 通道与端口数量的统一校验工具。

@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.IoCard.Core.IO;
+﻿namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 逻辑 IO 状态采集选项。

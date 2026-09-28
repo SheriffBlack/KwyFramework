@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Configuration;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Configuration;
 
 /// <summary>运动配置项问题严重等级，校验轴/凸轮/坐标系配置时使用</summary>
 public enum MotionConfigurationIssueSeverity

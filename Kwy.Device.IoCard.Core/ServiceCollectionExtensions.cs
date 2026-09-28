@@ -2,7 +2,7 @@
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Kwy.Device.IoCard.Core.IO;
+using Kwy.Device.IoCard.Core;
 
 namespace Kwy.Device.IoCard.Core;
 
@@ -10,7 +10,7 @@ namespace Kwy.Device.IoCard.Core;
 public static class ServiceCollectionExtensions
 {
     /// <summary>注册逻辑 IO 点位监视、读写与安全输出服务。</summary>
-    public static IServiceCollection AddIoServices(
+    public static IServiceCollection AddIoCardCore(
         this IServiceCollection services,
         Action<IoStateMonitorOptions>? configureIoMonitor = null)
     {
@@ -33,12 +33,12 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>注册设备统一 IO 点位定义；连接完成后由监视器校验实际设备和通道。</summary>
-    public static IServiceCollection AddIoPointDefinitions(
+    public static IServiceCollection AddIoCardDefinitions(
         this IServiceCollection services,
         IEnumerable<IoPointDefinition> definitions)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddIoServices();
+        services.AddIoCardCore();
         IoPointDefinition[] items = definitions?.ToArray() ?? throw new ArgumentNullException(nameof(definitions));
         services.AddSingleton<IoPointDefinitionProvider>(_ => new IoPointDefinitionProvider(items));
         services.AddSingleton<IIoPointDefinitionProvider>(provider => provider.GetRequiredService<IoPointDefinitionProvider>());

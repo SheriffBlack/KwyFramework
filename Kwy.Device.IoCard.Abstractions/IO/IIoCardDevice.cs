@@ -1,5 +1,5 @@
 ﻿using Kwy.Device.Abstractions;
-namespace Kwy.Device.IoCard.Abstractions.IO;
+namespace Kwy.Device.IoCard.Abstractions;
 
 /// <summary>
 /// 物理数字输入能力，面向卡适配器和维护诊断。

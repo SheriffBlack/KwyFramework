@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+﻿using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion;
+namespace Kwy.Device.MotionCard.Abstractions;
 
 /// <summary>提供标定误差表补偿；补偿表内容属于设备标定数据，不属于驱动器参数。</summary>
 public interface IAxisErrorCompensationProvider

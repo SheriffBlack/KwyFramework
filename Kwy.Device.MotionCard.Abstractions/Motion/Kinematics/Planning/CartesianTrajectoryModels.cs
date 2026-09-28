@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
 
 /// <summary>笛卡尔空间轨迹的工程约束；线速度单位为位置工程单位/秒，角速度为度/秒。</summary>
 public sealed record CartesianTrajectoryProfile

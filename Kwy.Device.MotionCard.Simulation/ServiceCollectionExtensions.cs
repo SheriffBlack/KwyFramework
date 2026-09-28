@@ -1,7 +1,7 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Core.Motion;
-using Kwy.Device.MotionCard.Core.Motion.Safety;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Core;
+using Kwy.Device.MotionCard.Core.Safety;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kwy.Device.MotionCard.Simulation;

@@ -1,4 +1,4 @@
-namespace Kwy.Device.Instrument.Abstractions.Instrument;
+﻿namespace Kwy.Device.Instrument.Abstractions;
 
 /// <summary>
 /// 通用仪表测量能力。

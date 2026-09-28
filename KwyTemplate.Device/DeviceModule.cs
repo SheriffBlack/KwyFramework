@@ -4,7 +4,6 @@ using Kwy.Communicate.NI;
 using Kwy.Communicate.TcpSerial;
 using Kwy.Device.Core;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Plc.Core;
 using Kwy.MVVM.Modularity;
 using KwyTemplate.Contracts.Modularity;
 using KwyTemplate.Contracts.Services;
@@ -13,8 +12,8 @@ using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Profiles;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Kwy.Device.PLC.Abstractions.PLC;
-using Kwy.Device.PLC.Core.PLC;
+using Kwy.Device.PLC.Abstractions;
+using Kwy.Device.PLC.Core;
 
 namespace KwyTemplate.Device;
 
@@ -25,7 +24,8 @@ public sealed class DeviceModule : IModule
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddDeviceCore();
+        // PLC 逻辑点位服务由领域 Core 统一注册；具体点位定义仍由当前机型配置提供。
+        services.AddPLCCore();
         services.TryAddSingleton<ICommunicationFactory>(_ =>
         {
             var factory = new CommunicationFactory();
@@ -39,9 +39,6 @@ public sealed class DeviceModule : IModule
         services.TryAddSingleton<IMachineProfileProvider, MachineProfileProvider>();
         services.TryAddSingleton<IPlcPointDefinitionProvider>(provider => CreatePlcPointDefinitionProvider(
             provider.GetRequiredService<IMachineProfileProvider>().GetActiveProfile()));
-        services.TryAddSingleton<LogicalPlcService>();
-        services.TryAddSingleton<ILogicalPlcReader>(provider => provider.GetRequiredService<LogicalPlcService>());
-        services.TryAddSingleton<ILogicalPlcWriter>(provider => provider.GetRequiredService<LogicalPlcService>());
         services.TryAddSingleton<DeviceCatalogSelectionOptions>(provider => new DeviceCatalogSelectionOptions
         {
             ActiveCatalogKey = ResolveActiveCatalogKey(provider.GetRequiredService<IMachineRuntimeOptionsProvider>().Get())

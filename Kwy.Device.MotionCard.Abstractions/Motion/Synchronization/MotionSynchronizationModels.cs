@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+﻿using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion.Synchronization;
+namespace Kwy.Device.MotionCard.Abstractions.Synchronization;
 
 /// <summary>由控制器实时内核维护、可作为电子齿轮或电子凸轮主轴的逻辑虚拟轴。</summary>
 public sealed record VirtualAxisDefinition : AxisResourceDefinition

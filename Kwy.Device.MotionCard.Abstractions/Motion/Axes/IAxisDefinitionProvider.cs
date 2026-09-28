@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Axes;
 
 /// <summary>
 /// 设备级业务轴定义的只读查询入口。

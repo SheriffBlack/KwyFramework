@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
+﻿using Kwy.Device.MotionCard.Abstractions;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
+namespace Kwy.Device.MotionCard.Abstractions.Kinematics;
 
 /// <summary>
 /// 工艺使用的六维空间位姿：位置单位遵循机械工程单位，Rx/Ry/Rz 为角度制。

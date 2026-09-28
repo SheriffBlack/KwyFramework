@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Axes;
 
 /// <summary>业务轴当前回零结果是否仍可用于自动定位。</summary>
 public enum AxisHomeValidity

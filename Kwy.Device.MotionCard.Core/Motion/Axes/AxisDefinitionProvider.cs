@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+﻿using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Axes;
+namespace Kwy.Device.MotionCard.Core.Axes;
 
 /// <summary>
 /// 设备级业务轴定义目录。

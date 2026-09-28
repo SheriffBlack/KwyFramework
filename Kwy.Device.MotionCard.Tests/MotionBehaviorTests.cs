@@ -1,10 +1,10 @@
 ﻿using Kwy.Device.MotionCard.Core;
-using Kwy.Device.MotionCards.Simulation;
-using Kwy.Device.MotionCards.Googol;
-using Kwy.Device.MotionCards.Leadshine;
+using Kwy.Device.MotionCard.Simulation;
+using Kwy.Device.MotionCard.Googol;
+using Kwy.Device.MotionCard.Leadshine;
 using Xunit;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions;
 
 namespace Kwy.Device.MotionCard.Tests;
 
@@ -185,8 +185,8 @@ public sealed class MotionBehaviorTests
         {
             CoordinateSystem = 1,
             Axes = new short[] { 1, 2 },
-            MaximumVelocity = 100,
-            MaximumAcceleration = 500
+            SynchronousVelocityLimit = 100,
+            SynchronousAccelerationLimit = 500
         });
 
         Assert.True(config.Validate());

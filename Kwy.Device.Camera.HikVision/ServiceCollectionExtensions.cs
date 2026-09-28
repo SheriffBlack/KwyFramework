@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Camera.Abstractions.Camera;
+﻿using Kwy.Device.Camera.Abstractions;
 using Kwy.Device.Camera.Core;
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +19,7 @@ public static class ServiceCollectionExtensions
         configure(config);
         config.ValidateAndThrow();
 
-        services.AddCameraServices();
+        services.AddCameraCore();
         services.AddSingleton<ICameraDevice>(_ => new HikCameraDevice(config));
         return services;
     }

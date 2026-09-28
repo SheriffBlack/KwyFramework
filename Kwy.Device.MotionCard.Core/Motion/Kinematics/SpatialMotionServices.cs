@@ -1,9 +1,9 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics;
-using Kwy.Device.MotionCard.Core.Motion.Kinematics.Planning;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Groups;
+using Kwy.Device.MotionCard.Abstractions.Kinematics;
+using Kwy.Device.MotionCard.Core.Kinematics.Planning;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Kinematics;
+namespace Kwy.Device.MotionCard.Core.Kinematics;
 
 /// <summary>加载并校验设备坐标系树。</summary>
 public sealed class CoordinateTransformService : ICoordinateFrameRegistry

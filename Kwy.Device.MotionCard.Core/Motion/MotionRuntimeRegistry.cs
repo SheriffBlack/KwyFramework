@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
+﻿using Kwy.Device.MotionCard.Abstractions;
 
-namespace Kwy.Device.MotionCard.Core.Motion;
+namespace Kwy.Device.MotionCard.Core;
 
 /// <summary>按设备 ID 保存全部运动卡运行时，避免多卡设备误用无键服务。</summary>
 public sealed class MotionRuntimeRegistry : IMotionRuntimeRegistry

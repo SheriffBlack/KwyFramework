@@ -1,7 +1,7 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
+﻿using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Groups;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion;
+namespace Kwy.Device.MotionCard.Abstractions;
 
 /// <summary>物理卡的带速度曲线定位能力；位置和轴号均为卡层值。</summary>
 public interface IMotionProfileController

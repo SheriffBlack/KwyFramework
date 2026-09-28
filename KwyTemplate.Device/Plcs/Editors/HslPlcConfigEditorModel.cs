@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 using Kwy.ComponentModel;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 using Kwy.Device.PLC.Hsl;
 using KwyTemplate.Device.Connections.Editors;
 

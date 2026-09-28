@@ -1,5 +1,5 @@
 ﻿using Kwy.MVVM.Core;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 
 namespace KwyTemplate.App.Models;
 

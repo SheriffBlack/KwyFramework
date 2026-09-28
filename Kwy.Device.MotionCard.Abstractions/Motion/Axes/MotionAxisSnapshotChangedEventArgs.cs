@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+﻿namespace Kwy.Device.MotionCard.Abstractions.Axes;
 
 /// <summary>
 /// 轴快照更改的事件数据。

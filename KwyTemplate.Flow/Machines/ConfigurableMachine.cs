@@ -1,13 +1,13 @@
 ﻿using System.Collections.Concurrent;
 using Kwy.Device.Instrument.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
-using Kwy.Device.Io.Core;
+using Kwy.Device.IoCard.Core;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Profiles;
 using KwyTemplate.Flow.Common;
 using KwyTemplate.Flow.DataDeals;
 using KwyTemplate.Flow.Models;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 
 namespace KwyTemplate.Flow.Machines;
 

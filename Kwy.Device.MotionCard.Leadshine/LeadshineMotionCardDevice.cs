@@ -1,9 +1,9 @@
 ﻿using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
-using Kwy.Device.Io.Core;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Core.Motion;
+using Kwy.Device.IoCard.Core;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Core;
 using Kwy.Device.MotionCard.Leadshine.DLL;
 
 namespace Kwy.Device.MotionCard.Leadshine;
@@ -342,27 +342,31 @@ public sealed class LeadshineMotionCardDevice :
         });
     }
 
-    public void MoveLinear(short crdIndex, double[] positions, double velocity, double acc)
+    public void MoveLinear(short crdIndex, double[] positions, MotionProfile profile)
     {
         EnsureReady();
         ValidateCoordinate(crdIndex);
         ArgumentNullException.ThrowIfNull(positions);
-        ValidateVelocity(velocity, nameof(velocity));
+        ArgumentNullException.ThrowIfNull(profile);
+        ValidateVelocity(profile.Velocity, nameof(profile));
+        EnsureSmoothingSupported(crdIndex, profile);
         short[] axes = GetInitializedCoordinateAxes(crdIndex, positions.Length);
-        ValidateCoordinateMotion(axes, positions, velocity, acc);
+        ValidateCoordinateMotion(axes, positions, profile);
 
         Execute(() => QueueInterpolation(
             crdIndex,
-            new PendingLinearInterpolation(axes.ToArray(), positions.ToArray(), velocity, acc)));
+            new PendingLinearInterpolation(axes.ToArray(), positions.ToArray(), profile)));
     }
 
-    public void MoveArc(short crdIndex, double x, double y, double xCenter, double yCenter, short dir, double velocity, double acc)
+    public void MoveArc(short crdIndex, double x, double y, double xCenter, double yCenter, short dir, MotionProfile profile)
     {
         EnsureReady();
         ValidateCoordinate(crdIndex);
-        ValidateVelocity(velocity, nameof(velocity));
+        ArgumentNullException.ThrowIfNull(profile);
+        ValidateVelocity(profile.Velocity, nameof(profile));
+        EnsureSmoothingSupported(crdIndex, profile);
         short[] axes = GetInitializedCoordinateAxes(crdIndex, 2);
-        ValidateCoordinateMotion(axes, new[] { x, y }, velocity, acc);
+        ValidateCoordinateMotion(axes, new[] { x, y }, profile);
 
         if (dir is not 0 and not 1)
         {
@@ -371,7 +375,7 @@ public sealed class LeadshineMotionCardDevice :
 
         Execute(() => QueueInterpolation(
             crdIndex,
-            new PendingArcInterpolation(axes.ToArray(), x, y, xCenter, yCenter, dir, velocity, acc)));
+            new PendingArcInterpolation(axes.ToArray(), x, y, xCenter, yCenter, dir, profile)));
     }
 
     public void StartInterpolation(short crdIndex)
@@ -998,9 +1002,13 @@ public sealed class LeadshineMotionCardDevice :
     {
         ushort nativeCoordinate = (ushort)(coordinateSystem - 1);
         ushort[] nativeAxes = interpolation.Axes.Select(axis => (ushort)(axis - 1)).ToArray();
-        double nativeVelocity = ToCoordinateVelocity(interpolation.Velocity, interpolation.Axes) * 1000.0;
-        double nativeAcceleration = ToCoordinateAcceleration(interpolation.Acceleration, interpolation.Axes) * 1_000_000.0;
+        double nativeVelocity = ToCoordinateVelocity(interpolation.Profile.Velocity, interpolation.Axes) * 1000.0;
+        double nativeAcceleration = ToCoordinateAcceleration(interpolation.Profile.Acceleration, interpolation.Axes) * 1_000_000.0;
+        double nativeDeceleration = ToCoordinateAcceleration(interpolation.Profile.Deceleration, interpolation.Axes) * 1_000_000.0;
         double accelerationTime = Math.Max(nativeVelocity / nativeAcceleration, 0.001);
+        double decelerationTime = Math.Max(nativeVelocity / nativeDeceleration, 0.001);
+
+        ApplyNativeSProfile(coordinateSystem, interpolation.Profile);
 
         ThrowIfFailed(
             LTDMC.dmc_set_vector_profile_multicoor(
@@ -1008,7 +1016,7 @@ public sealed class LeadshineMotionCardDevice :
                 nativeCoordinate,
                 0,
                 nativeVelocity,
-                accelerationTime,
+                decelerationTime,
                 accelerationTime,
                 0),
             $"Set vector profile for coordinate {coordinateSystem} failed");
@@ -1057,6 +1065,40 @@ public sealed class LeadshineMotionCardDevice :
             default:
                 throw new NotSupportedException($"Unsupported interpolation type {interpolation.GetType().Name}.");
         }
+    }
+
+    private void EnsureSmoothingSupported(short coordinateSystem, MotionProfile profile)
+    {
+        if (profile.Smoothing != MotionSmoothingMode.RequireNativeSCurve)
+        {
+            return;
+        }
+
+        LeadshineCoordinateSystemConfig coordinate = config.GetCoordinateSystemConfig(coordinateSystem)
+            ?? throw new InvalidOperationException($"Coordinate system {coordinateSystem} is not configured.");
+        if (coordinate.SProfile is null)
+        {
+            throw new NotSupportedException(
+                $"Leadshine coordinate system {coordinateSystem} has no native vector S-curve configuration.");
+        }
+    }
+
+    private void ApplyNativeSProfile(short coordinateSystem, MotionProfile profile)
+    {
+        if (profile.Smoothing != MotionSmoothingMode.RequireNativeSCurve)
+        {
+            return;
+        }
+
+        LeadshineVectorSProfileOptions options = config.GetCoordinateSystemConfig(coordinateSystem)?.SProfile
+            ?? throw new InvalidOperationException($"Leadshine coordinate system {coordinateSystem} has no native vector S-curve configuration.");
+        ThrowIfFailed(
+            LTDMC.dmc_set_vector_s_profile_multicoor(
+                (ushort)config.CardNo,
+                (ushort)(coordinateSystem - 1),
+                options.Mode,
+                options.Parameter),
+            $"Set native vector S-curve for coordinate {coordinateSystem} failed");
     }
 
     private void CancelPulseTasks()
@@ -1187,7 +1229,7 @@ public sealed class LeadshineMotionCardDevice :
         }
     }
 
-    private void ValidateCoordinateMotion(short[] axes, double[] positions, double velocity, double acceleration)
+    private void ValidateCoordinateMotion(short[] axes, double[] positions, MotionProfile profile)
     {
         for (int index = 0; index < axes.Length; index++)
         {
@@ -1199,8 +1241,9 @@ public sealed class LeadshineMotionCardDevice :
                 throw new ArgumentOutOfRangeException(nameof(positions), position, $"Axis {axes[index]} interpolation target is outside configured travel limits.");
             }
 
-            ValidateAxisVelocity(axes[index], velocity);
-            ValidateMaximum(axes[index], acceleration, definition.Limits.MaximumAcceleration, nameof(acceleration));
+            ValidateAxisVelocity(axes[index], profile.Velocity);
+            ValidateMaximum(axes[index], profile.Acceleration, definition.Limits.MaximumAcceleration, nameof(profile.Acceleration));
+            ValidateMaximum(axes[index], profile.Deceleration, definition.Limits.MaximumDeceleration, nameof(profile.Deceleration));
         }
     }
 
@@ -1249,14 +1292,13 @@ public sealed class LeadshineMotionCardDevice :
         }
     }
 
-    private abstract record PendingInterpolation(short[] Axes, double Velocity, double Acceleration);
+    private abstract record PendingInterpolation(short[] Axes, MotionProfile Profile);
 
     private sealed record PendingLinearInterpolation(
         short[] Axes,
         double[] Positions,
-        double Velocity,
-        double Acceleration)
-        : PendingInterpolation(Axes, Velocity, Acceleration);
+        MotionProfile Profile)
+        : PendingInterpolation(Axes, Profile);
 
     private sealed record PendingArcInterpolation(
         short[] Axes,
@@ -1265,7 +1307,6 @@ public sealed class LeadshineMotionCardDevice :
         double XCenter,
         double YCenter,
         short Direction,
-        double Velocity,
-        double Acceleration)
-        : PendingInterpolation(Axes, Velocity, Acceleration);
+        MotionProfile Profile)
+        : PendingInterpolation(Axes, Profile);
 }

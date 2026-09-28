@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Motion;
+﻿namespace Kwy.Device.MotionCard.Abstractions;
 
 /// <summary>
 /// 通过设备ID便捷地访问运动卡功能的辅助工具。

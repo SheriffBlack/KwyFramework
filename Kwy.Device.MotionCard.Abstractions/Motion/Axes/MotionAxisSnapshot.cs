@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
+﻿using Kwy.Device.MotionCard.Abstractions;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+namespace Kwy.Device.MotionCard.Abstractions.Axes;
 
 /// <summary>某一时刻的物理轴不可变快照；用于监视、诊断和执行器闭环，不作为业务配置。</summary>
 public readonly record struct MotionAxisSnapshot

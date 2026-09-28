@@ -9,7 +9,7 @@ using HslCommunication.Profinet.Omron;
 using HslCommunication.Profinet.Panasonic;
 using HslCommunication.Profinet.Siemens;
 using Kwy.Communicate.Abstractions.Enums;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 using Kwy.Device.PLC.Hsl.Licensing;
 using Kwy.Licensing.Abstractions;
 

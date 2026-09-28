@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using Kwy.Device.MotionCard.Abstractions.Motion.Operations;
+using Kwy.Device.MotionCard.Abstractions.Operations;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Operations;
+namespace Kwy.Device.MotionCard.Core.Operations;
 
 /// <summary>线程安全的运动命令追溯器。</summary>
 public sealed class MotionOperationTracker : IMotionOperationTracker

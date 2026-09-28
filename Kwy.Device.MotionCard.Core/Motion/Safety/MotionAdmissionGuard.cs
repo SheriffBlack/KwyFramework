@@ -1,8 +1,8 @@
 ﻿using Kwy.Device.Abstractions;
-using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
+using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Safety;
+namespace Kwy.Device.MotionCard.Core.Safety;
 
 /// <summary>
 /// 动作发出前的设备级准入配置。

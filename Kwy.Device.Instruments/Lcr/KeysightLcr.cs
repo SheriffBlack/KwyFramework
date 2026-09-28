@@ -1,15 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+namespace Kwy.Device.Instruments.Lcr;
 
-namespace Kwy.Device.Instruments.Lcr
-{
-    /// <summary>
-    /// Keysight E 4982A
-    /// </summary>
-    internal class KeysightLcr
-    {
-    }
-}
+/// <summary>
+/// Keysight E4982A 仪表的预留适配位置；未实现前不得在设备目录中注册。
+/// </summary>
+internal sealed class KeysightLcr;

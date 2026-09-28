@@ -2,6 +2,8 @@
 
 本文是 `Kwy.Device` 运动控制模块唯一的权威设计文档，适用于精密设备、半导体前道设备、光通信 FAU 多轴耦合机及一般自动化设备。
 
+跨领域项目结构、依赖方向与服务注册约定见 [DEVICE_MODULE_CONVENTIONS.md](DEVICE_MODULE_CONVENTIONS.md)；本文只定义运动领域特有的设计边界。
+
 它定义的是长期目标架构和新增代码必须遵守的边界。某项厂商原生能力尚未由某个具体型号实现时，适配器必须明确报告不支持，不能以 Windows 定时循环降级伪造。
 
 ## 1. 设计目标
@@ -53,6 +55,37 @@ Core 设备级运行时
 | `ElectronicGearDefinition` / `ElectronicCamDefinition` | 由同一实时控制器执行的同步配置。 |
 
 业务层永远使用 `AxisDefinition.Id`、运动组 ID、机构 ID、坐标系 ID 与逻辑 IO 点 ID。`short axis`、坐标系通道和厂商状态字仅限 Core/厂商适配器。
+
+## 3.2 速度曲线与 S 曲线
+
+`MotionProfile` 是业务动作对速度曲线的语义请求，统一使用工程单位描述速度、加速度和减速度。业务可通过 `MotionSmoothingMode.RequireNativeSCurve` 要求控制器原生 S 曲线。
+
+```text
+业务 MotionProfile
+    Velocity / Acceleration / Deceleration
+    + RequireNativeSCurve
+                ↓
+Core
+    校验轴与运动组的工程约束，传递完整 Profile
+                ↓
+厂商适配器
+    固高：GT_SetCrdPrm 的 synVelMax / synAccMax / evenTime
+    雷赛：dmc_set_vector_s_profile_multicoor 的 s_mode / s_para
+                ↓
+实时控制器
+    实际生成 S 曲线、插补和 Jerk 平滑
+```
+
+`S 曲线`是控制器原生平滑速度曲线的能力描述，不等同于某一个固定的余弦、多项式或恒 Jerk 数学公式。雷赛的 `s_mode`、`s_para` 与固高的 `evenTime` 都是厂商原生参数，不能进入通用 `MotionProfile`。
+
+当动作要求 `RequireNativeSCurve` 时：
+
+1. 当前控制器坐标系必须已配置对应的厂商原生平滑参数；
+2. 厂商适配器必须在开始插补前成功写入或确认该参数；
+3. 未配置或控制器不支持时必须抛出 `NotSupportedException`；
+4. Core、HMI、工艺流程不得以 `Task.Delay`、离散点流或软件循环模拟 S 曲线作为降级方案。
+
+固高的 `SynchronousVelocityLimit`、`SynchronousAccelerationLimit`、`CornerSmoothingTime` 属于 `GT_SetCrdPrm` 坐标系原生限制；雷赛的 `LeadshineVectorSProfileOptions` 属于 LTDMC 坐标系原生参数。它们与业务运动组的默认 `MotionProfile` 分别维护。
 
 ## 3.1 快速入门：文件夹与引用方向
 

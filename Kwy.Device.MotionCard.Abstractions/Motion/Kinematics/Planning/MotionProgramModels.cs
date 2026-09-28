@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
+﻿using Kwy.Device.MotionCard.Abstractions.Groups;
 
-namespace Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
+namespace Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
 
 /// <summary>连续轮廓运动的一个语义段。业务提交段，不提交控制器周期点或物理轴号。</summary>
 public abstract record CartesianTrajectorySegment(string Id)

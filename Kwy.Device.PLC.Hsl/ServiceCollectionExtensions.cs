@@ -4,7 +4,7 @@ using Kwy.Licensing.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Kwy.Device.PLC.Hsl.Licensing;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 
 namespace Kwy.Device.PLC.Hsl;
 
@@ -30,7 +30,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddHslPlc(
+    public static IServiceCollection AddHslPLC(
         this IServiceCollection services,
         string deviceId,
         string deviceName,

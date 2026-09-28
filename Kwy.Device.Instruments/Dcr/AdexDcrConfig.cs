@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
 using Kwy.ComponentModel;
+using Kwy.ComponentModel.Attributes;
 using Kwy.Device.Abstractions;
 
 namespace Kwy.Device.Instruments.Dcr;

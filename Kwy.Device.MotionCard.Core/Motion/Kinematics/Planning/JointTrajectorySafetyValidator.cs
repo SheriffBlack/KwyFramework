@@ -1,9 +1,9 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion;
-using Kwy.Device.MotionCard.Abstractions.Motion.Axes;
-using Kwy.Device.MotionCard.Abstractions.Motion.Groups;
-using Kwy.Device.MotionCard.Abstractions.Motion.Kinematics.Planning;
+﻿using Kwy.Device.MotionCard.Abstractions;
+using Kwy.Device.MotionCard.Abstractions.Axes;
+using Kwy.Device.MotionCard.Abstractions.Groups;
+using Kwy.Device.MotionCard.Abstractions.Kinematics.Planning;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Kinematics.Planning;
+namespace Kwy.Device.MotionCard.Core.Kinematics.Planning;
 
 /// <summary>按完整关节路径校验轴软限位与多轴禁入区，供控制器原生连续轨迹下发前预检使用。</summary>
 public sealed class JointTrajectorySafetyValidator : IJointTrajectorySafetyValidator

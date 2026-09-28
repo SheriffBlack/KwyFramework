@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Instrument.Abstractions;
-using Kwy.Device.Plc.Core;
+using Kwy.Device.PLC.Core;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device;
 using KwyTemplate.Device.Devices;
@@ -15,7 +15,7 @@ using KwyTemplate.Flow.DataDeals;
 using KwyTemplate.Flow.Models;
 using KwyTemplate.MES.Abstract.Models;
 using Kwy.ComponentModel.Metadata;
-using Kwy.Device.PLC.Abstractions.PLC;
+using Kwy.Device.PLC.Abstractions;
 
 namespace KwyTemplate.Flow.Machines;
 

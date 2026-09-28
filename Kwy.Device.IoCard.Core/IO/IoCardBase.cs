@@ -4,7 +4,7 @@ using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Core;
 
-namespace Kwy.Device.IoCard.Core.IO;
+namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 物理 IO 卡适配器基类。

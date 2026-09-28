@@ -1,6 +1,6 @@
-﻿using Kwy.Device.MotionCard.Abstractions.Motion.Synchronization;
+﻿using Kwy.Device.MotionCard.Abstractions.Synchronization;
 
-namespace Kwy.Device.MotionCard.Core.Motion.Synchronization;
+namespace Kwy.Device.MotionCard.Core.Synchronization;
 
 /// <summary>将设备配置冻结为可按稳定 ID 查询的虚拟轴与同步关系。</summary>
 public sealed class MotionSynchronizationDefinitionProvider : IVirtualAxisDefinitionProvider, IMotionSynchronizationDefinitionProvider
