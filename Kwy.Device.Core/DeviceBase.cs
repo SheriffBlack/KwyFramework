@@ -8,7 +8,7 @@ namespace Kwy.Device.Core;
 /// 所有硬件设备共用的生命周期基类。
 /// 仅负责连接、断开、状态事件、异常上报和资源释放；不得在此加入 IO、运动、PLC、相机或仪表的领域规则。
 /// </summary>
-public abstract class DeviceBase : IDevice
+public abstract class DeviceBase : IDevice, IConfigurableDevice
 {
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(3);
     private readonly SemaphoreSlim lifecycleSemaphore = new(1, 1);
@@ -25,8 +25,11 @@ public abstract class DeviceBase : IDevice
     /// <summary>统一连接生命周期状态。</summary>
     public ConnectionState State { get; protected set; }
 
-    /// <summary>设备实例的可变运行配置；具体类型由各领域设备自行约束。</summary>
-    public IDeviceConfig DeviceParameter { get; set; }
+    /// <summary>
+    /// 设备实例的运行配置。外部只能读取或编辑配置内容，不能替换配置对象；
+    /// 配置下发必须经 <see cref="ApplyConfigAsync"/> 完成校验和硬件应用。
+    /// </summary>
+    public IDeviceConfig DeviceParameter { get; protected set; }
 
     public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged;
     public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred;
@@ -155,11 +158,19 @@ public abstract class DeviceBase : IDevice
         var oldState = State;
 
         State = newState;
-        StateChanged?.Invoke(this, new ConnectionStateChangedEventArgs(oldState, newState));
+        PublishEventSafely(
+            StateChanged,
+            this,
+            new ConnectionStateChangedEventArgs(oldState, newState),
+            nameof(StateChanged));
     }
 
     protected void RaiseErrorOccurred(string message, Exception? ex = null)
-        => ErrorOccurred?.Invoke(this, new ErrorOccurredEventArgs(ex ?? new Exception(message), message));
+        => PublishEventSafely(
+            ErrorOccurred,
+            this,
+            new ErrorOccurredEventArgs(ex ?? new Exception(message), message),
+            nameof(ErrorOccurred));
 
     protected void RaiseOperationOccurred(
         DeviceOperationKind kind,
@@ -168,9 +179,37 @@ public abstract class DeviceBase : IDevice
         string message,
         Exception? exception = null,
         IReadOnlyDictionary<string, string>? properties = null)
-        => OperationOccurred?.Invoke(
+        => PublishEventSafely(
+            OperationOccurred,
             this,
-            new DeviceOperationEventArgs(kind, operationName, isSuccess, message, exception, properties));
+            new DeviceOperationEventArgs(kind, operationName, isSuccess, message, exception, properties),
+            nameof(OperationOccurred));
+
+    /// <summary>
+    /// 安全发布设备通知。HMI、日志等订阅者属于外部扩展，异常不得反向破坏设备生命周期。
+    /// </summary>
+    protected static void PublishEventSafely<TEventArgs>(
+        EventHandler<TEventArgs>? handlers,
+        object sender,
+        TEventArgs eventArgs,
+        string eventName)
+    {
+        foreach (EventHandler<TEventArgs> handler in (handlers?.GetInvocationList() ?? Array.Empty<Delegate>()).Cast<EventHandler<TEventArgs>>())
+        {
+            try
+            {
+                handler(sender, eventArgs);
+            }
+            catch (Exception exception)
+            {
+                System.Diagnostics.Trace.TraceError(
+                    "设备事件订阅者异常已隔离。事件={0}，订阅者={1}，异常={2}",
+                    eventName,
+                    handler.Method.DeclaringType?.FullName ?? "<unknown>",
+                    exception);
+            }
+        }
+    }
 
     private async Task DisconnectCoreSafelyAsync(CancellationToken cancellationToken)
     {

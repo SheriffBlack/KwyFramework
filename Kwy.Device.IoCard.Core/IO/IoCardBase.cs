@@ -84,9 +84,11 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
 
     protected void RaiseHardwareInterrupt(ulong mask, IoTriggerEdge? triggerEdge = null)
     {
-        HardwareInterruptReceived?.Invoke(
+        PublishEventSafely(
+            HardwareInterruptReceived,
             this,
-            new IoSignalSnapshot(DeviceId, mask, DateTimeOffset.UtcNow, IoSnapshotSource.HardwareInterrupt, triggerEdge));
+            new IoSignalSnapshot(DeviceId, mask, DateTimeOffset.UtcNow, IoSnapshotSource.HardwareInterrupt, triggerEdge),
+            nameof(HardwareInterruptReceived));
     }
 
 

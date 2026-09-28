@@ -13,11 +13,12 @@ public interface IDeviceConfig
 }
 
 /// <summary>
-/// 设备具备暴露和应用可变配置模型的能力。
+/// 设备具备读取并应用运行配置的能力。
+/// 配置对象可由受控的配置服务编辑，但设备实例不允许在运行期被外部替换整份配置。
 /// </summary>
 public interface IConfigurableDevice
 {
-    IDeviceConfig DeviceParameter { get; set; }
+    IDeviceConfig DeviceParameter { get; }
     Task ApplyConfigAsync(CancellationToken cancellationToken = default);
 }
 
