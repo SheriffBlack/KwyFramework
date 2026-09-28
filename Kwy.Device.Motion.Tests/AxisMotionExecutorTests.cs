@@ -1,6 +1,6 @@
-using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.Motion;
-using Kwy.Device.Core.Motion;
+﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Motion.Abstractions;
+using Kwy.Device.Motion.Core;
 using Kwy.Device.MotionCards.Simulation;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;

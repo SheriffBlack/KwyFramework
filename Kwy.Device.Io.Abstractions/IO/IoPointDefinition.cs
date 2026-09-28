@@ -1,4 +1,4 @@
-﻿namespace Kwy.Device.Abstractions.IO;
+﻿namespace Kwy.Device.Io.Abstractions;
 
 /// <summary>IO 点位的信号方向。</summary>
 public enum IoSignalKind

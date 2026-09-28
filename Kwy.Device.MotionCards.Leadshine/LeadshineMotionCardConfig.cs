@@ -1,5 +1,5 @@
-using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.Motion;
+﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Motion.Abstractions;
 
 namespace Kwy.Device.MotionCards.Leadshine;
 

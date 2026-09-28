@@ -1,7 +1,7 @@
-﻿using Kwy.Device.Abstractions.IO;
-using Kwy.Device.Abstractions.Motion;
+﻿using Kwy.Device.Io.Abstractions;
+using Kwy.Device.Motion.Abstractions;
 using Kwy.Device.Io.Core;
-using Kwy.Device.Core.Motion;
+using Kwy.Device.Motion.Core;
 using Kwy.Device.MotionCards.Googol.DLL;
 using System.Diagnostics;
 

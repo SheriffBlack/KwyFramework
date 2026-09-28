@@ -1,7 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.IO;
+using Kwy.Device.Io.Abstractions;
 using Kwy.Device.Io.Core;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;

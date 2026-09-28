@@ -1,4 +1,4 @@
-using Kwy.Device.Abstractions.IO;
+﻿using Kwy.Device.Io.Abstractions;
 using Kwy.Device.IoCards.Advantech;
 using Xunit;
 

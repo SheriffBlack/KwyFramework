@@ -1,4 +1,4 @@
-using Kwy.Device.Abstractions.Motion;
+﻿using Kwy.Device.Motion.Abstractions;
 using Xunit;
 
 namespace Kwy.Device.Motion.Tests;

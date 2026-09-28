@@ -1,7 +1,7 @@
 ﻿using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.IO;
+using Kwy.Device.Io.Abstractions;
 using Kwy.Device.Core;
 
 namespace Kwy.Device.Io.Core;

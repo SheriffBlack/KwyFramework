@@ -1,5 +1,5 @@
-using Kwy.Device.Abstractions.Motion;
-using Kwy.Device.Core.Motion;
+﻿using Kwy.Device.Motion.Abstractions;
+using Kwy.Device.Motion.Core;
 using Kwy.Device.MotionCards.Simulation;
 using Kwy.Device.MotionCards.Googol;
 using Kwy.Device.MotionCards.Leadshine;

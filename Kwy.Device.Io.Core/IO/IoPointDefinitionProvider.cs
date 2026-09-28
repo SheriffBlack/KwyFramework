@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Abstractions.IO;
+﻿using Kwy.Device.Io.Abstractions;
 
 namespace Kwy.Device.Io.Core;
 

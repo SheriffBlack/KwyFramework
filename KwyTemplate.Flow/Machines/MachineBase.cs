@@ -1,11 +1,11 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using Kwy.ComponentModel;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.IO;
+using Kwy.Device.Io.Abstractions;
 using Kwy.Device.Instruments.Abstractions;
 using Kwy.Device.Abstractions.PLC;
 using Kwy.Device.Core.PLC;

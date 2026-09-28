@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Abstractions.IO;
+﻿using Kwy.Device.Io.Abstractions;
 using Kwy.Device.Io.Core;
 
 namespace Kwy.Device.IoCards.Advantech;

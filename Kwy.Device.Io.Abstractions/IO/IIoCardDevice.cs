@@ -1,4 +1,5 @@
-namespace Kwy.Device.Abstractions.IO;
+﻿using Kwy.Device.Abstractions;
+namespace Kwy.Device.Io.Abstractions;
 
 /// <summary>
 /// 物理数字输入能力，面向卡适配器和维护诊断。

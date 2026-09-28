@@ -1,4 +1,4 @@
-using Kwy.Device.Abstractions.IO;
+﻿using Kwy.Device.Io.Abstractions;
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

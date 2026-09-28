@@ -1,9 +1,6 @@
-using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.IO;
-using Kwy.Device.Abstractions.Motion;
+﻿using Kwy.Device.Abstractions;
 using Kwy.Device.Abstractions.PLC;
 using Kwy.Device.Abstractions.Camera;
-using Kwy.Device.Core.Motion;
 using Kwy.Device.Core.PLC;
 using Kwy.Device.Core.Camera;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,17 +8,16 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Kwy.Device.Core;
 
+/// <summary>跨设备领域的基础注册入口。</summary>
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddDeviceCore(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-
         services.TryAddSingleton<IDeviceRegistry, DeviceRegistry>();
         return services;
     }
 
-    /// <summary>注册相机注册表；厂商相机适配器应在此基础上注册一个或多个 <see cref="ICameraDevice"/>。</summary>
     public static IServiceCollection AddCameraServices(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -30,24 +26,6 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddMotionStateMonitor(
-        this IServiceCollection services,
-        Action<MotionStateMonitorOptions>? configure = null)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        var options = new MotionStateMonitorOptions();
-        configure?.Invoke(options);
-        options.Validate();
-
-        services.TryAddSingleton(options);
-        services.TryAddSingleton<IMotionStateMonitor, MotionStateMonitor>();
-        services.TryAddSingleton<IMotionStateProvider>(provider => provider.GetRequiredService<IMotionStateMonitor>());
-
-        return services;
-    }
-
-    /// <summary>注册逻辑 PLC 点位读写服务。</summary>
     public static IServiceCollection AddPlcServices(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -58,185 +36,12 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>注册 PLC 业务点位定义，并启用逻辑 PLC 服务。</summary>
-    public static IServiceCollection AddPlcPointDefinitions(
-        this IServiceCollection services,
-        IEnumerable<PlcPointDefinition> points)
+    public static IServiceCollection AddPlcPointDefinitions(this IServiceCollection services, IEnumerable<PlcPointDefinition> points)
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddPlcServices();
-        PlcPointDefinition[] definitions = points?.ToArray() ?? throw new ArgumentNullException(nameof(points));
-        var provider = new PlcPointDefinitionProvider(definitions);
-
+        var provider = new PlcPointDefinitionProvider(points?.ToArray() ?? throw new ArgumentNullException(nameof(points)));
         services.AddSingleton<IPlcPointDefinitionProvider>(provider);
-        return services;
-    }
-
-    /// <summary>
-    /// 注册设备级业务轴定义。
-    /// 应在注册运动卡前或后调用一次；同一 <see cref="AxisDefinition"/> 集合供业务轴执行、HMI、配置校验和运动组共同使用。
-    /// </summary>
-    public static IServiceCollection AddAxisDefinitions(
-        this IServiceCollection services,
-        IEnumerable<AxisDefinition> definitions)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        AxisDefinition[] items = definitions?.ToArray() ?? throw new ArgumentNullException(nameof(definitions));
-        services.AddSingleton<IAxisDefinitionProvider>(_ => new AxisDefinitionProvider(items));
-        return services;
-    }
-
-    public static IServiceCollection AddMotionServices(
-        this IServiceCollection services,
-        Action<MotionAdmissionOptions>? configureAdmission = null)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.AddDeviceCore();
-
-        var admissionOptions = new MotionAdmissionOptions();
-        configureAdmission?.Invoke(admissionOptions);
-
-        services.TryAddSingleton(admissionOptions);
-        services.TryAddSingleton<IMotionRuntimeRegistry, MotionRuntimeRegistry>();
-        services.TryAddSingleton<IMotionStateMonitor>(provider =>
-            provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().StateMonitor);
-        services.TryAddSingleton<IMotionStateProvider>(provider => provider.GetRequiredService<IMotionStateMonitor>());
-        services.TryAddSingleton<IMotionAdmissionGuard>(provider =>
-        {
-            IMotionDeviceRuntime runtime = provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle();
-            return new MotionAdmissionGuard(runtime.Card, runtime.StateMonitor, admissionOptions, provider.GetRequiredService<IAxisHomeLifecycle>());
-        });
-        services.TryAddSingleton<AdmittedAxisMotionController>(provider =>
-        {
-            IMotionCard card = provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().Card;
-            if (card is not IAxisMotionController controller
-                || card is not IMotionProfileController profileController
-                || card is not IAxisStatusReader statusReader)
-            {
-                throw new InvalidOperationException($"Motion card '{card.DeviceId}' does not provide standard single-axis motion capabilities.");
-            }
-
-            return new AdmittedAxisMotionController(
-                controller,
-                profileController,
-                statusReader,
-                provider.GetRequiredService<IMotionAdmissionGuard>(),
-                card as IAxisChannelDefinitionProvider,
-                provider.GetRequiredService<IAxisHomeLifecycle>());
-        });
-        services.TryAddSingleton<IAdmittedAxisMotionController>(provider => provider.GetRequiredService<AdmittedAxisMotionController>());
-        services.TryAddSingleton<IAxisMotionExecutor>(provider =>
-            provider.GetRequiredService<IMotionRuntimeRegistry>().GetRequiredSingle().AxisExecutor);
-        services.TryAddSingleton<IBusinessAxisMotionExecutor, BusinessAxisMotionExecutor>();
-        services.TryAddSingleton<IMotionResourceLock, MotionResourceLock>();
-        services.TryAddSingleton<MotionOperationTracker>();
-        services.TryAddSingleton<IMotionOperationTracker>(provider => provider.GetRequiredService<MotionOperationTracker>());
-        services.TryAddSingleton<IAxisHomeLifecycle, AxisHomeLifecycle>();
-        services.TryAddSingleton<INamedPositionRepository, InMemoryNamedPositionRepository>();
-        services.TryAddSingleton<INamedPositionMotionService, NamedPositionMotionService>();
-        services.TryAddSingleton<IAxisCoordinateTransformer>(provider =>
-            new AxisCoordinateTransformer(provider.GetService<IAxisErrorCompensationProvider>()));
-        services.TryAddSingleton<IRotaryAxisPathPlanner, RotaryAxisPathPlanner>();
-
-        return services;
-    }
-
-    /// <summary>注册启动期运动组配置、配置校验与自动模式门禁。</summary>
-    public static IServiceCollection AddMotionGroups(
-        this IServiceCollection services,
-        IEnumerable<MotionGroupDefinition> groups,
-        IEnumerable<IoPointDefinition>? ioPoints = null)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        var groupDefinitions = groups?.ToArray() ?? throw new ArgumentNullException(nameof(groups));
-        var pointDefinitions = ioPoints?.ToArray() ?? Array.Empty<IoPointDefinition>();
-        services.AddSingleton<IMotionGroupDefinitionProvider>(_ => new MotionGroupDefinitionProvider(groupDefinitions));
-        services.AddSingleton<IMotionConfigurationValidator>(provider => new MotionConfigurationValidator(
-            provider.GetRequiredService<IMotionRuntimeRegistry>(),
-            provider.GetRequiredService<IAxisDefinitionProvider>(),
-            provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
-            pointDefinitions,
-            provider.GetService<IVirtualAxisDefinitionProvider>(),
-            provider.GetService<IMotionSynchronizationDefinitionProvider>()));
-        services.AddSingleton<IMotionAutoModeGate, MotionAutoModeGate>();
-        services.AddSingleton<IMotionGroupExecutor, MotionGroupExecutor>();
-        return services;
-    }
-
-    /// <summary>注册虚拟轴、电子齿轮与电子凸轮的设备配置定义。</summary>
-    public static IServiceCollection AddMotionSynchronizations(
-        this IServiceCollection services,
-        IEnumerable<VirtualAxisDefinition>? virtualAxes = null,
-        IEnumerable<ElectronicGearDefinition>? electronicGears = null,
-        IEnumerable<ElectronicCamDefinition>? electronicCams = null)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        VirtualAxisDefinition[] virtualAxisDefinitions = virtualAxes?.ToArray() ?? [];
-        ElectronicGearDefinition[] gearDefinitions = electronicGears?.ToArray() ?? [];
-        ElectronicCamDefinition[] camDefinitions = electronicCams?.ToArray() ?? [];
-        services.AddSingleton<MotionSynchronizationDefinitionProvider>(_ => new MotionSynchronizationDefinitionProvider(
-            virtualAxisDefinitions,
-            gearDefinitions,
-            camDefinitions));
-        services.AddSingleton<IVirtualAxisDefinitionProvider>(provider => provider.GetRequiredService<MotionSynchronizationDefinitionProvider>());
-        services.AddSingleton<IMotionSynchronizationDefinitionProvider>(provider => provider.GetRequiredService<MotionSynchronizationDefinitionProvider>());
-        return services;
-    }
-
-    /// <summary>
-    /// 注册空间坐标与机构运动入口。
-    /// 调用方需额外注册对应机构的 IKinematicsSolver；框架不假设任何六轴机构的几何尺寸或逆解公式。
-    /// </summary>
-    public static IServiceCollection AddSpatialMotion(
-        this IServiceCollection services,
-        IEnumerable<CoordinateFrameDefinition> coordinateFrames,
-        IEnumerable<KinematicMechanismDefinition> mechanisms)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        CoordinateFrameDefinition[] frameDefinitions = coordinateFrames?.ToArray() ?? throw new ArgumentNullException(nameof(coordinateFrames));
-        KinematicMechanismDefinition[] mechanismDefinitions = mechanisms?.ToArray() ?? throw new ArgumentNullException(nameof(mechanisms));
-        services.AddSingleton<CoordinateTransformService>(_ => new CoordinateTransformService(frameDefinitions));
-        services.AddSingleton<ICoordinateTransformService>(provider => provider.GetRequiredService<CoordinateTransformService>());
-        services.AddSingleton<ICoordinateFrameRegistry>(provider => provider.GetRequiredService<CoordinateTransformService>());
-        services.TryAddSingleton<ICartesianTrajectoryPlanner, CartesianTrajectoryPlanner>();
-        services.AddSingleton<IMotionPlanningPipeline>(provider => new MotionPlanningPipeline(
-            mechanismDefinitions,
-            provider.GetServices<IKinematicsSolver>(),
-            provider.GetRequiredService<ICoordinateFrameRegistry>(),
-            provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
-            provider.GetRequiredService<IMotionRuntimeRegistry>(),
-            provider.GetRequiredService<ICartesianTrajectoryPlanner>()));
-        services.TryAddSingleton<IJointTrajectorySafetyValidator, JointTrajectorySafetyValidator>();
-        services.AddSingleton<IControllerMotionProgramService>(provider => new ControllerMotionProgramService(
-            mechanismDefinitions,
-            provider.GetRequiredService<IMotionPlanningPipeline>(),
-            provider.GetRequiredService<ICoordinateFrameRegistry>(),
-            provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
-            provider.GetRequiredService<IMotionRuntimeRegistry>(),
-            provider.GetRequiredService<IMotionResourceLock>(),
-            provider.GetRequiredService<IMotionOperationTracker>(),
-            provider.GetRequiredService<IAxisHomeLifecycle>(),
-            provider.GetRequiredService<IJointTrajectorySafetyValidator>(),
-            provider.GetRequiredService<MotionAdmissionOptions>()));
-        services.AddSingleton<IPoseMotionExecutor>(provider => new PoseMotionExecutor(
-            mechanismDefinitions,
-            provider.GetServices<IKinematicsSolver>(),
-            provider.GetRequiredService<ICoordinateTransformService>(),
-            provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
-            provider.GetRequiredService<IMotionGroupExecutor>(),
-            provider.GetRequiredService<IMotionRuntimeRegistry>()));
-        return services;
-    }
-
-    /// <summary>
-    /// 注册离线规划辅助能力，用于仿真、配方预检和时间估算。
-    /// 这些服务不会驱动控制器周期性下发点位；连续轮廓应由厂商原生程序执行。
-    /// </summary>
-    public static IServiceCollection AddOfflineMotionPlanning(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.TryAddSingleton<IJointTrajectoryTimeParameterizer, JointTrajectoryTimeParameterizer>();
-        services.TryAddSingleton<ICartesianVelocityLimiter, CartesianVelocityLimiter>();
         return services;
     }
 }

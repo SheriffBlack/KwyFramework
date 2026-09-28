@@ -15,7 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Io.Abstractions\Kwy.Device.Io.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

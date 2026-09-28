@@ -1,9 +1,9 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.Motion;
-using Kwy.Device.Core.Motion;
+using Kwy.Device.Motion.Abstractions;
+using Kwy.Device.Motion.Core;
 
 const int operationCount = 50_000;
 var monitor = new BenchmarkStateMonitor();

@@ -1,5 +1,5 @@
-using Automation.BDaq;
-using Kwy.Device.Abstractions.IO;
+﻿using Automation.BDaq;
+using Kwy.Device.Io.Abstractions;
 
 namespace Kwy.Device.IoCards.Advantech;
 

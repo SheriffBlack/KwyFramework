@@ -1,4 +1,4 @@
-namespace Kwy.Device.Abstractions.IO;
+﻿namespace Kwy.Device.Io.Abstractions;
 
 /// <summary>
 /// IO 点位定义的只读查询入口。

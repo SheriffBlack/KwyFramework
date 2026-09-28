@@ -5,7 +5,7 @@ using System.Globalization;
 using Kwy.Files;
 using Kwy.ComponentModel;
 using Kwy.Device.Abstractions;
-using Kwy.Device.Abstractions.IO;
+using Kwy.Device.Io.Abstractions;
 using Kwy.Device.Io.Core;
 using Kwy.Device.Instruments.Abstractions;
 using Kwy.Device.Abstractions.PLC;
