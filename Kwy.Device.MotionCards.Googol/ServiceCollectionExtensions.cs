@@ -7,6 +7,11 @@ namespace Kwy.Device.MotionCards.Googol;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// 注册一张固高运动控制卡及其独立运行时。
+    /// 调用前必须通过 <c>AddAxisDefinitions</c> 注册该卡 <c>DeviceId</c> 对应的业务轴定义，
+    /// 以便适配器建立业务轴与物理轴通道的映射。
+    /// </summary>
     public static IServiceCollection AddGoogolMotionCard(
         this IServiceCollection services,
         Action<GoogolMotionCardConfig>? configure = null,

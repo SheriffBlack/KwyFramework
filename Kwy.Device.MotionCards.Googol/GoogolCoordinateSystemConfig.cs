@@ -1,27 +1,28 @@
 namespace Kwy.Device.MotionCards.Googol;
 
 /// <summary>
-/// Defines an application-level interpolation coordinate system for Kwy.
+/// 固高控制器的插补坐标系配置。
 /// </summary>
 /// <remarks>
-/// This model combines configured machine axes and applies interpolation limits in engineering
-/// units. It is consumed by Kwy at runtime and is not read from or written to <c>gts.cfg</c>.
+/// 该模型把有序物理轴通道组成一个控制器插补坐标系，并定义合成速度、加速度和圆滑时间。
+/// 它由固高适配器在运行时使用，不会从 <c>gts.cfg</c> 读取或写入 <c>gts.cfg</c>。
+/// 业务层不应直接使用其中的物理轴通道。
 /// </remarks>
 public sealed class GoogolCoordinateSystemConfig
 {
-    /// <summary>Gets or sets the 1-based coordinate-system number.</summary>
+    /// <summary>固高控制器坐标系号，从 1 开始。</summary>
     public short CoordinateSystem { get; set; }
 
-    /// <summary>Gets or sets the ordered axis numbers that form this coordinate system.</summary>
+    /// <summary>构成该坐标系的有序物理轴通道；顺序必须与厂商插补 API 的轴顺序一致。</summary>
     public short[] Axes { get; set; } = Array.Empty<short>();
 
-    /// <summary>Gets or sets the maximum composite velocity in the shared engineering unit.</summary>
+    /// <summary>该坐标系的最大合成速度，单位由参与轴共享的工程单位约定。</summary>
     public double MaximumVelocity { get; set; } = 500;
 
-    /// <summary>Gets or sets the maximum composite acceleration in the shared engineering unit.</summary>
+    /// <summary>该坐标系的最大合成加速度，单位由参与轴共享的工程单位约定。</summary>
     public double MaximumAcceleration { get; set; } = 2;
 
-    /// <summary>Gets or sets the interpolation smoothing time passed to the controller.</summary>
+    /// <summary>传给控制器的插补圆滑时间；它是厂商控制器参数，不是上位机实时前瞻周期。</summary>
     public short SmoothingTime { get; set; } = 50;
 
     public bool Validate(short axisCount, short maximumCoordinateSystem)
