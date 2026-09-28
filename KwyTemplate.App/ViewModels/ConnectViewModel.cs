@@ -4,6 +4,7 @@ using Kwy.Communicate.NI;
 using Kwy.Communicate.TcpSerial.Configs;
 using Kwy.Device.Abstractions;
 using Kwy.Device.IoCards.Advantech;
+using Kwy.Device.PLC.Hsl;
 using Kwy.MVVM.Core;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device;
@@ -157,7 +158,7 @@ public sealed class ConnectViewModel : BindableBase
     }
 
     private static bool IsConnectionConfigEntry(DeviceConfigEntry entry)
-        => entry.Config is Kwy.Device.PLCs.Hsl.HslPlcConfig
+        => entry.Config is HslPlcConfig
             or GpibConfig
             or SerialPortConfig
             or TcpConfig
@@ -168,7 +169,7 @@ public sealed class ConnectViewModel : BindableBase
     private static IReadOnlyList<object> CreateEditorSources(DeviceConfigEntry entry)
         => entry.Config switch
         {
-            Kwy.Device.PLCs.Hsl.HslPlcConfig plcConfig => new HslPlcConfigEditorModel(plcConfig).CreatePropertyGridSources(),
+            HslPlcConfig plcConfig => new HslPlcConfigEditorModel(plcConfig).CreatePropertyGridSources(),
             GpibConfig gpibConfig => [new GpibConnectionEditorModel(gpibConfig)],
             SerialPortConfig serialConfig => [CreateSerialEditor(serialConfig)],
             TcpConfig tcpConfig => [CreateTcpEditor(tcpConfig)],

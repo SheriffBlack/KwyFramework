@@ -4,10 +4,10 @@ using Kwy.Communicate.TcpSerial.Configs;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Instruments.Lcr;
 using Kwy.Device.Instruments.Dcr;
-using Kwy.Device.PLCs.Hsl;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Plcs;
 using KwyTemplate.Device.Scanners;
+using Kwy.Device.PLC.Hsl;
 
 namespace KwyTemplate.Device.Profiles;
 

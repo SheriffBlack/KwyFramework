@@ -2,13 +2,13 @@ using Kwy.Communicate.NI;
 using Kwy.Device.Instruments.Dcr;
 using Kwy.Device.Instruments.Lcr;
 using Kwy.Device.IoCards.Advantech;
-using Kwy.Device.PLCs.Hsl;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Instruments;
 using KwyTemplate.Device.IoCards;
 using KwyTemplate.Device.Plcs;
 using KwyTemplate.Device.Scanners;
 using KwyTemplate.Device.MarkPrinters;
+using Kwy.Device.PLC.Hsl;
 
 namespace KwyTemplate.Device.Profiles;
 

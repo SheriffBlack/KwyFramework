@@ -10,6 +10,6 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />
-    <ProjectReference Include="..\Kwy.Device.Plc.Abstractions\Kwy.Device.Plc.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.Plc.Abstractions\Kwy.Device.PLC.Abstractions.csproj" />
   </ItemGroup>
 </Project>

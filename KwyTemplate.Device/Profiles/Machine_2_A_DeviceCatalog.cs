@@ -1,7 +1,7 @@
 using Kwy.Communicate.NI;
 using Kwy.Device.Instruments.Dcr;
 using Kwy.Device.IoCards.Advantech;
-using Kwy.Device.PLCs.Hsl;
+using Kwy.Device.PLC.Hsl;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Instruments;
 using KwyTemplate.Device.IoCards;

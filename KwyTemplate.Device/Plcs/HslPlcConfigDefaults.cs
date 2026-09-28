@@ -1,6 +1,6 @@
 ﻿using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Device.Plc.Abstractions;
-using Kwy.Device.PLCs.Hsl;
+using Kwy.Device.PLC.Hsl;
 
 namespace KwyTemplate.Device.Plcs;
 
