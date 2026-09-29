@@ -1,17 +1,17 @@
 namespace Kwy.Communicate.Grpc.Client.Enums;
 
 /// <summary>
-/// Transport used by a gRPC channel.
+/// gRPC Channel 使用的传输方式。
 /// </summary>
 public enum GrpcTransport
 {
     /// <summary>
-    /// HTTP/2 over TCP. Supports local and remote endpoints.
+    /// 基于 TCP 的 HTTP/2，支持本机与远程端点。
     /// </summary>
     Tcp,
 
     /// <summary>
-    /// Windows named-pipe IPC. Supports processes on the same machine only.
+    /// Windows Named Pipe 进程间通信，仅支持同一台机器上的进程。
     /// </summary>
     NamedPipe
 }

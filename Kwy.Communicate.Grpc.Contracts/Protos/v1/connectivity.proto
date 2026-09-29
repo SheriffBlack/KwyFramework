@@ -4,8 +4,8 @@ package kwy.communicate.grpc.v1;
 
 option csharp_namespace = "Kwy.Communicate.Grpc.Contracts.V1";
 
-// A minimal endpoint shared by every Kwy gRPC service.
-// Business services belong in their own versioned proto files.
+// 每个 Kwy gRPC 服务共享的最小连通性端点。
+// 业务服务应定义在各自独立且已版本化的 proto 文件中。
 service ConnectivityService {
   rpc Ping(PingRequest) returns (PingReply);
 }

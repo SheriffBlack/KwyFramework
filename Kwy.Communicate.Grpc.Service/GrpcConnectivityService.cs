@@ -4,7 +4,7 @@ using Kwy.Communicate.Grpc.Contracts.V1;
 namespace Kwy.Communicate.Grpc.Service;
 
 /// <summary>
-/// Baseline connectivity endpoint implemented by every Kwy gRPC host.
+/// 每个 Kwy gRPC Host 都应实现的基础连通性端点。
 /// </summary>
 public sealed class GrpcConnectivityService : ConnectivityService.ConnectivityServiceBase
 {
