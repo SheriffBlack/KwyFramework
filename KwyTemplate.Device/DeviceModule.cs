@@ -28,10 +28,10 @@ public sealed class DeviceModule : IModule
         services.AddPLCCore();
         services.TryAddSingleton<ICommunicationFactory>(_ =>
         {
-            var factory = new CommunicationFactory();
-            factory.RegisterTcpSerialClients();
-            factory.RegisterGpib();
-            return factory;
+            var builder = new CommunicationFactoryBuilder();
+            builder.RegisterTcpSerialClients();
+            builder.RegisterGpib();
+            return builder.Build();
         });
         services.TryAddSingleton<DeviceConfigProvider>();
         services.TryAddSingleton<IDeviceConfigProvider>(provider => provider.GetRequiredService<DeviceConfigProvider>());

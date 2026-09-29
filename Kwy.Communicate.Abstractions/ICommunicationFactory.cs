@@ -10,7 +10,41 @@ public interface ICommunicationFactory
     TCommunication Create<TCommunication, TConfig>(TConfig config)
         where TCommunication : class, ICommunicationClient
         where TConfig : IProtocolConfig;
+}
 
-    void RegisterCreator<TConfig>(Func<TConfig, ICommunicationClient> creator)
-        where TConfig : IProtocolConfig;
+/// <summary>
+/// Creates one communication client for a supported protocol configuration type.
+/// Implementations should be stateless or thread-safe because they are commonly shared.
+/// </summary>
+public interface ICommunicationClientCreator
+{
+    Type ConfigType { get; }
+
+    ICommunicationClient Create(IProtocolConfig config);
+}
+
+/// <summary>Strongly typed creator contract for one protocol configuration type.</summary>
+public interface ICommunicationClientCreator<in TConfig> : ICommunicationClientCreator
+    where TConfig : class, IProtocolConfig
+{
+    ICommunicationClient Create(TConfig config);
+
+    Type ICommunicationClientCreator.ConfigType => typeof(TConfig);
+
+    ICommunicationClient ICommunicationClientCreator.Create(IProtocolConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        return Create(config as TConfig
+            ?? throw new ArgumentException(
+                $"Expected configuration type '{typeof(TConfig).FullName}', got '{config.GetType().FullName}'.",
+                nameof(config)));
+    }
+}
+
+/// <summary>
+/// Startup-only registration surface used to compose an immutable communication factory.
+/// </summary>
+public interface ICommunicationFactoryRegistry
+{
+    void AddCreator(ICommunicationClientCreator creator);
 }

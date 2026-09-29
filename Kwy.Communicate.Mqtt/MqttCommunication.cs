@@ -15,6 +15,8 @@ public sealed class MqttCommunication : CommunicationClientBase, IMqttCommunicat
     private readonly MqttConfig mqttConfig;
     private readonly MqttFactory mqttFactory = new();
     private readonly SemaphoreSlim subscriptionSemaphore = new(1, 1);
+    private readonly object subscriptionSync = new();
+    private readonly HashSet<string> subscribedTopics;
     private readonly Channel<MqttMessage> messages;
     private IMqttClient? mqttClient;
 
@@ -23,6 +25,7 @@ public sealed class MqttCommunication : CommunicationClientBase, IMqttCommunicat
     public MqttCommunication(MqttConfig config) : base(config)
     {
         mqttConfig = config ?? throw new ArgumentNullException(nameof(config));
+        subscribedTopics = new HashSet<string>(mqttConfig.SubscribeTopics, StringComparer.Ordinal);
         var channelOptions = new BoundedChannelOptions(mqttConfig.MessageBufferCapacity)
         {
             FullMode = BoundedChannelFullMode.DropOldest, // 丢弃旧数据，保证实时性
@@ -65,9 +68,17 @@ public sealed class MqttCommunication : CommunicationClientBase, IMqttCommunicat
     }
 
     protected override Task OnConnectedAsync(CancellationToken cancellationToken)
-        => mqttConfig.SubscribeTopics.Count == 0
+    {
+        string[] topics;
+        lock (subscriptionSync)
+        {
+            topics = subscribedTopics.ToArray();
+        }
+
+        return topics.Length == 0
             ? Task.CompletedTask
-            : SubscribeAsync(mqttConfig.SubscribeTopics.ToArray(), cancellationToken);
+            : SubscribeAsync(topics, cancellationToken);
+    }
 
     protected override async Task DisconnectCoreAsync(CancellationToken cancellationToken)
     {
@@ -153,16 +164,15 @@ public sealed class MqttCommunication : CommunicationClientBase, IMqttCommunicat
 
             var result = await mqttClient.SubscribeAsync(builder.Build(), cancellationToken);
             var items = result.Items.ToArray();
-            lock (mqttConfig.SubscribeTopics)
+            lock (subscriptionSync)
             {
                 for (var index = 0; index < items.Length && index < topicList.Length; index++)
                 {
-                    if ((items[index].ResultCode is MqttClientSubscribeResultCode.GrantedQoS0
+                    if (items[index].ResultCode is MqttClientSubscribeResultCode.GrantedQoS0
                         or MqttClientSubscribeResultCode.GrantedQoS1
                         or MqttClientSubscribeResultCode.GrantedQoS2)
-                        && !mqttConfig.SubscribeTopics.Contains(topicList[index]))
                     {
-                        mqttConfig.SubscribeTopics.Add(topicList[index]);
+                        subscribedTopics.Add(topicList[index]);
                     }
                 }
             }
@@ -195,10 +205,10 @@ public sealed class MqttCommunication : CommunicationClientBase, IMqttCommunicat
                 builder.WithTopicFilter(topic);
 
             await mqttClient.UnsubscribeAsync(builder.Build(), cancellationToken);
-            lock (mqttConfig.SubscribeTopics)
+            lock (subscriptionSync)
             {
                 foreach (var topic in topicList)
-                    mqttConfig.SubscribeTopics.Remove(topic);
+                    subscribedTopics.Remove(topic);
             }
         }
         finally
@@ -209,8 +219,8 @@ public sealed class MqttCommunication : CommunicationClientBase, IMqttCommunicat
 
     public IReadOnlyList<string> GetSubscribedTopics()
     {
-        lock (mqttConfig.SubscribeTopics)
-            return mqttConfig.SubscribeTopics.ToArray();
+        lock (subscriptionSync)
+            return subscribedTopics.ToArray();
     }
 
     private Task OnMqttMessageReceived(MqttApplicationMessageReceivedEventArgs eventArgs)

@@ -104,12 +104,16 @@ OpcUaConfig        → OpcUaCommunication
 注册发生在对应协议模块中：
 
 ```csharp
-var factory = new CommunicationFactory();
-factory.RegisterTcpSerialClients();
-factory.RegisterFluentModbus();
+var builder = new CommunicationFactoryBuilder();
+builder.RegisterTcpSerialClients();
+builder.RegisterFluentModbus();
+
+ICommunicationFactory factory = builder.Build();
 
 ICommunicationClient client = factory.CreateClient(protocolConfig);
 ```
+
+协议映射只允许在启动阶段写入；`Build()` 后的工厂是只读的。重复注册同一种配置类型会立即失败，避免运行期静默替换协议实现。
 
 业务代码只面向 `ICommunicationClient`，不需要依赖 `TcpCommunication` 或 `SerialPortCommunication`。
 

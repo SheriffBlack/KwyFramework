@@ -15,11 +15,19 @@ public static class SecsGemServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(config);
 
+        if (services.Any(static descriptor => descriptor.ServiceType == typeof(KwyGemRegistrationMarker)))
+        {
+            throw new InvalidOperationException(
+                "AddKwyGem supports one container-managed GEM endpoint. " +
+                "Use SecsGemClientFactory and an application registry when multiple endpoints are required.");
+        }
+
         SecsGemClientFactory.Validate(config);
         var diagnosticsOptions = new GemDiagnosticsOptions();
         configureDiagnostics?.Invoke(diagnosticsOptions);
         diagnosticsOptions.Validate();
 
+        services.AddSingleton(new KwyGemRegistrationMarker());
         services.AddSingleton(config);
         services.AddSingleton(diagnosticsOptions);
         services.AddOptions<SecsGemOptions>()
@@ -50,6 +58,8 @@ public static class SecsGemServiceCollectionExtensions
 
         return services;
     }
+
+    private sealed class KwyGemRegistrationMarker;
 
     private static void CopyOptions(SecsGemOptions source, SecsGemOptions target)
     {

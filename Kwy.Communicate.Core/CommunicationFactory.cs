@@ -1,24 +1,43 @@
 using Kwy.Communicate.Abstractions;
-using System.Collections.Concurrent;
 
 namespace Kwy.Communicate.Core;
 
 public sealed class CommunicationFactory : ICommunicationFactory
 {
-    private readonly ConcurrentDictionary<Type, Func<IProtocolConfig, ICommunicationClient>> creators = new();
+    private readonly IReadOnlyDictionary<Type, ICommunicationClientCreator> creators;
 
-    public void RegisterCreator<TConfig>(Func<TConfig, ICommunicationClient> creator)
-        where TConfig : IProtocolConfig
+    public CommunicationFactory(IEnumerable<ICommunicationClientCreator> creators)
     {
-        ArgumentNullException.ThrowIfNull(creator);
-        creators[typeof(TConfig)] = config => creator((TConfig)config);
+        ArgumentNullException.ThrowIfNull(creators);
+        var byConfigType = new Dictionary<Type, ICommunicationClientCreator>();
+        foreach (ICommunicationClientCreator creator in creators)
+        {
+            ArgumentNullException.ThrowIfNull(creator);
+            if (!typeof(IProtocolConfig).IsAssignableFrom(creator.ConfigType))
+            {
+                throw new ArgumentException(
+                    $"Creator configuration type '{creator.ConfigType.FullName}' does not implement {nameof(IProtocolConfig)}.",
+                    nameof(creators));
+            }
+
+            if (!byConfigType.TryAdd(creator.ConfigType, creator))
+            {
+                throw new InvalidOperationException(
+                    $"A communication creator for configuration type '{creator.ConfigType.FullName}' is already registered.");
+            }
+        }
+
+        this.creators = byConfigType;
     }
 
     public ICommunicationClient CreateClient(IProtocolConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        if (creators.TryGetValue(config.GetType(), out var creator))
-            return creator(config);
+        config.ValidateAndThrow();
+        if (creators.TryGetValue(config.GetType(), out ICommunicationClientCreator? creator))
+            return creator.Create(config)
+                ?? throw new InvalidOperationException(
+                    $"Communication creator for '{config.GetType().FullName}' returned null.");
 
         throw new NotSupportedException($"Unregistered protocol configuration type: {config.GetType().Name}");
     }

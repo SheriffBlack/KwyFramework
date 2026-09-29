@@ -10,20 +10,18 @@ namespace Kwy.Communicate.TcpSerial;
 public sealed class HttpCommunication : CommunicationClientBase, IRequestClient<HttpRequestMessage, HttpResponseMessage>
 {
     private readonly HttpConfig httpConfig;
+    private readonly IHttpMessageHandlerFactory handlerFactory;
     private HttpClient? httpClient;
 
-    public HttpCommunication(HttpConfig config) : base(config)
+    public HttpCommunication(HttpConfig config, IHttpMessageHandlerFactory? handlerFactory = null) : base(config)
     {
         httpConfig = config ?? throw new ArgumentNullException(nameof(config));
+        this.handlerFactory = handlerFactory ?? new DefaultHttpMessageHandlerFactory();
     }
 
     protected override Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
-        var handler = new HttpClientHandler();
-        if (!httpConfig.ValidateCertificate)
-            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
-
-        httpClient = new HttpClient(handler)
+        httpClient = new HttpClient(handlerFactory.CreateHandler(httpConfig), disposeHandler: true)
         {
             Timeout = TimeSpan.FromMilliseconds(httpConfig.Timeout)
         };

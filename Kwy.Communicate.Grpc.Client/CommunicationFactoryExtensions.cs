@@ -1,4 +1,5 @@
 using Kwy.Communicate.Abstractions;
+using Kwy.Communicate.Core;
 using Kwy.Communicate.Grpc.Client.Configs;
 
 namespace Kwy.Communicate.Grpc.Client;
@@ -8,7 +9,7 @@ namespace Kwy.Communicate.Grpc.Client;
 /// </summary>
 public static class CommunicationFactoryExtensions
 {
-    public static ICommunicationFactory RegisterGrpcClients(this ICommunicationFactory factory)
+    public static ICommunicationFactoryRegistry RegisterGrpcClients(this ICommunicationFactoryRegistry factory)
     {
         ArgumentNullException.ThrowIfNull(factory);
         factory.RegisterCreator<GrpcConfig>(config => new GrpcCommunication(config));
