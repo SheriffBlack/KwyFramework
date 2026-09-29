@@ -10,8 +10,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
     <PackageReference Include="NPOI" Version="2.8.0" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.3" />
     <ProjectReference Include="..\Kwy.Files.Excel.Abstractions\Kwy.Files.Excel.Abstractions.csproj" />
+
   </ItemGroup>
 
 </Project>
