@@ -9,19 +9,26 @@ public static class SecsGemServiceCollectionExtensions
 {
     public static IServiceCollection AddKwyGem(
         this IServiceCollection services,
-        SecsGemClientConfig config)
+        SecsGemClientConfig config,
+        Action<GemDiagnosticsOptions>? configureDiagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(config);
 
-        if (!config.Validate())
-        {
-            throw new ArgumentException("The SECS/HSMS configuration is invalid.", nameof(config));
-        }
+        SecsGemClientFactory.Validate(config);
+        var diagnosticsOptions = new GemDiagnosticsOptions();
+        configureDiagnostics?.Invoke(diagnosticsOptions);
+        diagnosticsOptions.Validate();
 
         services.AddSingleton(config);
-        services.AddOptions<SecsGemOptions>().Configure(options => MapOptions(config, options));
-        services.TryAddSingleton<ISecsGemLogger, TraceSecsGemLogger>();
+        services.AddSingleton(diagnosticsOptions);
+        services.AddOptions<SecsGemOptions>()
+            .Configure(options => CopyOptions(SecsGemClientFactory.CreateOptions(config), options));
+        services.TryAddSingleton<IGemDiagnostics, TraceGemDiagnostics>();
+        services.TryAddSingleton<ISecsGemLogger>(provider =>
+            new SecsGemLoggerAdapter(
+                provider.GetRequiredService<IGemDiagnostics>(),
+                provider.GetRequiredService<GemDiagnosticsOptions>()));
         services.TryAddSingleton<ISecsConnection>(provider =>
         {
             var connection = new HsmsConnection(
@@ -44,19 +51,17 @@ public static class SecsGemServiceCollectionExtensions
         return services;
     }
 
-    private static void MapOptions(SecsGemClientConfig source, SecsGemOptions target)
+    private static void CopyOptions(SecsGemOptions source, SecsGemOptions target)
     {
         target.DeviceId = source.DeviceId;
         target.IsActive = source.IsActive;
-        target.IpAddress = source.Host;
+        target.IpAddress = source.IpAddress;
         target.Port = source.Port;
-        target.T3 = source.T3Timeout;
-        target.T5 = source.T5Timeout;
-        target.T6 = source.T6Timeout;
-        target.T7 = source.T7Timeout;
-        target.T8 = source.T8Timeout;
-        target.LinkTestInterval = source.KeepAliveInterval;
+        target.T3 = source.T3;
+        target.T5 = source.T5;
+        target.T6 = source.T6;
+        target.T7 = source.T7;
+        target.T8 = source.T8;
+        target.LinkTestInterval = source.LinkTestInterval;
     }
-
-    private sealed class TraceSecsGemLogger : ISecsGemLogger;
 }

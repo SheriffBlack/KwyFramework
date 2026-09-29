@@ -8,17 +8,28 @@ public sealed class SecsGemClient : CommunicationClientBase, ISecsGemClient
     private readonly ISecsGem secsGem;
     private readonly ISecsConnection hsmsConnection;
     private readonly SecsGemClientConfig secsConfig;
+    private readonly bool ownsSecs4NetDependencies;
     private CancellationTokenSource? sessionCancellation;
 
     public SecsGemClient(
         ISecsGem secsGem,
         ISecsConnection hsmsConnection,
         SecsGemClientConfig config)
+        : this(secsGem, hsmsConnection, config, ownsSecs4NetDependencies: false)
+    {
+    }
+
+    internal SecsGemClient(
+        ISecsGem secsGem,
+        ISecsConnection hsmsConnection,
+        SecsGemClientConfig config,
+        bool ownsSecs4NetDependencies)
         : base(config)
     {
         this.secsGem = secsGem ?? throw new ArgumentNullException(nameof(secsGem));
         this.hsmsConnection = hsmsConnection ?? throw new ArgumentNullException(nameof(hsmsConnection));
         secsConfig = config ?? throw new ArgumentNullException(nameof(config));
+        this.ownsSecs4NetDependencies = ownsSecs4NetDependencies;
     }
 
     public ConnectionState HsmsState => hsmsConnection.State;
@@ -73,11 +84,46 @@ public sealed class SecsGemClient : CommunicationClientBase, ISecsGemClient
 
     protected override bool IsConnectionAlive() => hsmsConnection.State == ConnectionState.Selected;
 
+    public override async ValueTask DisposeAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        await base.DisposeAsync().ConfigureAwait(false);
+
+        if (!ownsSecs4NetDependencies)
+        {
+            return;
+        }
+
+        await DisposeDependencyAsync(secsGem).ConfigureAwait(false);
+        if (!ReferenceEquals(secsGem, hsmsConnection))
+        {
+            await DisposeDependencyAsync(hsmsConnection).ConfigureAwait(false);
+        }
+    }
+
     private void EnsureSelected()
     {
         if (!IsConnected)
         {
             throw new InvalidOperationException("The SECS/HSMS session is not selected.");
+        }
+    }
+
+    private static async ValueTask DisposeDependencyAsync(object dependency)
+    {
+        if (dependency is IAsyncDisposable asyncDisposable)
+        {
+            await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+            return;
+        }
+
+        if (dependency is IDisposable disposable)
+        {
+            disposable.Dispose();
         }
     }
 }
