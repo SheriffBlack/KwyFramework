@@ -69,7 +69,6 @@
   <Project Path="Kwy.Device.PLC.Core/Kwy.Device.PLC.Core.csproj" />
   <Project Path="Kwy.Device.PLC.Hsl/Kwy.Device.PLC.Hsl.csproj" Id="befad0b3-1d27-4133-8c48-97e5c3a80eb8" />
   <Project Path="Kwy.Device.PLC.IoTClient/Kwy.Device.PLC.IoTClient.csproj" Id="492ff429-2407-438e-8a40-3f580faaeb6a" />
-  <Project Path="Kwy.Device.Semiconductor.Gem/Kwy.Device.Semiconductor.Gem.csproj" />
   <Project Path="Kwy.Files.Excel.Abstractions/Kwy.Files.Excel.Abstractions.csproj" Id="9d53d60a-4b3b-4136-8baa-533c4e516f1b" />
   <Project Path="Kwy.Files.Excel.EPPlus/Kwy.Files.Excel.EPPlus.csproj" Id="2ca55765-10cd-4b4e-89c3-7dc3ce9b6d10" />
   <Project Path="Kwy.Files.Excel.Interop/Kwy.Files.Excel.Interop.csproj" Id="0c2fcd58-41ef-492a-9453-548c86b7b5c3" />

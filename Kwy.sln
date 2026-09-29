@@ -155,8 +155,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Device.PLC.Hsl", "Kwy.D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Device.PLC.IoTClient", "Kwy.Device.PLC.IoTClient\Kwy.Device.PLC.IoTClient.csproj", "{EA214DA1-EA16-43F9-AD11-7BF7000FB575}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Device.Semiconductor.Gem", "Kwy.Device.Semiconductor.Gem\Kwy.Device.Semiconductor.Gem.csproj", "{F226B6C2-CDFD-456B-B8E7-EC29042F4033}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Files.Excel.Abstractions", "Kwy.Files.Excel.Abstractions\Kwy.Files.Excel.Abstractions.csproj", "{FE395124-F10E-47BB-AD68-440C913B4943}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Files.Excel.EPPlus", "Kwy.Files.Excel.EPPlus\Kwy.Files.Excel.EPPlus.csproj", "{D9C4950F-9AA3-440E-942E-1C8F1316E15D}"
@@ -1117,18 +1115,6 @@ Global
 		{EA214DA1-EA16-43F9-AD11-7BF7000FB575}.Release|x64.Build.0 = Release|Any CPU
 		{EA214DA1-EA16-43F9-AD11-7BF7000FB575}.Release|x86.ActiveCfg = Release|Any CPU
 		{EA214DA1-EA16-43F9-AD11-7BF7000FB575}.Release|x86.Build.0 = Release|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Debug|x64.Build.0 = Debug|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Debug|x86.Build.0 = Debug|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Release|x64.ActiveCfg = Release|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Release|x64.Build.0 = Release|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Release|x86.ActiveCfg = Release|Any CPU
-		{F226B6C2-CDFD-456B-B8E7-EC29042F4033}.Release|x86.Build.0 = Release|Any CPU
 		{FE395124-F10E-47BB-AD68-440C913B4943}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FE395124-F10E-47BB-AD68-440C913B4943}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE395124-F10E-47BB-AD68-440C913B4943}.Debug|x64.ActiveCfg = Debug|Any CPU
