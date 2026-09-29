@@ -1,6 +1,7 @@
 ﻿using Kwy.Device.Camera.Abstractions;
 using Kwy.Device.Camera.Core;
 using Kwy.Device.Camera.HikVision;
+using Kwy.Device.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -62,10 +63,14 @@ public sealed class CameraTests
 
         using ServiceProvider provider = services.BuildServiceProvider();
         ICameraRegistry registry = provider.GetRequiredService<ICameraRegistry>();
+        IDeviceRegistry devices = provider.GetRequiredService<IDeviceRegistry>();
 
         Assert.Equal(2, registry.Cameras.Count);
         Assert.IsType<HikCameraDevice>(registry.GetRequired("Camera.Top"));
         Assert.IsType<HikCameraDevice>(registry.GetRequired("Camera.Bottom"));
+        Assert.Equal(2, devices.Devices.Count);
+        Assert.IsType<HikCameraDevice>(devices.GetRequiredDevice("Camera.Top"));
+        Assert.IsType<HikCameraDevice>(devices.GetRequiredDevice("Camera.Bottom"));
     }
 
     [Fact]

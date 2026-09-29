@@ -2,6 +2,7 @@
 using Kwy.Device.Camera.Core;
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Kwy.Device.Abstractions;
 
 namespace Kwy.Device.Camera.HikVision;
 
@@ -20,7 +21,10 @@ public static class ServiceCollectionExtensions
         config.ValidateAndThrow();
 
         services.AddCameraCore();
-        services.AddSingleton<ICameraDevice>(_ => new HikCameraDevice(config));
+        var device = new Lazy<HikCameraDevice>(() => new HikCameraDevice(config));
+        services.AddSingleton(_ => device.Value);
+        services.AddSingleton<ICameraDevice>(_ => device.Value);
+        services.AddSingleton<IDevice>(_ => device.Value);
         return services;
     }
 }

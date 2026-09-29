@@ -326,11 +326,6 @@ public partial class App : KwyApplication
             serviceProvider.GetService<KwyTemplate.Device.Devices.IDeviceStartupConnector>()?.Dispose();
         }, provider);
 
-        RunShutdownStep(developerLog, "IDeviceRegistry.Dispose", static serviceProvider =>
-        {
-            serviceProvider.GetService<Kwy.Device.Abstractions.IDeviceRegistry>()?.Dispose();
-        }, provider);
-
         developerLog?.Info("[Shutdown] Runtime shutdown finished.");
     }
 

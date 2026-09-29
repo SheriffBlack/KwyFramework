@@ -8,7 +8,7 @@ namespace Kwy.Device.Core;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// 注册设备实例注册表。
+    /// 注册非拥有型设备实例索引。
     /// 各领域 Core 的注册入口应调用本方法，但领域服务必须在各自 <c>*.Core</c> 项目中注册。
     /// </summary>
     public static IServiceCollection AddDeviceCore(this IServiceCollection services)

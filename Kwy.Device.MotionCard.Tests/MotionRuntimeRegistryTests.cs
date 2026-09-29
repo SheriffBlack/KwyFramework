@@ -8,6 +8,7 @@ using Xunit;
 using Kwy.Device.MotionCard.Abstractions.Axes;
 using Kwy.Device.MotionCard.Abstractions;
 using Kwy.Device.MotionCard.Abstractions.Configuration;
+using Kwy.Device.Abstractions;
 
 namespace Kwy.Device.MotionCard.Tests;
 
@@ -24,10 +25,14 @@ public sealed class MotionRuntimeRegistryTests
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IMotionRuntimeRegistry registry = provider.GetRequiredService<IMotionRuntimeRegistry>();
+        IDeviceRegistry devices = provider.GetRequiredService<IDeviceRegistry>();
 
         Assert.Equal(2, registry.Runtimes.Count);
         Assert.IsType<GoogolMotionCardDevice>(registry.GetRequired("Motion.Googol").Card);
         Assert.IsType<LeadshineMotionCardDevice>(registry.GetRequired("Motion.Leadshine").Card);
+        Assert.Equal(2, devices.Devices.Count);
+        Assert.IsType<GoogolMotionCardDevice>(devices.GetRequiredDevice("Motion.Googol"));
+        Assert.IsType<LeadshineMotionCardDevice>(devices.GetRequiredDevice("Motion.Leadshine"));
         Assert.Throws<InvalidOperationException>(() =>
         {
             _ = provider.GetRequiredService<IAxisMotionExecutor>();

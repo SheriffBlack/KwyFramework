@@ -4,6 +4,7 @@ using Kwy.Device.MotionCard.Abstractions.Axes;
 using Kwy.Device.MotionCard.Core;
 using Kwy.Device.MotionCard.Core.Safety;
 using Microsoft.Extensions.DependencyInjection;
+using Kwy.Device.Abstractions;
 
 namespace Kwy.Device.MotionCard.Leadshine;
 
@@ -29,16 +30,22 @@ public static class ServiceCollectionExtensions
             throw new ArgumentException("Invalid Leadshine motion card configuration.", nameof(configure));
         }
 
-        services.AddSingleton<LeadshineMotionCardDevice>(provider => new LeadshineMotionCardDevice(
-            config,
-            provider.GetRequiredService<IAxisDefinitionProvider>()));
+        services.AddMotionCardCore();
+        Lazy<LeadshineMotionCardDevice>? device = null;
+        LeadshineMotionCardDevice GetDevice(IServiceProvider provider) =>
+            LazyInitializer.EnsureInitialized(ref device, () => new Lazy<LeadshineMotionCardDevice>(() => new LeadshineMotionCardDevice(
+                config,
+                provider.GetRequiredService<IAxisDefinitionProvider>()))).Value;
+
+        services.AddSingleton<LeadshineMotionCardDevice>(GetDevice);
+        services.AddSingleton<IDevice>(GetDevice);
 
         var stateMonitorOptions = new MotionStateMonitorOptions();
         configureStateMonitor?.Invoke(stateMonitorOptions);
 
         services.AddSingleton<IMotionDeviceRuntime>(provider =>
         {
-            LeadshineMotionCardDevice card = provider.GetRequiredService<LeadshineMotionCardDevice>();
+            LeadshineMotionCardDevice card = GetDevice(provider);
             stateMonitorOptions.Axes = card.Axes.Select(static axis => axis.Channel).ToArray();
             stateMonitorOptions.Validate();
             return MotionRuntimeFactory.Create(

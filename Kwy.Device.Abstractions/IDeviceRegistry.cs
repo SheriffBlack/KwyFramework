@@ -1,6 +1,10 @@
 namespace Kwy.Device.Abstractions;
 
-public interface IDeviceRegistry : IAsyncDisposable, IDisposable
+/// <summary>
+/// Non-owning index of application devices. The component that creates a device remains
+/// responsible for disconnecting and disposing it.
+/// </summary>
+public interface IDeviceRegistry
 {
     IReadOnlyCollection<IDevice> Devices { get; }
 

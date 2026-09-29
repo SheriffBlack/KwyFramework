@@ -7,6 +7,7 @@ namespace KwyTemplate.Device.Devices;
 
 public sealed class DeviceStartupConnector : IDeviceStartupConnector
 {
+    private static readonly TimeSpan DisconnectTimeout = TimeSpan.FromSeconds(3);
     private readonly IDeviceRegistry registry;
     private readonly StartupProgressService startupProgress;
     private readonly ILocalizationService localizationService;
@@ -81,7 +82,18 @@ public sealed class DeviceStartupConnector : IDeviceStartupConnector
 
         disposed = true;
         connectGate.Dispose();
-        registry.Dispose();
+        Task[] disconnectTasks = registry.Devices
+            .Where(static device => device.IsConnected)
+            .Select(static device => DisconnectSafelyAsync(device).AsTask())
+            .ToArray();
+        try
+        {
+            Task.WaitAll(disconnectTasks, DisconnectTimeout);
+        }
+        catch
+        {
+            // Shutdown is best effort; disposal remains the responsibility of each device owner.
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -93,7 +105,18 @@ public sealed class DeviceStartupConnector : IDeviceStartupConnector
 
         disposed = true;
         connectGate.Dispose();
-        await registry.DisposeAsync().ConfigureAwait(false);
+        Task[] disconnectTasks = registry.Devices
+            .Where(static device => device.IsConnected)
+            .Select(static device => DisconnectSafelyAsync(device).AsTask())
+            .ToArray();
+        try
+        {
+            await Task.WhenAll(disconnectTasks).WaitAsync(DisconnectTimeout).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Shutdown is best effort; disposal remains the responsibility of each device owner.
+        }
     }
 
     private void ThrowIfDisposed()
@@ -101,6 +124,18 @@ public sealed class DeviceStartupConnector : IDeviceStartupConnector
         if (disposed)
         {
             throw new ObjectDisposedException(nameof(DeviceStartupConnector));
+        }
+    }
+
+    private static async ValueTask DisconnectSafelyAsync(IDevice device)
+    {
+        try
+        {
+            await device.DisconnectAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            // Continue disconnecting the remaining devices.
         }
     }
 

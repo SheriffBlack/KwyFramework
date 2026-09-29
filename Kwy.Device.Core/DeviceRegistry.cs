@@ -9,22 +9,26 @@ namespace Kwy.Device.Core;
 /// </summary>
 public sealed class DeviceRegistry : IDeviceRegistry
 {
-    private static readonly TimeSpan DeviceDisposeTimeout = TimeSpan.FromSeconds(3);
     private readonly ConcurrentDictionary<string, IDevice> devices = new(StringComparer.OrdinalIgnoreCase);
-    private bool disposed;
+
+    public DeviceRegistry(IEnumerable<IDevice>? devices = null)
+    {
+        foreach (IDevice device in devices ?? [])
+        {
+            Add(device);
+        }
+    }
 
     public IReadOnlyCollection<IDevice> Devices
     {
         get
         {
-            ThrowIfDisposed();
             return devices.Values.ToArray();
         }
     }
 
     public void Add(IDevice device)
     {
-        ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(device);
         ArgumentException.ThrowIfNullOrWhiteSpace(device.DeviceId);
 
@@ -44,7 +48,6 @@ public sealed class DeviceRegistry : IDeviceRegistry
 
     public bool TryGetDevice(string deviceId, out IDevice device)
     {
-        ThrowIfDisposed();
         ArgumentException.ThrowIfNullOrWhiteSpace(deviceId);
         return devices.TryGetValue(deviceId, out device!);
     }
@@ -81,80 +84,6 @@ public sealed class DeviceRegistry : IDeviceRegistry
     public IReadOnlyCollection<TCapability> GetDevices<TCapability>()
         where TCapability : class
     {
-        ThrowIfDisposed();
         return devices.Values.OfType<TCapability>().ToArray();
-    }
-
-    public void Dispose()
-    {
-        if (!TryBeginDispose(out IDevice[] snapshot))
-        {
-            return;
-        }
-
-        Task[] disposeTasks = snapshot
-            .Select(static device => DisposeDeviceSafelyAsync(device).AsTask())
-            .ToArray();
-
-        try
-        {
-            Task.WaitAll(disposeTasks, DeviceDisposeTimeout);
-        }
-        catch
-        {
-            // Disposal is best effort so one faulty driver cannot block shutdown.
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (!TryBeginDispose(out IDevice[] snapshot))
-        {
-            return;
-        }
-
-        Task[] disposeTasks = snapshot
-            .Select(static device => DisposeDeviceSafelyAsync(device).AsTask())
-            .ToArray();
-
-        try
-        {
-            await Task.WhenAll(disposeTasks).WaitAsync(DeviceDisposeTimeout).ConfigureAwait(false);
-        }
-        catch
-        {
-            // Disposal is best effort so one faulty driver cannot block shutdown.
-        }
-    }
-
-    private bool TryBeginDispose(out IDevice[] snapshot)
-    {
-        if (disposed)
-        {
-            snapshot = Array.Empty<IDevice>();
-            return false;
-        }
-
-        disposed = true;
-        snapshot = devices.Values.ToArray();
-        devices.Clear();
-        return true;
-    }
-
-    private static async ValueTask DisposeDeviceSafelyAsync(IDevice device)
-    {
-        try
-        {
-            await device.DisposeAsync().ConfigureAwait(false);
-        }
-        catch
-        {
-            // Continue disposing the remaining devices.
-        }
-    }
-
-    private void ThrowIfDisposed()
-    {
-        ObjectDisposedException.ThrowIf(disposed, this);
     }
 }

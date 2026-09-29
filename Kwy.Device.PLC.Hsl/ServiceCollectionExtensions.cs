@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Kwy.Device.PLC.Hsl.Licensing;
 using Kwy.Device.PLC.Abstractions;
+using Kwy.Device.PLC.Core;
 
 namespace Kwy.Device.PLC.Hsl;
 
@@ -41,7 +42,7 @@ public static class ServiceCollectionExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(deviceName);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddDeviceCore();
+        services.AddPLCCore();
 
         var config = new HslPlcConfig();
         configure(config);
@@ -51,14 +52,9 @@ public static class ServiceCollectionExtensions
         }
 
         var device = new Lazy<HslPlcDevice>(() => new HslPlcDevice(deviceId, deviceName, config));
-
-        services.AddSingleton(provider =>
-        {
-            var plc = device.Value;
-            provider.GetRequiredService<IDeviceRegistry>().Add(plc);
-            return plc;
-        });
-        services.AddSingleton<IPlcDevice>(provider => provider.GetRequiredService<HslPlcDevice>());
+        services.AddSingleton(_ => device.Value);
+        services.AddSingleton<IPlcDevice>(_ => device.Value);
+        services.AddSingleton<IDevice>(_ => device.Value);
 
         return services;
     }

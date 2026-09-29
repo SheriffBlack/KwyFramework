@@ -3,13 +3,15 @@ using KwyTemplate.Device.Profiles;
 
 namespace KwyTemplate.Device.Devices;
 
-public sealed class DeviceRegistryInitializer : IDeviceRegistryInitializer
+public sealed class DeviceRegistryInitializer : IDeviceRegistryInitializer, IDisposable, IAsyncDisposable
 {
     private readonly IDeviceRegistry deviceRegistry;
     private readonly IServiceProvider services;
     private readonly IEnumerable<IDeviceCatalog> catalogs;
     private readonly DeviceCatalogSelectionOptions selectionOptions;
     private bool initialized;
+    private readonly List<IDevice> ownedDevices = [];
+    private int disposed;
 
     public DeviceRegistryInitializer(
         IDeviceRegistry deviceRegistry,
@@ -49,7 +51,38 @@ public sealed class DeviceRegistryInitializer : IDeviceRegistryInitializer
         {
             IDevice device = definition.CreateDevice(services);
             deviceRegistry.Add(device);
+            ownedDevices.Add(device);
         }
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
+        {
+            return;
+        }
+
+        foreach (IDevice device in ownedDevices)
+        {
+            device.Dispose();
+        }
+
+        ownedDevices.Clear();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
+        {
+            return;
+        }
+
+        foreach (IDevice device in ownedDevices)
+        {
+            await device.DisposeAsync().ConfigureAwait(false);
+        }
+
+        ownedDevices.Clear();
     }
 
     private static IDeviceCatalog SelectCatalog(IEnumerable<IDeviceCatalog> source, string? activeCatalogKey)

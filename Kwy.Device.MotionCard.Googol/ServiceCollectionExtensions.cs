@@ -4,6 +4,7 @@ using Kwy.Device.MotionCard.Abstractions.Axes;
 using Kwy.Device.MotionCard.Core;
 using Kwy.Device.MotionCard.Core.Safety;
 using Microsoft.Extensions.DependencyInjection;
+using Kwy.Device.Abstractions;
 
 namespace Kwy.Device.MotionCard.Googol;
 
@@ -29,16 +30,22 @@ public static class ServiceCollectionExtensions
             throw new ArgumentException("Invalid Googol motion card configuration.", nameof(configure));
         }
 
-        services.AddSingleton<GoogolMotionCardDevice>(provider => new GoogolMotionCardDevice(
-            config,
-            provider.GetRequiredService<IAxisDefinitionProvider>()));
+        services.AddMotionCardCore();
+        Lazy<GoogolMotionCardDevice>? device = null;
+        GoogolMotionCardDevice GetDevice(IServiceProvider provider) =>
+            LazyInitializer.EnsureInitialized(ref device, () => new Lazy<GoogolMotionCardDevice>(() => new GoogolMotionCardDevice(
+                config,
+                provider.GetRequiredService<IAxisDefinitionProvider>()))).Value;
+
+        services.AddSingleton<GoogolMotionCardDevice>(GetDevice);
+        services.AddSingleton<IDevice>(GetDevice);
 
         var stateMonitorOptions = new MotionStateMonitorOptions();
         configureStateMonitor?.Invoke(stateMonitorOptions);
 
         services.AddSingleton<IMotionDeviceRuntime>(provider =>
         {
-            GoogolMotionCardDevice card = provider.GetRequiredService<GoogolMotionCardDevice>();
+            GoogolMotionCardDevice card = GetDevice(provider);
             stateMonitorOptions.Axes = card.Axes.Select(static axis => axis.Channel).ToArray();
             stateMonitorOptions.Validate();
             return MotionRuntimeFactory.Create(
