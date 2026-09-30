@@ -154,6 +154,18 @@ public sealed class BehaviorTests
         });
 
     [Fact]
+    public void CirclePanel_DesiredSizeIncludesChildExtent()
+        => RunInSta(() =>
+        {
+            var panel = new KwyCirclePanel { Radius = 100 };
+            panel.Children.Add(new Border { Width = 40, Height = 20 });
+
+            panel.Measure(new Size(1000, 1000));
+
+            Assert.Equal(new Size(240, 220), panel.DesiredSize);
+        });
+
+    [Fact]
     public void RadioButtonHelper_WritesCheckedContentBackToBindingSource()
         => RunInSta(() =>
         {

@@ -98,13 +98,21 @@ public class KwyCirclePanel : Panel
     /// </summary>
     protected override Size MeasureOverride(Size availableSize)
     {
-        // 给每个子项分配最大可用空间，让子项自己测量尺寸
+        double maxChildWidth = 0;
+        double maxChildHeight = 0;
+
+        // 先让子项确定期望尺寸。圆周上的子项以自身中心定位，
+        // 因此面板期望尺寸还必须包含最外侧子项伸出圆周的一半。
         foreach (UIElement child in InternalChildren)
         {
             child.Measure(availableSize);
+            maxChildWidth = Math.Max(maxChildWidth, child.DesiredSize.Width);
+            maxChildHeight = Math.Max(maxChildHeight, child.DesiredSize.Height);
         }
-        // 返回面板的默认尺寸（可根据需要调整）
-        return new Size(Radius * 2, Radius * 2);
+
+        return new Size(
+            Radius * 2 + maxChildWidth,
+            Radius * 2 + maxChildHeight);
     }
 
     /// <summary>

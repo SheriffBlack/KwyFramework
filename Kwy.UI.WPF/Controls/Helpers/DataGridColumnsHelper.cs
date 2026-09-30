@@ -110,18 +110,21 @@ public static class DataGridColumnsHelper
             return;
         }
 
+        // 1. 解除旧列集合的监听
         if (dataGrid.GetValue(SubscribedCollectionProperty) is INotifyCollectionChanged oldCollection)
         {
             CollectionChangedEventManager.RemoveHandler(oldCollection, dataGrid.OnColumnsCollectionChanged);
             dataGrid.ClearValue(SubscribedCollectionProperty);
         }
 
+        // 2. 监听新列集合
         if (e.NewValue is INotifyCollectionChanged newCollection)
         {
             CollectionChangedEventManager.AddHandler(newCollection, dataGrid.OnColumnsCollectionChanged);
             dataGrid.SetValue(SubscribedCollectionProperty, newCollection);
         }
 
+        // 3. 立即根据当前列集合创建 DataGrid.Columns
         UpdateColumns(dataGrid);
     }
 
