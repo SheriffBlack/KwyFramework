@@ -13,6 +13,7 @@ public static class ChartValuePushBehavior
     static ChartValuePushBehavior()
         => PropertyMetadataLocalization.Changed += (_, _) => RefreshLocalizedCharts();
 
+    /// <summary>最新增量数据</summary>
     public static readonly DependencyProperty SampleProperty =
         DependencyProperty.RegisterAttached(
             "Sample",
@@ -20,6 +21,7 @@ public static class ChartValuePushBehavior
             typeof(ChartValuePushBehavior),
             new PropertyMetadata(null, OnSampleChanged));
 
+    /// <summary>当前参数的历史快照</summary>
     public static readonly DependencyProperty SamplesProperty =
         DependencyProperty.RegisterAttached(
             "Samples",
@@ -27,6 +29,7 @@ public static class ChartValuePushBehavior
             typeof(ChartValuePushBehavior),
             new PropertyMetadata(null));
 
+    /// <summary>上下限、目标值</summary>
     public static readonly DependencyProperty LimitsProperty =
         DependencyProperty.RegisterAttached(
             "Limits",
@@ -34,6 +37,7 @@ public static class ChartValuePushBehavior
             typeof(ChartValuePushBehavior),
             new PropertyMetadata(null, OnLimitsChanged));
 
+    /// <summary>当前展示的是哪个参数，如从电阻切换到电感</summary>
     public static readonly DependencyProperty ParameterKeyProperty =
         DependencyProperty.RegisterAttached(
             "ParameterKey",
