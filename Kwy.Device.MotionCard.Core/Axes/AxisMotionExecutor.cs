@@ -55,9 +55,9 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
             || Math.Abs(snapshot.Velocity) <= velocityLimit;
         if (options.SettlingTime == TimeSpan.Zero
             && velocitySettled
-            && Math.Abs(position - snapshot.Position) <= options.PositionTolerance)
+            && Math.Abs(position - snapshot.EncoderPosition) <= options.PositionTolerance)
         {
-            return new(axis, position, snapshot.Position, options.PositionTolerance);
+            return new(axis, position, snapshot.EncoderPosition, options.PositionTolerance);
         }
 
         var operation = new PositionMotionOperation(this, axis, position, direction, options, cancellationToken);
@@ -443,14 +443,14 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
                 return;
             }
 
-            bool insidePositionWindow = Math.Abs(snapshot.Position - Target) <= options.PositionTolerance;
+            bool insidePositionWindow = Math.Abs(snapshot.EncoderPosition - Target) <= options.PositionTolerance;
             bool insideVelocityWindow = options.SettlingVelocityThreshold is not { } velocityLimit
                 || Math.Abs(snapshot.Velocity) <= velocityLimit;
             if (!snapshot.IsMoving && insidePositionWindow && insideVelocityWindow)
             {
                 stableSince ??= snapshot.Timestamp;
                 if (snapshot.Timestamp - stableSince.Value >= options.SettlingTime && TryComplete())
-                    completion.TrySetResult(new(Axis, Target, snapshot.Position, options.PositionTolerance));
+                    completion.TrySetResult(new(Axis, Target, snapshot.EncoderPosition, options.PositionTolerance));
             }
             else
             {
@@ -512,10 +512,10 @@ public sealed class AxisMotionExecutor : IAxisMotionExecutor, IDisposable
             }
 
             if (!snapshot.IsMoving
-                && Math.Abs(snapshot.Position - Target) > options.PositionTolerance
+                && Math.Abs(snapshot.EncoderPosition - Target) > options.PositionTolerance
                 && (observedMoving || stopwatch.Elapsed >= options.StartDetectionDelay))
             {
-                return new MotionPositionException(Axis, Target, snapshot.Position, options.PositionTolerance);
+                return new MotionPositionException(Axis, Target, snapshot.EncoderPosition, options.PositionTolerance);
             }
 
             return null;

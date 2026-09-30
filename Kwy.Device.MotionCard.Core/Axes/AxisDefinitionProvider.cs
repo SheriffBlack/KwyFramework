@@ -15,7 +15,7 @@ public sealed class AxisDefinitionProvider : IAxisDefinitionProvider
     {
         ArgumentNullException.ThrowIfNull(definitions);
         byId = new Dictionary<string, AxisDefinition>(StringComparer.OrdinalIgnoreCase);
-        byAddress = new Dictionary<AxisAddress, AxisDefinition>();
+        byAddress = new Dictionary<AxisAddress, AxisDefinition>(AxisAddressComparer.Instance);
 
         foreach (AxisDefinition definition in definitions)
         {
@@ -49,4 +49,16 @@ public sealed class AxisDefinitionProvider : IAxisDefinitionProvider
     /// <inheritdoc />
     public bool TryGet(AxisAddress address, out AxisDefinition definition)
         => byAddress.TryGetValue(address, out definition!);
+
+    private sealed class AxisAddressComparer : IEqualityComparer<AxisAddress>
+    {
+        public static AxisAddressComparer Instance { get; } = new();
+
+        public bool Equals(AxisAddress x, AxisAddress y)
+            => x.Channel == y.Channel
+                && string.Equals(x.DeviceId, y.DeviceId, StringComparison.OrdinalIgnoreCase);
+
+        public int GetHashCode(AxisAddress obj)
+            => HashCode.Combine(StringComparer.OrdinalIgnoreCase.GetHashCode(obj.DeviceId), obj.Channel);
+    }
 }

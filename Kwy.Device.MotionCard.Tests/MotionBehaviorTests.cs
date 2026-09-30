@@ -56,6 +56,14 @@ public sealed class MotionBehaviorTests
     }
 
     [Fact]
+    public void AxisDefinitionProvider_TreatsDeviceIdsAsCaseInsensitive()
+    {
+        Assert.Throws<ArgumentException>(() => new AxisDefinitionProvider([
+            CreateAxisDefinition("SimulationMotion", 1),
+            CreateAxisDefinition("simulationmotion", 1) with { Id = "SimulationMotion.axis.other" }]));
+    }
+
+    [Fact]
     public async Task SimulationCard_MovesAndHomes()
     {
         await using var card = CreateCard();

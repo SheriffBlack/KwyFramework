@@ -113,18 +113,16 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddMotionGroupDefinitions(
         this IServiceCollection services,
-        IEnumerable<MotionGroupDefinition> groups,
-        IEnumerable<IoPointDefinition>? ioPoints = null)
+        IEnumerable<MotionGroupDefinition> groups)
     {
         ArgumentNullException.ThrowIfNull(services);
         var groupDefinitions = groups?.ToArray() ?? throw new ArgumentNullException(nameof(groups));
-        var pointDefinitions = ioPoints?.ToArray() ?? Array.Empty<IoPointDefinition>();
         services.AddSingleton<IMotionGroupDefinitionProvider>(_ => new MotionGroupDefinitionProvider(groupDefinitions));
         services.AddSingleton<IMotionConfigurationValidator>(provider => new MotionConfigurationValidator(
             provider.GetRequiredService<IMotionRuntimeRegistry>(),
             provider.GetRequiredService<IAxisDefinitionProvider>(),
             provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
-            pointDefinitions,
+            provider.GetService<IIoPointDefinitionProvider>(),
             provider.GetService<IVirtualAxisDefinitionProvider>(),
             provider.GetService<IMotionSynchronizationDefinitionProvider>()));
         services.AddSingleton<IMotionAutoModeGate, MotionAutoModeGate>();

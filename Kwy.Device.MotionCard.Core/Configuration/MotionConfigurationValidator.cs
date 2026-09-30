@@ -14,7 +14,7 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
     private readonly IMotionRuntimeRegistry runtimes;
     private readonly IAxisDefinitionProvider axisDefinitions;
     private readonly IMotionGroupDefinitionProvider groups;
-    private readonly IReadOnlyCollection<IoPointDefinition> ioPoints;
+    private readonly IIoPointDefinitionProvider? ioPointDefinitions;
     private readonly IVirtualAxisDefinitionProvider? virtualAxes;
     private readonly IMotionSynchronizationDefinitionProvider? synchronizations;
 
@@ -22,14 +22,14 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
         IMotionRuntimeRegistry runtimes,
         IAxisDefinitionProvider axisDefinitions,
         IMotionGroupDefinitionProvider groups,
-        IEnumerable<IoPointDefinition>? ioPoints = null,
+        IIoPointDefinitionProvider? ioPointDefinitions = null,
         IVirtualAxisDefinitionProvider? virtualAxes = null,
         IMotionSynchronizationDefinitionProvider? synchronizations = null)
     {
         this.runtimes = runtimes;
         this.axisDefinitions = axisDefinitions;
         this.groups = groups;
-        this.ioPoints = ioPoints?.ToArray() ?? Array.Empty<IoPointDefinition>();
+        this.ioPointDefinitions = ioPointDefinitions;
         this.virtualAxes = virtualAxes;
         this.synchronizations = synchronizations;
     }
@@ -60,7 +60,8 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
                 catch (Exception) { Error("AxisChannelMissing", $"Axis '{axis.Id}' references unavailable channel '{axis.Channel}' on device '{axis.DeviceId}'."); }
             }
             foreach (string interlock in axis.Safety.RequiredInterlocks)
-                if (ioPoints.Count > 0 && !ioPoints.Any(point => string.Equals(point.Id, interlock, StringComparison.OrdinalIgnoreCase))) Error("InterlockPointMissing", $"Axis '{axis.Id}' references missing IO interlock '{interlock}'.");
+                if (ioPointDefinitions is null || !ioPointDefinitions.TryGet(interlock, out _))
+                    Error("InterlockPointMissing", $"Axis '{axis.Id}' references missing IO interlock '{interlock}'.");
         }
         foreach (VirtualAxisDefinition axis in virtualAxisDefinitions)
         {

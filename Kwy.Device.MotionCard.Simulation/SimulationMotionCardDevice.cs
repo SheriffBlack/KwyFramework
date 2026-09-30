@@ -9,6 +9,8 @@ public interface ISimulationMotionControl
 {
     void SetPosition(short axis, double position);
 
+    void SetEncoderPosition(short axis, double position);
+
     void SetAlarm(short axis, bool active);
 
     void SetLimit(short axis, bool positive, bool negative);
@@ -232,6 +234,9 @@ public sealed class SimulationMotionCardDevice :
         state.Position = position;
         state.EncoderPosition = position;
     });
+
+    public void SetEncoderPosition(short axis, double position)
+        => GetState(axis).Update(state => state.EncoderPosition = position);
 
     public void SetAlarm(short axis, bool active) => GetState(axis).Update(state => state.Alarm = active);
 

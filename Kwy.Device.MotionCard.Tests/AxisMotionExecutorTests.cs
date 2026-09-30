@@ -51,6 +51,20 @@ public sealed class AxisMotionExecutorTests
     }
 
     [Fact]
+    public async Task MoveAbsAsync_DoesNotCompleteFromPlannedPositionWhenEncoderIsOutsideTolerance()
+    {
+        await using ExecutorFixture fixture = await ExecutorFixture.CreateAsync();
+        fixture.Card.SetPosition(1, 25);
+        fixture.Card.SetEncoderPosition(1, 20);
+
+        Task<MotionCompletionResult> motion = fixture.Executor.MoveAbsAsync(1, 25, FastProfile, CreateOptions());
+
+        Assert.False(motion.IsCompleted);
+        MotionCompletionResult result = await motion;
+        Assert.Equal(25, result.ActualPosition, 3);
+    }
+
+    [Fact]
     public async Task MoveAbsAsync_EnforcesSingleFlightPerAxis()
     {
         await using ExecutorFixture fixture = await ExecutorFixture.CreateAsync();
