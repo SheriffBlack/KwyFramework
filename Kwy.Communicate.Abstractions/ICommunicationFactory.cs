@@ -1,7 +1,9 @@
 namespace Kwy.Communicate.Abstractions;
 
 /// <summary>
-/// Creates communication clients from protocol configurations.
+/// Optionally creates communication clients from protocol configurations when the concrete
+/// protocol is selected at runtime. Applications with a known protocol should construct the
+/// concrete client directly.
 /// </summary>
 public interface ICommunicationFactory
 {
@@ -39,12 +41,4 @@ public interface ICommunicationClientCreator<in TConfig> : ICommunicationClientC
                 $"Expected configuration type '{typeof(TConfig).FullName}', got '{config.GetType().FullName}'.",
                 nameof(config)));
     }
-}
-
-/// <summary>
-/// Startup-only registration surface used to compose an immutable communication factory.
-/// </summary>
-public interface ICommunicationFactoryRegistry
-{
-    void AddCreator(ICommunicationClientCreator creator);
 }

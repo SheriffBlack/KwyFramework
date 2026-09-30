@@ -53,7 +53,7 @@ Kwy.Communicate.*
 | `IMessageClient<TMessage>` | 消息事件与异步消息流 | MQTT、OPC UA 订阅 |
 | `IRequestClient<TRequest,TResponse>` | 请求—响应 | HTTP |
 | `ICommandQueryClient` | 命令、查询与响应 | SCPI / GPIB |
-| `ICommunicationFactory` | 按配置创建客户端 | 应用组合根 |
+| `ICommunicationFactory` | 运行时按配置选择并创建客户端 | 可选的配置驱动宿主 |
 | `IProtocolConfig` | 协议配置与基础验证 | 所有协议配置 |
 | `IKeepAliveConfig` | 可选链路健康检查 | TCP、Serial、GPIB |
 
@@ -93,32 +93,43 @@ Kwy.Communicate.*
 | --- | --- | --- |
 | `Kwy.Communicate.TcpSerial` | `TcpConfig`、`SerialPortConfig`、`HttpConfig`；字节流、HTTP 请求响应 | 当前实现 |
 | `Kwy.Communicate.Mqtt` | `MqttConfig`、`IMqttCommunication`、消息流 | 当前实现 |
-| `Kwy.Communicate.NI` | `GpibConfig`、字节流、命令查询 | 当前实现 |
+| `Kwy.Communicate.Visa` | `GpibConfig`、`VisaConfig`、字节流、命令查询 | 当前实现（NI-VISA Provider） |
 | `Kwy.Communicate.OpcUa` | `OpcUaConfig`、节点读写、订阅消息 | 当前实现 |
 | `Kwy.Communicate.FMdb` | `MdbConfig`、异步 Modbus 领域操作 | 其他分支 / 扩展模块 |
 | `Kwy.Communicate.Secs` | HSMS/SECS-II 学习用参考实现 | 非生产 |
 | `Kwy.Communicate.Gem` | Secs4Net 生产通信、Kwy 生命周期与 SEMI E30 行为 | 当前实现 |
 | `Kwy.Communicate.Gem300` | Carrier、LoadPort、SlotMap、Substrate、ProcessJob、ControlJob | 预留对象模型层 |
-| `Kwy.Communicate.Visa` | VISA 仪器通信 | 预留项目 |
 
 预留模块不承载临时业务代码；正式实现前须补齐配置、能力接口、工厂注册、文档与构建验证。
 
-## 7. 注册与使用
+## 7. 创建与使用
+
+协议已知时，直接创建具体客户端，不需要 DI 或统一 Factory：
 
 ```csharp
-var factory = new CommunicationFactory()
-    .RegisterTcpSerialClients()
-    .RegisterMqtt()
-    .RegisterFluentModbus()
-    .RegisterGpib();
+await using var client = new TcpCommunication(tcpConfig);
+await client.ConnectAsync(cancellationToken);
+```
+
+仅当设备配置在运行时决定协议时，才组装统一 Factory，并且只注册宿主实际使用的协议：
+
+```csharp
+var builder = new CommunicationFactoryBuilder();
+builder.RegisterTcp();
+builder.RegisterVisa();
+ICommunicationFactory factory = builder.Build();
 
 ICommunicationClient client = factory.CreateClient(config);
 await client.ConnectAsync(cancellationToken);
 ```
 
+Builder 只保存“配置类型 → Creator”映射，不是 DI 容器，也不会在注册时建立硬件连接。不建议把所有协议一次性注册。
+
 异步优先；确有同步兼容需求时，只能通过扩展方法提供，不重新将同步 API 放回核心接口。
 
 旧 V1 API（如 `ICommunicationProtocol`、`CreateProtocol`、`RegisterProtocolCreator`、`SendData`、`ReceiveBatchAsync`）不再恢复。新代码使用 `ICommunicationClient` 与对应能力接口。
+
+`IProtocolConfig` 不再包含封闭的 `ProtocolType` 枚举；Factory 按配置类型路由，第三方协议可通过自定义配置和 Creator 扩展，无需修改 Abstractions。
 
 ## 8. 新增协议规范
 

@@ -34,12 +34,26 @@ public sealed class CommunicationFactory : ICommunicationFactory
     {
         ArgumentNullException.ThrowIfNull(config);
         config.ValidateAndThrow();
-        if (creators.TryGetValue(config.GetType(), out ICommunicationClientCreator? creator))
-            return creator.Create(config)
-                ?? throw new InvalidOperationException(
-                    $"Communication creator for '{config.GetType().FullName}' returned null.");
+        Type configType = config.GetType();
+        if (!creators.TryGetValue(configType, out ICommunicationClientCreator? creator))
+        {
+            ICommunicationClientCreator[] compatibleCreators = creators
+                .Where(pair => pair.Key.IsAssignableFrom(configType))
+                .Select(pair => pair.Value)
+                .ToArray();
 
-        throw new NotSupportedException($"Unregistered protocol configuration type: {config.GetType().Name}");
+            creator = compatibleCreators.Length switch
+            {
+                0 => throw new NotSupportedException($"Unregistered protocol configuration type: {configType.Name}"),
+                1 => compatibleCreators[0],
+                _ => throw new InvalidOperationException(
+                    $"Multiple communication creators can handle configuration type '{configType.FullName}'. Register an exact creator for that type.")
+            };
+        }
+
+        return creator.Create(config)
+            ?? throw new InvalidOperationException(
+                $"Communication creator for '{configType.FullName}' returned null.");
     }
 
     public TCommunication Create<TCommunication, TConfig>(TConfig config)
@@ -47,7 +61,10 @@ public sealed class CommunicationFactory : ICommunicationFactory
         where TConfig : IProtocolConfig
     {
         var client = CreateClient(config);
-        return client as TCommunication
-            ?? throw new InvalidCastException($"Registered creator returned {client.GetType().Name}, not {typeof(TCommunication).Name}.");
+        if (client is TCommunication typedClient)
+            return typedClient;
+
+        client.Dispose();
+        throw new InvalidCastException($"Registered creator returned {client.GetType().Name}, not {typeof(TCommunication).Name}.");
     }
 }

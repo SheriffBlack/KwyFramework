@@ -12,7 +12,6 @@ public sealed class InMemorySecsClient : ISecsClient
 
     public bool IsConnected => State == ConnectionState.Connected;
 
-    public IProtocolConfig Config { get; }
 
     public HsmsSessionState SessionState { get; private set; } = HsmsSessionState.NotConnected;
 
@@ -24,7 +23,7 @@ public sealed class InMemorySecsClient : ISecsClient
 
     public InMemorySecsClient(SecsHsmsConfig? config = null)
     {
-        Config = config ?? new SecsHsmsConfig();
+        (config ?? new SecsHsmsConfig()).ValidateAndThrow();
     }
 
     public Task ConnectAsync(CancellationToken cancellationToken = default)

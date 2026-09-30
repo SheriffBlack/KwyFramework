@@ -1,6 +1,6 @@
 ﻿using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Core;
-using Kwy.Communicate.NI;
+using Kwy.Communicate.Visa;
 using Kwy.Communicate.TcpSerial;
 using Kwy.Device.Core;
 using Kwy.Device.Abstractions;
@@ -26,11 +26,14 @@ public sealed class DeviceModule : IModule
 
         // PLC 逻辑点位服务由领域 Core 统一注册；具体点位定义仍由当前机型配置提供。
         services.AddPLCCore();
+        // The configurable device catalog selects a protocol at runtime. DI owns only this
+        // immutable routing factory; each device owns and disposes the client it creates.
         services.TryAddSingleton<ICommunicationFactory>(_ =>
         {
             var builder = new CommunicationFactoryBuilder();
-            builder.RegisterTcpSerialClients();
-            builder.RegisterGpib();
+            builder.RegisterTcp();
+            builder.RegisterSerialPort();
+            builder.RegisterVisa();
             return builder.Build();
         });
         services.TryAddSingleton<DeviceConfigProvider>();

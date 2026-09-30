@@ -1,4 +1,4 @@
-using Kwy.Communicate.NI;
+using Kwy.Communicate.Visa;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Instruments.Dcr;
 using Kwy.Device.Instruments.Lcr;

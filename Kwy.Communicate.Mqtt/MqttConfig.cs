@@ -7,13 +7,8 @@ namespace Kwy.Communicate.Mqtt;
 /// <summary>
 /// MQTT协议配置
 /// </summary>
-public class MqttConfig : IProtocolConfig
+public sealed class MqttConfig : IProtocolConfig
 {
-    /// <summary>
-    /// 协议类型
-    /// </summary>
-    public ProtocolType ProtocolType => ProtocolType.Mqtt;
-
     /// <summary>
     /// MQTT代理服务器地址
     /// </summary>
@@ -22,7 +17,7 @@ public class MqttConfig : IProtocolConfig
     /// <summary>
     /// MQTT代理服务器端口
     /// </summary>
-    public int Port { get; set; } = 8883;
+    public int Port { get; set; } = 1883;
 
     /// <summary>
     /// 客户端ID
@@ -47,7 +42,7 @@ public class MqttConfig : IProtocolConfig
     /// <summary>
     /// 订阅的主题列表
     /// </summary>
-    public List<string> SubscribeTopics { get; set; } = new();
+    public IReadOnlyCollection<string> SubscribeTopics { get; set; } = Array.Empty<string>();
 
     /// <summary>
     /// 发布主题（默认）
@@ -90,14 +85,19 @@ public class MqttConfig : IProtocolConfig
     public byte QualityOfServiceLevel { get; set; } = 0;
 
     /// <summary>
-    /// 自动接受不受信任的证书（内网工控环境通常设为 true 以简化部署）
+    /// 是否接受任何服务器证书。此选项会禁用服务器身份验证，只应在受控测试环境使用。
     /// </summary>
-    public bool AutoAcceptUntrustedCertificates { get; set; } = true;
+    public bool DangerousAcceptAnyServerCertificate { get; set; }
 
     /// <summary>
-    /// 消息队列缓冲区容量。默认 10000。
+    /// 消息队列缓冲区容量。默认 1000。
     /// </summary>
     public int MessageBufferCapacity { get; set; } = 1000;
+
+    /// <summary>
+    /// 消息缓冲区已满时的处理策略。
+    /// </summary>
+    public MqttMessageOverflowStrategy MessageOverflowStrategy { get; set; } = MqttMessageOverflowStrategy.DropOldest;
 
     /// <summary>
     /// 验证配置是否有效
@@ -128,6 +128,50 @@ public class MqttConfig : IProtocolConfig
         if (MessageBufferCapacity <= 0)
             return false;
 
+        if (!Enum.IsDefined(MessageOverflowStrategy))
+            return false;
+
+        if (SubscribeTopics == null
+            || SubscribeTopics.Any(topic => !IsValidTopicFilter(topic)))
+        {
+            return false;
+        }
+
+        if (PublishTopic != null && !IsValidPublishTopic(PublishTopic))
+            return false;
+
         return true;
     }
+
+    internal MqttConfig Snapshot()
+        => new()
+        {
+            Host = Host,
+            Port = Port,
+            ClientId = ClientId,
+            Username = Username,
+            Password = Password,
+            UseTls = UseTls,
+            SubscribeTopics = SubscribeTopics.ToArray(),
+            PublishTopic = PublishTopic,
+            KeepAlivePeriod = KeepAlivePeriod,
+            CleanSession = CleanSession,
+            Timeout = Timeout,
+            AutoReconnect = AutoReconnect,
+            MaxReconnectAttempts = MaxReconnectAttempts,
+            ReconnectInterval = ReconnectInterval,
+            QualityOfServiceLevel = QualityOfServiceLevel,
+            DangerousAcceptAnyServerCertificate = DangerousAcceptAnyServerCertificate,
+            MessageBufferCapacity = MessageBufferCapacity,
+            MessageOverflowStrategy = MessageOverflowStrategy
+        };
+
+    internal static bool IsValidPublishTopic(string? topic)
+        => !string.IsNullOrWhiteSpace(topic)
+            && !topic.Contains('\0')
+            && !topic.Contains('+')
+            && !topic.Contains('#');
+
+    internal static bool IsValidTopicFilter(string? topic)
+        => !string.IsNullOrWhiteSpace(topic) && !topic.Contains('\0');
 }

@@ -1,19 +1,29 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\eng\Kwy.Communicate.Version.props" />
   <PropertyGroup>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <VersionSuffix>preview.1</VersionSuffix>
+    <Description>Preview SEMI E30 GEM behavior and SECS/HSMS communication library based on Secs4Net.</Description>
+    <PackageReleaseNotes>Initial preview of the Kwy SEMI E30 GEM behavior and Secs4Net integration.</PackageReleaseNotes>
+    <PackageTags>Kwy;Communication;SECS;HSMS;GEM;SEMI;E30</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
     <PackageReference Include="Secs4Net" Version="3.0.1" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Communicate.Core\Kwy.Communicate.Core.csproj" />
   </ItemGroup>
-
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>

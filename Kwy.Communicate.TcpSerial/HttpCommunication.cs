@@ -13,15 +13,17 @@ public sealed class HttpCommunication : CommunicationClientBase, IRequestClient<
     private readonly IHttpMessageHandlerFactory handlerFactory;
     private HttpClient? httpClient;
 
-    public HttpCommunication(HttpConfig config, IHttpMessageHandlerFactory? handlerFactory = null) : base(config)
+    public HttpCommunication(HttpConfig config, IHttpMessageHandlerFactory? handlerFactory = null) : base(CloneConfig(config))
     {
-        httpConfig = config ?? throw new ArgumentNullException(nameof(config));
+        httpConfig = (HttpConfig)this.config;
         this.handlerFactory = handlerFactory ?? new DefaultHttpMessageHandlerFactory();
     }
 
     protected override Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
-        httpClient = new HttpClient(handlerFactory.CreateHandler(httpConfig), disposeHandler: true)
+        HttpMessageHandler handler = handlerFactory.CreateHandler(httpConfig)
+            ?? throw new InvalidOperationException("The HTTP message-handler factory returned null.");
+        httpClient = new HttpClient(handler, disposeHandler: true)
         {
             Timeout = TimeSpan.FromMilliseconds(httpConfig.Timeout)
         };
@@ -41,6 +43,12 @@ public sealed class HttpCommunication : CommunicationClientBase, IRequestClient<
 
     protected override bool IsConnectionAlive() => httpClient != null;
 
+    /// <summary>
+    /// Creates a request from the configured URL and method. The caller owns the returned request.
+    /// </summary>
+    public HttpRequestMessage CreateRequest(HttpContent? content = null)
+        => new(httpConfig.Method, httpConfig.Url) { Content = content };
+
     public async ValueTask<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
@@ -59,15 +67,19 @@ public sealed class HttpCommunication : CommunicationClientBase, IRequestClient<
         }
     }
 
-    public ValueTask<HttpResponseMessage> SendAsync(
-        HttpMethod? method = null,
-        HttpContent? content = null,
-        CancellationToken cancellationToken = default)
+    private static HttpConfig CloneConfig(HttpConfig config)
     {
-        var request = new HttpRequestMessage(method ?? httpConfig.Method, httpConfig.Url)
+        ArgumentNullException.ThrowIfNull(config);
+        return new HttpConfig
         {
-            Content = content
+            Url = config.Url,
+            Method = config.Method,
+            Headers = new Dictionary<string, string>(config.Headers, StringComparer.OrdinalIgnoreCase),
+            Timeout = config.Timeout,
+            ValidateCertificate = config.ValidateCertificate,
+            AutoReconnect = config.AutoReconnect,
+            MaxReconnectAttempts = config.MaxReconnectAttempts,
+            ReconnectInterval = config.ReconnectInterval
         };
-        return SendAsync(request, cancellationToken);
     }
 }

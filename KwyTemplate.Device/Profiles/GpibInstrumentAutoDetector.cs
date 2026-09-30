@@ -1,5 +1,5 @@
 ﻿using System.Text.RegularExpressions;
-using Kwy.Communicate.NI;
+using Kwy.Communicate.Visa;
 
 namespace KwyTemplate.Device.Profiles;
 
@@ -18,7 +18,7 @@ internal static partial class GpibInstrumentAutoDetector
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(Math.Max(500, config.Timeout)));
-            using var communication = new GpibCommunication(CloneProbeConfig(config));
+            using var communication = new VisaCommunication(CloneProbeConfig(config));
             communication.ConnectAsync(cts.Token).GetAwaiter().GetResult();
             string response = communication.QueryAsync(IdentifyCommand, cts.Token).GetAwaiter().GetResult();
             communication.DisconnectAsync(CancellationToken.None).GetAwaiter().GetResult();

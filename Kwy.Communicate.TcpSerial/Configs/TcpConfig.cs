@@ -10,11 +10,6 @@ namespace Kwy.Communicate.TcpSerial.Configs;
 public class TcpConfig : IProtocolConfig, IKeepAliveConfig
 {
     /// <summary>
-    /// 协议类型
-    /// </summary>
-    public ProtocolType ProtocolType => ProtocolType.Tcp;
-
-    /// <summary>
     /// 主机地址或IP地址
     /// </summary>
     public string Host { get; set; } = "127.0.0.1";

@@ -1,415 +1,393 @@
 using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Abstractions.Events;
-using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Core;
 using Opc.Ua;
 using Opc.Ua.Client;
-using System.Data;
+using Opc.Ua.Configuration;
 using System.Text;
 using System.Threading.Channels;
-using ConnectionState = Kwy.Communicate.Abstractions.Enums.ConnectionState;
 
 namespace Kwy.Communicate.OpcUa;
 
-/// <summary>
-/// OPC UA官方底层通信协议实现
-/// 依赖包: OPCFoundation.NetStandard.Opc.Ua.Client == 1.5.378.134
-/// </summary>
-public class OpcUaCommunication : CommunicationClientBase, IMessageClient<OpcUaMonitoredItemMessage>
+/// <summary>基于 OPC Foundation .NET SDK 的 OPC UA 客户端。</summary>
+public sealed class OpcUaCommunication : CommunicationClientBase, IMessageClient<OpcUaMonitoredItemMessage>
 {
     private readonly OpcUaConfig opcUaConfig;
-    private readonly ISessionFactory sessionFactory; // ✨ 新增工厂字段
-    private Session? opcUaSession;
-    private Subscription? defaultSubscription;
-    private readonly SemaphoreSlim subscriptionSemaphore = new(1, 1);
+    private readonly ISessionFactory sessionFactory;
+    private readonly SemaphoreSlim sessionSemaphore = new(1, 1);
+    private readonly HashSet<string> subscriptionNodeIds;
     private readonly Channel<OpcUaMonitoredItemMessage> messages;
+    private ISession? opcUaSession;
+    private Subscription? defaultSubscription;
+    private long droppedMessageCount;
 
+    /// <summary>初始化使用默认 OPC Foundation Session Factory 的客户端。</summary>
+    public OpcUaCommunication(OpcUaConfig config)
+        : this(config, new DefaultSessionFactory(DefaultTelemetry.Create(static _ => { }))) { }
+
+    /// <summary>初始化使用指定 Session Factory 的客户端，主要用于高级配置和测试。</summary>
+    public OpcUaCommunication(OpcUaConfig config, ISessionFactory sessionFactory)
+        : this(CreateSnapshot(config), sessionFactory, true) { }
+
+    private OpcUaCommunication(OpcUaConfig snapshot, ISessionFactory sessionFactory, bool _) : base(snapshot)
+    {
+        opcUaConfig = snapshot;
+        this.sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
+        subscriptionNodeIds = new HashSet<string>(snapshot.SubscribeNodes, StringComparer.Ordinal);
+        var options = new BoundedChannelOptions(snapshot.MessageBufferCapacity)
+        {
+            FullMode = ToChannelMode(snapshot.MessageOverflowStrategy),
+            SingleReader = false,
+            SingleWriter = false
+        };
+        messages = Channel.CreateBounded<OpcUaMonitoredItemMessage>(options, _ =>
+            Interlocked.Increment(ref droppedMessageCount));
+    }
+
+    /// <inheritdoc />
     public event EventHandler<MessageReceivedEventArgs<OpcUaMonitoredItemMessage>>? MessageReceived;
 
-    public OpcUaCommunication(OpcUaConfig config, ISessionFactory sessionFactory) : base(config)
-    {
-        opcUaConfig = config ?? throw new ArgumentNullException(nameof(config));
-        this.sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
+    /// <summary>获取因缓冲区溢出而被丢弃的消息总数。</summary>
+    public long DroppedMessageCount => Interlocked.Read(ref droppedMessageCount);
 
-        var channelOptions = new BoundedChannelOptions(opcUaConfig.MessageBufferCapacity)
-        {
-            FullMode = BoundedChannelFullMode.DropOldest,
-            SingleReader = true,
-            SingleWriter = true
-        };
-        messages = Channel.CreateBounded<OpcUaMonitoredItemMessage>(channelOptions);
-    }
-
-    // 替换 ConnectInternalAsync 方法中已过时的 SelectEndpoint 调用为异步 SelectEndpointAsync
+    /// <inheritdoc />
     protected override async Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
-        if (!opcUaConfig.Validate())
-            throw new InvalidOperationException("OPC UA配置无效");
-
+        await sessionSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // 1. 构建应用配置
-            var appConfig = new ApplicationConfiguration
+            ApplicationConfiguration appConfig = await CreateApplicationConfigurationAsync(cancellationToken)
+                .ConfigureAwait(false);
+            EndpointDescription endpoint = await SelectConfiguredEndpointAsync(appConfig, cancellationToken)
+                .ConfigureAwait(false);
+            var configuredEndpoint = new ConfiguredEndpoint(null, endpoint, EndpointConfiguration.Create(appConfig));
+            IUserIdentity identity = CreateIdentity();
+            ISession openedSession = await sessionFactory.CreateAsync(
+                appConfig, configuredEndpoint, false, opcUaConfig.ApplicationName,
+                opcUaConfig.SessionTimeout, identity, null, cancellationToken).ConfigureAwait(false);
+
+            opcUaSession = openedSession;
+            openedSession.KeepAlive += SessionKeepAlive;
+            defaultSubscription = new Subscription(openedSession.DefaultSubscription)
             {
-                ApplicationName = opcUaConfig.ApplicationName,
-                ApplicationUri = string.Format("urn:{0}:{1}", System.Net.Dns.GetHostName(), opcUaConfig.ApplicationName),
-                ApplicationType = ApplicationType.Client,
-                SecurityConfiguration = new SecurityConfiguration
-                {
-                    ApplicationCertificate = new CertificateIdentifier { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\MachineDefault" },
-                    TrustedIssuerCertificates = new CertificateTrustList { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Certificate Authorities" },
-                    TrustedPeerCertificates = new CertificateTrustList { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\UA Applications" },
-                    RejectedCertificateStore = new CertificateTrustList { StoreType = @"Directory", StorePath = @"%CommonApplicationData%\OPC Foundation\CertificateStores\RejectedCertificates" },
-                    AutoAcceptUntrustedCertificates = opcUaConfig.AutoAcceptUntrustedCertificates,
-                    RejectSHA1SignedCertificates = false
-                },
-                TransportConfigurations = new TransportConfigurationCollection(),
-                TransportQuotas = new TransportQuotas { OperationTimeout = opcUaConfig.Timeout },
-                ClientConfiguration = new ClientConfiguration { DefaultSessionTimeout = (int)opcUaConfig.SessionTimeout }
-            };
-
-            await appConfig.ValidateAsync(ApplicationType.Client, cancellationToken);
-
-            // 自动接受不受信任的证书（开发与内网环境必备）
-            if (appConfig.SecurityConfiguration.AutoAcceptUntrustedCertificates)
-            {
-                appConfig.CertificateValidator.CertificateValidation += (s, e) => { e.Accept = true; };
-            }
-
-            // 2. 选择端点（使用异步API）
-            bool useSecurity = !string.Equals(opcUaConfig.SecurityPolicy, "None", StringComparison.OrdinalIgnoreCase);
-            // 关键修正：传递 ITelemetryContext 参数，避免使用已过时的重载
-            ITelemetryContext telemetry = null!; // 显式忽略可空警告，OPC UA SDK 底层允许 telemetry 为 null
-            var selectedEndpoint = await CoreClientUtils.SelectEndpointAsync(
-                appConfig,
-                opcUaConfig.EndpointUrl,
-                useSecurity,
-                opcUaConfig.Timeout,
-                telemetry,
-                cancellationToken
-            );
-            if (selectedEndpoint == null)
-                throw new InvalidOperationException("未能发现有效的OPC UA端点");
-
-            var endpointConfiguration = EndpointConfiguration.Create(appConfig);
-            var configuredEndpoint = new ConfiguredEndpoint(null, selectedEndpoint, endpointConfiguration);
-
-            // 3. 构建身份验证凭据
-            IUserIdentity userIdentity = opcUaConfig.UseAnonymousIdentity
-                ? new UserIdentity(new AnonymousIdentityToken())
-                : new UserIdentity(new UserNameIdentityToken
-                {
-                    UserName = opcUaConfig.Username ?? string.Empty,
-                    Password = string.IsNullOrEmpty(opcUaConfig.Password) ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(opcUaConfig.Password)
-                });
-
-            // 4. 创建 Session (使用原始异步 Create 接口并传递 cancellationToken)
-            // 注意: Create 已被标记为 Obsolete 建议使用 ISessionFactory.CreateAsync
-            // 但为兼容此项目及简化重载选择，使用现有 Create(...) 重载
-            // ✨ 直接使用注入的工厂创建会话
-            opcUaSession = (Session)await this.sessionFactory.CreateAsync(
-                appConfig,
-                configuredEndpoint,
-                updateBeforeConnect: false,
-                sessionName: opcUaConfig.ApplicationName,
-                sessionTimeout: (uint)opcUaConfig.SessionTimeout,
-                identity: userIdentity,
-                preferredLocales: null,
-                ct: cancellationToken
-            );
-
-            // 5. 绑定心跳检测 (掉线重连的灵魂)
-            opcUaSession.KeepAlive -= Session_KeepAlive;
-            opcUaSession.KeepAlive += Session_KeepAlive;
-
-            // 6. 初始化全局默认订阅器
-            defaultSubscription = new Subscription(opcUaSession.DefaultSubscription)
-            {
-                PublishingInterval = opcUaConfig.PublishingInterval > 0 ? opcUaConfig.PublishingInterval : 100,
+                PublishingInterval = opcUaConfig.PublishingInterval,
                 PublishingEnabled = true
             };
-            opcUaSession.AddSubscription(defaultSubscription);
-            await defaultSubscription.CreateAsync();
-
-            // 7. 重连或初次连接时，自动恢复挂载需要订阅的节点
-            if (opcUaConfig.SubscribeNodes != null && opcUaConfig.SubscribeNodes.Count > 0)
-            {
-                // 拷贝一份防止并发修改
-                var nodesToRecover = opcUaConfig.SubscribeNodes.ToList();
-                opcUaConfig.SubscribeNodes.Clear(); // 清空后重新走 SubscribeAsync 注册流程
-                await SubscribeAsync(nodesToRecover, cancellationToken);
-            }
+            openedSession.AddSubscription(defaultSubscription);
+            await defaultSubscription.CreateAsync().ConfigureAwait(false);
+            await RestoreSubscriptionsCoreAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            throw new InvalidOperationException($"OPC UA连接失败: {ex.Message}", ex);
+            throw new InvalidOperationException($"OPC UA 连接失败：{ex.Message}", ex);
+        }
+        finally
+        {
+            sessionSemaphore.Release();
         }
     }
 
-    /// <summary>
-    /// OPC UA 断线检测回调
-    /// </summary>
-    private void Session_KeepAlive(ISession session, KeepAliveEventArgs e)
-    {
-        // ServiceResult.IsNotGood 在 1.5.x 中用于判断心跳是否丢失
-        if (e.Status != null && ServiceResult.IsNotGood(e.Status))
-        {
-            // 修正：ISession 没有 CurrentState 属性，改为 e.CurrentState
-            OnErrorOccurred(new Exception($"OPC UA 通信中断: {e.Status}, State: {e.CurrentState}"), "KeepAlive 失败");
-
-            if (!IsConnectionAlive())
-                _ = HandleCommunicationFailureAsync(new Exception($"OPC UA communication interrupted: {e.Status}"), "KeepAlive failed");
-        }
-    }
-
+    /// <inheritdoc />
     protected override async Task DisconnectCoreAsync(CancellationToken cancellationToken)
     {
-        if (opcUaSession != null)
+        await sessionSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
+            ISession? current = opcUaSession;
+            Subscription? subscription = defaultSubscription;
+            opcUaSession = null;
+            defaultSubscription = null;
+            if (current is null) return;
+
+            current.KeepAlive -= SessionKeepAlive;
             try
             {
-                opcUaSession.KeepAlive -= Session_KeepAlive;
-                if (defaultSubscription != null)
+                if (subscription is not null)
                 {
-                    await defaultSubscription.DeleteAsync(true);
-                    defaultSubscription = null;
+                    foreach (MonitoredItem item in subscription.MonitoredItems)
+                        item.Notification -= OnMonitoredItemNotification;
+                    await subscription.DeleteAsync(true).ConfigureAwait(false);
                 }
-
-                await opcUaSession.CloseAsync();
-                opcUaSession.Dispose();
-            }
-            catch
-            {
-                // 忽略主动断开时的资源释放异常
+                await current.CloseAsync(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
-                opcUaSession = null;
-            }
-        }
-        await Task.CompletedTask;
-    }
-
-    protected override bool IsConnectionAlive()
-    {
-        return opcUaSession != null && opcUaSession.Connected;
-    }
-
-    public async ValueTask PublishAsync(OpcUaMonitoredItemMessage message, CancellationToken cancellationToken = default)
-    {
-        ThrowIfDisposed();
-        ArgumentNullException.ThrowIfNull(message);
-        if (string.IsNullOrWhiteSpace(message.NodeId))
-            throw new ArgumentException("NodeId cannot be empty.", nameof(message));
-        if (message.Value is null)
-            throw new ArgumentException("Value cannot be null.", nameof(message));
-
-        await WriteNodeAsync(message.NodeId, message.Value, cancellationToken);
-    }
-
-    public IAsyncEnumerable<OpcUaMonitoredItemMessage> ReadMessagesAsync(CancellationToken cancellationToken = default)
-        => messages.Reader.ReadAllAsync(cancellationToken);
-
-    #region OPC UA 特有节点读写 (原生 1.5.378 Async API)
-
-    /// <summary>
-    /// 强类型读取 OPC UA 节点
-    /// </summary>
-    public async Task<T?> ReadNodeAsync<T>(string nodeId, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            if (opcUaSession == null || !opcUaSession.Connected)
-                throw new InvalidOperationException("OPC UA 会话未连接");
-
-            var nodeToRead = new ReadValueId
-            {
-                NodeId = NodeId.Parse(nodeId),
-                AttributeId = Attributes.Value
-            };
-            var readIds = new ReadValueIdCollection { nodeToRead };
-
-            // 1.5.378 原生异步读取
-            var response = await opcUaSession.ReadAsync(
-                null,
-                0,
-                TimestampsToReturn.Both, // 建议用 Both，部分 PLC 严格要求时间戳返回
-                readIds,
-                cancellationToken);
-
-            var results = response.Results;
-            if (results == null || results.Count == 0 || StatusCode.IsBad(results[0].StatusCode))
-                return default;
-
-            try
-            {
-                // 尝试进行类型转换
-                return (T?)results[0].Value;
-            }
-            catch (InvalidCastException)
-            {
-                return default;
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            await HandleCommunicationFailureAsync(ex, $"OPC UA read failed: {ex.Message}");
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// 强类型写入 OPC UA 节点
-    /// </summary>
-    public async Task WriteNodeAsync(string nodeId, object value, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            if (opcUaSession == null || !opcUaSession.Connected)
-                throw new InvalidOperationException("OPC UA 会话未连接");
-
-            var writeValue = new WriteValue
-            {
-                NodeId = NodeId.Parse(nodeId),
-                AttributeId = Attributes.Value,
-                Value = new DataValue(new Variant(value))
-            };
-            var writes = new WriteValueCollection { writeValue };
-
-            // 1.5.378 原生异步写入
-            var response = await opcUaSession.WriteAsync(
-                null,
-                writes,
-                cancellationToken);
-
-            var results = response.Results;
-
-            if (results == null || results.Count == 0)
-                throw new InvalidOperationException("写入操作未返回结果");
-
-            if (StatusCode.IsBad(results[0]))
-                throw new InvalidOperationException($"写入节点 {nodeId} 失败，状态码: {results[0]}");
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            await HandleCommunicationFailureAsync(ex, $"OPC UA write failed: {ex.Message}");
-            throw;
-        }
-    }
-
-    #endregion
-
-    #region 订阅功能
-
-    /// <summary>
-    /// 批量订阅节点变化
-    /// </summary>
-    public async Task SubscribeAsync(IEnumerable<string> nodeIds, CancellationToken cancellationToken = default)
-    {
-        if (disposed || !IsConnected || opcUaSession == null || defaultSubscription == null)
-            throw new InvalidOperationException("会话未准备好，无法订阅");
-
-        await subscriptionSemaphore.WaitAsync(cancellationToken);
-        try
-        {
-            bool hasChanges = false;
-            foreach (var nodeId in nodeIds.Distinct())
-            {
-                // 避免重复订阅
-                if (defaultSubscription.MonitoredItems.Any(m => m.StartNodeId.ToString() == nodeId))
-                    continue;
-
-                var monitoredItem = new MonitoredItem(defaultSubscription.DefaultItem)
-                {
-                    DisplayName = nodeId,
-                    StartNodeId = NodeId.Parse(nodeId),
-                    AttributeId = Attributes.Value,
-                    SamplingInterval = 50 // 50ms 底层采样率
-                };
-
-                // 绑定事件
-                monitoredItem.Notification += OnMonitoredItemNotification;
-                defaultSubscription.AddItem(monitoredItem);
-                hasChanges = true;
-
-                // 记录到 Config 中，以便断线重连时恢复
-                if (!opcUaConfig.SubscribeNodes.Contains(nodeId))
-                    opcUaConfig.SubscribeNodes.Add(nodeId);
-            }
-
-            if (hasChanges)
-            {
-                // 通知服务器应用订阅变更
-                await defaultSubscription.ApplyChangesAsync();
+                subscription?.Dispose();
+                current.Dispose();
             }
         }
         finally
         {
-            subscriptionSemaphore.Release();
+            sessionSemaphore.Release();
         }
     }
 
-    /// <summary>
-    /// 底层订阅数据变化回调，统一封装为强类型消息流。
-    /// </summary>
-    private void OnMonitoredItemNotification(MonitoredItem item, MonitoredItemNotificationEventArgs e)
+    /// <inheritdoc />
+    protected override bool IsConnectionAlive()
+    {
+        try { return opcUaSession?.Connected == true; }
+        catch (ObjectDisposedException) { return false; }
+    }
+
+    /// <inheritdoc />
+    public ValueTask PublishAsync(OpcUaMonitoredItemMessage message, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        if (message.Value is null) throw new ArgumentException("写入值不能为空。", nameof(message));
+        return new ValueTask(WriteNodeAsync(message.NodeId, message.Value, cancellationToken));
+    }
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<OpcUaMonitoredItemMessage> ReadMessagesAsync(CancellationToken cancellationToken = default)
+        => messages.Reader.ReadAllAsync(cancellationToken);
+
+    /// <summary>读取指定节点并转换为目标类型。</summary>
+    public async Task<T?> ReadNodeAsync<T>(string nodeId, CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        NodeId parsedNodeId = ParseNodeId(nodeId);
+        await sessionSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ISession session = RequireConnectedSession();
+            var request = new ReadValueIdCollection
+            {
+                new ReadValueId { NodeId = parsedNodeId, AttributeId = Attributes.Value }
+            };
+            var response = await session.ReadAsync(null, 0, TimestampsToReturn.Both, request, cancellationToken)
+                .ConfigureAwait(false);
+            DataValue? value = response.Results?.FirstOrDefault();
+            if (value is null || StatusCode.IsBad(value.StatusCode))
+                throw new ServiceResultException(value?.StatusCode ?? StatusCodes.BadUnexpectedError);
+            if (value.Value is T typed) return typed;
+            return (T?)Convert.ChangeType(value.Value, typeof(T), System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await HandleCommunicationFailureAsync(ex, $"OPC UA 读取失败：{ex.Message}").ConfigureAwait(false);
+            throw;
+        }
+        finally
+        {
+            sessionSemaphore.Release();
+        }
+    }
+
+    /// <summary>向指定节点写入值。</summary>
+    public async Task WriteNodeAsync(string nodeId, object value, CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(value);
+        NodeId parsedNodeId = ParseNodeId(nodeId);
+        await sessionSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ISession session = RequireConnectedSession();
+            var writes = new WriteValueCollection
+            {
+                new WriteValue
+                {
+                    NodeId = parsedNodeId,
+                    AttributeId = Attributes.Value,
+                    Value = new DataValue(new Variant(value))
+                }
+            };
+            var response = await session.WriteAsync(null, writes, cancellationToken).ConfigureAwait(false);
+            StatusCode status = response.Results?.FirstOrDefault() ?? StatusCodes.BadUnexpectedError;
+            if (StatusCode.IsBad(status)) throw new ServiceResultException(status);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await HandleCommunicationFailureAsync(ex, $"OPC UA 写入失败：{ex.Message}").ConfigureAwait(false);
+            throw;
+        }
+        finally
+        {
+            sessionSemaphore.Release();
+        }
+    }
+
+    /// <summary>批量订阅节点；成功订阅的节点会在重连后自动恢复。</summary>
+    public async Task SubscribeAsync(IEnumerable<string> nodeIds, CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(nodeIds);
+        string[] normalized = nodeIds.Select(static node => node?.Trim())
+            .Where(static node => !string.IsNullOrWhiteSpace(node)).Cast<string>()
+            .Distinct(StringComparer.Ordinal).ToArray();
+        foreach (string node in normalized) _ = ParseNodeId(node);
+
+        await sessionSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _ = RequireConnectedSession();
+            await AddSubscriptionsCoreAsync(normalized, cancellationToken).ConfigureAwait(false);
+            subscriptionNodeIds.UnionWith(normalized);
+        }
+        finally
+        {
+            sessionSemaphore.Release();
+        }
+    }
+
+    private async Task<ApplicationConfiguration> CreateApplicationConfigurationAsync(CancellationToken cancellationToken)
+    {
+        string root = opcUaConfig.PkiRootPath;
+        var configuration = new ApplicationConfiguration
+        {
+            ApplicationName = opcUaConfig.ApplicationName,
+            ApplicationUri = $"urn:{System.Net.Dns.GetHostName()}:{Uri.EscapeDataString(opcUaConfig.ApplicationName)}",
+            ApplicationType = ApplicationType.Client,
+            SecurityConfiguration = new SecurityConfiguration
+            {
+                ApplicationCertificate = new CertificateIdentifier
+                {
+                    StoreType = "Directory", StorePath = Path.Combine(root, "own"),
+                    SubjectName = $"CN={opcUaConfig.ApplicationName}"
+                },
+                TrustedIssuerCertificates = Store(Path.Combine(root, "issuer")),
+                TrustedPeerCertificates = Store(Path.Combine(root, "trusted")),
+                RejectedCertificateStore = Store(Path.Combine(root, "rejected")),
+                AutoAcceptUntrustedCertificates = opcUaConfig.AutoAcceptUntrustedCertificates,
+                RejectSHA1SignedCertificates = true
+            },
+            TransportConfigurations = [],
+            TransportQuotas = new TransportQuotas { OperationTimeout = opcUaConfig.Timeout },
+            ClientConfiguration = new ClientConfiguration { DefaultSessionTimeout = (int)opcUaConfig.SessionTimeout }
+        };
+        await configuration.ValidateAsync(ApplicationType.Client, cancellationToken).ConfigureAwait(false);
+        if (opcUaConfig.SecurityMode != MessageSecurityMode.None)
+        {
+            var application = new ApplicationInstance(configuration, sessionFactory.Telemetry);
+            bool certificateReady = await application.CheckApplicationInstanceCertificatesAsync(
+                false, 2048, cancellationToken).ConfigureAwait(false);
+            if (!certificateReady)
+                throw new InvalidOperationException("无法创建或加载 OPC UA 客户端应用证书。");
+        }
+        if (opcUaConfig.AutoAcceptUntrustedCertificates)
+        {
+            configuration.CertificateValidator.CertificateValidation += (_, args) =>
+                args.Accept = args.Error.StatusCode == StatusCodes.BadCertificateUntrusted;
+        }
+        return configuration;
+    }
+
+    private static CertificateTrustList Store(string path) => new() { StoreType = "Directory", StorePath = path };
+
+    private async Task<EndpointDescription> SelectConfiguredEndpointAsync(
+        ApplicationConfiguration appConfig,
+        CancellationToken cancellationToken)
+    {
+        using DiscoveryClient discovery = await DiscoveryClient.CreateAsync(
+            appConfig,
+            new Uri(opcUaConfig.EndpointUrl),
+            DiagnosticsMasks.None,
+            cancellationToken).ConfigureAwait(false);
+        EndpointDescriptionCollection endpoints = await discovery.GetEndpointsAsync(
+            new StringCollection(), cancellationToken).ConfigureAwait(false);
+        return endpoints
+            .Where(endpoint => endpoint.SecurityMode == opcUaConfig.SecurityMode
+                && string.Equals(endpoint.SecurityPolicyUri, opcUaConfig.SecurityPolicy, StringComparison.Ordinal))
+            .OrderByDescending(static endpoint => endpoint.SecurityLevel)
+            .FirstOrDefault()
+            ?? throw new InvalidOperationException(
+                $"服务器未提供安全配置 {opcUaConfig.SecurityMode}/{opcUaConfig.SecurityPolicy} 对应的端点。");
+    }
+
+    private IUserIdentity CreateIdentity()
+        => opcUaConfig.UseAnonymousIdentity
+            ? new UserIdentity(new AnonymousIdentityToken())
+            : new UserIdentity(new UserNameIdentityToken
+            {
+                UserName = opcUaConfig.Username!,
+                Password = Encoding.UTF8.GetBytes(opcUaConfig.Password ?? string.Empty)
+            });
+
+    private async Task RestoreSubscriptionsCoreAsync(CancellationToken cancellationToken)
+        => await AddSubscriptionsCoreAsync(subscriptionNodeIds, cancellationToken).ConfigureAwait(false);
+
+    private async Task AddSubscriptionsCoreAsync(IEnumerable<string> nodeIds, CancellationToken cancellationToken)
+    {
+        Subscription subscription = defaultSubscription
+            ?? throw new InvalidOperationException("OPC UA 订阅尚未初始化。");
+        bool changed = false;
+        foreach (string nodeId in nodeIds)
+        {
+            if (subscription.MonitoredItems.Any(item => string.Equals(item.StartNodeId?.ToString(), nodeId, StringComparison.Ordinal)))
+                continue;
+            var item = new MonitoredItem(subscription.DefaultItem)
+            {
+                DisplayName = nodeId, StartNodeId = NodeId.Parse(nodeId),
+                AttributeId = Attributes.Value, SamplingInterval = opcUaConfig.PublishingInterval
+            };
+            item.Notification += OnMonitoredItemNotification;
+            subscription.AddItem(item);
+            changed = true;
+        }
+        if (changed) await subscription.ApplyChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private ISession RequireConnectedSession()
+        => opcUaSession is { Connected: true } session
+            ? session
+            : throw new InvalidOperationException("OPC UA 会话未连接。");
+
+    private static NodeId ParseNodeId(string nodeId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
+        return NodeId.Parse(nodeId);
+    }
+
+    private void SessionKeepAlive(ISession session, KeepAliveEventArgs args)
+    {
+        if (args.Status is null || !ServiceResult.IsNotGood(args.Status)) return;
+        var exception = new ServiceResultException(args.Status);
+        _ = HandleCommunicationFailureAsync(exception, $"OPC UA KeepAlive 失败：{args.Status}");
+    }
+
+    private void OnMonitoredItemNotification(MonitoredItem item, MonitoredItemNotificationEventArgs args)
     {
         try
         {
-            // DequeueValues 获取该节点自上次推送以来的所有变化值
-            foreach (var value in item.DequeueValues())
+            foreach (DataValue value in item.DequeueValues())
             {
                 if (StatusCode.IsBad(value.StatusCode)) continue;
-
-                var monitoredItemMessage = new OpcUaMonitoredItemMessage(
-                    item.StartNodeId.ToString(),
-                    value.Value,
-                    value.SourceTimestamp
-                );
-                messages.Writer.TryWrite(monitoredItemMessage);
-                MessageReceived?.Invoke(this, new MessageReceivedEventArgs<OpcUaMonitoredItemMessage>(monitoredItemMessage));
+                var message = new OpcUaMonitoredItemMessage(
+                    item.StartNodeId.ToString(), value.Value, value.SourceTimestamp);
+                _ = messages.Writer.TryWrite(message);
+                EnqueueObserverNotification(() => MessageReceived?.Invoke(
+                    this, new MessageReceivedEventArgs<OpcUaMonitoredItemMessage>(message)));
             }
         }
         catch (Exception ex)
         {
-            OnErrorOccurred(ex, "处理 OPC UA 订阅数据异常");
+            OnErrorOccurred(ex, $"处理 OPC UA 订阅消息失败：{ex.Message}");
         }
     }
 
-    #endregion
-
+    /// <inheritdoc />
     public override async ValueTask DisposeAsync()
     {
         if (disposed) return;
-        await base.DisposeAsync();
+        await base.DisposeAsync().ConfigureAwait(false);
         messages.Writer.TryComplete();
-        subscriptionSemaphore?.Dispose();
+        if (sessionSemaphore.Wait(0))
+            sessionSemaphore.Dispose();
     }
 
-    public override void Dispose()
+    private static OpcUaConfig CreateSnapshot(OpcUaConfig config)
     {
-        if (disposed) return;
-        base.Dispose();
-        messages.Writer.TryComplete();
-        subscriptionSemaphore?.Dispose();
+        ArgumentNullException.ThrowIfNull(config);
+        if (!config.Validate()) throw new ArgumentException("OPC UA 配置无效。", nameof(config));
+        return config.Snapshot();
     }
-}
 
-
-/// <summary>
-/// OPC UA 节点地址字典 (与 PLC 工程师对齐的契约)
-/// </summary>
-public static class OpcTags
-{
-    // === 触发信号 (PLC -> PC) ===
-    public const string VisionTrigger = "ns=2;s=Station.Vision.Trigger";
-    public const string TestStation1_2_Trigger = "ns=2;s=Station.Test1.Trigger";
-
-    // === 状态监控 (PLC -> PC) ===
-    public const string MachineRunning = "ns=2;s=Machine.Status.Running";
-    public const string ErrorAlarm = "ns=2;s=Machine.Status.Alarm";
-
-    // === 握手信号 (PC -> PLC) ===
-    public const string VisionDealOver = "ns=2;s=Station.Vision.Done";
-    public const string TestDealOver = "ns=2;s=Station.Test1.Done";
+    private static BoundedChannelFullMode ToChannelMode(OpcUaMessageOverflowStrategy strategy)
+        => strategy switch
+        {
+            OpcUaMessageOverflowStrategy.DropOldest => BoundedChannelFullMode.DropOldest,
+            OpcUaMessageOverflowStrategy.DropNewest => BoundedChannelFullMode.DropNewest,
+            OpcUaMessageOverflowStrategy.DropWrite => BoundedChannelFullMode.DropWrite,
+            _ => throw new ArgumentOutOfRangeException(nameof(strategy))
+        };
 }

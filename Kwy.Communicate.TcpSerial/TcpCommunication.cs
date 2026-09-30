@@ -13,9 +13,9 @@ public sealed class TcpCommunication : CommunicationBase
     private TcpClient? tcpClient;
     private NetworkStream? stream;
 
-    public TcpCommunication(TcpConfig config) : base(config)
+    public TcpCommunication(TcpConfig config) : base(CloneConfig(config))
     {
-        tcpConfig = config ?? throw new ArgumentNullException(nameof(config));
+        tcpConfig = (TcpConfig)this.config;
     }
 
     protected override async Task ConnectInternalAsync(CancellationToken cancellationToken)
@@ -51,7 +51,15 @@ public sealed class TcpCommunication : CommunicationBase
         if (stream == null || !stream.CanWrite)
             throw new InvalidOperationException("TCP stream is not writable.");
 
-        await stream.WriteAsync(data, cancellationToken);
+        using var timeout = CreateOperationTimeout(cancellationToken, tcpConfig.SendTimeout);
+        try
+        {
+            await stream.WriteAsync(data, timeout.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeout.IsCancellationRequested)
+        {
+            throw new TimeoutException($"TCP write timed out after {tcpConfig.SendTimeout} ms.");
+        }
     }
 
     protected override async Task<int> ReceiveInternalAsync(Memory<byte> buffer, CancellationToken cancellationToken)
@@ -59,7 +67,16 @@ public sealed class TcpCommunication : CommunicationBase
         if (stream == null || !stream.CanRead)
             throw new InvalidOperationException("TCP stream is not readable.");
 
-        var length = await stream.ReadAsync(buffer, cancellationToken);
+        using var timeout = CreateOperationTimeout(cancellationToken, tcpConfig.ReceiveTimeout);
+        int length;
+        try
+        {
+            length = await stream.ReadAsync(buffer, timeout.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeout.IsCancellationRequested)
+        {
+            throw new TimeoutException($"TCP read timed out after {tcpConfig.ReceiveTimeout} ms.");
+        }
         if (length == 0)
             throw new IOException("The remote TCP endpoint closed the connection.");
 
@@ -72,5 +89,33 @@ public sealed class TcpCommunication : CommunicationBase
             return false;
 
         return socket.Connected && !(socket.Poll(0, SelectMode.SelectRead) && socket.Available == 0);
+    }
+
+    private static CancellationTokenSource CreateOperationTimeout(CancellationToken cancellationToken, int timeoutMs)
+    {
+        var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        if (timeoutMs > 0)
+            timeout.CancelAfter(timeoutMs);
+        return timeout;
+    }
+
+    private static TcpConfig CloneConfig(TcpConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        return new TcpConfig
+        {
+            Host = config.Host,
+            Port = config.Port,
+            ReceiveBufferSize = config.ReceiveBufferSize,
+            SendBufferSize = config.SendBufferSize,
+            KeepAlive = config.KeepAlive,
+            KeepAliveInterval = config.KeepAliveInterval,
+            Timeout = config.Timeout,
+            ReceiveTimeout = config.ReceiveTimeout,
+            SendTimeout = config.SendTimeout,
+            AutoReconnect = config.AutoReconnect,
+            MaxReconnectAttempts = config.MaxReconnectAttempts,
+            ReconnectInterval = config.ReconnectInterval
+        };
     }
 }

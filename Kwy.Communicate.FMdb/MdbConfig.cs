@@ -9,9 +9,6 @@ namespace Kwy.Communicate.FMdb;
 /// </summary>
 public sealed class MdbConfig : IProtocolConfig
 {
-    /// <inheritdoc />
-    public ProtocolType ProtocolType => ProtocolType.Modbus;
-
     /// <summary>
     /// Gets or sets the Modbus transport.
     /// </summary>
@@ -101,6 +98,15 @@ public sealed class MdbConfig : IProtocolConfig
         if (MaxReconnectAttempts < 0 || ReconnectInterval < 0)
             return false;
 
+        if (!Enum.IsDefined(Transport)
+            || !Enum.IsDefined(ByteOrder)
+            || !Enum.IsDefined(Parity)
+            || !Enum.IsDefined(StopBits)
+            || !Enum.IsDefined(Handshake))
+        {
+            return false;
+        }
+
         return Transport switch
         {
             MdbTransport.Tcp => !string.IsNullOrWhiteSpace(Host) && Port is >= 1 and <= 65535,
@@ -108,4 +114,25 @@ public sealed class MdbConfig : IProtocolConfig
             _ => false
         };
     }
+
+    internal MdbConfig Snapshot()
+        => new()
+        {
+            Transport = Transport,
+            UnitIdentifier = UnitIdentifier,
+            ByteOrder = ByteOrder,
+            Host = Host,
+            Port = Port,
+            SerialPort = SerialPort,
+            BaudRate = BaudRate,
+            Parity = Parity,
+            StopBits = StopBits,
+            Handshake = Handshake,
+            Timeout = Timeout,
+            ReadTimeout = ReadTimeout,
+            WriteTimeout = WriteTimeout,
+            AutoReconnect = AutoReconnect,
+            MaxReconnectAttempts = MaxReconnectAttempts,
+            ReconnectInterval = ReconnectInterval
+        };
 }

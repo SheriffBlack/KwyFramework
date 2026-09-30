@@ -1,9 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\eng\Kwy.Communicate.Version.props" />
+
   <PropertyGroup>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <Description>Container-independent MQTT client for Kwy.Communicate, powered by MQTTnet.</Description>
+    <PackageTags>Kwy;Communication;MQTT;MQTTnet;IoT</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +25,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Communicate.Abstractions\Kwy.Communicate.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.Core\Kwy.Communicate.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

@@ -19,8 +19,6 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
     protected readonly ICommunicationClient protocol;
     protected readonly IByteTransport transport;
 
-    public IProtocolConfig ProtocolConfig { get; }
-
     protected InstrumentBase(string deviceId, string deviceName, IDeviceConfig deviceParameter, ICommunicationClient protocol)
         : base(deviceId, deviceName)
     {
@@ -28,7 +26,6 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         this.protocol = protocol ?? throw new ArgumentNullException(nameof(protocol));
         transport = protocol as IByteTransport
             ?? throw new ArgumentException("Instrument communication must support IByteTransport.", nameof(protocol));
-        ProtocolConfig = protocol.Config;
         DeviceParameter = deviceParameter;
         SubscribeProtocolEvents();
     }
@@ -45,7 +42,6 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         ArgumentNullException.ThrowIfNull(protocolConfig);
         ArgumentNullException.ThrowIfNull(factory);
 
-        ProtocolConfig = protocolConfig;
         protocol = factory.CreateClient(protocolConfig);
         transport = protocol as IByteTransport
             ?? throw new InvalidOperationException("Instrument communication must support IByteTransport.");

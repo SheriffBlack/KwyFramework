@@ -1,18 +1,25 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\eng\Kwy.Communicate.Version.props" />
   <PropertyGroup>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <Description>Container-independent OPC UA client, subscriptions, lifecycle, and reconnection for Kwy.Communicate.</Description>
+    <PackageTags>Kwy;Communication;OPC;OPC-UA;Industrial;Automation</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.5.378.134" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.5.378.176" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Communicate.Abstractions\Kwy.Communicate.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.Core\Kwy.Communicate.Core.csproj" />
   </ItemGroup>
-
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>

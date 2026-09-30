@@ -9,10 +9,9 @@ namespace Kwy.Communicate.Grpc.Client;
 /// </summary>
 public static class CommunicationFactoryExtensions
 {
-    public static ICommunicationFactoryRegistry RegisterGrpcClients(this ICommunicationFactoryRegistry factory)
+    public static CommunicationFactoryBuilder RegisterGrpcClients(this CommunicationFactoryBuilder builder)
     {
-        ArgumentNullException.ThrowIfNull(factory);
-        factory.RegisterCreator<GrpcConfig>(config => new GrpcCommunication(config));
-        return factory;
+        ArgumentNullException.ThrowIfNull(builder);
+        return builder.RegisterCreator<GrpcConfig>(config => new GrpcCommunication(config));
     }
 }

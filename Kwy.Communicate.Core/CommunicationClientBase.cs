@@ -1,11 +1,13 @@
 ﻿using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
+using System.Collections.Concurrent;
+using System.Runtime.ExceptionServices;
 
 namespace Kwy.Communicate.Core;
 
 /// <summary>
-/// Common lifecycle, state, disposal, and single-flight reconnection behavior.
+/// 通用的生命周期、状态、释放以及单次飞行重新连接行为。
 /// </summary>
 public abstract class CommunicationClientBase : ICommunicationClient
 {
@@ -16,10 +18,13 @@ public abstract class CommunicationClientBase : ICommunicationClient
     private readonly SemaphoreSlim lifecycleSemaphore = new(1, 1);
     private readonly object reconnectSync = new();
     private readonly object keepAliveSync = new();
+    private readonly ConcurrentQueue<Action> notifications = new();
     private CancellationTokenSource lifetimeCancellation = new();
     private CancellationTokenSource? reconnectCancellation;
     private CancellationTokenSource? keepAliveCancellation;
     private Task reconnectTask = Task.CompletedTask;
+    private Task keepAliveTask = Task.CompletedTask;
+    private int notificationDrainScheduled;
     private volatile int state = (int)ConnectionState.Disconnected;
 
     public ConnectionState State
@@ -39,8 +44,6 @@ public abstract class CommunicationClientBase : ICommunicationClient
 
     public bool IsConnected => State == ConnectionState.Connected && IsConnectionAlive();
 
-    public IProtocolConfig Config => config;
-
     public event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
     public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred;
 
@@ -52,6 +55,12 @@ public abstract class CommunicationClientBase : ICommunicationClient
     protected abstract Task ConnectCoreAsync(CancellationToken cancellationToken);
     protected abstract Task DisconnectCoreAsync(CancellationToken cancellationToken);
     protected abstract bool IsConnectionAlive();
+
+    /// <summary>
+    /// Gets a token that is cancelled when the current connection lifetime ends.
+    /// Derived transports should link long-running operations to this token.
+    /// </summary>
+    protected CancellationToken LifetimeToken => lifetimeCancellation.Token;
 
     protected virtual Task OnConnectedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
@@ -111,7 +120,7 @@ public abstract class CommunicationClientBase : ICommunicationClient
         }
 
         if (connectError != null)
-            throw connectError;
+            ExceptionDispatchInfo.Capture(connectError).Throw();
     }
 
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
@@ -119,6 +128,9 @@ public abstract class CommunicationClientBase : ICommunicationClient
         CancelReconnect();
         CancelKeepAlive();
         lifetimeCancellation.Cancel();
+
+        await reconnectTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await keepAliveTask.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         await lifecycleSemaphore.WaitAsync(cancellationToken);
         try
@@ -195,6 +207,7 @@ public abstract class CommunicationClientBase : ICommunicationClient
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
+                    await DisconnectCoreSafelyAsync(CancellationToken.None).ConfigureAwait(false);
                     OnErrorOccurred(ex, $"Reconnect attempt {attempt} failed: {ex.Message}");
                     State = ConnectionState.Reconnecting;
                 }
@@ -242,7 +255,7 @@ public abstract class CommunicationClientBase : ICommunicationClient
             keepAliveCancellation?.Cancel();
             keepAliveCancellation?.Dispose();
             keepAliveCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetimeCancellation.Token);
-            _ = KeepAliveLoopAsync(keepAliveConfig, keepAliveCancellation.Token);
+            keepAliveTask = KeepAliveLoopAsync(keepAliveConfig, keepAliveCancellation.Token);
         }
     }
 
@@ -302,10 +315,49 @@ public abstract class CommunicationClientBase : ICommunicationClient
     }
 
     protected virtual void OnConnectionStateChanged(ConnectionState previousState, ConnectionState currentState)
-        => ConnectionStateChanged?.Invoke(this, new ConnectionStateChangedEventArgs(previousState, currentState));
+        => EnqueueObserverNotification(() => ConnectionStateChanged?.Invoke(
+            this,
+            new ConnectionStateChangedEventArgs(previousState, currentState)));
 
     protected virtual void OnErrorOccurred(Exception exception, string message)
-        => ErrorOccurred?.Invoke(this, new ErrorOccurredEventArgs(exception, message));
+        => EnqueueObserverNotification(() => ErrorOccurred?.Invoke(this, new ErrorOccurredEventArgs(exception, message)));
+
+    /// <summary>
+    /// Dispatches an observer notification in order on a thread-pool thread and isolates observer exceptions.
+    /// </summary>
+    protected void EnqueueObserverNotification(Action notification)
+    {
+        notifications.Enqueue(notification);
+        if (Interlocked.CompareExchange(ref notificationDrainScheduled, 1, 0) == 0)
+        {
+            ThreadPool.UnsafeQueueUserWorkItem(
+                static client => client.DrainNotifications(),
+                this,
+                preferLocal: false);
+        }
+    }
+
+    private void DrainNotifications()
+    {
+        do
+        {
+            while (notifications.TryDequeue(out Action? notification))
+            {
+                try
+                {
+                    notification();
+                }
+                catch
+                {
+                    // Observers must never alter the communication state machine.
+                }
+            }
+
+            Interlocked.Exchange(ref notificationDrainScheduled, 0);
+        }
+        while (!notifications.IsEmpty
+            && Interlocked.CompareExchange(ref notificationDrainScheduled, 1, 0) == 0);
+    }
 
     public virtual async ValueTask DisposeAsync()
     {

@@ -3,10 +3,13 @@ using Kwy.Communicate.Abstractions;
 namespace Kwy.Communicate.Core;
 
 /// <summary>
-/// Base class for active-read byte stream transports.
+/// 主动读取字节流传输的基类。
 /// </summary>
 public abstract class CommunicationBase : CommunicationClientBase, IByteTransport
 {
+    private readonly SemaphoreSlim readSemaphore = new(1, 1);
+    private readonly SemaphoreSlim writeSemaphore = new(1, 1);
+
     protected CommunicationBase(IProtocolConfig config) : base(config)
     {
     }
@@ -17,11 +20,47 @@ public abstract class CommunicationBase : CommunicationClientBase, IByteTranspor
     protected abstract Task<int> ReceiveInternalAsync(Memory<byte> buffer, CancellationToken cancellationToken);
     protected abstract bool ValidateConnection();
 
-    protected sealed override Task ConnectCoreAsync(CancellationToken cancellationToken)
-        => ConnectInternalAsync(cancellationToken);
+    protected sealed override async Task ConnectCoreAsync(CancellationToken cancellationToken)
+    {
+        await writeSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await readSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await ConnectInternalAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                readSemaphore.Release();
+            }
+        }
+        finally
+        {
+            writeSemaphore.Release();
+        }
+    }
 
-    protected sealed override Task DisconnectCoreAsync(CancellationToken cancellationToken)
-        => DisconnectInternalAsync(cancellationToken);
+    protected sealed override async Task DisconnectCoreAsync(CancellationToken cancellationToken)
+    {
+        await writeSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await readSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await DisconnectInternalAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                readSemaphore.Release();
+            }
+        }
+        finally
+        {
+            writeSemaphore.Release();
+        }
+    }
 
     protected sealed override bool IsConnectionAlive()
         => ValidateConnection();
@@ -34,14 +73,24 @@ public abstract class CommunicationBase : CommunicationClientBase, IByteTranspor
         if (!IsConnected)
             throw new InvalidOperationException("The transport is not connected.");
 
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, LifetimeToken);
+        CancellationToken operationToken = linkedCancellation.Token;
+        await writeSemaphore.WaitAsync(operationToken).ConfigureAwait(false);
         try
         {
-            await SendInternalAsync(data.ToArray(), cancellationToken);
+            if (!IsConnected)
+                throw new InvalidOperationException("The transport disconnected before the write could start.");
+
+            await SendInternalAsync(data.ToArray(), operationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await HandleCommunicationFailureAsync(ex, $"Write failed: {ex.Message}");
             throw;
+        }
+        finally
+        {
+            writeSemaphore.Release();
         }
     }
 
@@ -53,14 +102,24 @@ public abstract class CommunicationBase : CommunicationClientBase, IByteTranspor
         if (!IsConnected)
             throw new InvalidOperationException("The transport is not connected.");
 
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, LifetimeToken);
+        CancellationToken operationToken = linkedCancellation.Token;
+        await readSemaphore.WaitAsync(operationToken).ConfigureAwait(false);
         try
         {
-            return await ReceiveInternalAsync(buffer, cancellationToken);
+            if (!IsConnected)
+                throw new InvalidOperationException("The transport disconnected before the read could start.");
+
+            return await ReceiveInternalAsync(buffer, operationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await HandleCommunicationFailureAsync(ex, $"Read failed: {ex.Message}");
             throw;
+        }
+        finally
+        {
+            readSemaphore.Release();
         }
     }
 

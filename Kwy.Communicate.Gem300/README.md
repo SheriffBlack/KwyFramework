@@ -2,6 +2,10 @@
 
 `Kwy.Communicate.Gem300` 是 GEM300 对象模型层，基于 `Kwy.Communicate.Gem`。
 
+当前包以 `alpha` 形式发布并采用 MIT 许可证。`alpha` 表示本包目前主要提供对象模型、接口和
+内存参考实现，尚未承诺完整的 E87/E90/E40/E94 状态机、SECS 消息映射、持久化恢复或 SEMI
+认证；它不是许可证限制，也不影响用户按 MIT 条款使用、修改或分发代码。
+
 当前模块提供：
 
 - E87 风格 Carrier / LoadPort / SlotMap 模型

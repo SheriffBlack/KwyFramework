@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Windows.Threading;
-using Kwy.Communicate.NI;
+using Kwy.Communicate.Visa;
 using Kwy.Communicate.TcpSerial.Configs;
 using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Advantech;

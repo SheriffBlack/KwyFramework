@@ -17,6 +17,7 @@ public sealed class DefaultHttpMessageHandlerFactory : IHttpMessageHandlerFactor
         var handler = new HttpClientHandler();
         if (!config.ValidateCertificate)
         {
+            // Explicit opt-out for isolated test/industrial networks. Never use with untrusted endpoints.
             handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
         }
 

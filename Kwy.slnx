@@ -25,10 +25,10 @@
   <Project Path="Kwy.Communicate.Grpc.Contracts/Kwy.Communicate.Grpc.Contracts.csproj" Id="aaac4559-7d1f-4047-9a4f-84171ab1bd32" />
   <Project Path="Kwy.Communicate.Grpc.Service/Kwy.Communicate.Grpc.Service.csproj" Id="3e3f8f78-d8c5-4995-8789-15909a388aa0" />
   <Project Path="Kwy.Communicate.Mqtt/Kwy.Communicate.Mqtt.csproj" Id="a08c1cb9-d3ee-4d52-a967-f2f5674cd48c" />
-  <Project Path="Kwy.Communicate.NI/Kwy.Communicate.NI.csproj" Id="9aac76b0-d811-4800-bf8d-242b38e904e4" />
   <Project Path="Kwy.Communicate.OpcUa/Kwy.Communicate.OpcUa.csproj" Id="27449b06-edb9-4ceb-b2e3-05bc77833f2e" />
   <Project Path="Kwy.Communicate.Secs/Kwy.Communicate.Secs.csproj" />
   <Project Path="Kwy.Communicate.TcpSerial/Kwy.Communicate.TcpSerial.csproj" Id="e8f74b40-830b-44eb-bde5-95abe7039746" />
+  <Project Path="Kwy.Communicate.Tests/Kwy.Communicate.Tests.csproj" />
   <Project Path="Kwy.Communicate.Visa/Kwy.Communicate.Visa.csproj" Id="0984d861-9c50-408f-8b4c-d781f85c453f" />
   <Project Path="Kwy.ComponentModel/Kwy.ComponentModel.csproj" Id="dd0666de-5489-457e-a91d-cf47073aec86" />
   <Project Path="Kwy.Converter/Kwy.Converter.csproj" />

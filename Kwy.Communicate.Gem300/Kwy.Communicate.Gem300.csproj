@@ -1,13 +1,25 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\eng\Kwy.Communicate.Version.props" />
   <PropertyGroup>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <VersionSuffix>alpha.1</VersionSuffix>
+    <Description>Experimental GEM300 object models for E87, E90, E40, and E94 workflows.</Description>
+    <PackageReleaseNotes>Initial alpha of the Kwy GEM300 object models and in-memory reference services.</PackageReleaseNotes>
+    <PackageTags>Kwy;Communication;GEM300;SEMI;E87;E90;E40;E94</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Communicate.Gem\Kwy.Communicate.Gem.csproj" />
   </ItemGroup>
-
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>

@@ -10,7 +10,7 @@
     <ProjectReference Include="..\Kwy.Device.PLC.Hsl\Kwy.Device.PLC.Hsl.csproj" />
     <ProjectReference Include="..\Kwy.MVVM\Kwy.MVVM.csproj" />
     <ProjectReference Include="..\Kwy.ComponentModel\Kwy.ComponentModel.csproj" />
-    <ProjectReference Include="..\Kwy.Communicate.NI\Kwy.Communicate.NI.csproj" />
+    <ProjectReference Include="..\Kwy.Communicate.Visa\Kwy.Communicate.Visa.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.TcpSerial\Kwy.Communicate.TcpSerial.csproj" />
     <ProjectReference Include="..\Kwy.Device.Abstractions\Kwy.Device.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.Core\Kwy.Device.Core.csproj" />

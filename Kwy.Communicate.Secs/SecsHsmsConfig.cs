@@ -5,7 +5,6 @@ namespace Kwy.Communicate.Secs;
 
 public sealed class SecsHsmsConfig : IProtocolConfig, IKeepAliveConfig
 {
-    public ProtocolType ProtocolType => ProtocolType.Secs;
 
     public string Host { get; set; } = "127.0.0.1";
 

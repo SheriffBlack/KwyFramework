@@ -12,9 +12,9 @@ public sealed class SerialPortCommunication : CommunicationBase
     private readonly SerialPortConfig serialConfig;
     private SerialPort? serialPort;
 
-    public SerialPortCommunication(SerialPortConfig config) : base(config)
+    public SerialPortCommunication(SerialPortConfig config) : base(CloneConfig(config))
     {
-        serialConfig = config ?? throw new ArgumentNullException(nameof(config));
+        serialConfig = (SerialPortConfig)this.config;
     }
 
     protected override async Task ConnectInternalAsync(CancellationToken cancellationToken)
@@ -41,7 +41,8 @@ public sealed class SerialPortCommunication : CommunicationBase
 
         try
         {
-            await Task.Run(() => port.Open(), cancellationToken);
+            Task openTask = Task.Run(port.Open, CancellationToken.None);
+            await openTask.WaitAsync(TimeSpan.FromMilliseconds(serialConfig.Timeout), cancellationToken);
             serialPort = port;
         }
         catch
@@ -79,7 +80,15 @@ public sealed class SerialPortCommunication : CommunicationBase
         if (serialPort is not { IsOpen: true })
             throw new InvalidOperationException("Serial port is not open.");
 
-        await serialPort.BaseStream.WriteAsync(data, cancellationToken);
+        using var timeout = CreateOperationTimeout(cancellationToken, serialConfig.WriteTimeout);
+        try
+        {
+            await serialPort.BaseStream.WriteAsync(data, timeout.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeout.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Serial-port write timed out after {serialConfig.WriteTimeout} ms.");
+        }
     }
 
     protected override async Task<int> ReceiveInternalAsync(Memory<byte> buffer, CancellationToken cancellationToken)
@@ -87,7 +96,15 @@ public sealed class SerialPortCommunication : CommunicationBase
         if (serialPort is not { IsOpen: true })
             throw new InvalidOperationException("Serial port is not open.");
 
-        return await serialPort.BaseStream.ReadAsync(buffer, cancellationToken);
+        using var timeout = CreateOperationTimeout(cancellationToken, serialConfig.ReadTimeout);
+        try
+        {
+            return await serialPort.BaseStream.ReadAsync(buffer, timeout.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeout.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Serial-port read timed out after {serialConfig.ReadTimeout} ms.");
+        }
     }
 
     protected override bool ValidateConnection() => serialPort?.IsOpen == true;
@@ -96,4 +113,34 @@ public sealed class SerialPortCommunication : CommunicationBase
         => _ = HandleCommunicationFailureAsync(
             new IOException($"Serial port error: {e.EventType}"),
             $"Serial port error: {e.EventType}");
+
+    private static CancellationTokenSource CreateOperationTimeout(CancellationToken cancellationToken, int timeoutMs)
+    {
+        var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        if (timeoutMs > 0)
+            timeout.CancelAfter(timeoutMs);
+        return timeout;
+    }
+
+    private static SerialPortConfig CloneConfig(SerialPortConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        return new SerialPortConfig
+        {
+            Port = config.Port,
+            BaudRate = config.BaudRate,
+            Parity = config.Parity,
+            DataBits = config.DataBits,
+            StopBits = config.StopBits,
+            Handshake = config.Handshake,
+            ReadTimeout = config.ReadTimeout,
+            WriteTimeout = config.WriteTimeout,
+            KeepAlive = config.KeepAlive,
+            KeepAliveInterval = config.KeepAliveInterval,
+            Timeout = config.Timeout,
+            AutoReconnect = config.AutoReconnect,
+            MaxReconnectAttempts = config.MaxReconnectAttempts,
+            ReconnectInterval = config.ReconnectInterval
+        };
+    }
 }

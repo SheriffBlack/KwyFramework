@@ -5,13 +5,14 @@ using Microsoft.AspNetCore.Server.Kestrel.Transport.NamedPipes;
 namespace Kwy.Communicate.Grpc.Service;
 
 /// <summary>
-/// 用于 gRPC over Windows Named Pipe 的 Host 级 Kestrel 配置扩展。
+/// Host-level Kestrel configuration helpers for gRPC over Windows named pipes.
 /// </summary>
 public static class GrpcNamedPipeExtensions
 {
     /// <summary>
-    /// 添加一个通过 Windows Named Pipe 监听的 HTTP/2 Kestrel 端点。
-    /// 必须由可执行服务 Host 调用；Host 仍负责选择管道名称和配置 Windows 访问控制。
+    /// Adds an HTTP/2 Kestrel endpoint that listens on a Windows named pipe.
+    /// This must be called by the executable service host, which remains responsible
+    /// for choosing the pipe name and configuring Windows access control.
     /// </summary>
     public static IWebHostBuilder UseKwyGrpcNamedPipe(
         this IWebHostBuilder webHostBuilder,
@@ -22,7 +23,7 @@ public static class GrpcNamedPipeExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(pipeName);
 
         if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException("gRPC Named Pipe 传输仅支持 Windows。");
+            throw new PlatformNotSupportedException("gRPC named-pipe transport is supported on Windows only.");
 
         if (configureTransport is not null)
             webHostBuilder.UseNamedPipes(configureTransport);

@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using Kwy.ComponentModel;
-using Kwy.Communicate.NI;
+using Kwy.Communicate.Visa;
 
 namespace KwyTemplate.Device.Connections.Editors;
 

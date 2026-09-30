@@ -7,11 +7,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
+    <Description>Communication lifecycle, reconnection, and optional factory runtime for Kwy.Communicate.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Communicate.Abstractions\Kwy.Communicate.Abstractions.csproj" />
-    <ProjectReference Include="..\Kwy.Core\Kwy.Core.csproj" />
   </ItemGroup>
 
 </Project>

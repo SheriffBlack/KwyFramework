@@ -3,16 +3,16 @@
 FluentModbus 5.3.2 client wrapper for Modbus TCP and Modbus RTU.
 
 ```csharp
-var config = new FluentModbusConfig
+var config = new MdbConfig
 {
-    Transport = FluentModbusTransport.Tcp,
+    Transport = MdbTransport.Tcp,
     Host = "192.168.1.10",
     Port = 502,
     UnitIdentifier = 1,
-    ByteOrder = ModbusByteOrder.BigEndian
+    ByteOrder = MdbByteOrder.BigEndian
 };
 
-using var modbus = new FluentModbusCommunication(config);
+await using var modbus = new FMdbCommunication(config);
 await modbus.ConnectAsync();
 
 var values = await modbus.ReadHoldingRegistersAsync<ushort>(0, 10);
@@ -23,10 +23,10 @@ The generic register methods use FluentModbus data conversion. Use the raw metho
 
 ## NuGet publish
 
-`Kwy.Communicate.FMdb.csproj` is configured as a NuGet package example:
+`Kwy.Communicate.FMdb.csproj` is configured as a NuGet package:
 
 - `PackageId`: `Kwy.Communicate.FMdb`
-- targets: `net8.0`, `net10.0`
+- target: `net8.0`
 - normal package: `.nupkg`
 - symbol package: `.snupkg`
 - XML documentation file included
@@ -43,18 +43,18 @@ dotnet pack Kwy.Communicate.FMdb\Kwy.Communicate.FMdb.csproj -c Release -o artif
 Generated files:
 
 ```text
-artifacts\nuget\Kwy.Communicate.FMdb.1.0.0.nupkg
-artifacts\nuget\Kwy.Communicate.FMdb.1.0.0.snupkg
+artifacts\nuget\Kwy.Communicate.FMdb.0.1.0.nupkg
+artifacts\nuget\Kwy.Communicate.FMdb.0.1.0.snupkg
 ```
 
 Publish to nuget.org:
 
 ```powershell
-dotnet nuget push artifacts\nuget\Kwy.Communicate.FMdb.1.0.0.nupkg `
+dotnet nuget push artifacts\nuget\Kwy.Communicate.FMdb.0.1.0.nupkg `
   --api-key <NUGET_API_KEY> `
   --source https://api.nuget.org/v3/index.json
 
-dotnet nuget push artifacts\nuget\Kwy.Communicate.FMdb.1.0.0.snupkg `
+dotnet nuget push artifacts\nuget\Kwy.Communicate.FMdb.0.1.0.snupkg `
   --api-key <NUGET_API_KEY> `
   --source https://api.nuget.org/v3/index.json
 ```

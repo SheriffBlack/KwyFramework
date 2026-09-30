@@ -3,7 +3,7 @@ using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Core;
 using Kwy.Communicate.FMdb.Enums;
 using System.IO.Ports;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace Kwy.Communicate.FMdb;
 
@@ -12,9 +12,15 @@ namespace Kwy.Communicate.FMdb;
 /// </summary>
 public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationFMdb
 {
+    private const int MaxAddress = ushort.MaxValue;
+    private const int MaxReadBits = 2000;
+    private const int MaxReadRegisters = 125;
+    private const int MaxWriteCoils = 1968;
+    private const int MaxWriteRegisters = 123;
+    private const int MaxReadWriteRegisters = 121;
+
     private readonly MdbConfig modbusConfig;
-    private readonly object lifecycleSync = new();
-    private SemaphoreSlim requestSemaphore = new(1, 1);
+    private readonly SemaphoreSlim requestSemaphore = new(1, 1);
     private ModbusTcpClient? tcpClient;
     private ModbusRtuClient? rtuClient;
 
@@ -23,88 +29,79 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     /// <summary>
     /// Initializes a new instance of the <see cref="FMdbCommunication"/> class.
     /// </summary>
-    public FMdbCommunication(MdbConfig config) : base(config)
+    public FMdbCommunication(MdbConfig config) : this(new ConfigSnapshot(CreateSnapshot(config)))
     {
-        modbusConfig = config ?? throw new ArgumentNullException(nameof(config));
     }
+
+    private FMdbCommunication(ConfigSnapshot snapshot) : base(snapshot.Value)
+        => modbusConfig = snapshot.Value;
 
     /// <inheritdoc />
     protected override async Task ConnectCoreAsync(CancellationToken cancellationToken)
     {
-        if (!modbusConfig.Validate())
-            throw new InvalidOperationException("FluentModbus configuration is invalid.");
-
-        RotateRequestSemaphore();
-        DisposeClients();
-
-        if (modbusConfig.Transport == MdbTransport.Tcp)
+        await requestSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            var client = new ModbusTcpClient
-            {
-                ConnectTimeout = modbusConfig.Timeout,
-                ReadTimeout = modbusConfig.ReadTimeout,
-                WriteTimeout = modbusConfig.WriteTimeout
-            };
+            DisposeClients();
 
-            try
+            if (modbusConfig.Transport == MdbTransport.Tcp)
             {
-                await Task.Run(
+                var client = new ModbusTcpClient
+                {
+                    ConnectTimeout = modbusConfig.Timeout,
+                    ReadTimeout = modbusConfig.ReadTimeout,
+                    WriteTimeout = modbusConfig.WriteTimeout
+                };
+
+                await RunBlockingConnectAsync(
                     () => client.Connect(BuildTcpEndpoint(), ToFluentEndianness(modbusConfig.ByteOrder)),
-                    cancellationToken);
+                    client,
+                    cancellationToken).ConfigureAwait(false);
                 tcpClient = client;
             }
-            catch
+            else
             {
-                client.Dispose();
-                throw;
-            }
-        }
-        else
-        {
-            var availablePorts = System.IO.Ports.SerialPort.GetPortNames();
-            if (!Array.Exists(availablePorts, port => string.Equals(port, modbusConfig.SerialPort, StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new System.IO.IOException($"Serial port '{modbusConfig.SerialPort}' does not exist on this machine. Available ports: {string.Join(", ", availablePorts)}");
-            }
+                var availablePorts = System.IO.Ports.SerialPort.GetPortNames();
+                if (!Array.Exists(availablePorts, port => string.Equals(port, modbusConfig.SerialPort, StringComparison.OrdinalIgnoreCase)))
+                {
+                    throw new System.IO.IOException($"Serial port '{modbusConfig.SerialPort}' does not exist on this machine. Available ports: {string.Join(", ", availablePorts)}");
+                }
 
-            var client = new ModbusRtuClient
-            {
-                BaudRate = modbusConfig.BaudRate,
-                Parity = ToSerialParity(modbusConfig.Parity),
-                StopBits = ToSerialStopBits(modbusConfig.StopBits),
-                Handshake = ToSerialHandshake(modbusConfig.Handshake),
-                ReadTimeout = modbusConfig.ReadTimeout > 0 ? modbusConfig.ReadTimeout : 2000,
-                WriteTimeout = modbusConfig.WriteTimeout > 0 ? modbusConfig.WriteTimeout : 2000
-            };
+                var client = new ModbusRtuClient
+                {
+                    BaudRate = modbusConfig.BaudRate,
+                    Parity = ToSerialParity(modbusConfig.Parity),
+                    StopBits = ToSerialStopBits(modbusConfig.StopBits),
+                    Handshake = ToSerialHandshake(modbusConfig.Handshake),
+                    ReadTimeout = modbusConfig.ReadTimeout,
+                    WriteTimeout = modbusConfig.WriteTimeout
+                };
 
-            try
-            {
-                await Task.Run(
+                await RunBlockingConnectAsync(
                     () => client.Connect(modbusConfig.SerialPort, ToFluentEndianness(modbusConfig.ByteOrder)),
-                    cancellationToken);
+                    client,
+                    cancellationToken).ConfigureAwait(false);
                 rtuClient = client;
             }
-            catch
-            {
-                client.Dispose();
-                throw;
-            }
+        }
+        finally
+        {
+            requestSemaphore.Release();
         }
     }
 
     /// <inheritdoc />
-    protected override Task DisconnectCoreAsync(CancellationToken cancellationToken)
+    protected override async Task DisconnectCoreAsync(CancellationToken cancellationToken)
     {
+        await requestSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             DisposeClients();
-            RotateRequestSemaphore();
         }
-        catch
+        finally
         {
-            // Ignore exceptions to ensure cleanup path succeeds
+            requestSemaphore.Release();
         }
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -114,7 +111,7 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     /// <inheritdoc />
     public Task<bool[]> ReadCoilsAsync(int startingAddress, int count, byte? unitIdentifier = null, CancellationToken cancellationToken = default)
     {
-        ValidateRange(startingAddress, count);
+        ValidateRange(startingAddress, count, MaxReadBits, nameof(count));
         return ExecuteRequestAsync(async client =>
         {
             var packed = (await client.ReadCoilsAsync(ResolveUnitIdentifier(unitIdentifier), startingAddress, count, cancellationToken)).ToArray();
@@ -126,7 +123,7 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     /// <inheritdoc />
     public Task<bool[]> ReadDiscreteInputsAsync(int startingAddress, int count, byte? unitIdentifier = null, CancellationToken cancellationToken = default)
     {
-        ValidateRange(startingAddress, count);
+        ValidateRange(startingAddress, count, MaxReadBits, nameof(count));
         return ExecuteRequestAsync(async client =>
         {
             var packed = (await client.ReadDiscreteInputsAsync(ResolveUnitIdentifier(unitIdentifier), startingAddress, count, cancellationToken)).ToArray();
@@ -138,7 +135,7 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     /// <inheritdoc />
     public Task<T[]> ReadHoldingRegistersAsync<T>(int startingAddress, int count, byte? unitIdentifier = null, CancellationToken cancellationToken = default) where T : unmanaged
     {
-        ValidateRange(startingAddress, count);
+        ValidateTypedRange<T>(startingAddress, count, MaxReadRegisters, nameof(count));
         return ExecuteRequestAsync(async client =>
         {
             var result = (await client.ReadHoldingRegistersAsync<T>(ResolveUnitIdentifier(unitIdentifier), startingAddress, count, cancellationToken)).ToArray();
@@ -149,7 +146,7 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     /// <inheritdoc />
     public Task<T[]> ReadInputRegistersAsync<T>(int startingAddress, int count, byte? unitIdentifier = null, CancellationToken cancellationToken = default) where T : unmanaged
     {
-        ValidateRange(startingAddress, count);
+        ValidateTypedRange<T>(startingAddress, count, MaxReadRegisters, nameof(count));
         return ExecuteRequestAsync(async client =>
         {
             var result = (await client.ReadInputRegistersAsync<T>(ResolveUnitIdentifier(unitIdentifier), startingAddress, count, cancellationToken)).ToArray();
@@ -160,7 +157,7 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     /// <inheritdoc />
     public Task<byte[]> ReadHoldingRegistersRawAsync(ushort startingAddress, ushort quantity, byte? unitIdentifier = null, CancellationToken cancellationToken = default)
     {
-        ValidateQuantity(quantity);
+        ValidateRange(startingAddress, quantity, MaxReadRegisters, nameof(quantity));
         return ExecuteRequestAsync(async client =>
         {
             var result = (await client.ReadHoldingRegistersAsync(ResolveUnitIdentifier(unitIdentifier), startingAddress, quantity, cancellationToken)).ToArray();
@@ -171,7 +168,7 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     /// <inheritdoc />
     public Task<byte[]> ReadInputRegistersRawAsync(ushort startingAddress, ushort quantity, byte? unitIdentifier = null, CancellationToken cancellationToken = default)
     {
-        ValidateQuantity(quantity);
+        ValidateRange(startingAddress, quantity, MaxReadRegisters, nameof(quantity));
         return ExecuteRequestAsync(async client =>
         {
             var result = (await client.ReadInputRegistersAsync(ResolveUnitIdentifier(unitIdentifier), startingAddress, quantity, cancellationToken)).ToArray();
@@ -192,7 +189,7 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     public Task WriteMultipleCoilsAsync(int startingAddress, bool[] values, byte? unitIdentifier = null, CancellationToken cancellationToken = default)
     {
         ValidateValues(values);
-        ValidateAddress(startingAddress);
+        ValidateRange(startingAddress, values.Length, MaxWriteCoils, nameof(values));
         return ExecuteRequestAsync(
             client => client.WriteMultipleCoilsAsync(ResolveUnitIdentifier(unitIdentifier), startingAddress, values, cancellationToken),
             cancellationToken);
@@ -220,7 +217,7 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     public Task WriteMultipleRegistersAsync<T>(int startingAddress, T[] values, byte? unitIdentifier = null, CancellationToken cancellationToken = default) where T : unmanaged
     {
         ValidateValues(values);
-        ValidateAddress(startingAddress);
+        ValidateTypedRange<T>(startingAddress, values.Length, MaxWriteRegisters, nameof(values));
         return ExecuteRequestAsync(
             client => client.WriteMultipleRegistersAsync(ResolveUnitIdentifier(unitIdentifier), startingAddress, values, cancellationToken),
             cancellationToken);
@@ -230,6 +227,7 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
     public Task WriteMultipleRegistersRawAsync(ushort startingAddress, byte[] dataset, byte? unitIdentifier = null, CancellationToken cancellationToken = default)
     {
         ValidateRawDataset(dataset);
+        ValidateRange(startingAddress, dataset.Length / 2, MaxWriteRegisters, nameof(dataset));
         return ExecuteRequestAsync(
             client => client.WriteMultipleRegistersAsync(ResolveUnitIdentifier(unitIdentifier), startingAddress, dataset, cancellationToken),
             cancellationToken);
@@ -246,9 +244,9 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
         where TRead : unmanaged
         where TWrite : unmanaged
     {
-        ValidateRange(readStartingAddress, readCount);
-        ValidateAddress(writeStartingAddress);
+        ValidateTypedRange<TRead>(readStartingAddress, readCount, MaxReadRegisters, nameof(readCount));
         ValidateValues(values);
+        ValidateTypedRange<TWrite>(writeStartingAddress, values.Length, MaxReadWriteRegisters, nameof(values));
 
         return ExecuteRequestAsync(async client =>
         {
@@ -276,6 +274,8 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
         try
         {
             var client = Client ?? throw new InvalidOperationException("FluentModbus client is not initialized.");
+            if (!IsConnected)
+                throw new InvalidOperationException("FluentModbus client disconnected before the request could start.");
             return await request(client);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -351,11 +351,36 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
         }
     }
 
-    private void RotateRequestSemaphore()
+    private async Task RunBlockingConnectAsync(Action connect, IDisposable client, CancellationToken cancellationToken)
     {
-        lock (lifecycleSync)
+        Task connectTask = Task.Run(connect, CancellationToken.None);
+        try
         {
-            requestSemaphore = new SemaphoreSlim(1, 1);
+            await connectTask.WaitAsync(
+                TimeSpan.FromMilliseconds(modbusConfig.Timeout),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (connectTask.IsCompleted)
+            {
+                client.Dispose();
+            }
+            else
+            {
+                _ = connectTask.ContinueWith(
+                    static (completedTask, state) =>
+                    {
+                        _ = completedTask.Exception;
+                        ((IDisposable)state!).Dispose();
+                    },
+                    client,
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+            }
+
+            throw;
         }
     }
 
@@ -401,21 +426,33 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
 
     private static void ValidateAddress(int address)
     {
-        if (address < 0)
-            throw new ArgumentOutOfRangeException(nameof(address), "Modbus address cannot be negative.");
+        if (address is < 0 or > MaxAddress)
+            throw new ArgumentOutOfRangeException(nameof(address), $"Modbus address must be between 0 and {MaxAddress}.");
     }
 
-    private static void ValidateRange(int startingAddress, int count)
+    private static void ValidateRange(int startingAddress, int count, int maximumCount, string countParameterName)
     {
         ValidateAddress(startingAddress);
-        if (count <= 0)
-            throw new ArgumentOutOfRangeException(nameof(count), "Modbus count must be greater than zero.");
+        if (count is <= 0 || count > maximumCount)
+            throw new ArgumentOutOfRangeException(countParameterName, $"Modbus quantity must be between 1 and {maximumCount}.");
+        if ((long)startingAddress + count > MaxAddress + 1L)
+            throw new ArgumentOutOfRangeException(countParameterName, "The requested Modbus range exceeds address 65535.");
     }
 
-    private static void ValidateQuantity(ushort quantity)
+    private static void ValidateTypedRange<T>(int startingAddress, int valueCount, int maximumRegisters, string countParameterName)
+        where T : unmanaged
     {
-        if (quantity == 0)
-            throw new ArgumentOutOfRangeException(nameof(quantity), "Modbus quantity must be greater than zero.");
+        if (valueCount <= 0)
+            throw new ArgumentOutOfRangeException(countParameterName, "Value count must be greater than zero.");
+
+        int size = Unsafe.SizeOf<T>();
+        long byteCount = (long)size * valueCount;
+        if ((byteCount & 1) != 0)
+            throw new ArgumentException($"Type '{typeof(T).Name}' does not occupy a whole number of Modbus registers.", countParameterName);
+        if (byteCount / 2 > int.MaxValue)
+            throw new ArgumentOutOfRangeException(countParameterName);
+
+        ValidateRange(startingAddress, (int)(byteCount / 2), maximumRegisters, countParameterName);
     }
 
     private static void ValidateValues<T>(T[] values)
@@ -439,6 +476,17 @@ public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationF
             return;
 
         await base.DisposeAsync();
-        requestSemaphore.Dispose();
+        if (requestSemaphore.Wait(0))
+            requestSemaphore.Dispose();
     }
+
+    private static MdbConfig CreateSnapshot(MdbConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        if (!config.Validate())
+            throw new ArgumentException("FluentModbus configuration is invalid.", nameof(config));
+        return config.Snapshot();
+    }
+
+    private sealed record ConfigSnapshot(MdbConfig Value);
 }

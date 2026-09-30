@@ -11,11 +11,6 @@ namespace Kwy.Communicate.TcpSerial.Configs;
 public class SerialPortConfig : IProtocolConfig, IKeepAliveConfig
 {
     /// <summary>
-    /// 协议类型
-    /// </summary>
-    public ProtocolType ProtocolType => ProtocolType.SerialPort;
-
-    /// <summary>
     /// 端口名称（如COM1, COM2等）
     /// </summary>
     public string Port { get; set; } = "COM1";

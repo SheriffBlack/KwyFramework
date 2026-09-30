@@ -1,9 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\eng\Kwy.Communicate.Version.props" />
+
   <PropertyGroup>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <Description>Standalone TCP, serial-port, and HTTP communication clients for Kwy.Communicate.</Description>
   </PropertyGroup>
 
   <ItemGroup>

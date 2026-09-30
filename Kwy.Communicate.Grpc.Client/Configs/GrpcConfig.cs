@@ -9,7 +9,6 @@ namespace Kwy.Communicate.Grpc.Client.Configs;
 /// </summary>
 public sealed class GrpcConfig : IProtocolConfig, IKeepAliveConfig
 {
-    public ProtocolType ProtocolType => ProtocolType.Grpc;
 
     /// <summary>
     /// 传输方式。默认为基于 HTTP/2 的 TCP。

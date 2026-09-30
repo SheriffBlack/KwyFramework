@@ -6,27 +6,27 @@ namespace Kwy.Communicate.Gem;
 public static class GemMessageFactory
 {
     public static SecsMessage AreYouThereRequest()
-        => Create(1, 1, true, "AreYouThereRequest");
+        => Create(GemMessageDefinitions.AreYouThereRequest);
 
     public static SecsMessage AreYouThereResponse()
-        => Create(1, 2, false, "AreYouThereResponse");
+        => Create(GemMessageDefinitions.AreYouThereResponse);
 
     public static SecsMessage EstablishCommunicationsRequest(string model, string softwareRevision)
-        => Create(1, 13, true, "EstablishCommunicationsRequest", L(A(model), A(softwareRevision)));
+        => Create(GemMessageDefinitions.EstablishCommunicationsRequest, L(A(model), A(softwareRevision)));
 
     public static SecsMessage SelectedEquipmentStatusRequest(params GemVid[] vids)
-        => Create(1, 3, true, "SelectedEquipmentStatusRequest", L(vids.Select(id => U4(id.Value)).ToArray()));
+        => Create(GemMessageDefinitions.SelectedEquipmentStatusRequest, L(vids.Select(id => U4(id.Value)).ToArray()));
 
     public static SecsMessage SelectedEquipmentStatusData(IEnumerable<GemVariable> variables)
-        => Create(1, 4, false, "SelectedEquipmentStatusData", L(variables.Select(item => item.Value).ToArray()));
+        => Create(GemMessageDefinitions.SelectedEquipmentStatusData, L(variables.Select(item => item.Value).ToArray()));
 
     public static SecsMessage RemoteCommand(GemRemoteCommand command)
-        => Create(2, 41, true, "HostCommandSend", L(
+        => Create(GemMessageDefinitions.HostCommandSend, L(
             A(command.CommandName),
             L(command.Parameters.Select(pair => L(A(pair.Key), pair.Value)).ToArray())));
 
     public static SecsMessage AlarmReport(GemAlarm alarm)
-        => Create(5, 1, true, "AlarmReportSend", L(B((byte)alarm.State), U4(alarm.AlarmId), A(alarm.Text)));
+        => Create(GemMessageDefinitions.AlarmReportSend, L(B((byte)alarm.State), U4(alarm.AlarmId), A(alarm.Text)));
 
     public static SecsMessage EventReport(uint eventId, IReadOnlyList<GemReport> reports, GemRegistry registry)
     {
@@ -38,31 +38,31 @@ public static class GemMessageFactory
                     : A(string.Empty)).ToArray())))
             .ToArray();
 
-        return Create(6, 11, true, "EventReportSend", L(U4(eventId), L(reportItems)));
+        return Create(GemMessageDefinitions.EventReportSend, L(U4(eventId), L(reportItems)));
     }
 
     public static SecsMessage TerminalMessage(GemTerminalMessage message)
-        => Create(10, 1, true, "TerminalRequest", L(B(message.TerminalId), A(message.Text)));
+        => Create(GemMessageDefinitions.TerminalRequest, L(B(message.TerminalId), A(message.Text)));
 
     public static SecsMessage ProcessProgramLoadInquire(string ppid, uint length)
-        => Create(7, 1, true, "ProcessProgramLoadInquire", L(A(ppid), U4(length)));
+        => Create(GemMessageDefinitions.ProcessProgramLoadInquire, L(A(ppid), U4(length)));
 
     public static SecsMessage ProcessProgramSend(GemRecipe recipe)
-        => Create(7, 3, true, "ProcessProgramSend", L(A(recipe.Ppid), recipe.Body));
+        => Create(GemMessageDefinitions.ProcessProgramSend, L(A(recipe.Ppid), recipe.Body));
 
     public static SecsMessage ProcessProgramRequest(string ppid)
-        => Create(7, 5, true, "ProcessProgramRequest", A(ppid));
+        => Create(GemMessageDefinitions.ProcessProgramRequest, A(ppid));
 
     public static SecsMessage TraceDataSend(GemTraceSample sample)
-        => Create(6, 1, true, "TraceDataSend", L(
+        => Create(GemMessageDefinitions.TraceDataSend, L(
             U4(sample.TraceId),
             U4(sample.SampleNumber),
             L(sample.Values.Select(pair => L(U4(pair.Key.Value), pair.Value)).ToArray())));
 
-    private static SecsMessage Create(byte stream, byte function, bool replyExpected, string name, Item? item = null)
-        => new(stream, function, replyExpected)
+    private static SecsMessage Create(SecsMessageDefinition definition, Item? item = null)
+        => new(definition.Id.Stream, definition.Id.Function, definition.ReplyExpected)
         {
-            Name = name,
+            Name = definition.Name,
             SecsItem = item
         };
 }

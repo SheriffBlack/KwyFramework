@@ -88,9 +88,16 @@ Kwy 不试图替代完整的 MES、ERP 或云端平台；它更关注设备侧�
 
 基础包会作为依赖自动解析。这样可以减少最终应用的依赖体积，也让协议和厂商 SDK 保持可替换。
 
-## 通信与设备：配置驱动的创建方式
+## 通信与设备：直接使用与配置驱动
 
-Kwy 的一个重要思想是：调用方只描述配置，不直接判断并创建具体通信或设备类型。
+对于协议已知的普通场景，通信客户端直接创建，不需要 DI 或统一 Factory：
+
+```csharp
+await using var tcp = new TcpCommunication(tcpConfig);
+await tcp.ConnectAsync(cancellationToken);
+```
+
+对于通用设备平台，具体协议可能由 JSON、数据库或设备目录在运行时决定。此时可使用统一通信工厂把“配置类型”映射为“通信客户端创建方式”：
 
 例如通信工厂会把“配置类型”映射为“通信客户端创建方式”：
 
@@ -105,8 +112,9 @@ OpcUaConfig        → OpcUaCommunication
 
 ```csharp
 var builder = new CommunicationFactoryBuilder();
-builder.RegisterTcpSerialClients();
-builder.RegisterFluentModbus();
+builder.RegisterTcp();
+builder.RegisterSerialPort();
+builder.RegisterVisa();
 
 ICommunicationFactory factory = builder.Build();
 
@@ -115,11 +123,13 @@ ICommunicationClient client = factory.CreateClient(protocolConfig);
 
 协议映射只允许在启动阶段写入；`Build()` 后的工厂是只读的。重复注册同一种配置类型会立即失败，避免运行期静默替换协议实现。
 
-业务代码只面向 `ICommunicationClient`，不需要依赖 `TcpCommunication` 或 `SerialPortCommunication`。
+这个 Builder 不是 DI 容器，注册时不会创建通信客户端或连接硬件。应用只注册实际需要的协议，不默认引入“全协议”注册。
+
+在这类配置驱动场景中，设备代码可面向 `ICommunicationClient` 或所需的能力接口，无需自行编写协议分支。
 
 这带来三个直接收益：
 
-- 新增协议时，以扩展注册方式接入，不修改核心工厂的 `if/else`。
+- 配置驱动宿主新增协议时，以扩展注册方式接入，不修改核心工厂的 `if/else`。
 - 设备可以通过同一份 `IProtocolConfig` 获取通信能力。
 - 测试时可替换为模拟客户端或模拟设备。
 

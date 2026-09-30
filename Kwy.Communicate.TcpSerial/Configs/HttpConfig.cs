@@ -10,11 +10,6 @@ namespace Kwy.Communicate.TcpSerial.Configs;
 public class HttpConfig : IProtocolConfig
 {
     /// <summary>
-    /// 协议类型
-    /// </summary>
-    public ProtocolType ProtocolType => ProtocolType.Http;
-
-    /// <summary>
     /// 请求URL
     /// </summary>
     public string Url { get; set; } = string.Empty;
@@ -28,11 +23,6 @@ public class HttpConfig : IProtocolConfig
     /// 请求头
     /// </summary>
     public Dictionary<string, string> Headers { get; set; } = new();
-
-    /// <summary>
-    /// 请求内容类型
-    /// </summary>
-    public string? ContentType { get; set; }
 
     /// <summary>
     /// 连接超时时间（毫秒）
@@ -67,7 +57,11 @@ public class HttpConfig : IProtocolConfig
         if (string.IsNullOrWhiteSpace(Url))
             return false;
 
-        if (!Uri.TryCreate(Url, UriKind.Absolute, out var uri))
+        if (!Uri.TryCreate(Url, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            return false;
+
+        if (Method == null)
             return false;
 
         if (Timeout <= 0)
