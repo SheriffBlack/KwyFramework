@@ -3,6 +3,9 @@ using static Secs4Net.Item;
 
 namespace Kwy.Communicate.Gem;
 
+/// <summary>
+/// 构造标准 SxFy + Data
+/// </summary>
 public static class GemMessageFactory
 {
     public static SecsMessage AreYouThereRequest()
@@ -19,6 +22,25 @@ public static class GemMessageFactory
 
     public static SecsMessage SelectedEquipmentStatusData(IEnumerable<GemVariable> variables)
         => Create(GemMessageDefinitions.SelectedEquipmentStatusData, L(variables.Select(item => item.Value).ToArray()));
+
+    public static SecsMessage EquipmentConstantAcknowledge(byte ackCode)
+        => new(2, 16) { Name = "EquipmentConstantAcknowledge", SecsItem = B(ackCode) };
+
+    public static SecsMessage TraceInitializeAcknowledge(byte ackCode)
+        => new(2, 24) { Name = "TraceInitializeAcknowledge", SecsItem = B(ackCode) };
+
+    public static SecsMessage HostCommandAcknowledge(GemAckCode ackCode)
+        => new(2, 42)
+        {
+            Name = "HostCommandAcknowledge",
+            SecsItem = L(B((byte)ackCode), L())
+        };
+
+    public static SecsMessage EnableDisableAlarmAcknowledge(byte ackCode)
+        => new(5, 4) { Name = "EnableDisableAlarmAcknowledge", SecsItem = B(ackCode) };
+
+    public static SecsMessage ProcessProgramAcknowledge(byte ackCode)
+        => new(7, 4) { Name = "ProcessProgramAcknowledge", SecsItem = B(ackCode) };
 
     public static SecsMessage RemoteCommand(GemRemoteCommand command)
         => Create(GemMessageDefinitions.HostCommandSend, L(
@@ -42,16 +64,43 @@ public static class GemMessageFactory
         IReadOnlyList<GemReport> reports,
         GemRegistry registry,
         uint dataId = 0)
+        => EventReport(
+            new GemCeid(eventId),
+            reports.Select(report => new GemReportDefinition(
+                new GemRptid(report.ReportId),
+                report.VariableIds.Select(id => new GemVid(id)).ToArray())).ToArray(),
+            registry.Data,
+            dataId);
+
+    public static SecsMessage EventReport(
+        GemCeid eventId,
+        IReadOnlyList<GemReportDefinition> reports,
+        GemDataSnapshot data,
+        uint dataId = 0)
+        => EventReport(
+            eventId,
+            reports,
+            data.CaptureRequired(reports.SelectMany(report => report.VariableIds)),
+            dataId);
+
+    public static SecsMessage EventReport(
+        GemCeid eventId,
+        IReadOnlyList<GemReportDefinition> reports,
+        IReadOnlyDictionary<GemVid, GemVariable> values,
+        uint dataId = 0)
     {
+        ArgumentNullException.ThrowIfNull(reports);
+        ArgumentNullException.ThrowIfNull(values);
+
         Item[] reportItems = reports
             .Select(report => L(
-                U4(report.ReportId),
-                L(report.VariableIds.Select(id => registry.Variables.TryGetValue(id, out var variable)
+                U4(report.Rptid.Value),
+                L(report.VariableIds.Select(id => values.TryGetValue(id, out GemVariable? variable)
                     ? variable.Value
-                    : A(string.Empty)).ToArray())))
+                    : throw new InvalidOperationException($"No runtime value is available for VID {id.Value}.")).ToArray())))
             .ToArray();
 
-        return Create(GemMessageDefinitions.EventReportSend, L(U4(dataId), U4(eventId), L(reportItems)));
+        return Create(GemMessageDefinitions.EventReportSend, L(U4(dataId), U4(eventId.Value), L(reportItems)));
     }
 
     public static SecsMessage TerminalMessage(GemTerminalMessage message)
@@ -60,8 +109,8 @@ public static class GemMessageFactory
     public static SecsMessage ProcessProgramLoadInquire(string ppid, uint length)
         => Create(GemMessageDefinitions.ProcessProgramLoadInquire, L(A(ppid), U4(length)));
 
-    public static SecsMessage ProcessProgramSend(GemRecipe recipe)
-        => Create(GemMessageDefinitions.ProcessProgramSend, L(A(recipe.Ppid), recipe.Body));
+    public static SecsMessage ProcessProgramSend(GemProcessProgram processProgram)
+        => Create(GemMessageDefinitions.ProcessProgramSend, L(A(processProgram.Ppid), processProgram.Body));
 
     public static SecsMessage ProcessProgramRequest(string ppid)
         => Create(GemMessageDefinitions.ProcessProgramRequest, A(ppid));

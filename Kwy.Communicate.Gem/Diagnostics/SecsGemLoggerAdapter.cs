@@ -2,6 +2,17 @@ using Secs4Net;
 
 namespace Kwy.Communicate.Gem;
 
+/// <summary>
+/// Secs4Net 日志回调与 Kwy GEM 诊断体系之间的内部适配器。
+/// </summary>
+/// <remarks>
+/// 负责将 Secs4Net 提供的消息、方向、系统字节和异常信息转换为
+/// <see cref="GemMessageLogEntry"/>，并根据诊断配置处理消息体和长度限制，
+/// 最终转发给 <see cref="IGemDiagnostics"/>。
+///
+/// 本类型不负责日志输出或持久化；具体处理方式由
+/// <see cref="IGemDiagnostics"/> 的实现决定。
+/// </remarks>
 internal sealed class SecsGemLoggerAdapter : ISecsGemLogger
 {
     private readonly IGemDiagnostics diagnostics;

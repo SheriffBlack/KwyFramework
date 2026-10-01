@@ -32,6 +32,18 @@ public enum GemAckCode : byte
     Busy = 4
 }
 
+/// <summary>
+/// 表示远程命令在设备业务中的最终执行状态。
+/// </summary>
+public enum GemRemoteCommandCompletionStatus
+{
+    Unspecified,
+    Rejected,
+    Completed,
+    Failed,
+    Cancelled
+}
+
 public enum GemHostRole
 {
     Equipment,
@@ -45,13 +57,27 @@ public enum GemVariableKind
     EquipmentConstant
 }
 
-public enum GemRecipeState
+public enum GemProcessProgramState
 {
     Created,
     Validated,
     Selected,
     Active,
     Archived,
+    Rejected
+}
+
+public enum GemProcessProgramSaveStatus
+{
+    Saved,
+    AlreadyExists,
+    Rejected
+}
+
+public enum GemProcessProgramDeleteStatus
+{
+    Deleted,
+    NotFound,
     Rejected
 }
 

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "profileId": "fab-a-aoi-01",
+  "interfaceVersion": "1.0.0",
+  "customer": "Fab-A",
+  "equipmentModel": "AOI-01",
+  "variables": [
+    {
+      "id": 1001,
+      "name": "LotId",
+      "kind": "DataVariable",
+      "format": "ASCII"
+    }
+  ],
+  "constants": [],
+  "reports": [
+    { "id": 2001, "variableIds": [1001] }
+  ],
+  "events": [
+    { "id": 3001, "name": "LotStarted", "reportIds": [2001] }
+  ],
+  "alarms": [],
+  "remoteCommands": [
+    {
+      "name": "START",
+      "handlerKey": "machine.start",
+      "allowedControlStates": ["OnlineRemote"],
+      "parameters": [
+        { "name": "PPID", "format": "ASCII", "required": true }
+      ],
+      "acceptedEventId": 3001
+    }
+  ]
+}

@@ -17,6 +17,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Secs4Net 3.0.1 通过 Options.ConfigurationExtensions 要求 Options >= 10.0.8。 -->
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
     <PackageReference Include="Secs4Net" Version="3.0.1" />
   </ItemGroup>
@@ -25,5 +26,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="examples\gem-interface-profile.sample.json" Pack="true" PackagePath="examples\" />
   </ItemGroup>
 </Project>

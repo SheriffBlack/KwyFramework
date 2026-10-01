@@ -59,6 +59,7 @@ public interface IGemDiagnostics
 
 /// <summary>
 /// 将 GEM 诊断信息输出到 <see cref="System.Diagnostics.Trace"/>。
+/// 基于 System.Diagnostics.Trace 的轻量诊断输出，主要用于开发、学习和临时联调；生产环境应注入自定义 IGemDiagnostics 实现
 /// </summary>
 public sealed class TraceGemDiagnostics : IGemDiagnostics
 {

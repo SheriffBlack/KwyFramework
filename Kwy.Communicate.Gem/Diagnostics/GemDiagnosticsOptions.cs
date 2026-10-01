@@ -5,7 +5,7 @@ namespace Kwy.Communicate.Gem;
 /// </summary>
 public sealed class GemDiagnosticsOptions
 {
-    /// <summary>获取或设置是否记录报文收发事件。</summary>
+    /// <summary>获取或设置是否记录报文收发。</summary>
     public bool LogMessages { get; set; } = true;
 
     /// <summary>获取或设置是否记录报文正文。默认关闭，以降低性能和敏感信息风险。</summary>
