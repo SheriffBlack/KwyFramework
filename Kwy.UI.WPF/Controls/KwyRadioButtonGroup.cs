@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Automation.Peers;
+using Kwy.UI.WPF.Controls.Automation;
 
 namespace Kwy.UI.WPF.Controls;
 

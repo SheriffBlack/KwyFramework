@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Automation.Peers;
 using Kwy.UI.WPF.Input.Keyboard;
+using Kwy.UI.WPF.Controls.Automation;
 
 namespace Kwy.UI.WPF.Controls;
 

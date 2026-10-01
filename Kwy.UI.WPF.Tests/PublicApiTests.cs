@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Markup;
 using System.Windows.Media;
 using Xunit;
+using Kwy.UI.WPF.Controls.Toasts;
 
 namespace Kwy.UI.WPF.Tests;
 

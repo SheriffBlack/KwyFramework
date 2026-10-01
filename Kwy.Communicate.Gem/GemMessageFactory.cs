@@ -26,9 +26,22 @@ public static class GemMessageFactory
             L(command.Parameters.Select(pair => L(A(pair.Key), pair.Value)).ToArray())));
 
     public static SecsMessage AlarmReport(GemAlarm alarm)
-        => Create(GemMessageDefinitions.AlarmReportSend, L(B((byte)alarm.State), U4(alarm.AlarmId), A(alarm.Text)));
+    {
+        var alarmCode = (byte)(alarm.AlarmCode & 0x7F);
+        var alcd = alarm.State == GemAlarmState.Set
+            ? (byte)(alarmCode | 0x80)
+            : alarmCode;
 
-    public static SecsMessage EventReport(uint eventId, IReadOnlyList<GemReport> reports, GemRegistry registry)
+        return Create(
+            GemMessageDefinitions.AlarmReportSend,
+            L(B(alcd), U4(alarm.AlarmId), A(alarm.Text)));
+    }
+
+    public static SecsMessage EventReport(
+        uint eventId,
+        IReadOnlyList<GemReport> reports,
+        GemRegistry registry,
+        uint dataId = 0)
     {
         Item[] reportItems = reports
             .Select(report => L(
@@ -38,7 +51,7 @@ public static class GemMessageFactory
                     : A(string.Empty)).ToArray())))
             .ToArray();
 
-        return Create(GemMessageDefinitions.EventReportSend, L(U4(eventId), L(reportItems)));
+        return Create(GemMessageDefinitions.EventReportSend, L(U4(dataId), U4(eventId), L(reportItems)));
     }
 
     public static SecsMessage TerminalMessage(GemTerminalMessage message)

@@ -16,6 +16,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
 using System.Windows.Threading;
 using Xunit;
+using Kwy.UI.WPF.Controls.Toasts;
 
 namespace Kwy.UI.WPF.Tests;
 

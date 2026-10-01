@@ -1,3 +1,4 @@
+using Kwy.UI.WPF.Controls.Automation;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation.Peers;

@@ -91,6 +91,7 @@
   <Project Path="Kwy.UI.WPF.Charts.ScottPlot/Kwy.UI.WPF.Charts.ScottPlot.csproj" Id="3bedcda3-cb3e-45b7-bab2-83a06a5efbcf" />
   <Project Path="Kwy.UI.WPF.Components/Kwy.UI.WPF.Components.csproj" Id="87b75c32-f346-451d-a853-ecd027fbd982" />
   <Project Path="Kwy.UI.WPF.FlowDesigner/Kwy.UI.WPF.FlowDesigner.csproj" />
+  <Project Path="Kwy.UI.WPF.Tests/Kwy.UI.WPF.Tests.csproj" />
   <Project Path="Kwy.UI.WPF/Kwy.UI.WPF.csproj" />
   <Project Path="Kwy.UI/Kwy.UI.csproj" />
   <Project Path="Kwy.Vision.Abstractions/Kwy.Vision.Abstractions.csproj" />
