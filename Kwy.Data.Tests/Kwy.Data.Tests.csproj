@@ -22,8 +22,10 @@
     <ProjectReference Include="..\Kwy.Data.Core\Kwy.Data.Core.csproj" />
     <ProjectReference Include="..\Kwy.Data.EFCore\Kwy.Data.EFCore.csproj" />
     <ProjectReference Include="..\Kwy.Data.EFCore.Sqlite\Kwy.Data.EFCore.Sqlite.csproj" />
+    <ProjectReference Include="..\Kwy.Data.EFCore.PostgreSql\Kwy.Data.EFCore.PostgreSql.csproj" />
     <ProjectReference Include="..\Kwy.Data.Sql\Kwy.Data.Sql.csproj" />
     <ProjectReference Include="..\Kwy.Data.Sql.Sqlite\Kwy.Data.Sql.Sqlite.csproj" />
+    <ProjectReference Include="..\Kwy.Data.Sql.PostgreSql\Kwy.Data.Sql.PostgreSql.csproj" />
   </ItemGroup>
 
 </Project>

@@ -35,9 +35,11 @@
   <Project Path="Kwy.Core/Kwy.Core.csproj" Id="5c2f67c8-aa50-46dd-aae4-e68fb09d31fe" />
   <Project Path="Kwy.Data.Abstractions/Kwy.Data.Abstractions.csproj" Id="986acb37-018c-41f8-a599-ddc8f5a07580" />
   <Project Path="Kwy.Data.Core/Kwy.Data.Core.csproj" Id="f98bef74-e2ec-4ad5-9549-acbbfe0902f1" />
+  <Project Path="Kwy.Data.EFCore.PostgreSql/Kwy.Data.EFCore.PostgreSql.csproj" Id="6c9f5f88-63b4-4761-b938-49f6f38077f2" />
   <Project Path="Kwy.Data.EFCore.Sqlite/Kwy.Data.EFCore.Sqlite.csproj" Id="858c9e16-3a0f-40ee-92d0-d5024ac4f0d2" />
   <Project Path="Kwy.Data.EFCore.SqlServer/Kwy.Data.EFCore.SqlServer.csproj" Id="6f8c44d0-8944-4a3c-b326-222b956b2402" />
   <Project Path="Kwy.Data.EFCore/Kwy.Data.EFCore.csproj" Id="318d59e8-3f73-4b1a-987b-598f17cc637e" />
+  <Project Path="Kwy.Data.Sql.PostgreSql/Kwy.Data.Sql.PostgreSql.csproj" Id="95d7308c-14c5-4459-8515-4bb0dff05086" />
   <Project Path="Kwy.Data.Sql.Sqlite/Kwy.Data.Sql.Sqlite.csproj" Id="90f1b2b8-b357-4840-8122-1295488f9c96" />
   <Project Path="Kwy.Data.Sql/Kwy.Data.Sql.csproj" Id="e239543a-3281-4d87-b617-175dbdb726bc" />
   <Project Path="Kwy.Data.Tests/Kwy.Data.Tests.csproj" />
@@ -54,17 +56,17 @@
   <Project Path="Kwy.Device.Instrument.Core/Kwy.Device.Instrument.Core.csproj" />
   <Project Path="Kwy.Device.Instruments/Kwy.Device.Instruments.csproj" />
   <Project Path="Kwy.Device.IoCard.Abstractions/Kwy.Device.IoCard.Abstractions.csproj" />
-  <Project Path="Kwy.Device.IoCard.Core/Kwy.Device.IoCard.Core.csproj" />
-  <Project Path="Kwy.Device.IoCard.Tests/Kwy.Device.IoCard.Tests.csproj" />
   <Project Path="Kwy.Device.IoCard.Advantech/Kwy.Device.IoCard.Advantech.csproj" Id="665abd38-5ef9-443c-874a-9b577da013a3" />
+  <Project Path="Kwy.Device.IoCard.Core/Kwy.Device.IoCard.Core.csproj" />
   <Project Path="Kwy.Device.IoCard.Leadshine/Kwy.Device.IoCard.Leadshine.csproj" Id="15aad508-1f53-4b44-a4ab-9188723d625e" />
+  <Project Path="Kwy.Device.IoCard.Tests/Kwy.Device.IoCard.Tests.csproj" />
   <Project Path="Kwy.Device.MotionCard.Abstractions/Kwy.Device.MotionCard.Abstractions.csproj" />
   <Project Path="Kwy.Device.MotionCard.Benchmarks/Kwy.Device.MotionCard.Benchmarks.csproj" />
   <Project Path="Kwy.Device.MotionCard.Core/Kwy.Device.MotionCard.Core.csproj" />
-  <Project Path="Kwy.Device.MotionCard.Tests/Kwy.Device.MotionCard.Tests.csproj" />
   <Project Path="Kwy.Device.MotionCard.Googol/Kwy.Device.MotionCard.Googol.csproj" Id="4db6d6d7-7041-4f9e-96cd-2e4e3a7a587c" />
   <Project Path="Kwy.Device.MotionCard.Leadshine/Kwy.Device.MotionCard.Leadshine.csproj" Id="ba4a18f1-456d-4b3c-8366-504becca2cc1" />
   <Project Path="Kwy.Device.MotionCard.Simulation/Kwy.Device.MotionCard.Simulation.csproj" />
+  <Project Path="Kwy.Device.MotionCard.Tests/Kwy.Device.MotionCard.Tests.csproj" />
   <Project Path="Kwy.Device.MotionCard.ZMotion/Kwy.Device.MotionCard.ZMotion.csproj" Id="97a0abb8-3092-41af-a5d6-c3719c91db7b" />
   <Project Path="Kwy.Device.PLC.Abstractions/Kwy.Device.PLC.Abstractions.csproj" />
   <Project Path="Kwy.Device.PLC.Beckhoff/Kwy.Device.PLC.Beckhoff.csproj" Id="6380ecd1-80dc-4bdb-9230-cb093a24f806" />

@@ -2,11 +2,14 @@ using System.Data;
 using Kwy.Data.Abstractions;
 using Kwy.Data.EFCore;
 using Kwy.Data.EFCore.Sqlite;
+using Kwy.Data.EFCore.PostgreSql;
 using Kwy.Data.Sql;
+using Kwy.Data.Sql.PostgreSql;
 using Kwy.Data.Sql.Sqlite;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Xunit;
 
 namespace Kwy.Data.Tests;
@@ -101,7 +104,49 @@ public sealed class DataLayerTests
         Assert.Equal(17, executor.LastCommandTimeout);
     }
 
+    [Fact]
+    public void PostgreSqlProvider_RegistersNamedConnectionFactory()
+    {
+        const string connectionString = "Host=localhost;Database=kwy_history;Username=kwy;Password=test";
+        using ServiceProvider provider = new ServiceCollection()
+            .AddKwyPostgreSql(
+                connectionString,
+                "Historian",
+                options => options.CommandTimeoutSeconds = 45)
+            .BuildServiceProvider();
+
+        IDatabaseConnectionFactory factory = provider
+            .GetRequiredService<IDatabaseConnectionFactoryResolver>()
+            .GetRequired("Historian");
+
+        Assert.Equal(KwyDatabaseProvider.PostgreSql, factory.Provider);
+        Assert.Equal("Historian", factory.DataSourceName);
+        Assert.Equal(45, factory.CommandTimeoutSeconds);
+        using System.Data.Common.DbConnection connection = factory.CreateConnection();
+        Assert.IsType<NpgsqlConnection>(connection);
+        Assert.Equal("kwy_history", ((NpgsqlConnection)connection).Database);
+    }
+
+    [Fact]
+    public async Task EfCorePostgreSql_RegistersNpgsqlDbContextFactoryAndBridge()
+    {
+        await using ServiceProvider provider = new ServiceCollection()
+            .AddKwyEfCorePostgreSql<PostgreSqlTestDbContext>(
+                "Host=localhost;Database=kwy_business;Username=kwy;Password=test")
+            .BuildServiceProvider();
+
+        await using PostgreSqlTestDbContext context = await provider
+            .GetRequiredService<IDbContextFactory<PostgreSqlTestDbContext>>()
+            .CreateDbContextAsync();
+
+        Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName);
+        Assert.IsType<NpgsqlConnection>(context.Database.GetDbConnection());
+        Assert.NotNull(provider.GetRequiredService<IEfCoreSqlBridge<PostgreSqlTestDbContext>>());
+    }
+
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options);
+
+    private sealed class PostgreSqlTestDbContext(DbContextOptions<PostgreSqlTestDbContext> options) : DbContext(options);
 
     private sealed class InspectingSqlExecutor(IDatabaseConnectionFactory connectionFactory)
         : DbCommandSqlExecutor(connectionFactory)
