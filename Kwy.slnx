@@ -66,6 +66,7 @@
   <Project Path="Kwy.Device.MotionCard.Simulation/Kwy.Device.MotionCard.Simulation.csproj" />
   <Project Path="Kwy.Device.MotionCard.ZMotion/Kwy.Device.MotionCard.ZMotion.csproj" Id="97a0abb8-3092-41af-a5d6-c3719c91db7b" />
   <Project Path="Kwy.Device.PLC.Abstractions/Kwy.Device.PLC.Abstractions.csproj" />
+  <Project Path="Kwy.Device.PLC.Beckhoff/Kwy.Device.PLC.Beckhoff.csproj" Id="6380ecd1-80dc-4bdb-9230-cb093a24f806" />
   <Project Path="Kwy.Device.PLC.Core/Kwy.Device.PLC.Core.csproj" />
   <Project Path="Kwy.Device.PLC.Hsl/Kwy.Device.PLC.Hsl.csproj" Id="befad0b3-1d27-4133-8c48-97e5c3a80eb8" />
   <Project Path="Kwy.Device.PLC.IoTClient/Kwy.Device.PLC.IoTClient.csproj" Id="492ff429-2407-438e-8a40-3f580faaeb6a" />
