@@ -40,6 +40,7 @@
   <Project Path="Kwy.Data.EFCore/Kwy.Data.EFCore.csproj" Id="318d59e8-3f73-4b1a-987b-598f17cc637e" />
   <Project Path="Kwy.Data.Sql.Sqlite/Kwy.Data.Sql.Sqlite.csproj" Id="90f1b2b8-b357-4840-8122-1295488f9c96" />
   <Project Path="Kwy.Data.Sql/Kwy.Data.Sql.csproj" Id="e239543a-3281-4d87-b617-175dbdb726bc" />
+  <Project Path="Kwy.Data.Tests/Kwy.Data.Tests.csproj" />
   <Project Path="Kwy.Device.Abstractions/Kwy.Device.Abstractions.csproj" />
   <Project Path="Kwy.Device.Camera.Abstractions/Kwy.Device.Camera.Abstractions.csproj" />
   <Project Path="Kwy.Device.Camera.Basler/Kwy.Device.Camera.Basler.csproj" />

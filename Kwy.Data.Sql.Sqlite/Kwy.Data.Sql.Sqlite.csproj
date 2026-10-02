@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Data.Abstractions\Kwy.Data.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Data.Core\Kwy.Data.Core.csproj" />
+    <ProjectReference Include="..\Kwy.Data.Sql\Kwy.Data.Sql.csproj" />
   </ItemGroup>
 
 </Project>

@@ -17,3 +17,17 @@ var users = await sql.QueryAsync(
 ```
 
 这种设计不会假装自己是 ORM，也不会和 EFCore 的实体跟踪能力冲突。
+
+需要在显式事务中执行 SQL 时，必须从同一事务创建执行器：
+
+```csharp
+await using var transaction = await transactionFactory.BeginTransactionAsync();
+var transactionSql = sqlExecutorFactory.Create(transaction);
+
+await transactionSql.ExecuteAsync(
+    SqlCommandDefinition.Text("update Logs set Flag = 1"));
+
+await transaction.CommitAsync();
+```
+
+多数据源场景下，使用 `sqlExecutorFactory.Create("History")` 创建绑定到指定数据源的执行器。

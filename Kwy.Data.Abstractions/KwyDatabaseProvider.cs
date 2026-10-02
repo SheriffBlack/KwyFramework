@@ -1,5 +1,8 @@
 namespace Kwy.Data.Abstractions;
 
+/// <summary>
+/// 标识数据源使用的数据库 Provider 类型。
+/// </summary>
 public enum KwyDatabaseProvider
 {
     Unknown = 0,

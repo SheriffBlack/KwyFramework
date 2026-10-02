@@ -10,7 +10,9 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddSingleton<ISqlExecutor, DbCommandSqlExecutor>();
+        services.TryAddSingleton<ISqlExecutorFactory, SqlExecutorFactory>();
+        services.TryAddSingleton<ISqlExecutor>(provider =>
+            provider.GetRequiredService<ISqlExecutorFactory>().Create());
         return services;
     }
 }

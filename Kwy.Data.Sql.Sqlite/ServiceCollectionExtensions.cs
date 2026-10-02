@@ -29,7 +29,7 @@ public static class ServiceCollectionExtensions
         services.AddKwyDataCore();
         services.AddKwySql();
         services.AddSingleton(options);
-        services.AddSingleton<IDatabaseConnectionFactory, SqliteConnectionFactory>();
+        services.AddSingleton<IDatabaseConnectionFactory>(new SqliteConnectionFactory(options));
 
         return services;
     }
