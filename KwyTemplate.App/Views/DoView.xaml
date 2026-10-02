@@ -71,27 +71,30 @@
                         Style="{StaticResource ToggleButtonSwitchNoContentStyle}" />
                 </kwyui:KwyFormItem>
 
-                <kwyui:KwyFormItem Label="{DynamicResource Io.Field.Duration}" Visibility="Collapsed">
+                <kwyui:KwyFormItem Label="{DynamicResource Io.Field.Duration}">
                     <StackPanel Orientation="Horizontal">
                         <TextBox Width="86" Text="{Binding DurationValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <StackPanel Margin="10,0,0,0" Orientation="Horizontal">
                             <RadioButton
                                 VerticalAlignment="Center"
+                                kwyui:RadioButtonHelper.BindTo="{Binding DurationMode}"
                                 Content="ms"
                                 GroupName="DoDurationUnit"
-                                IsChecked="{Binding IsMillisecondsMode, Mode=TwoWay}" />
+                                Style="{StaticResource DefaultRadioButtonStyle}" />
                             <RadioButton
                                 Margin="10,0,0,0"
                                 VerticalAlignment="Center"
+                                kwyui:RadioButtonHelper.BindTo="{Binding DurationMode}"
                                 Content="s"
                                 GroupName="DoDurationUnit"
-                                IsChecked="{Binding IsSecondsMode, Mode=TwoWay}" />
+                                Style="{StaticResource DefaultRadioButtonStyle}" />
                             <RadioButton
                                 Margin="10,0,0,0"
                                 VerticalAlignment="Center"
+                                kwyui:RadioButtonHelper.BindTo="{Binding DurationMode}"
                                 Content="{DynamicResource Io.Duration.Hold}"
                                 GroupName="DoDurationUnit"
-                                IsChecked="{Binding IsHoldMode, Mode=TwoWay}" />
+                                Style="{StaticResource DefaultRadioButtonStyle}" />
                         </StackPanel>
                     </StackPanel>
                 </kwyui:KwyFormItem>

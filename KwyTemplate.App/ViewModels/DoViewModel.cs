@@ -1,16 +1,14 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
-using Kwy.Device.Abstractions;
+﻿using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
-using Kwy.Device.IoCard.Core;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using KwyTemplate.App.Models;
 using KwyTemplate.App.Services;
+using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device;
 using KwyTemplate.Flow.Machines;
-
-using KwyTemplate.Contracts.Localization;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 namespace KwyTemplate.App.ViewModels;
 
 public sealed class DoViewModel : BindableBase, INavigationAware
@@ -23,9 +21,7 @@ public sealed class DoViewModel : BindableBase, INavigationAware
     private CancellationTokenSource? activeCts;
     private double durationValue = 100;
     private bool isReverseChecked;
-    private bool isMillisecondsMode = true;
-    private bool isSecondsMode;
-    private bool isHoldMode;
+    private string durationMode = "ms";
 
     public DoViewModel(
         IDeviceRegistry? deviceRegistry = null,
@@ -53,22 +49,10 @@ public sealed class DoViewModel : BindableBase, INavigationAware
         set => SetProperty(ref isReverseChecked, value);
     }
 
-    public bool IsMillisecondsMode
+    public string DurationMode
     {
-        get => isMillisecondsMode;
-        set => SetProperty(ref isMillisecondsMode, value);
-    }
-
-    public bool IsSecondsMode
-    {
-        get => isSecondsMode;
-        set => SetProperty(ref isSecondsMode, value);
-    }
-
-    public bool IsHoldMode
-    {
-        get => isHoldMode;
-        set => SetProperty(ref isHoldMode, value);
+        get => durationMode;
+        set => SetProperty(ref durationMode, value);
     }
 
     private DelegateCommand<IoPointModel>? ioTriggerCommand;
@@ -142,7 +126,7 @@ public sealed class DoViewModel : BindableBase, INavigationAware
         bool activeState = !IsReverseChecked;
         bool inactiveState = IsReverseChecked;
 
-        if (IsHoldMode)
+        if (DurationMode != "ms" && DurationMode != "s")
         {
             bool nextState = !item.IsActive;
             ioCard.WriteDoBit(item.BitIndex, nextState ? activeState : inactiveState);
@@ -215,7 +199,7 @@ public sealed class DoViewModel : BindableBase, INavigationAware
     private int CalculateDurationMilliseconds()
     {
         double rawValue = Math.Max(1, DurationValue);
-        double milliseconds = IsSecondsMode ? rawValue * 1000 : rawValue;
+        double milliseconds = DurationMode == "s" ? rawValue * 1000 : rawValue;
         return (int)Math.Clamp(milliseconds, 1, int.MaxValue);
     }
 
