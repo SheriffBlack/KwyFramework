@@ -27,11 +27,11 @@ internal static class HslPlcClientFactory
             throw new InvalidOperationException(activationResult.Message, activationResult.Exception);
         }
 
-        HslPlcClientSession session = config.Transport switch
+        HslPlcClientSession session = config.Connection switch
         {
-            PlcConnectionTransport.Tcp => CreateTcpClient(config),
-            PlcConnectionTransport.Serial => CreateSerialClient(config),
-            _ => throw new ArgumentOutOfRangeException(nameof(config), config.Transport, "Unsupported PLC transport.")
+            TcpPlcConnectionConfig tcp => CreateTcpClient(config, tcp),
+            SerialPlcConnectionConfig serial => CreateSerialClient(config, serial),
+            _ => throw new NotSupportedException($"不支持的 PLC 连接配置：{config.Connection.GetType().FullName}。")
         };
 
         if (session.Client is NetworkDoubleBase netBase)
@@ -43,28 +43,28 @@ internal static class HslPlcClientFactory
         return session;
     }
 
-    private static HslPlcClientSession CreateTcpClient(HslPlcConfig config)
+    private static HslPlcClientSession CreateTcpClient(HslPlcConfig config, TcpPlcConnectionConfig connection)
     {
         return config.Brand switch
         {
-            HslPlcBrandType.Siemens_S71200 => CreateSiemensClient(SiemensPLCS.S1200, config),
-            HslPlcBrandType.Siemens_S71500 => CreateSiemensClient(SiemensPLCS.S1500, config),
-            HslPlcBrandType.Siemens_S7300 => CreateSiemensClient(SiemensPLCS.S300, config),
-            HslPlcBrandType.Siemens_S7400 => CreateSiemensClient(SiemensPLCS.S400, config),
-            HslPlcBrandType.Siemens_S7200Smart => CreateSiemensClient(SiemensPLCS.S200Smart, config),
-            HslPlcBrandType.Mitsubishi_MC => CreateMelsecMcClient(config, UsePort(config.Port, 6000), "Mitsubishi MC TCP"),
-            HslPlcBrandType.Mitsubishi_Fx3U => CreateMelsecA1EClient(config, UsePort(config.Port, 5000), "Mitsubishi FX3U TCP"),
-            HslPlcBrandType.Mitsubishi_Fx5U => CreateMelsecMcClient(config, UsePort(config.Port, 5000), "Mitsubishi FX5U TCP"),
-            HslPlcBrandType.Keyence_MC => CreateKeyenceMcClient(config, UsePort(config.Port, 8501)),
-            HslPlcBrandType.Keyence_NanoSerialOverTcp => CreateKeyenceNanoSerialOverTcpClient(config, UsePort(config.Port, 8501)),
-            HslPlcBrandType.Panasonic_MC => CreatePanasonicClient(config, UsePort(config.Port, 5002)),
-            HslPlcBrandType.Omron_Fins => CreateOmronFinsClient(config, UsePort(config.Port, 9600)),
-            HslPlcBrandType.Modbus_Tcp => CreateModbusTcpClient(config, UsePort(config.Port, 502)),
+            HslPlcBrandType.Siemens_S71200 => CreateSiemensClient(SiemensPLCS.S1200, config, connection),
+            HslPlcBrandType.Siemens_S71500 => CreateSiemensClient(SiemensPLCS.S1500, config, connection),
+            HslPlcBrandType.Siemens_S7300 => CreateSiemensClient(SiemensPLCS.S300, config, connection),
+            HslPlcBrandType.Siemens_S7400 => CreateSiemensClient(SiemensPLCS.S400, config, connection),
+            HslPlcBrandType.Siemens_S7200Smart => CreateSiemensClient(SiemensPLCS.S200Smart, config, connection),
+            HslPlcBrandType.Mitsubishi_MC => CreateMelsecMcClient(connection, UsePort(connection.Port, 6000), "Mitsubishi MC TCP"),
+            HslPlcBrandType.Mitsubishi_Fx3U => CreateMelsecA1EClient(connection, UsePort(connection.Port, 5000), "Mitsubishi FX3U TCP"),
+            HslPlcBrandType.Mitsubishi_Fx5U => CreateMelsecMcClient(connection, UsePort(connection.Port, 5000), "Mitsubishi FX5U TCP"),
+            HslPlcBrandType.Keyence_MC => CreateKeyenceMcClient(connection, UsePort(connection.Port, 8501)),
+            HslPlcBrandType.Keyence_NanoSerialOverTcp => CreateKeyenceNanoSerialOverTcpClient(connection, UsePort(connection.Port, 8501)),
+            HslPlcBrandType.Panasonic_MC => CreatePanasonicClient(connection, UsePort(connection.Port, 5002)),
+            HslPlcBrandType.Omron_Fins => CreateOmronFinsClient(connection, UsePort(connection.Port, 9600)),
+            HslPlcBrandType.Modbus_Tcp => CreateModbusTcpClient(connection, UsePort(connection.Port, 502)),
             _ => throw new NotSupportedException($"PLC brand '{config.Brand}' does not support TCP in this HSL wrapper.")
         };
     }
 
-    private static HslPlcClientSession CreateSerialClient(HslPlcConfig config)
+    private static HslPlcClientSession CreateSerialClient(HslPlcConfig config, SerialPlcConnectionConfig connection)
     {
         DeviceSerialPort serialClient = config.Brand switch
         {
@@ -75,11 +75,11 @@ internal static class HslPlcClientFactory
         };
 
         serialClient.SerialPortInni(
-            config.PortName,
-            config.BaudRate,
-            config.DataBits,
-            ToStopBits(config.StopBits),
-            ToParity(config.Parity));
+            connection.PortName,
+            connection.BaudRate,
+            connection.DataBits,
+            ToStopBits(connection.StopBits),
+            ToParity(connection.Parity));
 
         return new HslPlcClientSession(
             serialClient,
@@ -89,14 +89,14 @@ internal static class HslPlcClientFactory
                 serialClient.Close();
                 return OperateResult.CreateSuccessResult();
             },
-            $"{config.Brand} serial {config.PortName}@{config.BaudRate},{config.DataBits},{config.Parity},{config.StopBits}");
+            $"{config.Brand} serial {connection.Endpoint}");
     }
 
-    private static HslPlcClientSession CreateSiemensClient(SiemensPLCS plcType, HslPlcConfig config)
+    private static HslPlcClientSession CreateSiemensClient(SiemensPLCS plcType, HslPlcConfig config, TcpPlcConnectionConfig connection)
     {
-        var client = new SiemensS7Net(plcType, config.IpAddress)
+        var client = new SiemensS7Net(plcType, connection.Host)
         {
-            Port = UsePort(config.Port, 102),
+            Port = UsePort(connection.Port, 102),
             Rack = config.Rack,
             Slot = config.Slot
         };
@@ -104,45 +104,45 @@ internal static class HslPlcClientFactory
         return WrapTcp(client, $"{plcType} TCP");
     }
 
-    private static HslPlcClientSession CreateMelsecMcClient(HslPlcConfig config, int port, string description)
+    private static HslPlcClientSession CreateMelsecMcClient(TcpPlcConnectionConfig connection, int port, string description)
     {
-        var client = new MelsecMcNet(config.IpAddress, port);
+        var client = new MelsecMcNet(connection.Host, port);
         return WrapClient(client, client.ConnectServer, client.ConnectClose, description);
     }
 
-    private static HslPlcClientSession CreateMelsecA1EClient(HslPlcConfig config, int port, string description)
+    private static HslPlcClientSession CreateMelsecA1EClient(TcpPlcConnectionConfig connection, int port, string description)
     {
-        var client = new MelsecA1ENet(config.IpAddress, port);
+        var client = new MelsecA1ENet(connection.Host, port);
         return WrapClient(client, client.ConnectServer, client.ConnectClose, description);
     }
 
-    private static HslPlcClientSession CreateKeyenceMcClient(HslPlcConfig config, int port)
+    private static HslPlcClientSession CreateKeyenceMcClient(TcpPlcConnectionConfig connection, int port)
     {
-        var client = new HslCommunication.Profinet.Keyence.KeyenceMcNet(config.IpAddress, port);
+        var client = new HslCommunication.Profinet.Keyence.KeyenceMcNet(connection.Host, port);
         return WrapClient(client, client.ConnectServer, client.ConnectClose, "Keyence MC TCP");
     }
 
-    private static HslPlcClientSession CreateKeyenceNanoSerialOverTcpClient(HslPlcConfig config, int port)
+    private static HslPlcClientSession CreateKeyenceNanoSerialOverTcpClient(TcpPlcConnectionConfig connection, int port)
     {
-        var client = new HslCommunication.Profinet.Keyence.KeyenceNanoSerialOverTcp(config.IpAddress, port);
+        var client = new HslCommunication.Profinet.Keyence.KeyenceNanoSerialOverTcp(connection.Host, port);
         return WrapClient(client, client.ConnectServer, client.ConnectClose, "Keyence NanoSerialOverTcp");
     }
 
-    private static HslPlcClientSession CreatePanasonicClient(HslPlcConfig config, int port)
+    private static HslPlcClientSession CreatePanasonicClient(TcpPlcConnectionConfig connection, int port)
     {
-        var client = new HslCommunication.Profinet.Panasonic.PanasonicMcNet(config.IpAddress, port);
+        var client = new HslCommunication.Profinet.Panasonic.PanasonicMcNet(connection.Host, port);
         return WrapClient(client, client.ConnectServer, client.ConnectClose, "Panasonic MC TCP");
     }
 
-    private static HslPlcClientSession CreateOmronFinsClient(HslPlcConfig config, int port)
+    private static HslPlcClientSession CreateOmronFinsClient(TcpPlcConnectionConfig connection, int port)
     {
-        var client = new OmronFinsNet(config.IpAddress, port);
+        var client = new OmronFinsNet(connection.Host, port);
         return WrapClient(client, client.ConnectServer, client.ConnectClose, "Omron FINS TCP");
     }
 
-    private static HslPlcClientSession CreateModbusTcpClient(HslPlcConfig config, int port)
+    private static HslPlcClientSession CreateModbusTcpClient(TcpPlcConnectionConfig connection, int port)
     {
-        var client = new ModbusTcpNet(config.IpAddress, port);
+        var client = new ModbusTcpNet(connection.Host, port);
         return WrapClient(client, client.ConnectServer, client.ConnectClose, "Modbus TCP");
     }
 

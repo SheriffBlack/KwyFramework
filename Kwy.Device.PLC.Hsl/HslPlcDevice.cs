@@ -28,7 +28,7 @@ public class HslPlcDevice : PlcDeviceBase, IModbusPlcReader
         var result = await ExecuteIoAsync(session.Connect, cancellationToken);
         if (!result.IsSuccess)
         {
-            throw new InvalidOperationException($"[HslPlc] Connection failed ({session.Description}, {config.IpAddress}:{config.Port}, Timeout={config.ConnectTimeoutMilliseconds}/{config.ReceiveTimeoutMilliseconds}ms): {result.Message}");
+            throw new InvalidOperationException($"[HslPlc] 连接失败（{session.Description}，目标={config.Connection.Endpoint}，超时={config.ConnectTimeoutMilliseconds}/{config.ReceiveTimeoutMilliseconds}ms）：{result.Message}");
         }
 
         connected = true;
@@ -200,7 +200,7 @@ public class HslPlcDevice : PlcDeviceBase, IModbusPlcReader
             new Dictionary<string, string>
             {
                 ["Protocol"] = session.Description,
-                ["Endpoint"] = $"{config.IpAddress}:{config.Port}"
+                ["Endpoint"] = config.Connection.Endpoint
             });
     private async Task<T> ExecuteIoAsync<T>(Func<T> operation, CancellationToken cancellationToken)
     {

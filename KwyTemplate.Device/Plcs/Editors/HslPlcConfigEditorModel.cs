@@ -16,37 +16,34 @@ public sealed class HslPlcConfigEditorModel
     public HslPlcConfigEditorModel(HslPlcConfig source)
     {
         this.source = source ?? throw new ArgumentNullException(nameof(source));
-        Tcp = new TcpConnectionEditorModel(
-            () => source.IpAddress,
-            value => source.IpAddress = value,
-            () => source.Port,
-            value => source.Port = value,
-            () => source.ConnectTimeoutMilliseconds,
-            value => source.ConnectTimeoutMilliseconds = value,
-            () => source.ReceiveTimeoutMilliseconds,
-            value => source.ReceiveTimeoutMilliseconds = value);
-
-        Serial = new SerialConnectionEditorModel(
-            () => source.PortName,
-            value => source.PortName = value,
-            () => source.BaudRate,
-            value => source.BaudRate = value,
-            () => source.DataBits,
-            value => source.DataBits = value,
-            () => source.Parity,
-            value => source.Parity = value,
-            () => source.StopBits,
-            value => source.StopBits = value);
     }
 
     [Browsable(false)]
     public HslPlcConfig Source => source;
 
     [Browsable(false)]
-    public TcpConnectionEditorModel Tcp { get; }
+    public TcpConnectionEditorModel Tcp => new(
+        () => GetTcpConnection().Host,
+        value => GetTcpConnection().Host = value,
+        () => GetTcpConnection().Port,
+        value => GetTcpConnection().Port = value,
+        () => source.ConnectTimeoutMilliseconds,
+        value => source.ConnectTimeoutMilliseconds = value,
+        () => source.ReceiveTimeoutMilliseconds,
+        value => source.ReceiveTimeoutMilliseconds = value);
 
     [Browsable(false)]
-    public SerialConnectionEditorModel Serial { get; }
+    public SerialConnectionEditorModel Serial => new(
+        () => GetSerialConnection().PortName,
+        value => GetSerialConnection().PortName = value,
+        () => GetSerialConnection().BaudRate,
+        value => GetSerialConnection().BaudRate = value,
+        () => GetSerialConnection().DataBits,
+        value => GetSerialConnection().DataBits = value,
+        () => GetSerialConnection().Parity,
+        value => GetSerialConnection().Parity = value,
+        () => GetSerialConnection().StopBits,
+        value => GetSerialConnection().StopBits = value);
 
     [Category("PLC协议")]
     [CategoryKey("Plc.Category.Protocol")]
@@ -63,10 +60,28 @@ public sealed class HslPlcConfigEditorModel
     [DisplayName("连接方式")]
     [DisplayNameKey("Plc.Transport")]
     [InputType(InputType.RadioButton)]
-    public PlcConnectionTransport Transport
+    public HslConnectionEditorKind ConnectionKind
     {
-        get => source.Transport;
-        set => source.Transport = value;
+        get => source.Connection switch
+        {
+            TcpPlcConnectionConfig => HslConnectionEditorKind.Tcp,
+            SerialPlcConnectionConfig => HslConnectionEditorKind.Serial,
+            _ => throw new InvalidOperationException("当前 HSL PLC 连接配置不受编辑器支持。")
+        };
+        set
+        {
+            if (value == ConnectionKind)
+            {
+                return;
+            }
+
+            source.Connection = value switch
+            {
+                HslConnectionEditorKind.Tcp => new TcpPlcConnectionConfig(),
+                HslConnectionEditorKind.Serial => new SerialPlcConnectionConfig(),
+                _ => throw new ArgumentOutOfRangeException(nameof(value))
+            };
+        }
     }
 
     [Category("PLC协议")]
@@ -148,8 +163,26 @@ public sealed class HslPlcConfigEditorModel
     }
 
     public IReadOnlyList<object> CreatePropertyGridSources()
-        => Transport == PlcConnectionTransport.Serial
+        => ConnectionKind == HslConnectionEditorKind.Serial
             ? [this, Serial]
             : [this, Tcp];
+
+    private TcpPlcConnectionConfig GetTcpConnection()
+        => source.Connection as TcpPlcConnectionConfig
+            ?? throw new InvalidOperationException("当前 HSL PLC 未配置 TCP 连接。");
+
+    private SerialPlcConnectionConfig GetSerialConnection()
+        => source.Connection as SerialPlcConnectionConfig
+            ?? throw new InvalidOperationException("当前 HSL PLC 未配置串口连接。");
+}
+
+/// <summary>HSL PLC 属性编辑器使用的连接方式选项。</summary>
+public enum HslConnectionEditorKind
+{
+    /// <summary>TCP 网络连接。</summary>
+    Tcp,
+
+    /// <summary>串口连接。</summary>
+    Serial
 }
 

@@ -151,6 +151,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Device.MotionCard.ZMoti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Device.PLC.Hsl", "Kwy.Device.PLC.Hsl\Kwy.Device.PLC.Hsl.csproj", "{C241D972-018C-4643-BA91-D3D6D9CB8425}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Device.PLC.Beckhoff", "Kwy.Device.PLC.Beckhoff\Kwy.Device.PLC.Beckhoff.csproj", "{B2B3A55E-1E72-41D0-98B0-03554BFCE201}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Device.PLC.IoTClient", "Kwy.Device.PLC.IoTClient\Kwy.Device.PLC.IoTClient.csproj", "{EA214DA1-EA16-43F9-AD11-7BF7000FB575}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kwy.Files.Excel.Abstractions", "Kwy.Files.Excel.Abstractions\Kwy.Files.Excel.Abstractions.csproj", "{FE395124-F10E-47BB-AD68-440C913B4943}"
@@ -1089,6 +1091,18 @@ Global
 		{C241D972-018C-4643-BA91-D3D6D9CB8425}.Release|x64.Build.0 = Release|Any CPU
 		{C241D972-018C-4643-BA91-D3D6D9CB8425}.Release|x86.ActiveCfg = Release|Any CPU
 		{C241D972-018C-4643-BA91-D3D6D9CB8425}.Release|x86.Build.0 = Release|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Debug|x64.Build.0 = Debug|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Debug|x86.Build.0 = Debug|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Release|x64.ActiveCfg = Release|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Release|x64.Build.0 = Release|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Release|x86.ActiveCfg = Release|Any CPU
+		{B2B3A55E-1E72-41D0-98B0-03554BFCE201}.Release|x86.Build.0 = Release|Any CPU
 		{EA214DA1-EA16-43F9-AD11-7BF7000FB575}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EA214DA1-EA16-43F9-AD11-7BF7000FB575}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EA214DA1-EA16-43F9-AD11-7BF7000FB575}.Debug|x64.ActiveCfg = Debug|Any CPU

@@ -85,7 +85,7 @@ public abstract class PlcDeviceBase : DeviceBase, IPlcDevice
 
     private void StartKeepAlive()
     {
-        if (DeviceParameter is not PlcConfig { KeepAlive: true } plcConfig ||
+        if (DeviceParameter is not IPlcKeepAliveConfig { KeepAlive: true } plcConfig ||
             string.IsNullOrWhiteSpace(plcConfig.KeepAliveAddress))
         {
             return;
@@ -100,7 +100,7 @@ public abstract class PlcDeviceBase : DeviceBase, IPlcDevice
         }
     }
 
-    private async Task KeepAliveLoopAsync(PlcConfig plcConfig, CancellationToken cancellationToken)
+    private async Task KeepAliveLoopAsync(IPlcKeepAliveConfig plcConfig, CancellationToken cancellationToken)
     {
         var interval = Math.Max(plcConfig.KeepAliveInterval, 1000);
 

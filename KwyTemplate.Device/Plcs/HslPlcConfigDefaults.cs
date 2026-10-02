@@ -21,9 +21,11 @@ internal static class HslPlcConfigDefaults
         ArgumentNullException.ThrowIfNull(config);
 
         config.Brand = HslPlcBrandType.Keyence_NanoSerialOverTcp;
-        config.Transport = PlcConnectionTransport.Tcp;
-        config.IpAddress = "192.168.0.10";
-        config.Port = 8501;
+        config.Connection = new TcpPlcConnectionConfig
+        {
+            Host = "192.168.0.10",
+            Port = 8501
+        };
         config.ConnectTimeoutMilliseconds = 5000;
         config.ReceiveTimeoutMilliseconds = 5000;
         config.KeepAlive = false;
@@ -41,12 +43,14 @@ internal static class HslPlcConfigDefaults
         ArgumentNullException.ThrowIfNull(config);
 
         config.Brand = HslPlcBrandType.Modbus_Rtu;
-        config.Transport = PlcConnectionTransport.Serial;
-        config.PortName = "COM6";
-        config.BaudRate = 9600;
-        config.DataBits = 8;
-        config.Parity = ParityType.None;
-        config.StopBits = StopBitsType.One;
+        config.Connection = new SerialPlcConnectionConfig
+        {
+            PortName = "COM6",
+            BaudRate = 9600,
+            DataBits = 8,
+            Parity = ParityType.None,
+            StopBits = StopBitsType.One
+        };
         config.Station = 238;
         config.KeepAlive = false;
     }

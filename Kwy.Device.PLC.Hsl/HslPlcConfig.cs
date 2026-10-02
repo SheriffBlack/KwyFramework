@@ -2,37 +2,31 @@
 
 namespace Kwy.Device.PLC.Hsl;
 
-public class HslPlcConfig : PlcConfig
+/// <summary>
+/// HslCommunication PLC 驱动配置。
+/// <para>HSL 支持 TCP 与串口；通过 <see cref="Connection"/> 选择其中一种强类型连接配置。</para>
+/// </summary>
+public sealed class HslPlcConfig : PlcDeviceRuntimeConfig
 {
-    /// <summary>
-    /// Gets or sets the PLC brand or protocol implemented by HslCommunication.
-    /// </summary>
+    /// <summary>HSL PLC 的物理连接参数。</summary>
+    public PlcConnectionConfig Connection { get; set; } = new TcpPlcConnectionConfig();
+
+    /// <summary>HslCommunication 实现的 PLC 品牌或协议类型。</summary>
     public HslPlcBrandType Brand { get; set; } = HslPlcBrandType.Siemens_S71200;
 
-    /// <summary>
-    /// Gets or sets the Siemens rack number.
-    /// </summary>
+    /// <summary>西门子 PLC 机架号。</summary>
     public byte Rack { get; set; }
 
-    /// <summary>
-    /// Gets or sets the Siemens slot number.
-    /// </summary>
+    /// <summary>西门子 PLC 槽号。</summary>
     public byte Slot { get; set; } = 1;
 
-    /// <summary>
-    /// Gets or sets the PLC station number when using station-based serial protocols.
-    /// For example: Modbus RTU slave id or Panasonic MEWTOCOL station number.
-    /// </summary>
+    /// <summary>站号型串口协议的 PLC 站号，例如 Modbus RTU 从站号。</summary>
     public byte Station { get; set; } = 1;
 
-    /// <summary>
-    /// Gets or sets the HSL TCP connect timeout in milliseconds.
-    /// </summary>
+    /// <summary>HSL 连接超时，单位为毫秒。</summary>
     public int ConnectTimeoutMilliseconds { get; set; } = 3000;
 
-    /// <summary>
-    /// Gets or sets the HSL TCP receive timeout in milliseconds.
-    /// </summary>
+    /// <summary>HSL 接收超时，单位为毫秒。</summary>
     public int ReceiveTimeoutMilliseconds { get; set; } = 3000;
 
     public override bool Validate()
@@ -42,15 +36,16 @@ public class HslPlcConfig : PlcConfig
             return false;
         }
 
-        if (ConnectTimeoutMilliseconds <= 0 || ReceiveTimeoutMilliseconds <= 0)
+        if (Connection is null || !Connection.Validate()
+            || ConnectTimeoutMilliseconds <= 0 || ReceiveTimeoutMilliseconds <= 0)
         {
             return false;
         }
 
-        return Transport switch
+        return Connection switch
         {
-            PlcConnectionTransport.Tcp => IsTcpBrand(Brand),
-            PlcConnectionTransport.Serial => IsSerialBrand(Brand),
+            TcpPlcConnectionConfig => IsTcpBrand(Brand),
+            SerialPlcConnectionConfig => IsSerialBrand(Brand),
             _ => false
         };
     }
