@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\eng\Kwy.Device.Core.Version.props" />
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
