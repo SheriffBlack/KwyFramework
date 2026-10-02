@@ -77,10 +77,11 @@ internal sealed class ComboBoxIconConverter : MarkupExtension, IMultiValueConver
                             // 尝试从应用程序资源中查找图标资源
                             try
                             {
-                                if (Application.Current != null && Application.Current.Resources.Contains(iconKey))
-                                {
-                                    return Application.Current.Resources[iconKey];
-                                }
+                            object? resource = Application.Current?.TryFindResource(iconKey);
+                            if (resource != null)
+                            {
+                                return resource;
+                            }
                             }
                             catch
                             {
