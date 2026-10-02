@@ -329,6 +329,7 @@
         BasedOn="{StaticResource ControlBaseStyle}"
         TargetType="ComboBox">
         <Setter Property="MinHeight" Value="28.4" />
+        <Setter Property="Height" Value="28.4" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template" Value="{StaticResource SharedComboBoxTemplate}" />
     </Style>
