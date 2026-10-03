@@ -159,6 +159,7 @@ public sealed class HomeViewModel : BindableBase
         this.localWorkOrderRecipeStore = localWorkOrderRecipeStore ?? throw new ArgumentNullException(nameof(localWorkOrderRecipeStore));
         this.localWorkOrderRecipeMapper = localWorkOrderRecipeMapper ?? throw new ArgumentNullException(nameof(localWorkOrderRecipeMapper));
         this.correctionParameterProvider = correctionParameterProvider ?? throw new ArgumentNullException(nameof(correctionParameterProvider));
+        machine.ResultTableChanged += OnMachineResultTableChanged;
         SyncResultTable();
         SyncTapeParameterColumns();
         SyncChartTabs();
@@ -166,7 +167,6 @@ public sealed class HomeViewModel : BindableBase
         sampleState.StandardSample.LimitItems.CollectionChanged += OnStandardSampleLimitItemsChanged;
         RestoreHomeDisplayState();
 
-        machine.ResultTableChanged += OnMachineResultTableChanged;
         machine.StationResultPublished += OnStationResultPublished;
         machine.StationResultProcessingFailed += OnStationResultProcessingFailed;
         machine.RunningStateChanged += OnMachineRunningStateChanged;
