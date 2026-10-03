@@ -24,7 +24,6 @@
             Command="{Binding SwitchUserCommand}"
             Content="{StaticResource IconContact}"
             Focusable="False"
-            FontSize="20"
             IsTabStop="False"
             Style="{StaticResource KwyWindowButtonStyle}" />
     </kwyui:KwyWindow.TitleBarRightContent>
@@ -38,7 +37,9 @@
             </StackPanel.Resources>
             <TextBlock Text="机台号：119" Visibility="Collapsed" />
             <Rectangle Style="{StaticResource DefaultSeparatorStyle}" Visibility="Collapsed" />
-            <TextBlock FontFamily="{StaticResource SegoeFluent}" Text="{StaticResource IconLanguage}" />
+            <Viewbox Width="18" Height="18" VerticalAlignment="Center">
+                <Path Data="{StaticResource IconLanguage}" Fill="{DynamicResource ForegroundBrush}" />
+            </Viewbox>
             <ComboBox
                 Width="Auto"
                 VerticalAlignment="Center"
