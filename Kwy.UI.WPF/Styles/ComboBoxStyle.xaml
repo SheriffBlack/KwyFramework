@@ -94,6 +94,9 @@
                     Margin="0,0,5,0"
                     HorizontalAlignment="Left"
                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                    ContentStringFormat="{TemplateBinding ItemStringFormat}"
+                    ContentTemplate="{TemplateBinding ItemTemplate}"
+                    ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                     IsHitTestVisible="False">
                     <ContentPresenter.Content>
                         <MultiBinding Converter="{StaticResource ComboBoxContentConverter}" UpdateSourceTrigger="PropertyChanged">

@@ -1,0 +1,46 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:system="clr-namespace:System;assembly=netstandard">
+
+    <system:String x:Key="IconCalendar">&#xe787;</system:String>
+    <system:String x:Key="IconCamera">&#xe722;</system:String>
+    <system:String x:Key="IconChart">&#xe9d2;</system:String>
+    <system:String x:Key="IconClose">&#xE8BB;</system:String>
+    <system:String x:Key="IconContact">&#xe77b;</system:String>
+    <system:String x:Key="IconContactInfo">&#xe779;</system:String>
+    <system:String x:Key="IconError">&#xea39;</system:String>
+    <system:String x:Key="IconEthernet">&#xe839;</system:String>
+    <system:String x:Key="IconEthernetError">&#xeb55;</system:String>
+    <system:String x:Key="IconFolder">&#xe8b7;</system:String>
+    <system:String x:Key="IconHome">&#xe80f;</system:String>
+    <system:String x:Key="IconImport">&#xe8b5;</system:String>
+    <system:String x:Key="IconImportAll">&#xe8b6;</system:String>
+    <system:String x:Key="IconImportAllMirrored">&#xea53;</system:String>
+    <system:String x:Key="IconImportMirrored">&#xea52;</system:String>
+    <system:String x:Key="IconInfo">&#xE946;</system:String>
+    <system:String x:Key="IconLanguage">&#xf2b7;</system:String>
+    <system:String x:Key="IconLock">&#xe72e;</system:String>
+    <system:String x:Key="IconMax">&#xE922;</system:String>
+    <system:String x:Key="IconMin">&#xE921;</system:String>
+    <system:String x:Key="IconMore">&#xe712;</system:String>
+    <system:String x:Key="IconPause">&#xedb4;</system:String>
+    <system:String x:Key="IconPlay">&#xedb5;</system:String>
+    <system:String x:Key="IconPowerButton">&#xe7e8;</system:String>
+    <system:String x:Key="IconPrint">&#xe749;</system:String>
+    <system:String x:Key="IconProcessing">&#xe9f5;</system:String>
+    <system:String x:Key="IconQuestion">&#xe9ce;</system:String>
+    <system:String x:Key="IconRestore">&#xE923;</system:String>
+    <system:String x:Key="IconSave">&#xe74e;</system:String>
+    <system:String x:Key="IconScan">&#xee6f;</system:String>
+    <system:String x:Key="IconSearch">&#xe721;</system:String>
+    <system:String x:Key="IconSendMirrored">&#xea63;</system:String>
+    <system:String x:Key="IconSet">&#xe713;</system:String>
+    <system:String x:Key="IconSuccess">&#xE73E;</system:String>
+    <system:String x:Key="IconSwitchUser">&#xe748;</system:String>
+    <system:String x:Key="IconTouch">&#xe815;</system:String>
+    <system:String x:Key="IconUpdateRestore">&#xe777;</system:String>
+    <system:String x:Key="IconUserSetting">&#xef58;</system:String>
+    <system:String x:Key="IconVPN">&#xe705;</system:String>
+
+</ResourceDictionary>

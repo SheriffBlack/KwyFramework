@@ -59,18 +59,15 @@ internal sealed class ComboBoxContentConverter : MarkupExtension, IMultiValueCon
             }
         }
 
-        // 如果找到了容器，返回其 Content
-        if (container != null)
-        {
-            return container.Content;
-        }
-
+        // DisplayMemberPath 优先于容器内容；这样选中区无需依赖下拉项容器是否已生成。
         if (values[2] is string displayMemberPath && !string.IsNullOrWhiteSpace(displayMemberPath))
         {
             return GetCachedPropertyValue(selectedItem, displayMemberPath);
         }
 
-        return selectedItem.ToString();
+        // 返回原始数据项，让 ContentPresenter 可以应用 ItemTemplate。
+        // 如果传入的是显式 ComboBoxItem，则沿用其 Content。
+        return container?.Content ?? selectedItem;
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
