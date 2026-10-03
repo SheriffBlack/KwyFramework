@@ -6,6 +6,7 @@ using System.Windows.Markup;
 [assembly: XmlnsDefinition("http://schemas.kwy.com/ui", "Kwy.UI.WPF.Controls")]
 [assembly: XmlnsDefinition("http://schemas.kwy.com/ui", "Kwy.UI.WPF.Controls.Helpers")]
 [assembly: XmlnsDefinition("http://schemas.kwy.com/ui", "Kwy.UI.WPF.Controls.NumberInput")]
+[assembly: XmlnsDefinition("http://schemas.kwy.com/ui", "Kwy.UI.WPF.Controls.Toasts")]
 [assembly: XmlnsDefinition("http://schemas.kwy.com/ui", "Kwy.UI.WPF.Converters")]
 [assembly: XmlnsDefinition("http://schemas.kwy.com/ui", "Kwy.UI.WPF.Input.Keyboard")]
 [assembly: XmlnsDefinition("http://schemas.kwy.com/ui", "Kwy.UI.WPF.Themes")]

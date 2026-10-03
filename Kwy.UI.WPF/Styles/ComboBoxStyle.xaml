@@ -277,8 +277,15 @@
                     Grid.Column="0"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Content="{Binding (helpers:IconHelper.Icon), RelativeSource={RelativeSource AncestorType=ComboBoxItem}}"
                     IsHitTestVisible="False">
+                    <ContentPresenter.Content>
+                        <MultiBinding Converter="{StaticResource ComboBoxIconConverter}">
+                            <Binding />
+                            <Binding Path="(helpers:IconHelper.Icon)" RelativeSource="{RelativeSource AncestorType={x:Type ComboBoxItem}}" />
+                            <Binding RelativeSource="{RelativeSource AncestorType={x:Type ComboBox}}" />
+                            <Binding Path="(helpers:ComboBoxHelper.IconMemberPath)" RelativeSource="{RelativeSource AncestorType={x:Type ComboBox}}" />
+                        </MultiBinding>
+                    </ContentPresenter.Content>
                     <ContentPresenter.Style>
                         <Style TargetType="ContentPresenter">
                             <Setter Property="Margin" Value="10,5,10,5" />
