@@ -401,8 +401,7 @@
                                         VerticalAlignment="Center"
                                         Data="{StaticResource IconCamera}"
                                         Stretch="Uniform"
-                                        Style="{StaticResource StationCardCameraIconStyle}"
-                                        />
+                                        Style="{StaticResource StationCardCameraIconStyle}" />
 
                                     <Path
                                         Width="26"
