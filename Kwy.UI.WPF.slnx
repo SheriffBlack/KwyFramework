@@ -2,5 +2,6 @@
   <Project Path="Kwy.UI.WPF.Components/Kwy.UI.WPF.Components.csproj" />
   <Project Path="Kwy.UI.WPF.Tests/Kwy.UI.WPF.Tests.csproj" />
   <Project Path="Kwy.UI.WPF/Kwy.UI.WPF.csproj" />
+  <Project Path="Kwy.IconGeometryGenerator/Kwy.IconGeometryGenerator.csproj" />
   <Project Path="Kwy.UI/Kwy.UI.csproj" />
 </Solution>

@@ -9,24 +9,35 @@
     d:DesignWidth="800"
     mc:Ignorable="d">
     <Grid>
-        <UniformGrid>
-            <CheckBox
-                Width="150"
-                Height="40"
-                Content="xxx" />
-            <CheckBox
-                Width="150"
-                Height="40"
-                Content="xxx"
-                Style="{StaticResource CheckBoxCircleStyle}" />
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <CheckBox
+            Grid.Row="0"
+            Grid.Column="0"
+            Width="150"
+            Height="40"
+            Content="xxx" />
+        <CheckBox
+            Grid.Row="0"
+            Grid.Column="1"
+            Width="150"
+            Height="40"
+            Content="xxx"
+            Style="{StaticResource CheckBoxCircleStyle}" />
 
-            <CheckBox
-                Width="150"
-                Height="40"
-                Content="xxx"
-                Style="{StaticResource CheckBoxButtonStyle}" />
+        <CheckBox
+            Grid.Row="1"
+            Grid.Column="0"
+            Width="150"
+            Height="40"
+            Content="xxx"
+            Style="{StaticResource CheckBoxButtonStyle}" />
 
-
-        </UniformGrid>
     </Grid>
 </UserControl>

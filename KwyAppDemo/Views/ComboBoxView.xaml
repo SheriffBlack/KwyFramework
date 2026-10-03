@@ -3,95 +3,39 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers;assembly=Kwy.UI.WPF"
     xmlns:kwyui="http://schemas.kwy.com/ui"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
-    <UniformGrid>
-        <ComboBox Width="150" Height="28.4">
-            <ComboBoxItem Content="xxx" />
-            <ComboBoxItem Content="xxx" />
-            <ComboBoxItem Content="xxx" />
-        </ComboBox>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition />
+        </Grid.RowDefinitions>
         <ComboBox
+            Grid.Row="0"
             Width="150"
-            Height="28.4"
-            kwyui:IconHelper.Icon="{Binding ., Converter={kwyui:IconKeyToResourceConverter}}"
+            ItemsSource="{Binding ComboBoxItems}"
+            Style="{StaticResource DefaultComboBoxStyle}" />
+        <ComboBox
+            Grid.Row="1"
+            kwyui:IconHelper.Icon="{Binding ComboBoxIconItems.Icon, Converter={kwyui:IconKeyToResourceConverter}}"
+            FontSize="18"
+            ItemsSource="{Binding ComboBoxIconItems}"
             Style="{StaticResource IconComboBoxStyle}">
-            <ComboBoxItem
-                kwyui:IconHelper.Icon="{StaticResource IconAI}"
-                Content="xxx"
-                Style="{StaticResource IconComboBoxItemStyle}" />
-            <ComboBoxItem
-                kwyui:IconHelper.Icon="{StaticResource IconAI}"
-                Content="xxx"
-                Style="{StaticResource IconComboBoxItemStyle}" />
-            <ComboBoxItem
-                kwyui:IconHelper.Icon="{StaticResource IconAI}"
-                Content="xxx"
-                Style="{StaticResource IconComboBoxItemStyle}" />
+            <ComboBox.ItemContainerStyle>
+                <Style BasedOn="{StaticResource IconComboBoxItemStyle}" TargetType="ComboBoxItem">
+                    <Setter Property="kwyui:IconHelper.Icon" Value="{Binding Icon, Converter={kwyui:IconKeyToResourceConverter}}" />
+                </Style>
+            </ComboBox.ItemContainerStyle>
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Text}" />
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <TextBox Width="150" Height="28.4" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            Style="{StaticResource DefaultTextBoxMultiStyle}" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Integer" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Numeric" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Full" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Integer" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Numeric" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Full" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Integer" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Numeric" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Full" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Integer" />
-        <TextBox
-            Width="150"
-            Height="28.4"
-            kwyui:SoftKeyboardService.IsEnabled="True"
-            kwyui:SoftKeyboardService.Mode="Numeric" />
-    </UniformGrid>
+    </Grid>
 </UserControl>

@@ -8,24 +8,56 @@
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
-    <UniformGrid>
-        <Button Content="xxx" />
-        <Button
-            Width="150"
-            kwyui:IconHelper.Icon="{StaticResource IconAI}"
-            Content="xxx"
-            Style="{StaticResource ButtonContentHorizontalStyle}" />
-        <Button
-            Width="90"
-            Height="90"
-            kwyui:IconHelper.Icon="{StaticResource IconAI}"
-            Content="xxx"
-            Style="{StaticResource ButtonContentVerticalStyle}" />
-        <Button
-            Width="60"
-            Height="60"
-            Content="xxx"
-            Style="{StaticResource ButtonCircleStyle}" />
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <GroupBox
+            Grid.Row="0"
+            Grid.Column="0"
+            Header="默认样式">
+            <Button Content="xxx" />
+        </GroupBox>
 
-    </UniformGrid>
+        <GroupBox
+            Grid.Row="0"
+            Grid.Column="1"
+            Header="图标左右排版">
+            <Button
+                Width="150"
+                kwyui:IconHelper.Icon="{StaticResource IconAI}"
+                Content="xxx"
+                Style="{StaticResource ButtonContentHorizontalStyle}" />
+        </GroupBox>
+
+        <GroupBox
+            Grid.Row="1"
+            Grid.Column="0"
+            Header="图标上下排版">
+            <Button
+                Width="90"
+                Height="90"
+                kwyui:IconHelper.Icon="{StaticResource IconAI}"
+                Content="xxx"
+                Style="{StaticResource ButtonContentVerticalStyle}" />
+        </GroupBox>
+
+        <GroupBox
+            Grid.Row="1"
+            Grid.Column="1"
+            Header="圆形样式">
+            <Button
+                Width="60"
+                Height="60"
+                Content="xxx"
+                Style="{StaticResource ButtonCircleStyle}" />
+        </GroupBox>
+
+
+    </Grid>
 </UserControl>

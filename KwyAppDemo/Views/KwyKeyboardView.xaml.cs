@@ -1,5 +1,4 @@
-﻿using KwyAppDemo.ViewModel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,14 +16,13 @@ using System.Windows.Shapes;
 namespace KwyAppDemo.Views
 {
     /// <summary>
-    /// DataGridView.xaml 的交互逻辑
+    /// KwyKeyboardView.xaml 的交互逻辑
     /// </summary>
-    public partial class DataGridView : UserControl
+    public partial class KwyKeyboardView : UserControl
     {
-        public DataGridView()
+        public KwyKeyboardView()
         {
             InitializeComponent();
-            this.DataContext = new DataGridViewModel();
         }
     }
 }

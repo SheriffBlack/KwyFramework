@@ -13,6 +13,7 @@
     <Project Path="KwyTemplate.Vision/KwyTemplate.Vision.csproj" />
   </Folder>
   <Folder Name="/Tools/">
+    <Project Path="Kwy.IconGeometryGenerator/Kwy.IconGeometryGenerator.csproj" />
     <Project Path="Kwy.Packaging/Kwy.Packaging.csproj" />
   </Folder>
   <Project Path="Kwy.Analytics/Kwy.Analytics.csproj" Id="0d928a03-6434-4813-8d65-381336a2f8c4" />
