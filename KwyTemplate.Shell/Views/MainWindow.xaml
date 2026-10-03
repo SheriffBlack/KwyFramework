@@ -5,9 +5,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:helpers="clr-namespace:Kwy.UI.WPF.Controls.Helpers;assembly=Kwy.UI.WPF"
     xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+    xmlns:kwycomponents="http://schemas.kwy.com/ui/components"
     xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
     xmlns:kwyui="http://schemas.kwy.com/ui"
-    xmlns:kwycomponents="http://schemas.kwy.com/ui/components"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:navigation="clr-namespace:KwyTemplate.Contracts.Navigation;assembly=KwyTemplate.Contracts"
     Title="{Binding AppTitle}"
@@ -37,7 +37,10 @@
             </StackPanel.Resources>
             <TextBlock Text="机台号：119" Visibility="Collapsed" />
             <Rectangle Style="{StaticResource DefaultSeparatorStyle}" Visibility="Collapsed" />
-            <Viewbox Width="18" Height="18" VerticalAlignment="Center">
+            <Viewbox
+                Width="18"
+                Height="18"
+                VerticalAlignment="Center">
                 <Path Data="{StaticResource IconLanguage}" Fill="{DynamicResource ForegroundBrush}" />
             </Viewbox>
             <ComboBox
