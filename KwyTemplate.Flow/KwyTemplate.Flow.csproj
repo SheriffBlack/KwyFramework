@@ -25,7 +25,7 @@
     <ProjectReference Include="..\Kwy.MVVM\Kwy.MVVM.csproj" />
     <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
     <ProjectReference Include="..\KwyTemplate.Device\KwyTemplate.Device.csproj" />
-    <ProjectReference Include="..\KwyTemplate.MES.Abstract\KwyTemplate.MES.csproj" />
+    <ProjectReference Include="..\KwyTemplate.MES\KwyTemplate.MES.csproj" />
   </ItemGroup>
 </Project>
 

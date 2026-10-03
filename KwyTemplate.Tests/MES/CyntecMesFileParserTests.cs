@@ -1,5 +1,5 @@
 ﻿using KwyTemplate.MES.Cyntec;
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 using Xunit;
 
 namespace KwyTemplate.Tests.MES;

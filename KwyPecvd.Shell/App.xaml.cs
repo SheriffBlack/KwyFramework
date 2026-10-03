@@ -1,11 +1,7 @@
 ﻿using Kwy.MVVM.WPF;
 using Kwy.MVVM.WPF.Mvvm;
 using KwyPecvd.Shell.Views;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 
 namespace KwyPecvd.Shell;
@@ -18,8 +14,8 @@ public partial class App : KwyApplication
         return provider.Resolve<MainWindow>();
     }
 
-    //protected override void RegisterTypes(IServiceCollection services)
-    //{
-        
-    //}
+    protected override void RegisterTypes(IServiceCollection services)
+    {
+
+    }
 }

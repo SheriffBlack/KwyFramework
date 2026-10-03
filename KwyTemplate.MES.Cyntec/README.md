@@ -1,6 +1,6 @@
 ﻿# KwyTemplate.MES.Cyntec 设计说明
 
-`KwyTemplate.MES.Cyntec` 是 Cyntec 客户 MES 适配项目。它实现 `KwyTemplate.MES.Abstract` 中的能力接口，并负责调用 Cyntec 客户 DLL、判断 `returncode`、读取客户约定的 D 盘文件，再转换成 Abstract 的统一模型。
+`KwyTemplate.MES.Cyntec` 是 Cyntec 客户 MES 适配项目。它实现 `KwyTemplate.MES` 中的能力接口，并负责调用 Cyntec 客户 DLL、判断 `returncode`、读取客户约定的 D 盘文件，再转换成 Abstract 的统一模型。
 
 业务层不应该直接引用 Cyntec DLL，也不应该知道 `D:\MES` 文件格式。
 

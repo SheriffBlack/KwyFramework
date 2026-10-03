@@ -1,4 +1,4 @@
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 

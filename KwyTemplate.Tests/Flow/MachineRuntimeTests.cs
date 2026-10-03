@@ -10,7 +10,7 @@ using KwyTemplate.Flow.Common;
 using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
 using KwyTemplate.Flow.Services;
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 using Xunit;
 
 namespace KwyTemplate.Tests.Flow;

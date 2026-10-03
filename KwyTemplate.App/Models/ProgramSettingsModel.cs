@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using Kwy.ComponentModel;
+using Kwy.ComponentModel.Attributes;
 using KwyTemplate.Contracts.Localization;
 
 namespace KwyTemplate.App.Models;

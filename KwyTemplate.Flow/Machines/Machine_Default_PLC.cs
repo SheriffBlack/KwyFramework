@@ -8,6 +8,7 @@ using KwyTemplate.Flow.Common;
 using KwyTemplate.Flow.DataDeals;
 using KwyTemplate.Flow.Models;
 using Kwy.Device.PLC.Abstractions;
+using Kwy.ComponentModel.Attributes;
 
 namespace KwyTemplate.Flow.Machines;
 

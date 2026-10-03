@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Kwy.ComponentModel;
+using Kwy.ComponentModel.Attributes;
 using Kwy.MVVM.Core;
 using KwyTemplate.Device.Profiles;
 

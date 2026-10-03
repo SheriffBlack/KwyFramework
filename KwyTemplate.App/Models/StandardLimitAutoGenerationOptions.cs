@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Kwy.ComponentModel;
+using Kwy.ComponentModel.Attributes;
 
 namespace KwyTemplate.App.Models;
 

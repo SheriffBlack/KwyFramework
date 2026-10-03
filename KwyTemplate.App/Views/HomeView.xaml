@@ -8,7 +8,7 @@
     xmlns:kwyCharts="http://schemas.kwy.com/ui/charts"
     xmlns:kwyui="http://schemas.kwy.com/ui"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:mesModels="clr-namespace:KwyTemplate.MES.Abstract.Models;assembly=KwyTemplate.MES.Abstract"
+    xmlns:mesModels="clr-namespace:KwyTemplate.MES.Models;assembly=KwyTemplate.MES"
     xmlns:runtime="clr-namespace:KwyTemplate.App.Runtime"
     mc:Ignorable="d">
     <UserControl.Resources>

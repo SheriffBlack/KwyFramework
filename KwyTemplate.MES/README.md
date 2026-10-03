@@ -1,6 +1,6 @@
-﻿# KwyTemplate.MES.Abstract 设计说明
+﻿# KwyTemplate.MES 设计说明
 
-`KwyTemplate.MES.Abstract` 是模板设备项目的 MES 业务契约层。它只定义设备侧稳定可依赖的 MES 能力与数据模型，不关心客户 DLL、TCP/HTTP 报文、字段名和错误码。
+`KwyTemplate.MES` 是模板设备项目的 MES 业务契约层。它只定义设备侧稳定可依赖的 MES 能力与数据模型，不关心客户 DLL、TCP/HTTP 报文、字段名和错误码。
 
 客户实现项目，例如 `KwyTemplate.MES.Cyntec`，负责把真实客户 MES 协议、SDK、DLL 返回值映射成这里的统一模型。
 
@@ -49,7 +49,7 @@ MajieMesService
 KwyTemplate.App / KwyTemplate.Flow
           |
           v
-KwyTemplate.MES.Abstract
+KwyTemplate.MES
           ^
           |
 KwyTemplate.MES.Cyntec / KwyTemplate.MES.Xxx
@@ -169,7 +169,7 @@ UI 图表可以使用：
 - 处理登录、心跳、重试、超时
 - 解析客户约定的外部数据文件
 
-`KwyTemplate.MES.Abstract` 不应该引用：
+`KwyTemplate.MES` 不应该引用：
 
 - WPF
 - PLC

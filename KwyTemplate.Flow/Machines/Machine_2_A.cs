@@ -19,6 +19,7 @@ using KwyTemplate.Flow.Models;
 using KwyTemplate.Flow.Services;
 using Kwy.Device.PLC.Abstractions;
 using KwyTemplate.MES.Models;
+using Kwy.ComponentModel.Attributes;
 
 namespace KwyTemplate.Flow.Machines;
 
