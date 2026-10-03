@@ -65,7 +65,38 @@ public sealed class DeviceModule : IModule
             loadingMessage,
             10);
         provider.GetRequiredService<IDeviceRegistryInitializer>().Initialize();
-        _ = provider.GetRequiredService<IDeviceStartupConnector>().ConnectAsync();
+        _ = ConnectDevicesSafelyAsync(
+            provider.GetRequiredService<IDeviceStartupConnector>(),
+            provider.GetRequiredService<StartupProgressService>(),
+            localizationService);
+    }
+
+    private static async Task ConnectDevicesSafelyAsync(
+        IDeviceStartupConnector connector,
+        StartupProgressService startupProgress,
+        ILocalizationService localizationService)
+    {
+        try
+        {
+            await connector.ConnectAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            startupProgress.Report(
+                localizationService.T("Startup.Device.ConnectionCanceled", "Device connection was canceled."),
+                75);
+        }
+        catch (Exception ex)
+        {
+            // 启动连接是最大努力操作：单个设备由 DeviceStartupConnector 逐个记录，
+            // 此处只兜底不可预期的注册表/生命周期异常，确保主窗口继续启动。
+            startupProgress.Report(
+                localizationService.TF(
+                    "Startup.Device.ConnectionFailedUnexpectedly",
+                    "Device startup connection failed: {0}",
+                    ex.Message),
+                75);
+        }
     }
 
     private static string ResolveActiveCatalogKey(MachineRuntimeOptions options)

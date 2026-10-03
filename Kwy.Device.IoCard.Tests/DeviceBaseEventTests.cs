@@ -9,6 +9,21 @@ namespace Kwy.Device.IoCard.Tests;
 public sealed class DeviceBaseEventTests
 {
     [Fact]
+    public async Task ConnectAsync_ExpectedConnectionFailure_IsReportedAsErrorState()
+    {
+        await using var device = new FailingDevice();
+        Exception? reported = null;
+        device.ErrorOccurred += (_, args) => reported = args.Exception;
+
+        Exception? thrown = await Record.ExceptionAsync(() => device.ConnectAsync());
+
+        Assert.Null(thrown);
+        Assert.False(device.IsConnected);
+        Assert.Equal(ConnectionState.Error, device.State);
+        Assert.IsType<IOException>(reported);
+    }
+
+    [Fact]
     public async Task ConnectAsync_StateSubscriberThrows_ConnectionStillSucceeds()
     {
         await using var device = new TestDevice();
@@ -49,5 +64,20 @@ public sealed class DeviceBaseEventTests
     private sealed class TestConfig : IDeviceConfig
     {
         public bool Validate() => true;
+    }
+
+    private sealed class FailingDevice : DeviceBase
+    {
+        public FailingDevice()
+            : base("test.failing-device", "离线设备", new TestConfig())
+        {
+        }
+
+        protected override Task ConnectCoreAsync(CancellationToken cancellationToken)
+            => throw new IOException("设备离线");
+
+        protected override Task DisconnectCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        protected override bool IsConnectionAlive() => false;
     }
 }

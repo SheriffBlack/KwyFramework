@@ -54,7 +54,14 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         await executionSemaphore.WaitAsync(cancellationToken);
         try
         {
-            await protocol.ConnectAsync(cancellationToken);
+            if (protocol is ITryConnectCommunicationClient tryConnectClient)
+            {
+                _ = await tryConnectClient.TryConnectAsync(cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await protocol.ConnectAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
         finally
         {

@@ -22,7 +22,7 @@ public class VisaCommunication : CommunicationBase, ICommandQueryClient
     /// <inheritdoc />
     protected override async Task ConnectInternalAsync(CancellationToken cancellationToken)
     {
-        Task<IMessageBasedSession> openTask = Task.Run(OpenSession, CancellationToken.None);
+        Task<IMessageBasedSession?> openTask = Task.Run(OpenSession, CancellationToken.None);
         try
         {
             session = await openTask.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -152,7 +152,7 @@ public class VisaCommunication : CommunicationBase, ICommandQueryClient
         }
     }
 
-    private IMessageBasedSession OpenSession()
+    private IMessageBasedSession? OpenSession()
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("NationalInstruments.Visa requires Windows.");
@@ -166,13 +166,27 @@ public class VisaCommunication : CommunicationBase, ICommandQueryClient
         catch (Exception ex) when (VisaRuntime.IsRuntimeUnavailable(ex))
         {
             VisaRuntimeStatus runtime = VisaRuntime.CheckAvailability();
-            throw runtime.IsAvailable
+            Exception failure = runtime.IsAvailable
                 ? VisaRuntime.CreateInterfaceUnavailableException(visaConfig.ResourceName, ex)
                 : VisaRuntime.CreateUnavailableException(visaConfig.ResourceName, ex);
+            if (IsNonThrowingConnectAttempt)
+            {
+                OnErrorOccurred(failure, failure.Message);
+                return null;
+            }
+
+            throw failure;
         }
         catch (Exception ex) when (VisaRuntime.IsResourceNotFound(ex))
         {
-            throw VisaRuntime.CreateResourceNotFoundException(visaConfig.ResourceName, ex);
+            Exception failure = VisaRuntime.CreateResourceNotFoundException(visaConfig.ResourceName, ex);
+            if (IsNonThrowingConnectAttempt)
+            {
+                OnErrorOccurred(failure, failure.Message);
+                return null;
+            }
+
+            throw failure;
         }
 
         if (opened is not IMessageBasedSession messageSession)
@@ -195,11 +209,11 @@ public class VisaCommunication : CommunicationBase, ICommandQueryClient
                 ? command
                 : command + visaConfig.WriteTerminator;
 
-    private static void DisposeLateSession(Task<IMessageBasedSession> openTask)
+    private static void DisposeLateSession(Task<IMessageBasedSession?> openTask)
     {
         if (openTask.IsCompletedSuccessfully)
         {
-            openTask.Result.Dispose();
+            openTask.Result?.Dispose();
             return;
         }
 
@@ -208,7 +222,7 @@ public class VisaCommunication : CommunicationBase, ICommandQueryClient
             {
                 _ = task.Exception;
                 if (task.Status == TaskStatus.RanToCompletion)
-                    task.Result.Dispose();
+                    task.Result?.Dispose();
             },
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,

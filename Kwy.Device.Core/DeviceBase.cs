@@ -101,7 +101,17 @@ public abstract class DeviceBase : IDevice, IConfigurableDevice
             RaiseStateChanged(ConnectionState.Connecting);
             await ConnectCoreAsync(cancellationToken);
             await OnConnectedAsync(cancellationToken);
-            RaiseStateChanged(ConnectionState.Connected);
+            if (IsConnectionAlive())
+            {
+                RaiseStateChanged(ConnectionState.Connected);
+            }
+            else
+            {
+                var exception = new InvalidOperationException("Device connection completed without an active connection.");
+                RaiseErrorOccurred(exception.Message, exception);
+                await DisconnectCoreSafelyAsync(CancellationToken.None);
+                RaiseStateChanged(ConnectionState.Error);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -114,7 +124,6 @@ public abstract class DeviceBase : IDevice, IConfigurableDevice
             RaiseErrorOccurred($"Device connection failed: {ex.Message}", ex);
             await DisconnectCoreSafelyAsync(CancellationToken.None);
             RaiseStateChanged(ConnectionState.Error);
-            throw;
         }
         finally
         {

@@ -9,7 +9,7 @@ namespace Kwy.Communicate.Core;
 /// <summary>
 /// 通用的生命周期、状态、释放以及单次飞行重新连接行为。
 /// </summary>
-public abstract class CommunicationClientBase : ICommunicationClient
+public abstract class CommunicationClientBase : ICommunicationClient, ITryConnectCommunicationClient
 {
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(3);
     protected readonly IProtocolConfig config;
@@ -25,6 +25,7 @@ public abstract class CommunicationClientBase : ICommunicationClient
     private Task reconnectTask = Task.CompletedTask;
     private Task keepAliveTask = Task.CompletedTask;
     private int notificationDrainScheduled;
+    private int nonThrowingConnectAttempt;
     private volatile int state = (int)ConnectionState.Disconnected;
 
     public ConnectionState State
@@ -62,12 +63,27 @@ public abstract class CommunicationClientBase : ICommunicationClient
     /// </summary>
     protected CancellationToken LifetimeToken => lifetimeCancellation.Token;
 
+    /// <summary>
+    /// 当前连接是否由 <see cref="TryConnectAsync"/> 发起。
+    /// 具体传输可将可预期的硬件不可用转换为未连接状态，避免再次抛出包装异常。
+    /// </summary>
+    protected bool IsNonThrowingConnectAttempt => Volatile.Read(ref nonThrowingConnectAttempt) != 0;
+
     protected virtual Task OnConnectedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     protected virtual Task<bool> CheckConnectionAliveAsync(CancellationToken cancellationToken)
         => Task.FromResult(IsConnectionAlive());
 
-    public async Task ConnectAsync(CancellationToken cancellationToken = default)
+    public Task ConnectAsync(CancellationToken cancellationToken = default)
+        => ConnectAsyncCore(throwOnFailure: true, cancellationToken);
+
+    public async Task<bool> TryConnectAsync(CancellationToken cancellationToken = default)
+    {
+        await ConnectAsyncCore(throwOnFailure: false, cancellationToken).ConfigureAwait(false);
+        return IsConnected;
+    }
+
+    private async Task ConnectAsyncCore(bool throwOnFailure, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
         config.ValidateAndThrow();
@@ -82,12 +98,18 @@ public abstract class CommunicationClientBase : ICommunicationClient
             CancelReconnect();
             ResetLifetimeCancellation();
             State = ConnectionState.Connecting;
+            Volatile.Write(ref nonThrowingConnectAttempt, throwOnFailure ? 0 : 1);
 
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetimeCancellation.Token);
             try
             {
                 await DisconnectCoreSafelyAsync(CancellationToken.None);
                 await ConnectCoreAsync(linked.Token);
+                if (!IsConnectionAlive())
+                {
+                    State = ConnectionState.Error;
+                    return;
+                }
                 await OnConnectedAsync(linked.Token);
                 State = ConnectionState.Connected;
                 StartKeepAlive();
@@ -111,6 +133,7 @@ public abstract class CommunicationClientBase : ICommunicationClient
         }
         finally
         {
+            Volatile.Write(ref nonThrowingConnectAttempt, 0);
             lifecycleSemaphore.Release();
         }
 
@@ -119,7 +142,7 @@ public abstract class CommunicationClientBase : ICommunicationClient
             _ = TriggerReconnectAsync();
         }
 
-        if (connectError != null)
+        if (throwOnFailure && connectError != null)
             ExceptionDispatchInfo.Capture(connectError).Throw();
     }
 
