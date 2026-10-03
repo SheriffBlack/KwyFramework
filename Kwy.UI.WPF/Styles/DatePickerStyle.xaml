@@ -65,20 +65,22 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid Background="Transparent">
-                        <TextBlock
+                        <Path
                             x:Name="Icon"
+                            Width="16"
+                            Height="16"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            FontFamily="{StaticResource SegoeFluent}"
-                            FontSize="16"
-                            Text="{StaticResource IconCalendar}" />
+                            Data="{StaticResource IconCalendar}"
+                            Fill="{TemplateBinding Foreground}"
+                            Stretch="Uniform" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource ControlFocusedBorderBrush}" />
+                            <Setter TargetName="Icon" Property="Fill" Value="{DynamicResource ControlFocusedBorderBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+                            <Setter TargetName="Icon" Property="Fill" Value="{DynamicResource ControlDisabledForegroundBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
