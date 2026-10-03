@@ -16,7 +16,7 @@ using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Profiles;
 using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 
 namespace KwyTemplate.App.ViewModels;
 

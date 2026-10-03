@@ -13,9 +13,9 @@ using KwyTemplate.Device.Devices;
 using KwyTemplate.Flow.Common;
 using KwyTemplate.Flow.DataDeals;
 using KwyTemplate.Flow.Models;
-using KwyTemplate.MES.Abstract.Models;
 using Kwy.ComponentModel.Metadata;
 using Kwy.Device.PLC.Abstractions;
+using KwyTemplate.MES.Models;
 
 namespace KwyTemplate.Flow.Machines;
 

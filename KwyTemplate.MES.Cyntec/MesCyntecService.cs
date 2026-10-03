@@ -1,7 +1,7 @@
 using cyntec.TcpTools;
-using KwyTemplate.MES.Abstract.Events;
-using KwyTemplate.MES.Abstract.Models;
-using KwyTemplate.MES.Abstract.Services;
+using KwyTemplate.MES.Events;
+using KwyTemplate.MES.Models;
+using KwyTemplate.MES.Services;
 
 namespace KwyTemplate.MES.Cyntec;
 

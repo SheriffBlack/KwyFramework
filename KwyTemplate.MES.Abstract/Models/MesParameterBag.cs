@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 
-namespace KwyTemplate.MES.Abstract.Models;
+namespace KwyTemplate.MES.Models;
 
 public sealed class MesParameterBag
 {

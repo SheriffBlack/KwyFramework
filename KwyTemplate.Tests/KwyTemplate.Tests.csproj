@@ -27,7 +27,7 @@
     <ProjectReference Include="..\KwyTemplate.App\KwyTemplate.App.csproj" />
     <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
     <ProjectReference Include="..\KwyTemplate.Flow\KwyTemplate.Flow.csproj" />
-    <ProjectReference Include="..\KwyTemplate.MES.Abstract\KwyTemplate.MES.Abstract.csproj" />
+    <ProjectReference Include="..\KwyTemplate.MES.Abstract\KwyTemplate.MES.csproj" />
     <ProjectReference Include="..\KwyTemplate.MES.Cyntec\KwyTemplate.MES.Cyntec.csproj" />
     <ProjectReference Include="..\KwyTemplate.Security.SuperDog\KwyTemplate.Security.SuperDog.csproj" />
   </ItemGroup>

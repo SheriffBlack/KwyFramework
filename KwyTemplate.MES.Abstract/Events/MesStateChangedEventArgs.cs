@@ -1,6 +1,6 @@
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 
-namespace KwyTemplate.MES.Abstract.Events;
+namespace KwyTemplate.MES.Events;
 
 public sealed class MesStateChangedEventArgs : EventArgs
 {

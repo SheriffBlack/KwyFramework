@@ -3,8 +3,8 @@ using Kwy.Device.Abstractions;
 using Kwy.Device.Instruments.Dcr;
 using Kwy.Device.Instruments.Lcr;
 using KwyTemplate.Device;
-using KwyTemplate.MES.Abstract.Models;
 using System.Text.Json;
+using KwyTemplate.MES.Models;
 
 namespace KwyTemplate.App.Services;
 

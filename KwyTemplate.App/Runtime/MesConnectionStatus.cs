@@ -1,6 +1,6 @@
 using Kwy.MVVM.Core;
 using KwyTemplate.Contracts.Localization;
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 
 namespace KwyTemplate.App.Runtime;
 

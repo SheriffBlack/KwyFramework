@@ -19,8 +19,6 @@ using KwyTemplate.Device.Devices;
 using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
 using KwyTemplate.Flow.Services;
-using KwyTemplate.MES.Abstract.Models;
-using KwyTemplate.MES.Abstract.Services;
 using KwyTemplate.Security.Licensing;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -32,6 +30,9 @@ using System.Windows;
 using System.Windows.Threading;
 using KwyTemplate.Contracts.Navigation;
 using Kwy.UI.WPF.Components.Dialogs.Input;
+using KwyTemplate.MES.Events;
+using KwyTemplate.MES.Models;
+using KwyTemplate.MES.Services;
 
 namespace KwyTemplate.App.ViewModels;
 
@@ -1185,7 +1186,7 @@ public sealed class HomeViewModel : BindableBase
         messageBus.Publish(new StationLimitsAppliedMessage());
     }
 
-    private async void OnMesConnectionStateChanged(object? sender, KwyTemplate.MES.Abstract.Events.MesStateChangedEventArgs e)
+    private async void OnMesConnectionStateChanged(object? sender, MesStateChangedEventArgs e)
     {
         bool shouldRefresh;
         bool shouldRequireOfflineWorkOrderRescan;

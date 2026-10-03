@@ -4,8 +4,8 @@ using KwyTemplate.Device;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Scanners;
 using KwyTemplate.Flow.Machines;
-using KwyTemplate.MES.Abstract.Models;
-using KwyTemplate.MES.Abstract.Services;
+using KwyTemplate.MES.Models;
+using KwyTemplate.MES.Services;
 
 namespace KwyTemplate.App.Orchestration;
 

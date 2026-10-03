@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using Kwy.ComponentModel;
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 
 namespace KwyTemplate.App.Models;
 

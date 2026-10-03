@@ -1,4 +1,4 @@
-namespace KwyTemplate.MES.Abstract.Models;
+namespace KwyTemplate.MES.Models;
 
 public sealed record MesWorkOrderRequest(
     MesRequestContext Context,

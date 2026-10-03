@@ -1,6 +1,6 @@
 ﻿using Kwy.MVVM.Modularity;
 using KwyTemplate.Contracts.Services;
-using KwyTemplate.MES.Abstract.Services;
+using KwyTemplate.MES.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 

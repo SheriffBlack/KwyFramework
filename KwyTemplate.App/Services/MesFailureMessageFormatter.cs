@@ -1,4 +1,4 @@
-﻿using KwyTemplate.MES.Abstract.Models;
+﻿using KwyTemplate.MES.Models;
 
 namespace KwyTemplate.App.Services;
 

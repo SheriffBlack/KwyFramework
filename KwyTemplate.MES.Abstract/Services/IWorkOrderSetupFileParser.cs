@@ -1,6 +1,6 @@
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 
-namespace KwyTemplate.MES.Abstract.Services;
+namespace KwyTemplate.MES.Services;
 
 /// <summary>
 /// 将客户提供的工单参数文件转换为统一的工单设定。

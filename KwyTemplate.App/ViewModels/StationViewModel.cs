@@ -8,7 +8,7 @@ using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Security;
 using KwyTemplate.Flow.Machines;
 using KwyTemplate.Flow.Models;
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows;

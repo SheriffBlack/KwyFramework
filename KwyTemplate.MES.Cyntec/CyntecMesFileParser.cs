@@ -1,5 +1,5 @@
 ﻿using System.Globalization;
-using KwyTemplate.MES.Abstract.Models;
+using KwyTemplate.MES.Models;
 
 namespace KwyTemplate.MES.Cyntec;
 

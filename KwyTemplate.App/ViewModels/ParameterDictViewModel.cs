@@ -12,8 +12,8 @@ using KwyTemplate.Contracts.Localization;
 using KwyTemplate.App.Messages;
 using KwyTemplate.App.Models;
 using KwyTemplate.App.Services;
-using KwyTemplate.MES.Abstract.Services;
 using Kwy.UI.WPF.Components.Dialogs.Input;
+using KwyTemplate.MES.Services;
 
 namespace KwyTemplate.App.ViewModels;
 
