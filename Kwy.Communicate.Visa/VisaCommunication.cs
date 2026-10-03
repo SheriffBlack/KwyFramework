@@ -165,7 +165,14 @@ public class VisaCommunication : CommunicationBase, ICommandQueryClient
         }
         catch (Exception ex) when (VisaRuntime.IsRuntimeUnavailable(ex))
         {
-            throw VisaRuntime.CreateUnavailableException(visaConfig.ResourceName, ex);
+            VisaRuntimeStatus runtime = VisaRuntime.CheckAvailability();
+            throw runtime.IsAvailable
+                ? VisaRuntime.CreateInterfaceUnavailableException(visaConfig.ResourceName, ex)
+                : VisaRuntime.CreateUnavailableException(visaConfig.ResourceName, ex);
+        }
+        catch (Exception ex) when (VisaRuntime.IsResourceNotFound(ex))
+        {
+            throw VisaRuntime.CreateResourceNotFoundException(visaConfig.ResourceName, ex);
         }
 
         if (opened is not IMessageBasedSession messageSession)

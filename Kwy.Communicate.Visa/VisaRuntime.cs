@@ -44,6 +44,12 @@ public static class VisaRuntime
             _ = resourceManager.Find("?*");
             return new VisaRuntimeStatus(true, "已检测到可用的 VISA Runtime。");
         }
+        catch (Exception ex) when (IsResourceNotFound(ex))
+        {
+            // VISA 本机实现已成功加载，只是当前没有可枚举的资源。
+            // 这是正常的空结果，不能误判为 Runtime 缺失。
+            return new VisaRuntimeStatus(true, "已检测到可用的 VISA Runtime，但当前未发现 VISA 资源。");
+        }
         catch (Exception ex) when (IsRuntimeUnavailable(ex))
         {
             return new VisaRuntimeStatus(false, CreateUnavailableMessage(), ex);
@@ -67,6 +73,29 @@ public static class VisaRuntime
         return false;
     }
 
+    internal static bool IsResourceNotFound(Exception exception)
+        => exception is NativeVisaException visaException
+            && visaException.ErrorCode == NativeErrorCode.ResourceNotFound;
+
+    internal static VisaInterfaceUnavailableException CreateInterfaceUnavailableException(
+        string resourceName,
+        Exception innerException)
+        => new(
+            $"已检测到 VISA Runtime，但无法加载资源 '{resourceName}' 所需的接口驱动。"
+            + (resourceName.StartsWith("GPIB", StringComparison.OrdinalIgnoreCase)
+                ? "请确认 GPIB 控制器及其驱动已安装，并已在 NI MAX 或对应厂商工具中识别。"
+                : string.Empty),
+            resourceName,
+            innerException);
+
+    internal static VisaResourceNotFoundException CreateResourceNotFoundException(
+        string resourceName,
+        Exception? innerException = null)
+        => new(
+            $"未发现 VISA 资源 '{resourceName}'。资源名称只是配置，不代表本机已存在对应接口或仪器。",
+            resourceName,
+            innerException);
+
     internal static VisaRuntimeUnavailableException CreateUnavailableException(
         string? resourceName,
         Exception innerException)
@@ -74,12 +103,19 @@ public static class VisaRuntime
 
     private static string CreateUnavailableMessage(string? resourceName = null)
     {
+        if (!string.IsNullOrWhiteSpace(resourceName)
+            && resourceName.StartsWith("GPIB", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"无法加载 GPIB 本机驱动，因此无法打开资源 '{resourceName}'。"
+                + "仅安装 NI-VISA 不足以驱动 NI GPIB 板卡或 USB-GPIB 适配器；"
+                + "请安装 NI-488.2，并确认设备已在 NI MAX 或 Windows 设备管理器中正常识别。";
+        }
+
         string resource = string.IsNullOrWhiteSpace(resourceName)
             ? string.Empty
             : $" 无法打开资源 '{resourceName}'。";
 
-        return "未检测到可用的 VISA Runtime。" + resource
-            + "请安装与应用程序位数兼容的 NI-VISA Runtime；使用 NI GPIB 板卡或适配器时还需安装 NI-488.2 驱动。";
+        return "无法加载 VISA 本机实现或对应资源类型的接口驱动。" + resource
+            + "请安装与应用程序位数兼容的 VISA Runtime 和相应硬件驱动。";
     }
 }
-
