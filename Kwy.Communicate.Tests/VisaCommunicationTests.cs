@@ -7,11 +7,29 @@ namespace Kwy.Communicate.Tests;
 public sealed class VisaCommunicationTests
 {
     [Fact]
+    public void RuntimeAvailabilityCheck_DoesNotThrowWhenNoResourcesAreInstalled()
+    {
+        VisaRuntimeStatus status = VisaRuntime.CheckAvailability();
+
+        Assert.NotNull(status);
+        Assert.False(string.IsNullOrWhiteSpace(status.Message));
+    }
+
+    [Fact]
     public void RuntimeUnavailableClassifier_RecognizesVisaLibraryNotFound()
     {
         var exception = new NativeVisaException(NativeErrorCode.LibraryNotFound);
 
         Assert.True(VisaRuntime.IsRuntimeUnavailable(exception));
+    }
+
+    [Fact]
+    public void ResourceNotFound_IsNotClassifiedAsRuntimeUnavailable()
+    {
+        var exception = new NativeVisaException(NativeErrorCode.ResourceNotFound);
+
+        Assert.True(VisaRuntime.IsResourceNotFound(exception));
+        Assert.False(VisaRuntime.IsRuntimeUnavailable(exception));
     }
 
     [Fact]
@@ -25,8 +43,32 @@ public sealed class VisaCommunicationTests
 
         Assert.Equal("GPIB0::23::INSTR", exception.ResourceName);
         Assert.Same(cause, exception.InnerException);
-        Assert.Contains("NI-VISA Runtime", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("GPIB 本机驱动", exception.Message, StringComparison.Ordinal);
         Assert.Contains("NI-488.2", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void InterfaceUnavailableException_ExplainsThatConfiguredResourceMayNotExist()
+    {
+        var cause = new NativeVisaException(NativeErrorCode.LibraryNotFound);
+
+        VisaInterfaceUnavailableException exception =
+            VisaRuntime.CreateInterfaceUnavailableException("GPIB0::1::INSTR", cause);
+
+        Assert.Equal("GPIB0::1::INSTR", exception.ResourceName);
+        Assert.Contains("VISA Runtime", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("GPIB", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ResourceNotFoundException_DoesNotClaimThatRuntimeIsMissing()
+    {
+        VisaResourceNotFoundException exception =
+            VisaRuntime.CreateResourceNotFoundException("GPIB0::1::INSTR");
+
+        Assert.Equal("GPIB0::1::INSTR", exception.ResourceName);
+        Assert.Contains("未发现 VISA 资源", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("未检测到可用的 VISA Runtime", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
