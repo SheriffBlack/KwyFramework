@@ -1,3 +1,4 @@
+using Ivi.Visa;
 using Kwy.Communicate.Core;
 using Kwy.Communicate.Visa;
 
@@ -5,6 +6,29 @@ namespace Kwy.Communicate.Tests;
 
 public sealed class VisaCommunicationTests
 {
+    [Fact]
+    public void RuntimeUnavailableClassifier_RecognizesVisaLibraryNotFound()
+    {
+        var exception = new NativeVisaException(NativeErrorCode.LibraryNotFound);
+
+        Assert.True(VisaRuntime.IsRuntimeUnavailable(exception));
+    }
+
+    [Fact]
+    public void RuntimeUnavailableException_PreservesResourceAndCause()
+    {
+        var cause = new NativeVisaException(NativeErrorCode.LibraryNotFound);
+
+        VisaRuntimeUnavailableException exception = VisaRuntime.CreateUnavailableException(
+            "GPIB0::23::INSTR",
+            cause);
+
+        Assert.Equal("GPIB0::23::INSTR", exception.ResourceName);
+        Assert.Same(cause, exception.InnerException);
+        Assert.Contains("NI-VISA Runtime", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("NI-488.2", exception.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void GpibConfig_BuildsStandardVisaResourceName()
     {

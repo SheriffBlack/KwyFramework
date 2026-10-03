@@ -157,8 +157,17 @@ public class VisaCommunication : CommunicationBase, ICommandQueryClient
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("NationalInstruments.Visa requires Windows.");
 
-        using var resourceManager = new ResourceManager();
-        IVisaSession opened = resourceManager.Open(visaConfig.ResourceName, AccessModes.None, visaConfig.Timeout);
+        IVisaSession opened;
+        try
+        {
+            using var resourceManager = new ResourceManager();
+            opened = resourceManager.Open(visaConfig.ResourceName, AccessModes.None, visaConfig.Timeout);
+        }
+        catch (Exception ex) when (VisaRuntime.IsRuntimeUnavailable(ex))
+        {
+            throw VisaRuntime.CreateUnavailableException(visaConfig.ResourceName, ex);
+        }
+
         if (opened is not IMessageBasedSession messageSession)
         {
             opened.Dispose();

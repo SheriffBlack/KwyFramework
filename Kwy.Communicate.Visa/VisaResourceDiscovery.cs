@@ -11,7 +11,14 @@ public static class VisaResourceDiscovery
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("NationalInstruments.Visa requires Windows.");
         ArgumentException.ThrowIfNullOrWhiteSpace(expression);
-        using var resourceManager = new ResourceManager();
-        return resourceManager.Find(expression).Order(StringComparer.Ordinal).ToArray();
+        try
+        {
+            using var resourceManager = new ResourceManager();
+            return resourceManager.Find(expression).Order(StringComparer.Ordinal).ToArray();
+        }
+        catch (Exception ex) when (VisaRuntime.IsRuntimeUnavailable(ex))
+        {
+            throw VisaRuntime.CreateUnavailableException(resourceName: null, ex);
+        }
     }
 }
