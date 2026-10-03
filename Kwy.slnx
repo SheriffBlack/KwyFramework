@@ -1,4 +1,12 @@
 <Solution>
+  <Folder Name="/KwyTemplate.CS/">
+    <Project Path="KwyPecvd.App/KwyPecvd.App.csproj" Id="a2e188e3-4e66-449a-8ce9-85f3fe00418c" />
+    <Project Path="KwyPecvd.Contracts/KwyPecvd.Contracts.csproj" Id="240905f3-32b3-456d-9848-93f129c6cc1c" />
+    <Project Path="KwyPecvd.Device/KwyPecvd.Device.csproj" Id="1f36b4a0-620b-4188-b788-7793d084b27f" />
+    <Project Path="KwyPecvd.Process/KwyPecvd.Process.csproj" Id="aaa6cbdf-adf5-4ef3-b527-108eb36e51e8" />
+    <Project Path="KwyPecvd.RT/KwyPecvd.RT.csproj" Id="074e241b-e855-40c7-9934-91056d3dda90" />
+    <Project Path="KwyPecvd.Shell/KwyPecvd.Shell.csproj" Id="83ad7b65-96c3-4773-9417-f3bf86442ff8" />
+  </Folder>
   <Folder Name="/KwyTemplate.SA/">
     <Project Path="KwyTemplate.App/KwyTemplate.App.csproj" Id="6c2128f6-47c3-4ea3-8957-f7279c5a8179" />
     <Project Path="KwyTemplate.Contracts/KwyTemplate.Contracts.csproj" Id="11dc8409-0ef1-4531-9cd9-8275cd01b217" />
