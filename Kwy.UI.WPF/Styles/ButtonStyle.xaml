@@ -85,23 +85,56 @@
         x:Key="ButtonCircleStyle"
         BasedOn="{StaticResource DefaultButtonStyle}"
         TargetType="Button">
-        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border
+                        x:Name="PART_ButtonBorder"
                         Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="30">
-                        <ContentPresenter
-                            Margin="{TemplateBinding Padding}"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Content="{TemplateBinding Content}"
-                            ContentTemplate="{TemplateBinding ContentTemplate}" />
+                        <Grid ClipToBounds="True">
+                            <Canvas x:Name="PART_RippleCanvas" IsHitTestVisible="False" />
+                            <ContentPresenter
+                                Margin="{TemplateBinding Padding}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}" />
+                        </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_ButtonBorder" Property="Background" Value="{DynamicResource ControlHoverBackgroundBrush}" />
+                            <Setter TargetName="PART_ButtonBorder" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect
+                                        BlurRadius="5"
+                                        Direction="315"
+                                        Opacity="0.14"
+                                        ShadowDepth="1"
+                                        Color="{DynamicResource DropShadowColor}" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="PART_ButtonBorder" Property="Background" Value="{DynamicResource ControlPressedBackgroundBrush}" />
+                            <Setter TargetName="PART_ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlFocusedBorderBrush}" />
+                            <Setter TargetName="PART_ButtonBorder" Property="Effect" Value="{x:Null}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="PART_ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlFocusedBorderBrush}" />
+                            <Setter TargetName="PART_ButtonBorder" Property="Effect" Value="{x:Null}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="PART_ButtonBorder" Property="Background" Value="{DynamicResource ControlDisabledBackgroundBrush}" />
+                            <Setter TargetName="PART_ButtonBorder" Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
