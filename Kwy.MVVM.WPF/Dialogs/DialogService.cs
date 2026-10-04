@@ -48,7 +48,21 @@ public sealed class DialogService : IDialogService
                 result => completion.TrySetResult(result),
                 isModal: true,
                 failure => completion.TrySetException(failure));
-            session.Start(parameters ?? new DialogParameters());
+            IDialogParameters dialogParameters = parameters ?? new DialogParameters();
+
+            // Closing 是同步事件。将弹窗启动推迟到下一轮 UI 消息处理，确保调用方有机会
+            // 先设置 e.Cancel=true；否则拥有者窗口仍处于关闭调用栈时，Owned Window 可能
+            // 在首次布局阶段被一并卸载，只留下标题栏。
+            if (dispatcher is null)
+            {
+                session.Start(dialogParameters);
+            }
+            else
+            {
+                _ = dispatcher.BeginInvoke(
+                    () => session.Start(dialogParameters),
+                    DispatcherPriority.Normal);
+            }
         }
         catch (Exception exception)
         {
