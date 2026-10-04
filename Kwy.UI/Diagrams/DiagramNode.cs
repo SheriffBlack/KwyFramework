@@ -11,4 +11,10 @@ public sealed record DiagramNode(
     double Width,
     double Height,
     string? Label = null,
-    DiagramNodeState State = DiagramNodeState.Normal);
+    DiagramNodeState State = DiagramNodeState.Normal,
+    DiagramNodeShape Shape = DiagramNodeShape.RoundedRectangle,
+    DiagramNodeOrientation Orientation = DiagramNodeOrientation.Top,
+    int PolygonSides = 0,
+    double RotationAngle = 0d,
+    bool UseStateFill = false,
+    DiagramNodeFillMode FillMode = DiagramNodeFillMode.Default);

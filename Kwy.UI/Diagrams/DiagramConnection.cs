@@ -7,4 +7,7 @@ public sealed record DiagramConnection(
     string SourceId,
     string TargetId,
     string? Label = null,
-    DiagramConnectionState State = DiagramConnectionState.Normal);
+    DiagramConnectionState State = DiagramConnectionState.Normal,
+    double Thickness = 1d,
+    double? TargetThickness = null,
+    DiagramConnectionShape Shape = DiagramConnectionShape.Line);

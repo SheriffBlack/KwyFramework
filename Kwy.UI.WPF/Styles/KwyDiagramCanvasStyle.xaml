@@ -6,6 +6,7 @@
         <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
         <Setter Property="FontSize" Value="12" />
+        <Setter Property="SemiEllipseBaseRatio" Value="0.18" />
         <Setter Property="Focusable" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="UseLayoutRounding" Value="True" />

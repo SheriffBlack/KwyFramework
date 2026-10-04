@@ -150,6 +150,24 @@ public class KwyDiagramCanvas : Control
                 && double.IsFinite(cornerRadius.BottomRight) && cornerRadius.BottomRight >= 0
                 && double.IsFinite(cornerRadius.BottomLeft) && cornerRadius.BottomLeft >= 0);
 
+    /// <summary>
+    /// 获取或设置半椭圆节点中矩形底座所占的比例。
+    /// 默认保留较小的底座，使圆顶更接近设备模块的轮廓。
+    /// </summary>
+    public double SemiEllipseBaseRatio
+    {
+        get => (double)GetValue(SemiEllipseBaseRatioProperty);
+        set => SetValue(SemiEllipseBaseRatioProperty, value);
+    }
+
+    public static readonly DependencyProperty SemiEllipseBaseRatioProperty =
+        DependencyProperty.Register(
+            nameof(SemiEllipseBaseRatio),
+            typeof(double),
+            typeof(KwyDiagramCanvas),
+            new FrameworkPropertyMetadata(0.18d, FrameworkPropertyMetadataOptions.AffectsRender),
+            static value => value is double ratio && double.IsFinite(ratio) && ratio >= 0d && ratio < 0.5d);
+
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
@@ -307,11 +325,63 @@ public class KwyDiagramCanvas : Control
                 continue;
             }
 
-            drawingContext.DrawLine(
-                new Pen(ResolveStateBrush(connection.State), connection.State == DiagramConnectionState.Active ? 2d : 1d),
-                GetCenter(source),
-                GetCenter(target));
+            double sourceThickness = double.IsFinite(connection.Thickness) && connection.Thickness > 0d
+                ? connection.Thickness
+                : 1d;
+            double minimumThickness = connection.State == DiagramConnectionState.Active ? 2d : 1d;
+            sourceThickness = Math.Max(sourceThickness, minimumThickness);
+            double targetThickness = connection.TargetThickness is double configuredTargetThickness
+                && double.IsFinite(configuredTargetThickness)
+                && configuredTargetThickness > 0d
+                ? configuredTargetThickness
+                : sourceThickness;
+            Brush brush = ResolveStateBrush(connection.State);
+
+            if (connection.Shape == DiagramConnectionShape.Tapered)
+            {
+                DrawTaperedConnection(
+                    drawingContext,
+                    GetCenter(source),
+                    GetCenter(target),
+                    sourceThickness,
+                    Math.Max(targetThickness, minimumThickness),
+                    brush);
+            }
+            else
+            {
+                drawingContext.DrawLine(
+                    new Pen(brush, sourceThickness),
+                    GetCenter(source),
+                    GetCenter(target));
+            }
         }
+    }
+
+    private static void DrawTaperedConnection(
+        DrawingContext drawingContext,
+        Point source,
+        Point target,
+        double sourceThickness,
+        double targetThickness,
+        Brush brush)
+    {
+        Vector direction = target - source;
+        if (direction.LengthSquared < double.Epsilon)
+        {
+            return;
+        }
+
+        direction.Normalize();
+        Vector perpendicular = new(-direction.Y, direction.X);
+        Vector sourceOffset = perpendicular * (sourceThickness / 2d);
+        Vector targetOffset = perpendicular * (targetThickness / 2d);
+        var geometry = new StreamGeometry();
+        using StreamGeometryContext context = geometry.Open();
+        context.BeginFigure(source + sourceOffset, isFilled: true, isClosed: true);
+        context.LineTo(target + targetOffset, isStroked: true, isSmoothJoin: false);
+        context.LineTo(target - targetOffset, isStroked: true, isSmoothJoin: false);
+        context.LineTo(source - sourceOffset, isStroked: true, isSmoothJoin: false);
+        drawingContext.DrawGeometry(brush, null, geometry);
     }
 
     private void DrawNodes(DrawingContext drawingContext, IReadOnlyDictionary<string, DiagramNode> nodes)
@@ -322,23 +392,27 @@ public class KwyDiagramCanvas : Control
             Brush borderBrush = isSelected ? ResolveBrush("PrimaryBrush", Brushes.DodgerBlue) : ResolveStateBrush(node.State);
             double borderThickness = isSelected || node.State == DiagramNodeState.Active ? 2d : 1d;
             Rect bounds = new(node.X, node.Y, node.Width, node.Height);
-            CornerRadius cornerRadius = NodeCornerRadius;
+            Geometry geometry = CreateNodeGeometry(node, bounds);
+            bool useStateFill = node.UseStateFill || node.FillMode == DiagramNodeFillMode.State;
+            Brush fillBrush = node.FillMode == DiagramNodeFillMode.SoftState
+                ? ResolveSoftStateFillBrush(node.State)
+                : useStateFill
+                    ? ResolveStateFillBrush(node.State)
+                    : ResolveBrush("ControlBackgroundBrush", Brushes.White);
 
-            drawingContext.DrawRoundedRectangle(
-                ResolveBrush("ControlBackgroundBrush", Brushes.White),
+            drawingContext.DrawGeometry(
+                fillBrush,
                 new Pen(borderBrush, borderThickness),
-                bounds,
-                Math.Min(cornerRadius.TopLeft, Math.Min(node.Width, node.Height) / 2d),
-                Math.Min(cornerRadius.TopLeft, Math.Min(node.Width, node.Height) / 2d));
+                geometry);
 
             if (!string.IsNullOrWhiteSpace(node.Label))
             {
-                DrawLabel(drawingContext, node.Label, bounds);
+                DrawLabel(drawingContext, node.Label, bounds, useStateFill);
             }
         }
     }
 
-    private void DrawLabel(DrawingContext drawingContext, string label, Rect bounds)
+    private void DrawLabel(DrawingContext drawingContext, string label, Rect bounds, bool useStateFill)
     {
         double pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         var formattedText = new FormattedText(
@@ -347,7 +421,7 @@ public class KwyDiagramCanvas : Control
             FlowDirection.LeftToRight,
             new Typeface(FontFamily, FontStyle, FontWeight, FontStretch),
             FontSize,
-            Foreground ?? ResolveBrush("ForegroundBrush", Brushes.Black),
+            useStateFill ? Brushes.White : Foreground ?? ResolveBrush("ForegroundBrush", Brushes.Black),
             pixelsPerDip)
         {
             MaxTextWidth = Math.Max(0d, bounds.Width - 12d),
@@ -359,12 +433,130 @@ public class KwyDiagramCanvas : Control
         drawingContext.DrawText(
             formattedText,
             new Point(
-                bounds.X + (bounds.Width - formattedText.Width) / 2d,
+                bounds.X + 6d,
                 bounds.Y + (bounds.Height - formattedText.Height) / 2d));
     }
 
     private DiagramNode? HitTestNode(DiagramPoint point)
-        => GetNodes().Values.LastOrDefault(node => new Rect(node.X, node.Y, node.Width, node.Height).Contains(new Point(point.X, point.Y)));
+        => GetNodes().Values.LastOrDefault(node => CreateNodeGeometry(
+            node,
+            new Rect(node.X, node.Y, node.Width, node.Height)).FillContains(new Point(point.X, point.Y)));
+
+    private Geometry CreateNodeGeometry(DiagramNode node, Rect bounds)
+    {
+        Geometry geometry = node.Shape switch
+        {
+            DiagramNodeShape.Rectangle => new RectangleGeometry(bounds),
+            DiagramNodeShape.Ellipse => new EllipseGeometry(bounds),
+            DiagramNodeShape.SemiEllipse => CreateSemiEllipseGeometry(bounds, node.Orientation, SemiEllipseBaseRatio),
+            DiagramNodeShape.Trapezoid => CreateTrapezoidGeometry(bounds),
+            DiagramNodeShape.RegularPolygon => CreateRegularPolygonGeometry(bounds, node.PolygonSides),
+            _ => CreateRoundedRectangleGeometry(bounds)
+        };
+
+        if (double.IsFinite(node.RotationAngle) && Math.Abs(node.RotationAngle) > double.Epsilon)
+        {
+            geometry.Transform = new RotateTransform(node.RotationAngle, bounds.X + (bounds.Width / 2d), bounds.Y + (bounds.Height / 2d));
+        }
+
+        return geometry;
+    }
+
+    private Geometry CreateRoundedRectangleGeometry(Rect bounds)
+    {
+        CornerRadius cornerRadius = NodeCornerRadius;
+        double radius = Math.Min(cornerRadius.TopLeft, Math.Min(bounds.Width, bounds.Height) / 2d);
+        return new RectangleGeometry(bounds, radius, radius);
+    }
+
+    private static Geometry CreateSemiEllipseGeometry(Rect bounds, DiagramNodeOrientation orientation, double baseRatio)
+    {
+        var geometry = new StreamGeometry();
+        using StreamGeometryContext context = geometry.Open();
+
+        switch (orientation)
+        {
+            case DiagramNodeOrientation.Bottom:
+            {
+                double baseHeight = Math.Max(bounds.Height * baseRatio, bounds.Height - (bounds.Width / 2d));
+                double baseY = bounds.Top + baseHeight;
+                context.BeginFigure(new Point(bounds.Left, baseY), isFilled: true, isClosed: true);
+                context.ArcTo(new Point(bounds.Right, baseY), new Size(bounds.Width / 2d, baseY - bounds.Top), 0d, isLargeArc: false, SweepDirection.Counterclockwise, isStroked: true, isSmoothJoin: false);
+                context.LineTo(new Point(bounds.Right, bounds.Top), isStroked: true, isSmoothJoin: false);
+                context.LineTo(new Point(bounds.Left, bounds.Top), isStroked: true, isSmoothJoin: false);
+                break;
+            }
+            case DiagramNodeOrientation.Left:
+            {
+                double baseWidth = Math.Max(bounds.Width * baseRatio, bounds.Width - (bounds.Height / 2d));
+                double baseX = bounds.Right - baseWidth;
+                context.BeginFigure(new Point(baseX, bounds.Top), isFilled: true, isClosed: true);
+                context.ArcTo(new Point(baseX, bounds.Bottom), new Size(baseX - bounds.Left, bounds.Height / 2d), 0d, isLargeArc: false, SweepDirection.Counterclockwise, isStroked: true, isSmoothJoin: false);
+                context.LineTo(new Point(bounds.Right, bounds.Bottom), isStroked: true, isSmoothJoin: false);
+                context.LineTo(new Point(bounds.Right, bounds.Top), isStroked: true, isSmoothJoin: false);
+                break;
+            }
+            case DiagramNodeOrientation.Right:
+            {
+                double baseWidth = Math.Max(bounds.Width * baseRatio, bounds.Width - (bounds.Height / 2d));
+                double baseX = bounds.Left + baseWidth;
+                context.BeginFigure(new Point(baseX, bounds.Top), isFilled: true, isClosed: true);
+                context.ArcTo(new Point(baseX, bounds.Bottom), new Size(bounds.Right - baseX, bounds.Height / 2d), 0d, isLargeArc: false, SweepDirection.Clockwise, isStroked: true, isSmoothJoin: false);
+                context.LineTo(new Point(bounds.Left, bounds.Bottom), isStroked: true, isSmoothJoin: false);
+                context.LineTo(new Point(bounds.Left, bounds.Top), isStroked: true, isSmoothJoin: false);
+                break;
+            }
+            default:
+            {
+                double baseHeight = Math.Max(bounds.Height * baseRatio, bounds.Height - (bounds.Width / 2d));
+                double baseY = bounds.Bottom - baseHeight;
+                context.BeginFigure(new Point(bounds.Left, baseY), isFilled: true, isClosed: true);
+                context.ArcTo(new Point(bounds.Right, baseY), new Size(bounds.Width / 2d, baseY - bounds.Top), 0d, isLargeArc: false, SweepDirection.Clockwise, isStroked: true, isSmoothJoin: false);
+                context.LineTo(new Point(bounds.Right, bounds.Bottom), isStroked: true, isSmoothJoin: false);
+                context.LineTo(new Point(bounds.Left, bounds.Bottom), isStroked: true, isSmoothJoin: false);
+                break;
+            }
+        }
+        return geometry;
+    }
+
+    private static Geometry CreateTrapezoidGeometry(Rect bounds)
+    {
+        double topInset = bounds.Width * 0.16d;
+        var geometry = new StreamGeometry();
+        using StreamGeometryContext context = geometry.Open();
+        context.BeginFigure(new Point(bounds.Left + topInset, bounds.Top), isFilled: true, isClosed: true);
+        context.LineTo(new Point(bounds.Right - topInset, bounds.Top), isStroked: true, isSmoothJoin: false);
+        context.LineTo(new Point(bounds.Right, bounds.Bottom), isStroked: true, isSmoothJoin: false);
+        context.LineTo(new Point(bounds.Left, bounds.Bottom), isStroked: true, isSmoothJoin: false);
+        return geometry;
+    }
+
+    private static Geometry CreateRegularPolygonGeometry(Rect bounds, int sides)
+    {
+        int sideCount = Math.Max(3, sides);
+        var geometry = new StreamGeometry();
+        using StreamGeometryContext context = geometry.Open();
+        Point center = new(bounds.Left + (bounds.Width / 2d), bounds.Top + (bounds.Height / 2d));
+        double radiusX = bounds.Width / 2d;
+        double radiusY = bounds.Height / 2d;
+
+        for (int index = 0; index < sideCount; index++)
+        {
+            double angle = (-90d + ((360d / sideCount) * index)) * Math.PI / 180d;
+            Point point = new(center.X + (radiusX * Math.Cos(angle)), center.Y + (radiusY * Math.Sin(angle)));
+            if (index == 0)
+            {
+                context.BeginFigure(point, isFilled: true, isClosed: true);
+            }
+            else
+            {
+                context.LineTo(point, isStroked: true, isSmoothJoin: false);
+            }
+        }
+
+        return geometry;
+    }
 
     private Transform CreateViewportTransform()
     {
@@ -387,6 +579,25 @@ public class KwyDiagramCanvas : Control
             _ => ResolveBrush("ControlBorderBrush", Brushes.SlateGray)
         };
 
+    private Brush ResolveStateFillBrush(DiagramNodeState state)
+        => state switch
+        {
+            DiagramNodeState.Active => ResolveBrush("PrimaryBrush", Brushes.DodgerBlue),
+            DiagramNodeState.Disabled => ResolveBrush("ControlDisabledForegroundBrush", Brushes.Gray),
+            DiagramNodeState.Warning => ResolveBrush("WarningBrush", Brushes.Orange),
+            DiagramNodeState.Error => ResolveBrush("ErrorBrush", Brushes.IndianRed),
+            _ => ResolveBrush("PrimaryBrush", Brushes.DodgerBlue)
+        };
+
+    private Brush ResolveSoftStateFillBrush(DiagramNodeState state)
+        => state switch
+        {
+            DiagramNodeState.Disabled => ResolveBrush("ControlDisabledBackgroundBrush", Brushes.LightGray),
+            DiagramNodeState.Warning => ResolveBrush("StateWarningBackgroundBrush", Brushes.Moccasin),
+            DiagramNodeState.Error => ResolveBrush("StateErrorBackgroundBrush", Brushes.MistyRose),
+            _ => ResolveBrush("ControlSelectedBackgroundBrush", Brushes.LightBlue)
+        };
+
     private Brush ResolveStateBrush(DiagramConnectionState state)
         => state switch
         {
@@ -405,6 +616,7 @@ public class KwyDiagramCanvas : Control
            && double.IsFinite(node.Y)
            && double.IsFinite(node.Width)
            && double.IsFinite(node.Height)
+           && double.IsFinite(node.RotationAngle)
            && node.Width > 0
            && node.Height > 0;
 

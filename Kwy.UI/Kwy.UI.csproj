@@ -20,4 +20,8 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Update="KwyDiagramCanvas.md" Pack="true" PackagePath="docs\" />
+  </ItemGroup>
+
 </Project>
