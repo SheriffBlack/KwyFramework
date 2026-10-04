@@ -16,12 +16,6 @@ using Kwy.ComponentModel.Parameters;
 namespace KwyTemplate.Vision.ViewModels.Items;
 
 /// <summary>
-/// 节点运行状态
-/// </summary>
-public enum NodeStatus
-{ Idle, Running, Success, Failed, Paused }
-
-/// <summary>
 /// 单个节点的 ViewModel，对应 Nodify NodifyEditor 中的一个 ItemContainer。
 /// Location 由 NodifyEditor 的 ItemContainerStyle 通过 ItemContainer.Location 双向绑定。
 /// </summary>

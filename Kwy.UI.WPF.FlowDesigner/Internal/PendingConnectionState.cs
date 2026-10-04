@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using Kwy.UI.Flow;
 
 namespace Kwy.UI.WPF.FlowDesigner.Internal;
 
@@ -11,8 +12,8 @@ internal sealed class PendingConnectionState : INotifyPropertyChanged
 {
     private Point source;
     private Point target;
-    private string side = "Right";
-    private string targetSide = "Left";
+    private FlowPortSide side = FlowPortSide.Right;
+    private FlowPortSide targetSide = FlowPortSide.Left;
 
     public Point Source
     {
@@ -26,13 +27,13 @@ internal sealed class PendingConnectionState : INotifyPropertyChanged
         set => SetProperty(ref target, value);
     }
 
-    public string Side
+    public FlowPortSide Side
     {
         get => side;
         set => SetProperty(ref side, value);
     }
 
-    public string TargetSide
+    public FlowPortSide TargetSide
     {
         get => targetSide;
         set => SetProperty(ref targetSide, value);

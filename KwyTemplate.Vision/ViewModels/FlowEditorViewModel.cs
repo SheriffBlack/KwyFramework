@@ -8,6 +8,7 @@ using Kwy.MVVM.Regions;
 using Kwy.UI.WPF.Components;
 using Kwy.UI.WPF.Services.FileDialogs;
 using Kwy.UI.WPF.FlowDesigner.Controls;
+using Kwy.UI.Flow;
 using Kwy.Vision.Abstractions.DeepLearning;
 using Kwy.Vision.Abstractions.Results;
 using System.Collections.ObjectModel;
@@ -27,7 +28,7 @@ namespace KwyTemplate.Vision.ViewModels;
 /// <summary>
 /// 流程编辑器 ViewModel
 /// </summary>
-public class FlowEditorViewModel : BindableBase, INavigationAware
+public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnectionValidator
 {
     private readonly FlowPersistenceService persistence;
     private readonly DataTypeColorService colorService;
@@ -380,6 +381,22 @@ public class FlowEditorViewModel : BindableBase, INavigationAware
         {
             await dialogMessageService.ShowWarningAsync(result.ErrorMessage, "连接失败");
         }
+    }
+
+    /// <summary>
+    /// 向流程编辑器公开的连线规则入口。
+    /// 控件只调用此接口，不了解端口类型、重复连接等业务规则。
+    /// </summary>
+    public IFlowConnectionValidator ConnectionValidator => this;
+
+    bool IFlowConnectionValidator.CanConnect(FlowConnectionRequest request)
+    {
+        if (request.SourceConnector is not PortViewModel source || request.TargetConnector is not PortViewModel target)
+        {
+            return false;
+        }
+
+        return ValidateConnection(source, target).Success;
     }
 
     private DelegateCommand<object>? disconnectConnectorCommand;
@@ -1841,6 +1858,33 @@ public class FlowEditorViewModel : BindableBase, INavigationAware
     /// <returns>连接结果，包含是否成功和错误信息</returns>
     private (bool Success, string? ErrorMessage) TryConnect(PortViewModel src, PortViewModel tgt)
     {
+        var validation = ValidateConnection(src, tgt);
+        if (!validation.Success)
+        {
+            return validation;
+        }
+
+        if (src.Direction == PortDirection.Input)
+        {
+            (src, tgt) = (tgt, src);
+        }
+
+        var connModel = new FlowConnection { SourcePortId = src.PortId, TargetPortId = tgt.PortId };
+        activeGraph?.Connections.Add(connModel);
+
+        var connVm = new FlowConnectionViewModel(connModel.Id, src, tgt, colorService)
+        {
+            IsValid = true
+        };
+        Connections.Add(connVm);
+
+        UpdateConnectionStates();
+        IsDirty = true;
+        return (true, null);
+    }
+
+    private (bool Success, string? ErrorMessage) ValidateConnection(PortViewModel src, PortViewModel tgt)
+    {
         // ── 1. 方向校验（允许 Input、Output 顺序颠倒）──
         if (src.Direction == PortDirection.Input && tgt.Direction == PortDirection.Output)
             (src, tgt) = (tgt, src);
@@ -1866,17 +1910,6 @@ public class FlowEditorViewModel : BindableBase, INavigationAware
         if (!typeCheckResult.IsValid)
             return (false, typeCheckResult.ErrorMessage);
 
-        // ── 5. 创建连接 ──
-        var connModel = new FlowConnection { SourcePortId = src.PortId, TargetPortId = tgt.PortId };
-        activeGraph?.Connections.Add(connModel);
-
-        var connVm = new FlowConnectionViewModel(connModel.Id, src, tgt, colorService);
-        connVm.IsValid = typeCheckResult.IsValid;
-        Connections.Add(connVm);
-
-        // ── 6. 更新连接状态和计数 ──
-        UpdateConnectionStates();
-        IsDirty = true;
         return (true, null);
     }
 

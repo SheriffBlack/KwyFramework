@@ -1,41 +1,12 @@
 ﻿namespace KwyTemplate.Vision.Models;
 
 /// <summary>
-/// 端口方向：输入 / 输出
-/// </summary>
-public enum PortDirection
-{
-    Input,
-    Output
-}
-
-/// <summary>
 /// 布局方向：水平 / 垂直
 /// </summary>
 public enum FlowLayoutDirection
 {
     Horizontal,
     Vertical
-}
-
-/// <summary>
-/// 端口位置
-/// </summary>
-public enum PortSide
-{
-    Left,
-    Top,
-    Right,
-    Bottom
-}
-
-/// <summary>
-/// 端口类型
-/// </summary>
-public enum PortType
-{
-    Data,
-    Execution
 }
 
 /// <summary>

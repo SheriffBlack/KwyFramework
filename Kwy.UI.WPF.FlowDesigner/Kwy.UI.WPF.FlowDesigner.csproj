@@ -1,14 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\eng\Kwy.UI.WPF.Version.props" />
+
   <PropertyGroup>
     <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <PackageId>Kwy.UI.WPF.FlowDesigner</PackageId>
+    <Title>Kwy Flow Designer for WPF</Title>
+    <Description>Optional WPF flow-graph editor with node dragging, typed ports, connection validation, routing, snapping, zoom, and read-only preview support.</Description>
+    <PackageTags>kwy;wpf;flow-designer;workflow;node-editor;diagram;graph-editor</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/SheriffBlack/KwyFramework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SheriffBlack/KwyFramework.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Copyright>Copyright © 2026 Kwy</Copyright>
+    <PackageReleaseNotes>Initial beta release of the optional Kwy WPF flow designer module.</PackageReleaseNotes>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <Folder Include="Properties\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="..\README.md" />
+    <None Include="README.md" Pack="true" PackagePath="" Link="README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.UI\Kwy.UI.csproj" />
   </ItemGroup>
 
 </Project>

@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Kwy.UI.Flow;
 
 namespace Kwy.UI.WPF.FlowDesigner.Controls;
 
@@ -50,12 +51,12 @@ public class KwyConnector : HeaderedContentControl
     /// 当前生效的侧边。由应用层绑定到 ViewModel，用于在冗余引脚中决定连线锚点。
     /// </summary>
     public static readonly DependencyProperty ActiveSideProperty =
-        DependencyProperty.Register("ActiveSide", typeof(string), typeof(KwyConnector),
+        DependencyProperty.Register("ActiveSide", typeof(FlowPortSide?), typeof(KwyConnector),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnActiveSideChanged));
 
-    public string? ActiveSide
+    public FlowPortSide? ActiveSide
     {
-        get => (string?)GetValue(ActiveSideProperty);
+        get => (FlowPortSide?)GetValue(ActiveSideProperty);
         set => SetValue(ActiveSideProperty, value);
     }
 
@@ -68,11 +69,11 @@ public class KwyConnector : HeaderedContentControl
     /// 端口分配的侧边 (Left, Top, Right, Bottom)。
     /// </summary>
     public static readonly DependencyProperty SideProperty =
-        DependencyProperty.Register("Side", typeof(string), typeof(KwyConnector), new PropertyMetadata(null, OnSideChanged));
+        DependencyProperty.Register("Side", typeof(FlowPortSide), typeof(KwyConnector), new PropertyMetadata(FlowPortSide.Left, OnSideChanged));
 
-    public string? Side
+    public FlowPortSide Side
     {
-        get => (string?)GetValue(SideProperty);
+        get => (FlowPortSide)GetValue(SideProperty);
         set => SetValue(SideProperty, value);
     }
 
@@ -98,12 +99,6 @@ public class KwyConnector : HeaderedContentControl
         // 核心逻辑：
         // 1. 如果 Side 匹配记录的 ActiveSide，那一定是活跃点。
         // 2. 如果 ActiveSide 是空的但是已经连接了，我们要选一个默认侧边显示，否则连线会指空。
-        if (Side == null)
-        {
-            IsActivePin = false;
-            return;
-        }
-
         if (Side == ActiveSide)
         {
             IsActivePin = true;
@@ -111,11 +106,11 @@ public class KwyConnector : HeaderedContentControl
         }
 
         // 初始加载或未明确选择时的回退方案：
-        if (string.IsNullOrEmpty(ActiveSide) && IsConnected)
+        if (ActiveSide is null && IsConnected)
         {
             // 获取父级 ItemContainer 判断是输入还是输出方向（或者检查绑定的端口数据）
             // 这里简单根据 Side 字符串做默认分配：输入默认为 Left，输出默认为 Right
-            if (Side == "Left" || Side == "Right")
+            if (Side is FlowPortSide.Left or FlowPortSide.Right)
             {
                 IsActivePin = true;
                 return;
@@ -141,11 +136,11 @@ public class KwyConnector : HeaderedContentControl
     /// 端口类型 (Data, Execution)。
     /// </summary>
     public static readonly DependencyProperty PortTypeProperty =
-        DependencyProperty.Register("PortType", typeof(string), typeof(KwyConnector), new PropertyMetadata("Data"));
+        DependencyProperty.Register("PortType", typeof(FlowPortType), typeof(KwyConnector), new PropertyMetadata(FlowPortType.Data));
 
-    public string PortType
+    public FlowPortType PortType
     {
-        get => (string)GetValue(PortTypeProperty);
+        get => (FlowPortType)GetValue(PortTypeProperty);
         set => SetValue(PortTypeProperty, value);
     }
 
@@ -153,11 +148,11 @@ public class KwyConnector : HeaderedContentControl
     /// 端口方向 (Input, Output)。
     /// </summary>
     public static readonly DependencyProperty DirectionProperty =
-        DependencyProperty.Register("Direction", typeof(string), typeof(KwyConnector), new PropertyMetadata(null));
+        DependencyProperty.Register("Direction", typeof(FlowPortDirection), typeof(KwyConnector), new PropertyMetadata(FlowPortDirection.Input));
 
-    public string Direction
+    public FlowPortDirection Direction
     {
-        get => (string)GetValue(DirectionProperty);
+        get => (FlowPortDirection)GetValue(DirectionProperty);
         set => SetValue(DirectionProperty, value);
     }
 
@@ -240,7 +235,7 @@ public class KwyConnector : HeaderedContentControl
 
                 // 策略：如果端口有多个物理引脚，只有当前选中的侧边（或未连接时）才更新逻辑坐标
                 // 如果已经连接，且记录的侧边不是我，则我不提供坐标更新（防止连线跳变）
-                if (IsConnected && !string.IsNullOrEmpty(ActiveSide) && ActiveSide != Side)
+                if (IsConnected && ActiveSide is not null && ActiveSide != Side)
                     return;
 
                 if (Math.Abs(logicalAnchor.X - _lastAnchor.X) > 0.1 || Math.Abs(logicalAnchor.Y - _lastAnchor.Y) > 0.1)
@@ -289,7 +284,7 @@ public class KwyConnector : HeaderedContentControl
                     editor.PendingSourceOwner,
                     DataContext,
                     OwnerNode);
-                if (editor.ConnectionCompletedCommand.CanExecute(param))
+                if (editor.CanConnect(param) && editor.ConnectionCompletedCommand.CanExecute(param))
                 {
                     editor.ConnectionCompletedCommand.Execute(param);
                 }
@@ -328,7 +323,7 @@ public class KwyConnector : HeaderedContentControl
                         editor.PendingSourceOwner,
                         DataContext,
                         OwnerNode);
-                    if (editor.ConnectionCompletedCommand.CanExecute(param))
+                    if (editor.CanConnect(param) && editor.ConnectionCompletedCommand.CanExecute(param))
                     {
                         editor.ConnectionCompletedCommand.Execute(param);
                     }

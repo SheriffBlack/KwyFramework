@@ -282,6 +282,7 @@
                         AllowDrop="True"
                         Background="{StaticResource GridBackground}"
                         ConnectionCompletedCommand="{Binding Data.ConnectCompletedCommand, Source={StaticResource Proxy}}"
+                        ConnectionValidator="{Binding Data.ConnectionValidator, Source={StaticResource Proxy}}"
                         ConnectionStartedCommand="{Binding Data.ConnectStartedCommand, Source={StaticResource Proxy}}"
                         ConnectionTemplate="{StaticResource ConnectionTemplate}"
                         Connections="{Binding Connections}"

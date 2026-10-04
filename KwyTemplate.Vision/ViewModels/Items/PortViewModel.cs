@@ -56,10 +56,10 @@ public class PortViewModel : BindableBase
         set => SetProperty(ref connectionCount, value);
     }
 
-    private string? lastSide;
+    private PortSide? lastSide;
 
     /// <summary>最后一次交互或连接时的侧边位置</summary>
-    public string? LastSide
+    public PortSide? LastSide
     {
         get => lastSide;
         set => SetProperty(ref lastSide, value);

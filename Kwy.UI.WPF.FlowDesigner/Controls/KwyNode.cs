@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Kwy.UI.Flow;
 
 namespace Kwy.UI.WPF.FlowDesigner.Controls;
 
@@ -13,11 +14,11 @@ public class KwyNode : HeaderedContentControl
     // ── 附加属性：用于标识端口所属的侧边 ──────────────────────
 
     public static readonly DependencyProperty PortSideProperty =
-        DependencyProperty.RegisterAttached("PortSide", typeof(string), typeof(KwyNode), new PropertyMetadata(null));
+        DependencyProperty.RegisterAttached("PortSide", typeof(FlowPortSide), typeof(KwyNode), new PropertyMetadata(FlowPortSide.Left));
 
-    public static string GetPortSide(DependencyObject obj) => (string)obj.GetValue(PortSideProperty);
+    public static FlowPortSide GetPortSide(DependencyObject obj) => (FlowPortSide)obj.GetValue(PortSideProperty);
 
-    public static void SetPortSide(DependencyObject obj, string value) => obj.SetValue(PortSideProperty, value);
+    public static void SetPortSide(DependencyObject obj, FlowPortSide value) => obj.SetValue(PortSideProperty, value);
 
     // ── 构造 ──────────────────────────────────────────
     static KwyNode()
@@ -98,11 +99,11 @@ public class KwyNode : HeaderedContentControl
 
     // 9. Node status (Running, Success, etc.)
     public static readonly DependencyProperty StatusProperty =
-        DependencyProperty.Register("Status", typeof(object), typeof(KwyNode), new PropertyMetadata(null));
+        DependencyProperty.Register("Status", typeof(FlowNodeVisualState), typeof(KwyNode), new PropertyMetadata(FlowNodeVisualState.Idle));
 
-    public object Status
+    public FlowNodeVisualState Status
     {
-        get => GetValue(StatusProperty);
+        get => (FlowNodeVisualState)GetValue(StatusProperty);
         set => SetValue(StatusProperty, value);
     }
 

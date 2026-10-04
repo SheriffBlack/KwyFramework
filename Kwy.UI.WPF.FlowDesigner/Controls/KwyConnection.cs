@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Kwy.UI.Flow;
 
 namespace Kwy.UI.WPF.FlowDesigner.Controls;
 
@@ -30,22 +31,22 @@ public class KwyConnection : Control
 
     // ── 端口方向 ──
     public static readonly DependencyProperty SourceSideProperty =
-        DependencyProperty.Register("SourceSide", typeof(string), typeof(KwyConnection),
-            new FrameworkPropertyMetadata("Right", FrameworkPropertyMetadataOptions.AffectsRender, OnPointsChanged));
+        DependencyProperty.Register("SourceSide", typeof(FlowPortSide), typeof(KwyConnection),
+            new FrameworkPropertyMetadata(FlowPortSide.Right, FrameworkPropertyMetadataOptions.AffectsRender, OnPointsChanged));
 
-    public string SourceSide
+    public FlowPortSide SourceSide
     {
-        get => (string)GetValue(SourceSideProperty);
+        get => (FlowPortSide)GetValue(SourceSideProperty);
         set => SetValue(SourceSideProperty, value);
     }
 
     public static readonly DependencyProperty TargetSideProperty =
-        DependencyProperty.Register("TargetSide", typeof(string), typeof(KwyConnection),
-            new FrameworkPropertyMetadata("Left", FrameworkPropertyMetadataOptions.AffectsRender, OnPointsChanged));
+        DependencyProperty.Register("TargetSide", typeof(FlowPortSide), typeof(KwyConnection),
+            new FrameworkPropertyMetadata(FlowPortSide.Left, FrameworkPropertyMetadataOptions.AffectsRender, OnPointsChanged));
 
-    public string TargetSide
+    public FlowPortSide TargetSide
     {
-        get => (string)GetValue(TargetSideProperty);
+        get => (FlowPortSide)GetValue(TargetSideProperty);
         set => SetValue(TargetSideProperty, value);
     }
 
@@ -111,8 +112,8 @@ public class KwyConnection : Control
         double p2x = Target.X;
         double p2y = Target.Y;
 
-        string sSide = SourceSide?.ToString() ?? "Right";
-        string tSide = TargetSide?.ToString() ?? "Left";
+        string sSide = SourceSide.ToString();
+        string tSide = TargetSide.ToString();
 
         // ─── 计算偏移 ───
         double hOff = HubOffset;

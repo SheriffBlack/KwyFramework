@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Kwy.UI.Flow;
 using Kwy.UI.WPF.FlowDesigner.Internal;
 
 namespace Kwy.UI.WPF.FlowDesigner.Controls;
@@ -46,6 +47,29 @@ public class KwyEditor : ItemsControl
         get => (IEnumerable?)GetValue(ConnectionsProperty);
         set => SetValue(ConnectionsProperty, value);
     }
+
+    /// <summary>
+    /// 获取或设置应用层提供的连线规则。为空时由连接命令自行决定是否接受连线。
+    /// </summary>
+    public static readonly DependencyProperty ConnectionValidatorProperty =
+        DependencyProperty.Register(
+            nameof(ConnectionValidator),
+            typeof(IFlowConnectionValidator),
+            typeof(KwyEditor),
+            new PropertyMetadata(null));
+
+    public IFlowConnectionValidator? ConnectionValidator
+    {
+        get => (IFlowConnectionValidator?)GetValue(ConnectionValidatorProperty);
+        set => SetValue(ConnectionValidatorProperty, value);
+    }
+
+    public bool CanConnect(FlowConnectionCompletedEventArgs args)
+        => ConnectionValidator?.CanConnect(new FlowConnectionRequest(
+            args.SourceConnector,
+            args.SourceNode,
+            args.TargetConnector,
+            args.TargetNode)) ?? true;
 
     // ── 选中项 ──
     public static readonly DependencyProperty SelectedItemProperty =
@@ -285,7 +309,7 @@ public class KwyEditor : ItemsControl
         set => SetValue(IsConnectingProperty, value);
     }
 
-    internal void StartConnecting(object? source, object? sourceOwner, Point anchor, string? sourceSide = null)
+    internal void StartConnecting(object? source, object? sourceOwner, Point anchor, FlowPortSide sourceSide)
     {
         PendingSource = source;
         pendingSourceOwner = sourceOwner;
@@ -293,7 +317,7 @@ public class KwyEditor : ItemsControl
         {
             Source = anchor,
             Target = anchor,
-            Side = sourceSide ?? "Right"
+            Side = sourceSide
         };
         IsConnecting = true;
         CaptureMouse(); // 捕获鼠标，确保拖拽过程中即便移出控件也能接收到消息
@@ -346,7 +370,7 @@ public class KwyEditor : ItemsControl
             {
                 // 吸附到端口中心，同时把目标端口的方向也传入 vm，这样预览连线才能知道要从哪个方向进入
                 vm.Target = snappedConnector.Anchor;
-                vm.TargetSide = snappedConnector.Side ?? "Left";
+                vm.TargetSide = snappedConnector.Side;
                 SnappingTarget = snappedConnector.DataContext;
                 snappingTargetOwner = snappedConnector.OwnerNode;
             }
@@ -354,7 +378,7 @@ public class KwyEditor : ItemsControl
             {
                 // 自由移动：目标方向不明，重置为默认值
                 vm.Target = logicalPos;
-                vm.TargetSide = "Left";
+                vm.TargetSide = FlowPortSide.Left;
                 SnappingTarget = null;
                 snappingTargetOwner = null;
             }
@@ -422,7 +446,7 @@ public class KwyEditor : ItemsControl
                     pendingSourceOwner,
                     SnappingTarget,
                     snappingTargetOwner);
-                if (ConnectionCompletedCommand?.CanExecute(param) == true)
+                if (CanConnect(param) && ConnectionCompletedCommand?.CanExecute(param) == true)
                 {
                     ConnectionCompletedCommand.Execute(param);
                 }
