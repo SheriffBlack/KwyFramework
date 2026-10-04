@@ -22,8 +22,8 @@
             Grid.Row="1"
             kwyui:ComboBoxHelper.IconMemberPath="Icon"
             FontSize="18"
-            ItemsSource="{Binding ComboBoxIconItems}"
             ItemContainerStyle="{StaticResource IconComboBoxItemStyle}"
+            ItemsSource="{Binding ComboBoxIconItems}"
             Style="{StaticResource IconComboBoxStyle}">
             <ComboBox.ItemTemplate>
                 <DataTemplate>
