@@ -9,6 +9,7 @@
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyLegendStyle.xaml" />
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyNumberBoxStyle.xaml" />
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyPercentStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyDiagramCanvasStyle.xaml" />
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyToastStyle.xaml" />
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

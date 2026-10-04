@@ -28,6 +28,7 @@
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ToggleButtonStyle.xaml" />
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/ToolTipStyle.xaml" />
         <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/WindowButtonStyle.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Kwy.UI.WPF;component/Styles/KwyDiagramCanvasStyle.xaml" />
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>
 
