@@ -155,11 +155,11 @@ public class MainWindowViewModel : BindableBase
 
     #region Initialize Navigation Command
 
-    private DelegateCommand? initCommand;
+    private DelegateCommand? loadCommand;
 
-    public DelegateCommand InitCommand => initCommand ??= new DelegateCommand(ExcuteInitCommand);
+    public DelegateCommand LoadCommand => loadCommand ??= new DelegateCommand(ExcuteLoadCommand);
 
-    private void ExcuteInitCommand()
+    private void ExcuteLoadCommand()
     {
         regionManager.RequestNavigate(RegionNames.WindowRegion, ViewNames.MainView);
     }

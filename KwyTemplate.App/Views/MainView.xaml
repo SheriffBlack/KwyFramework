@@ -24,7 +24,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource TransparentBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
             <Setter Property="Content" Value="{Binding DisplayText}" />
-            <Setter Property="helpers:IconHelper.Icon" Value="{Binding Path=Icon, Converter={kwyui:IconKeyToResourceConverter}}" />
+            <Setter Property="kwyui:IconHelper.Icon" Value="{Binding Path=Icon, Converter={kwyui:IconKeyToResourceConverter}}" />
             <Setter Property="Command" Value="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
             <Setter Property="CommandParameter" Value="{Binding}" />
             <Setter Property="GroupName" Value="MainNavigationGroup" />
