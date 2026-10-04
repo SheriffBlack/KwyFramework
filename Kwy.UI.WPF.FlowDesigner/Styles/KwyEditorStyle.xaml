@@ -22,8 +22,8 @@
                             <Grid x:Name="PART_TransformationLayer">
                                 <Grid.RenderTransform>
                                     <TransformGroup>
-                                        <ScaleTransform ScaleX="{Binding ViewportScale, RelativeSource={RelativeSource TemplatedParent}}" ScaleY="{Binding ViewportScale, RelativeSource={RelativeSource TemplatedParent}}" />
-                                        <TranslateTransform X="{Binding ViewportOffset.X, RelativeSource={RelativeSource TemplatedParent}}" Y="{Binding ViewportOffset.Y, RelativeSource={RelativeSource TemplatedParent}}" />
+                                        <ScaleTransform ScaleX="{Binding Zoom, RelativeSource={RelativeSource TemplatedParent}}" ScaleY="{Binding Zoom, RelativeSource={RelativeSource TemplatedParent}}" />
+                                        <TranslateTransform X="{Binding PanOffset.X, RelativeSource={RelativeSource TemplatedParent}}" Y="{Binding PanOffset.Y, RelativeSource={RelativeSource TemplatedParent}}" />
                                     </TransformGroup>
                                 </Grid.RenderTransform>
 

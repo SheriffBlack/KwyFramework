@@ -1,72 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Specialized;
-using System.ComponentModel;
-using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using Kwy.UI.WPF.FlowDesigner.Internal;
 
 namespace Kwy.UI.WPF.FlowDesigner.Controls;
-
-// ── 预览连线的数据模型 (ViewModel) ──
-public class KwyPendingConnectionViewModel : INotifyPropertyChanged
-{
-    private Point _source;
-
-    public Point Source
-    {
-        get => _source;
-        set { _source = value; OnPropertyChanged(); }
-    }
-
-    private Point _target;
-
-    public Point Target
-    {
-        get => _target;
-        set { _target = value; OnPropertyChanged(); }
-    }
-
-    private string _side = "Right";
-
-    public string Side
-    {
-        get => _side;
-        set { _side = value; OnPropertyChanged(); }
-    }
-
-    private string _targetSide = "Left";
-
-    public string TargetSide
-    {
-        get => _targetSide;
-        set { _targetSide = value; OnPropertyChanged(); }
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    protected void OnPropertyChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-}
-
-// ── 连线辅助转换器 ──
-public class KwyConnectionConverter : IValueConverter
-{
-    public static KwyConnectionConverter OffsetX { get; } = new KwyConnectionConverter();
-
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is Point p && double.TryParse(parameter?.ToString(), out var offset))
-        {
-            return new Point(p.X + offset, p.Y);
-        }
-        return value;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
-}
 
 /// <summary>
 /// 流程图编辑器容器，支持节点定位、缩放及坐标系管理。
@@ -116,6 +56,23 @@ public class KwyEditor : ItemsControl
     {
         get => GetValue(SelectedItemProperty);
         set => SetValue(SelectedItemProperty, value);
+    }
+
+    /// <summary>
+    /// 获取或设置是否允许编辑节点和端口连接。
+    /// 关闭后仍可缩放、平移与选择，适用于流程只读预览。
+    /// </summary>
+    public static readonly DependencyProperty IsEditingEnabledProperty =
+        DependencyProperty.Register(
+            nameof(IsEditingEnabled),
+            typeof(bool),
+            typeof(KwyEditor),
+            new PropertyMetadata(true));
+
+    public bool IsEditingEnabled
+    {
+        get => (bool)GetValue(IsEditingEnabledProperty);
+        set => SetValue(IsEditingEnabledProperty, value);
     }
 
     // ── 连线模板 ──
@@ -217,30 +174,47 @@ public class KwyEditor : ItemsControl
         set => SetValue(HorizontalGuideLinesProperty, value);
     }
 
-    // ── 视口缩放 ──
-    public static readonly DependencyProperty ViewportScaleProperty =
-        DependencyProperty.Register("ViewportScale", typeof(double), typeof(KwyEditor), new PropertyMetadata(1.0));
+    // ── 视口缩放与平移 ──
+    // 与 KwyDiagramCanvas 的 Zoom / PanOffset 保持同一语义；
+    // 此处使用 WPF 的 Vector，以适配编辑器的拖拽计算。
+    public static readonly DependencyProperty ZoomProperty =
+        DependencyProperty.Register(
+            nameof(Zoom),
+            typeof(double),
+            typeof(KwyEditor),
+            new PropertyMetadata(1.0),
+            static value => value is double zoom && double.IsFinite(zoom) && zoom > 0);
 
-    public double ViewportScale
+    public double Zoom
     {
-        get => (double)GetValue(ViewportScaleProperty);
-        set => SetValue(ViewportScaleProperty, value);
+        get => (double)GetValue(ZoomProperty);
+        set => SetValue(ZoomProperty, value);
     }
 
-    // ── 视口偏移 ──
-    public static readonly DependencyProperty ViewportOffsetProperty =
-        DependencyProperty.Register("ViewportOffset", typeof(Vector), typeof(KwyEditor), new PropertyMetadata(new Vector(0, 0)));
+    public static readonly DependencyProperty PanOffsetProperty =
+        DependencyProperty.Register(
+            nameof(PanOffset),
+            typeof(Vector),
+            typeof(KwyEditor),
+            new PropertyMetadata(default(Vector)),
+            static value => value is Vector offset
+                && double.IsFinite(offset.X)
+                && double.IsFinite(offset.Y));
 
-    public Vector ViewportOffset
+    public Vector PanOffset
     {
-        get => (Vector)GetValue(ViewportOffsetProperty);
-        set => SetValue(ViewportOffsetProperty, value);
+        get => (Vector)GetValue(PanOffsetProperty);
+        set => SetValue(PanOffsetProperty, value);
     }
 
     #endregion Dependency Properties
 
+    private object? pendingSourceOwner;
+    private object? snappingTargetOwner;
     private Point panLastMousePosition;
     private bool isPanning;
+
+    internal object? PendingSourceOwner => pendingSourceOwner;
 
     protected override void OnMouseDown(MouseButtonEventArgs e)
     {
@@ -273,7 +247,7 @@ public class KwyEditor : ItemsControl
     {
         base.OnMouseWheel(e);
 
-        double oldScale = ViewportScale;
+        double oldScale = Zoom;
         double zoomFactor = e.Delta > 0 ? 1.1 : 0.9;
         double newScale = Math.Clamp(oldScale * zoomFactor, 0.1, 10.0);
 
@@ -283,15 +257,15 @@ public class KwyEditor : ItemsControl
 
             // 计算缩放中心点在当前逻辑坐标系下的位置
             // Logical = (Visual - Offset) / Scale
-            Vector currentOffset = ViewportOffset;
+            Vector currentOffset = PanOffset;
             double focalX = (mousePos.X - currentOffset.X) / oldScale;
             double focalY = (mousePos.Y - currentOffset.Y) / oldScale;
 
-            ViewportScale = newScale;
+            Zoom = newScale;
 
             // 更新偏移量以保持鼠标位置在缩放时不动
             // NewOffset = Visual - Logical * NewScale
-            ViewportOffset = new Vector(
+            PanOffset = new Vector(
                 mousePos.X - focalX * newScale,
                 mousePos.Y - focalY * newScale
             );
@@ -311,10 +285,11 @@ public class KwyEditor : ItemsControl
         set => SetValue(IsConnectingProperty, value);
     }
 
-    public void StartConnecting(object source, Point anchor, string? sourceSide = null)
+    internal void StartConnecting(object? source, object? sourceOwner, Point anchor, string? sourceSide = null)
     {
         PendingSource = source;
-        PendingConnection = new KwyPendingConnectionViewModel
+        pendingSourceOwner = sourceOwner;
+        PendingConnection = new PendingConnectionState
         {
             Source = anchor,
             Target = anchor,
@@ -324,10 +299,12 @@ public class KwyEditor : ItemsControl
         CaptureMouse(); // 捕获鼠标，确保拖拽过程中即便移出控件也能接收到消息
     }
 
-    public void EndConnecting()
+    internal void EndConnecting()
     {
         PendingConnection = null;
         PendingSource = null;
+        pendingSourceOwner = null;
+        snappingTargetOwner = null;
         SnappingTarget = null;
         IsConnecting = false;
         ReleaseMouseCapture();
@@ -342,12 +319,12 @@ public class KwyEditor : ItemsControl
         if (isPanning)
         {
             Vector diff = visualPos - panLastMousePosition;
-            ViewportOffset += diff;
+            PanOffset += diff;
             panLastMousePosition = visualPos;
             return;
         }
 
-        if (IsConnecting && PendingConnection is KwyPendingConnectionViewModel vm)
+        if (IsConnecting && PendingConnection is PendingConnectionState vm)
         {
             var logicalPos = GetLogicalPosition(visualPos);
 
@@ -371,6 +348,7 @@ public class KwyEditor : ItemsControl
                 vm.Target = snappedConnector.Anchor;
                 vm.TargetSide = snappedConnector.Side ?? "Left";
                 SnappingTarget = snappedConnector.DataContext;
+                snappingTargetOwner = snappedConnector.OwnerNode;
             }
             else
             {
@@ -378,6 +356,7 @@ public class KwyEditor : ItemsControl
                 vm.Target = logicalPos;
                 vm.TargetSide = "Left";
                 SnappingTarget = null;
+                snappingTargetOwner = null;
             }
         }
     }
@@ -438,7 +417,11 @@ public class KwyEditor : ItemsControl
             // 1. 如果在另一个有效的端口上释放，则完成连线 (Drag-and-Drop)
             if (SnappingTarget != null && SnappingTarget != PendingSource)
             {
-                var param = (PendingSource, SnappingTarget);
+                var param = new FlowConnectionCompletedEventArgs(
+                    PendingSource,
+                    pendingSourceOwner,
+                    SnappingTarget,
+                    snappingTargetOwner);
                 if (ConnectionCompletedCommand?.CanExecute(param) == true)
                 {
                     ConnectionCompletedCommand.Execute(param);
@@ -501,8 +484,7 @@ public class KwyEditor : ItemsControl
             return true;
         }
 
-        var owner = PendingSource.GetType().GetProperty("Node")?.GetValue(PendingSource);
-        return owner != null && Items.Contains(owner);
+        return pendingSourceOwner != null && Items.Contains(pendingSourceOwner);
     }
 
     #endregion Container Management
@@ -515,8 +497,8 @@ public class KwyEditor : ItemsControl
     public Point GetLogicalPosition(Point visualPoint)
     {
         return new Point(
-            (visualPoint.X - ViewportOffset.X) / ViewportScale,
-            (visualPoint.Y - ViewportOffset.Y) / ViewportScale
+            (visualPoint.X - PanOffset.X) / Zoom,
+            (visualPoint.Y - PanOffset.Y) / Zoom
         );
     }
 
@@ -526,8 +508,8 @@ public class KwyEditor : ItemsControl
     public Point GetVisualPosition(Point logicalPoint)
     {
         return new Point(
-            logicalPoint.X * ViewportScale + ViewportOffset.X,
-            logicalPoint.Y * ViewportScale + ViewportOffset.Y
+            logicalPoint.X * Zoom + PanOffset.X,
+            logicalPoint.Y * Zoom + PanOffset.Y
         );
     }
 
@@ -576,8 +558,8 @@ public class KwyEditor : ItemsControl
         double newScale = Math.Min(scaleX, scaleY);
         newScale = Math.Clamp(newScale, 0.1, 1.0); // 限制缩放级别 (不放大过头，最多原始尺寸 1.0)
 
-        ViewportScale = newScale;
-        ViewportOffset = new Vector(-minX * newScale + padding, -minY * newScale + padding);
+        Zoom = newScale;
+        PanOffset = new Vector(-minX * newScale + padding, -minY * newScale + padding);
     }
 
     #endregion Viewport Helpers

@@ -7,6 +7,7 @@ using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using Kwy.UI.WPF.Components;
 using Kwy.UI.WPF.Services.FileDialogs;
+using Kwy.UI.WPF.FlowDesigner.Controls;
 using Kwy.Vision.Abstractions.DeepLearning;
 using Kwy.Vision.Abstractions.Results;
 using System.Collections.ObjectModel;
@@ -350,31 +351,29 @@ public class FlowEditorViewModel : BindableBase, INavigationAware
     // ────────────────────────────────────────────────────────────────────────────────────────────
     // Nodify v7 命令绑定
     // ────────────────────────────────────────────────────────────────────────────────────────────
-    // NodifyEditor.ConnectionStartedCommand 当用户从端口开始拖拽时触发
-    //   CommandParameter = 起始 connector 对象（此处为 PortViewModel）
+    // KwyEditor.ConnectionStartedCommand 当用户从端口开始拖拽时触发。
+    //   CommandParameter = FlowConnectorEventArgs。
     //
-    // NodifyEditor.ConnectionCompletedCommand 当用户释放鼠标完成连线时触发
-    //   CommandParameter = (source connector, target connector) 元组
+    // KwyEditor.ConnectionCompletedCommand 当用户释放鼠标完成连线时触发。
+    //   CommandParameter = FlowConnectionCompletedEventArgs。
     //
     // NodifyEditor.DisconnectConnectorCommand 当右键"删除连线"或 Ctrl+Click 端口时触发
     //   CommandParameter = 要断开连接的 connector 对象
 
-    private DelegateCommand<object>? connectStartedCommand;
+    private DelegateCommand<FlowConnectorEventArgs>? connectStartedCommand;
 
-    public DelegateCommand<object> ConnectStartedCommand
-        => connectStartedCommand ??= new DelegateCommand<object>(_ => { /* 暂未使用，预留事件 pending source */ });
+    public DelegateCommand<FlowConnectorEventArgs> ConnectStartedCommand
+        => connectStartedCommand ??= new DelegateCommand<FlowConnectorEventArgs>(_ => { /* 暂未使用，预留事件 pending source */ });
 
-    private DelegateCommand<object>? connectCompletedCommand;
+    private DelegateCommand<FlowConnectionCompletedEventArgs>? connectCompletedCommand;
 
-    public DelegateCommand<object> ConnectCompletedCommand
-        => connectCompletedCommand ??= new DelegateCommand<object>(OnConnectCompleted);
+    public DelegateCommand<FlowConnectionCompletedEventArgs> ConnectCompletedCommand
+        => connectCompletedCommand ??= new DelegateCommand<FlowConnectionCompletedEventArgs>(OnConnectCompleted);
 
-    private async void OnConnectCompleted(object? param)
+    private async void OnConnectCompleted(FlowConnectionCompletedEventArgs? args)
     {
-        // Nodify v7 CompletedCommand parameter: (source, target) 是 两个 connector 对象
-        if (param is not ValueTuple<object, object> tuple) return;
-        if (tuple.Item1 is not PortViewModel src) return;
-        if (tuple.Item2 is not PortViewModel tgt) return;
+        if (args?.SourceConnector is not PortViewModel src) return;
+        if (args.TargetConnector is not PortViewModel tgt) return;
 
         var result = TryConnect(src, tgt);
         if (!result.Success && !string.IsNullOrEmpty(result.ErrorMessage))

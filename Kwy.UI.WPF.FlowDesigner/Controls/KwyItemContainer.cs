@@ -73,6 +73,11 @@ public class KwyItemContainer : ContentControl
         {
             editor.SelectedItem = DataContext;
 
+            if (!editor.IsEditingEnabled)
+            {
+                return;
+            }
+
             startLogicalMousePosition = editor.GetLogicalPosition(e.GetPosition(editor));
             lastLogicalMousePosition = startLogicalMousePosition;
             internalLocation = Location;
@@ -101,8 +106,8 @@ public class KwyItemContainer : ContentControl
                 {
                     var diff = currentLogicalPos - startLogicalMousePosition;
                     // 阈值也根据缩放调整，或者保持逻辑单位
-                    if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance / editor.ViewportScale ||
-                        Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance / editor.ViewportScale)
+                    if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance / editor.Zoom ||
+                        Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance / editor.Zoom)
                     {
                         isMovementStarted = true;
                         lastLogicalMousePosition = currentLogicalPos;

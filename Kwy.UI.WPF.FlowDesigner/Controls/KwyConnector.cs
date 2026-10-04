@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace Kwy.UI.WPF.FlowDesigner.Controls;
 
@@ -160,10 +161,30 @@ public class KwyConnector : HeaderedContentControl
         set => SetValue(DirectionProperty, value);
     }
 
+    /// <summary>
+    /// 获取此端口所属的节点数据项。
+    /// 该值由编辑器容器自动同步，只读且不依赖数据模型中的特定属性名称。
+    /// </summary>
+    private static readonly DependencyPropertyKey OwnerNodePropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(OwnerNode),
+            typeof(object),
+            typeof(KwyConnector),
+            new PropertyMetadata(null));
+
+    public static readonly DependencyProperty OwnerNodeProperty = OwnerNodePropertyKey.DependencyProperty;
+
+    public object? OwnerNode
+    {
+        get => GetValue(OwnerNodeProperty);
+        private set => SetValue(OwnerNodePropertyKey, value);
+    }
+
     public KwyConnector()
     {
-        Loaded += (s, e) => UpdateAnchor();
-        LayoutUpdated += (s, e) => UpdateAnchor();
+        Loaded += (s, e) => UpdateOwnerNodeAndAnchor();
+        DataContextChanged += (s, e) => UpdateOwnerNode();
+        LayoutUpdated += (s, e) => ScheduleAnchorUpdate();
     }
 
     private Point _lastAnchor;
@@ -173,7 +194,33 @@ public class KwyConnector : HeaderedContentControl
     {
         base.OnApplyTemplate();
         _portCircle = Template.FindName("PART_PortCircle", this) as FrameworkElement;
-        UpdateAnchor();
+        ScheduleAnchorUpdate();
+    }
+
+    private void UpdateOwnerNodeAndAnchor()
+    {
+        UpdateOwnerNode();
+        ScheduleAnchorUpdate();
+    }
+
+    private void UpdateOwnerNode()
+        => OwnerNode = FindParent<KwyItemContainer>(this)?.DataContext;
+
+    private bool isAnchorUpdatePending;
+
+    private void ScheduleAnchorUpdate()
+    {
+        if (isAnchorUpdatePending || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
+        isAnchorUpdatePending = true;
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Render, new Action(() =>
+        {
+            isAnchorUpdatePending = false;
+            UpdateAnchor();
+        }));
     }
 
     private void UpdateAnchor()
@@ -223,6 +270,11 @@ public class KwyConnector : HeaderedContentControl
         var editor = FindParent<KwyEditor>(this);
         if (editor == null) return;
 
+        if (!editor.IsEditingEnabled)
+        {
+            return;
+        }
+
         if (editor.IsConnecting)
         {
             // 更新活跃侧边
@@ -231,8 +283,12 @@ public class KwyConnector : HeaderedContentControl
             // 策略：如果已经在连线中，点击第二个端口则完成连线
             if (editor.ConnectionCompletedCommand != null)
             {
-                // 构造 (Source, Target) 元组，符合 FlowEditorViewModel 的预期
-                var param = (editor.PendingSource, DataContext);
+                // 使用结构化参数传递端口及其所属节点，避免调用方依赖元组顺序。
+                var param = new FlowConnectionCompletedEventArgs(
+                    editor.PendingSource,
+                    editor.PendingSourceOwner,
+                    DataContext,
+                    OwnerNode);
                 if (editor.ConnectionCompletedCommand.CanExecute(param))
                 {
                     editor.ConnectionCompletedCommand.Execute(param);
@@ -246,10 +302,11 @@ public class KwyConnector : HeaderedContentControl
             ActiveSide = Side;
 
             // 策略：如果不在连线中，点击端口则开始连线
-            if (editor.ConnectionStartedCommand != null && editor.ConnectionStartedCommand.CanExecute(DataContext))
+            var param = new FlowConnectorEventArgs(DataContext, OwnerNode);
+            if (editor.ConnectionStartedCommand != null && editor.ConnectionStartedCommand.CanExecute(param))
             {
-                editor.ConnectionStartedCommand.Execute(DataContext);
-                editor.StartConnecting(DataContext, Anchor, Side);
+                editor.ConnectionStartedCommand.Execute(param);
+                editor.StartConnecting(DataContext, OwnerNode, Anchor, Side);
             }
         }
     }
@@ -259,14 +316,18 @@ public class KwyConnector : HeaderedContentControl
         base.OnMouseLeftButtonUp(e);
 
         var editor = FindParent<KwyEditor>(this);
-        if (editor != null && editor.IsConnecting)
+        if (editor != null && editor.IsEditingEnabled && editor.IsConnecting)
         {
             // 策略：如果是从不同端口拖拽释放到此端口，则尝试完成连线
             if (editor.PendingSource != DataContext)
             {
                 if (editor.ConnectionCompletedCommand != null)
                 {
-                    var param = (editor.PendingSource, DataContext);
+                    var param = new FlowConnectionCompletedEventArgs(
+                        editor.PendingSource,
+                        editor.PendingSourceOwner,
+                        DataContext,
+                        OwnerNode);
                     if (editor.ConnectionCompletedCommand.CanExecute(param))
                     {
                         editor.ConnectionCompletedCommand.Execute(param);
