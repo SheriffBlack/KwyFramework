@@ -30,7 +30,7 @@
                             SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}">
                             <ContentPresenter.Resources>
                                 <DataTemplate DataType="{x:Type Geometry}">
-                                    <Viewbox Width="16" Height="16">
+                                    <Viewbox Width="18" Height="18">
                                         <Path Data="{Binding}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
                                     </Viewbox>
                                 </DataTemplate>
@@ -45,7 +45,11 @@
                             <Setter TargetName="PART_Border" Property="Background" Value="{DynamicResource WindowButtonPressedBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Foreground" Value="{DynamicResource WindowButtonDisabledForegroundBrush}" />
+                            <!--
+                                模态弹窗会禁用 Owner 窗口。标题栏按钮仍应保持可辨识，
+                                避免禁用前景色在浅色标题栏中近乎透明而误以为按钮被移除。
+                            -->
+                            <Setter Property="Foreground" Value="{DynamicResource WindowTitleBarForegroundBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -71,7 +75,7 @@
                             SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}">
                             <ContentPresenter.Resources>
                                 <DataTemplate DataType="{x:Type Geometry}">
-                                    <Viewbox Width="16" Height="16">
+                                    <Viewbox Width="18" Height="18">
                                         <Path Data="{Binding}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
                                     </Viewbox>
                                 </DataTemplate>
