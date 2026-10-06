@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Logging.Serilog\Kwy.Logging.Serilog.csproj" />
     <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF.Components\Kwy.UI.WPF.Components.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
     <ProjectReference Include="..\KwyPecvd.App\KwyPecvd.App.csproj" />
   </ItemGroup>

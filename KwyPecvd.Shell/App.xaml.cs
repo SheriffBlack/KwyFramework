@@ -1,5 +1,8 @@
-﻿using Kwy.MVVM.WPF;
+﻿using Kwy.MVVM.Modularity;
+using Kwy.MVVM.WPF;
 using Kwy.MVVM.WPF.Mvvm;
+using Kwy.UI.WPF.Components;
+using KwyPecvd.App;
 using KwyPecvd.Shell.Views;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
@@ -16,6 +19,11 @@ public partial class App : KwyApplication
 
     protected override void RegisterTypes(IServiceCollection services)
     {
+        services.AddKwyWpfComponents();
+    }
 
+    protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
+    {
+        moduleCatalog.AddModule<AppModule>();
     }
 }

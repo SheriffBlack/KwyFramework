@@ -8,12 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
     <ProjectReference Include="..\KwyPecvd.Contracts\KwyPecvd.Contracts.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Views\" />
-    <Folder Include="ViewModels\" />
   </ItemGroup>
 
 </Project>

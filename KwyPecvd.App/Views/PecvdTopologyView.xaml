@@ -1,0 +1,51 @@
+<UserControl
+    x:Class="KwyPecvd.App.Views.PecvdTopologyView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:kwyui="http://schemas.kwy.com/ui">
+    <Grid Margin="16">
+        <Border Background="{DynamicResource ControlBackgroundBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="6">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <DockPanel Margin="16,12">
+                    <Button Command="{Binding RefreshDiagramCommand}" Content="模拟状态刷新" DockPanel.Dock="Right" Padding="12,4" />
+                    <StackPanel>
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Text="PECVD 机台拓扑" />
+                        <TextBlock Foreground="{DynamicResource ControlSecondaryForegroundBrush}" Text="腔体、PM、Load Lock、传输腔、BF 与 LP 模块的二维状态总览。" />
+                    </StackPanel>
+                </DockPanel>
+                <kwyui:KwyDiagramCanvas
+                    Grid.Row="1"
+                    Margin="12,0,12,12"
+                    Background="{DynamicResource ControlSelectedBackgroundBrush}"
+                    ClipToBounds="True"
+                    Connections="{Binding Connections}"
+                    NodeClickCommand="{Binding SelectNodeCommand}"
+                    Nodes="{Binding Nodes}"
+                    PanOffset="{Binding DiagramOffset}"
+                    SelectedNode="{Binding SelectedNode}"
+                    Zoom="0.92" />
+
+                <Border
+                    Grid.Row="2"
+                    Padding="16,10"
+                    Background="{DynamicResource ControlHoverBackgroundBrush}"
+                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                    BorderThickness="0,1,0,0">
+                    <DockPanel>
+                        <TextBlock FontWeight="SemiBold" Text="节点信息：" />
+                        <TextBlock Text="{Binding SelectedNodeText}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock
+                            Margin="16,0,0,0"
+                            Foreground="{DynamicResource ControlSecondaryForegroundBrush}"
+                            Text="点击图元查看节点；“模拟状态刷新”用于验证状态重绘。" />
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
