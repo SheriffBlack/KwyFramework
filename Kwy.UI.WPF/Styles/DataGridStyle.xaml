@@ -58,10 +58,10 @@
     <!--  DataGrid 单元格文本样式。  -->
     <Style x:Key="DataGridCellTextBlockStyle" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
-        <!--  选中时保持 DataGrid 的前景色，避免被系统高亮色改写。  -->
+        <!--  选中时跟随当前 DataGridCell 的主题前景色。  -->
         <Style.Triggers>
-            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=DataGridRow}}" Value="True">
-                <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=DataGridCell}}" Value="True">
+                <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridCell}}" />
             </DataTrigger>
         </Style.Triggers>
     </Style>
@@ -114,23 +114,6 @@
                 <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
             </MultiDataTrigger>
 
-            <!--  选中状态使用背景色，避免边框改变 DataGridCellsPresenter 的布局宽度。  -->
-            <MultiTrigger>
-                <MultiTrigger.Conditions>
-                    <Condition Property="IsSelected" Value="True" />
-                    <Condition Property="AlternationIndex" Value="0" />
-                </MultiTrigger.Conditions>
-                <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
-            </MultiTrigger>
-
-            <!--  奇数行选中时使用相同的主题选中色。  -->
-            <MultiTrigger>
-                <MultiTrigger.Conditions>
-                    <Condition Property="IsSelected" Value="True" />
-                    <Condition Property="AlternationIndex" Value="1" />
-                </MultiTrigger.Conditions>
-                <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
-            </MultiTrigger>
         </Style.Triggers>
     </Style>
 
@@ -146,7 +129,7 @@
     <!--
         DataGrid 单元格样式。
         自定义 ControlTemplate 用于去掉 WPF 默认模板里 IsSelected 触发的
-        SystemColors.HighlightBrushKey 浅蓝色高亮。选中和悬停颜色统一由 DataGridRow 管理。
+        SystemColors.HighlightBrushKey 浅蓝色高亮，单元格选中效果由本样式统一管理。
     -->
     <Style
         x:Key="ModernDataGridCellStyle"
@@ -155,7 +138,8 @@
         <Setter Property="MinHeight" Value="{DynamicResource KwyDataGridRowMinHeight}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Focusable" Value="False" />
+        <!--  保留单元格键盘焦点，以支持 Ctrl+C、方向键和连续选择。  -->
+        <Setter Property="Focusable" Value="True" />
         <Setter Property="Padding" Value="{DynamicResource KwyDataGridCellPadding}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
@@ -173,6 +157,32 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ControlSelectedBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ControlSelectedForegroundBrush}" />
+            </Trigger>
+            <!--
+                单元格焦点框只属于单元格选择模式。
+                FullRow 模式由 DataGridRow 统一表达选中状态，不再突出其中某个单元格。
+            -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource Self}}" Value="True" />
+                    <Condition Binding="{Binding SelectionUnit, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="Cell" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="BorderBrush" Value="{DynamicResource ControlFocusedBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+            </MultiDataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource Self}}" Value="True" />
+                    <Condition Binding="{Binding SelectionUnit, RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="CellOrRowHeader" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="BorderBrush" Value="{DynamicResource ControlFocusedBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+            </MultiDataTrigger>
+        </Style.Triggers>
     </Style>
 
     <!--  有边框的现代单元格：复用基础模板，仅增加右侧和底部分隔线。  -->

@@ -19,10 +19,10 @@
     </Style>
 
     <!--
-        ListBoxItem 样式：与 ModernDataGridRowStyle 保持一致
+        ListBoxItem 样式：与 DataGrid 的 FullRow 选中效果保持一致
         · 交替行（AlternationIndex）
         · Hover 高亮
-        · 选中时保留原行色 + 左侧 3px PrimaryBrush 条状指示器（比 DataGrid 多一层视觉反馈）
+        · 选中时整行使用统一的选中背景与前景色，不绘制局部焦点框或左侧指示条
         · 使用时在 ListBox 上指定：
         ItemContainerStyle="{StaticResource ListBoxItemStyle}"
         AlternationCount="2"
@@ -32,24 +32,21 @@
         <!--  基础  -->
         <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Height" Value="40" />
         <Setter Property="Padding" Value="15,0" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Cursor" Value="Arrow" />
 
-        <!--
-            自定义模板：
-            · 左侧 3px BorderThickness 用于选中后呈现 PrimaryBrush 条
-            · Background / BorderBrush 全部 TemplateBinding，由 Style.Triggers 驱动
-        -->
+        <!--  背景铺满整个容器，使选中效果成为连续的整行色块。  -->
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
                     <Border
                         Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="3,0,0,0">
+                        BorderThickness="{TemplateBinding BorderThickness}">
                         <ContentPresenter
                             Margin="{TemplateBinding Padding}"
                             HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -70,25 +67,15 @@
                 <Setter Property="Background" Value="{DynamicResource ControlFocusedBorderSecondBrush}" />
             </Trigger>
 
-            <!--  选中 + 偶数行：恢复原偶数行背景 + 显示左侧条  -->
-            <MultiDataTrigger>
-                <MultiDataTrigger.Conditions>
-                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True" />
-                    <Condition Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource Self}}" Value="0" />
-                </MultiDataTrigger.Conditions>
-                <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
-            </MultiDataTrigger>
+            <!--  选中优先于交替行和 Hover，与 DataGrid 整行选中使用相同主题色。  -->
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ControlSelectedBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ControlSelectedForegroundBrush}" />
+            </Trigger>
 
-            <!--  选中 + 奇数行：恢复原奇数行背景 + 显示左侧条  -->
-            <MultiDataTrigger>
-                <MultiDataTrigger.Conditions>
-                    <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True" />
-                    <Condition Binding="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource Self}}" Value="1" />
-                </MultiDataTrigger.Conditions>
-                <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
-            </MultiDataTrigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
+            </Trigger>
         </Style.Triggers>
     </Style>
 
@@ -115,12 +102,6 @@
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="4">
                         <Grid>
-                            <Border
-                                x:Name="SelectionIndicator"
-                                Width="3"
-                                HorizontalAlignment="Left"
-                                Background="Transparent"
-                                CornerRadius="2" />
                             <ContentPresenter
                                 Margin="{TemplateBinding Padding}"
                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -138,7 +119,6 @@
                         <Trigger Property="IsSelected" Value="True">
                             <Setter Property="Background" Value="{DynamicResource ControlSelectedBackgroundBrush}" />
                             <Setter Property="Foreground" Value="{DynamicResource ControlSelectedForegroundBrush}" />
-                            <Setter TargetName="SelectionIndicator" Property="Background" Value="{DynamicResource PrimaryBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Foreground" Value="{DynamicResource ControlDisabledForegroundBrush}" />
