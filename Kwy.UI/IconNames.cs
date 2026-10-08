@@ -16,6 +16,11 @@ public static class IconNames
     public const string IconFlow = "IconFlow";
     public const string IconFolder = "IconFolder";
     public const string IconHome = "IconHome";
+
+    /// <summary>
+    /// 晶圆搬运机械手图标资源键。
+    /// </summary>
+    public const string IconWaferTransferRobot = "IconWaferTransferRobot";
     public const string IconImport = "IconImport";
     public const string IconImportAll = "IconImportAll";
     public const string IconImportAllMirrored = "IconImportAllMirrored";
