@@ -39,11 +39,6 @@ public interface IAnalogOutputDevice : IDevice
     ValueTask WriteAnalogOutputRawAsync(int channel, double rawValue, CancellationToken cancellationToken = default);
 }
 
-/// <summary>同时具备 AI 和 AO 能力的复合模拟量 IO 设备。</summary>
-public interface IAnalogIoDevice : IAnalogInputDevice, IAnalogOutputDevice
-{
-}
-
 /// <summary>按稳定点位 ID 读取工程量。</summary>
 public interface ILogicalAnalogInputReader
 {
@@ -61,4 +56,9 @@ public interface ILogicalAnalogOutputWriter
 public interface IAnalogOutputSafeStateController
 {
     ValueTask ApplyProcessSafeOutputsAsync(CancellationToken cancellationToken = default);
+}
+
+/// <summary>同时具备 AI 和 AO 能力的复合模拟量 IO 设备。</summary>
+public interface IAnalogIoDevice : IAnalogInputDevice, IAnalogOutputDevice
+{
 }
