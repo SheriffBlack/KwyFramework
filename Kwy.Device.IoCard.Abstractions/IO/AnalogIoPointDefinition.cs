@@ -49,12 +49,8 @@ public sealed record AnalogIoPointDefinition
     public int Channel { get; init; }
     public AnalogElectricalSignal ElectricalSignal { get; init; }
 
-    /// <summary>设备适配器返回的有效原始量下限，例如 4 mA 或 0 V。</summary>
-    public double RawMinimum { get; init; }
-    /// <summary>设备适配器返回的有效原始量上限，例如 20 mA 或 10 V。</summary>
-    public double RawMaximum { get; init; } = 1;
-    public double EngineeringMinimum { get; init; }
-    public double EngineeringMaximum { get; init; } = 1;
+    /// <summary>原始信号与工程量之间的线性量程定义。</summary>
+    public required AnalogIoScale Scale { get; init; }
     public string? Unit { get; init; }
     public double? ProcessSafeValue { get; init; }
     public double? MinimumAllowedValue { get; init; }
@@ -74,8 +70,7 @@ public sealed record AnalogIoPointDefinition
         if (!Enum.IsDefined(Criticality)) throw new ArgumentOutOfRangeException(nameof(Criticality));
         if (Channel is < 0 or >= AnalogIoChannelLimits.DefaultChannelCount)
             throw new ArgumentOutOfRangeException(nameof(Channel), Channel, "模拟量通道必须位于 0～63。");
-        ValidateRange(RawMinimum, RawMaximum, nameof(RawMinimum), nameof(RawMaximum));
-        ValidateRange(EngineeringMinimum, EngineeringMaximum, nameof(EngineeringMinimum), nameof(EngineeringMaximum));
+        Scale.Validate();
 
         if (Direction == AnalogIoDirection.Input && (ProcessSafeValue is not null || Owner is not null))
             throw new InvalidOperationException($"模拟输入点位“{Id}”不能配置安全输出值或 Owner。");
@@ -87,30 +82,10 @@ public sealed record AnalogIoPointDefinition
             throw new ArgumentException("MinimumAllowedValue 不能大于 MaximumAllowedValue。");
     }
 
-    public double ToEngineeringValue(double rawValue)
-    {
-        if (!double.IsFinite(rawValue)) throw new ArgumentOutOfRangeException(nameof(rawValue));
-        return (rawValue - RawMinimum) / (RawMaximum - RawMinimum)
-            * (EngineeringMaximum - EngineeringMinimum) + EngineeringMinimum;
-    }
-
-    public double ToRawValue(double engineeringValue)
-    {
-        if (!double.IsFinite(engineeringValue)) throw new ArgumentOutOfRangeException(nameof(engineeringValue));
-        return (engineeringValue - EngineeringMinimum) / (EngineeringMaximum - EngineeringMinimum)
-            * (RawMaximum - RawMinimum) + RawMinimum;
-    }
-
     private void ValidateEngineeringValue(double? value, string parameterName)
     {
         if (value is not { } actual) return;
-        if (!double.IsFinite(actual) || actual < EngineeringMinimum || actual > EngineeringMaximum)
-            throw new ArgumentOutOfRangeException(parameterName, actual, $"必须位于工程量程 [{EngineeringMinimum}, {EngineeringMaximum}] 内。");
-    }
-
-    private static void ValidateRange(double minimum, double maximum, string minimumName, string maximumName)
-    {
-        if (!double.IsFinite(minimum)) throw new ArgumentOutOfRangeException(minimumName);
-        if (!double.IsFinite(maximum) || maximum <= minimum) throw new ArgumentOutOfRangeException(maximumName);
+        if (!double.IsFinite(actual) || actual < Scale.EngineeringMinimum || actual > Scale.EngineeringMaximum)
+            throw new ArgumentOutOfRangeException(parameterName, actual, $"必须位于工程量程 [{Scale.EngineeringMinimum}, {Scale.EngineeringMaximum}] 内。");
     }
 }

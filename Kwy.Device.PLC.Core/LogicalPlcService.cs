@@ -6,7 +6,11 @@ namespace Kwy.Device.PLC.Core;
 /// <summary>
 /// PLC 业务点位读写服务。负责把稳定点位 ID 解析为设备与物理地址，并执行权限和类型校验。
 /// </summary>
-public sealed class LogicalPlcService : ILogicalPlcReader, ILogicalPlcWriter
+public sealed class LogicalPlcService :
+    ILogicalPlcReader,
+    ILogicalPlcWriter,
+    ILogicalPlcEngineeringReader,
+    ILogicalPlcEngineeringWriter
 {
     private readonly IPlcPointDefinitionProvider definitions;
     private readonly IDeviceRegistry devices;
@@ -62,4 +66,82 @@ public sealed class LogicalPlcService : ILogicalPlcReader, ILogicalPlcWriter
             default: throw new InvalidOperationException($"值类型 {typeof(T).Name} 与 PLC 点位“{point.Id}”声明的数据类型 {point.DataType} 不一致。");
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<double> ReadEngineeringAsync(string pointId, CancellationToken cancellationToken = default)
+    {
+        PlcPointDefinition point = GetScaledPoint(pointId, forWrite: false);
+        double rawValue = point.DataType switch
+        {
+            PlcDataType.Int16 => await ReadAsync<short>(pointId, cancellationToken).ConfigureAwait(false),
+            PlcDataType.UInt16 => await ReadAsync<ushort>(pointId, cancellationToken).ConfigureAwait(false),
+            PlcDataType.Int32 => await ReadAsync<int>(pointId, cancellationToken).ConfigureAwait(false),
+            PlcDataType.UInt32 => await ReadAsync<uint>(pointId, cancellationToken).ConfigureAwait(false),
+            PlcDataType.Float => await ReadAsync<float>(pointId, cancellationToken).ConfigureAwait(false),
+            _ => throw CreateNonNumericPointException(point)
+        };
+        return PlcValueConverter.ToEngineeringValue(rawValue, point.Scale!.Value);
+    }
+
+    /// <inheritdoc/>
+    public async Task WriteEngineeringAsync(string pointId, double value, CancellationToken cancellationToken = default)
+    {
+        PlcPointDefinition point = GetScaledPoint(pointId, forWrite: true);
+        PlcValueScale scale = point.Scale!.Value;
+        if (!double.IsFinite(value) || value < scale.EngineeringMinimum || value > scale.EngineeringMaximum)
+            throw new ArgumentOutOfRangeException(nameof(value), value,
+                $"PLC 点位“{point.Id}”的工程量必须位于 [{scale.EngineeringMinimum}, {scale.EngineeringMaximum}] {point.Unit}。");
+
+        double rawValue = PlcValueConverter.ToRawValue(value, scale);
+        switch (point.DataType)
+        {
+            case PlcDataType.Int16: await WriteAsync(pointId, ToInt16(rawValue, point), cancellationToken).ConfigureAwait(false); break;
+            case PlcDataType.UInt16: await WriteAsync(pointId, ToUInt16(rawValue, point), cancellationToken).ConfigureAwait(false); break;
+            case PlcDataType.Int32: await WriteAsync(pointId, ToInt32(rawValue, point), cancellationToken).ConfigureAwait(false); break;
+            case PlcDataType.UInt32: await WriteAsync(pointId, ToUInt32(rawValue, point), cancellationToken).ConfigureAwait(false); break;
+            case PlcDataType.Float:
+                if (rawValue is < -float.MaxValue or > float.MaxValue)
+                    throw CreateRawOverflowException(point, rawValue);
+                await WriteAsync(pointId, (float)rawValue, cancellationToken).ConfigureAwait(false);
+                break;
+            default: throw CreateNonNumericPointException(point);
+        }
+    }
+
+    private PlcPointDefinition GetScaledPoint(string pointId, bool forWrite)
+    {
+        PlcPointDefinition point = definitions.GetRequired(pointId);
+        if (forWrite && point.Access == PlcPointAccess.ReadOnly)
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”为只读点位。");
+        if (!forWrite && point.Access == PlcPointAccess.WriteOnly)
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”为只写点位。");
+        if (point.Scale is null)
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”未配置工程量量程。");
+        return point;
+    }
+
+    private static short ToInt16(double value, PlcPointDefinition point)
+        => checked((short)RoundInteger(value, short.MinValue, short.MaxValue, point));
+
+    private static ushort ToUInt16(double value, PlcPointDefinition point)
+        => checked((ushort)RoundInteger(value, ushort.MinValue, ushort.MaxValue, point));
+
+    private static int ToInt32(double value, PlcPointDefinition point)
+        => checked((int)RoundInteger(value, int.MinValue, int.MaxValue, point));
+
+    private static uint ToUInt32(double value, PlcPointDefinition point)
+        => checked((uint)RoundInteger(value, uint.MinValue, uint.MaxValue, point));
+
+    private static double RoundInteger(double value, double minimum, double maximum, PlcPointDefinition point)
+    {
+        double rounded = Math.Round(value, MidpointRounding.AwayFromZero);
+        if (rounded < minimum || rounded > maximum) throw CreateRawOverflowException(point, value);
+        return rounded;
+    }
+
+    private static InvalidOperationException CreateNonNumericPointException(PlcPointDefinition point)
+        => new($"PLC 点位“{point.Id}”的数据类型 {point.DataType} 不支持工程量换算。");
+
+    private static OverflowException CreateRawOverflowException(PlcPointDefinition point, double rawValue)
+        => new($"PLC 点位“{point.Id}”换算后的原始值 {rawValue} 超出 {point.DataType} 可表示范围。");
 }

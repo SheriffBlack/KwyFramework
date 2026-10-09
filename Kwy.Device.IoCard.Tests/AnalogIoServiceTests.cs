@@ -11,6 +11,24 @@ namespace Kwy.Device.IoCard.Tests;
 public sealed class AnalogIoServiceTests
 {
     [Fact]
+    public void ValueConverter_ConvertsInBothDirections()
+    {
+        var scale = new AnalogIoScale(4, 20, 0, 10);
+
+        Assert.Equal(5, AnalogIoValueConverter.ToEngineeringValue(12, scale), 6);
+        Assert.Equal(12, AnalogIoValueConverter.ToRawValue(5, scale), 6);
+    }
+
+    [Fact]
+    public void ValueConverter_RejectsInvalidScale()
+    {
+        var scale = new AnalogIoScale(20, 4, 0, 10);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            AnalogIoValueConverter.ToEngineeringValue(12, scale));
+    }
+
+    [Fact]
     public async Task ReadSampleAsync_ConvertsRawValueToEngineeringValue()
     {
         var device = new FakeAnalogDevice { InputRawValue = 12 };
@@ -87,10 +105,7 @@ public sealed class AnalogIoServiceTests
         Direction = AnalogIoDirection.Input,
         Channel = 0,
         ElectricalSignal = AnalogElectricalSignal.Current,
-        RawMinimum = 4,
-        RawMaximum = 20,
-        EngineeringMinimum = 0,
-        EngineeringMaximum = 10,
+        Scale = new(4, 20, 0, 10),
         Unit = "MPa"
     };
 
@@ -102,10 +117,7 @@ public sealed class AnalogIoServiceTests
         Direction = AnalogIoDirection.Output,
         Channel = 0,
         ElectricalSignal = AnalogElectricalSignal.Voltage,
-        RawMinimum = 0,
-        RawMaximum = 10,
-        EngineeringMinimum = 0,
-        EngineeringMaximum = 100,
+        Scale = new(0, 10, 0, 100),
         Unit = "%"
     };
 

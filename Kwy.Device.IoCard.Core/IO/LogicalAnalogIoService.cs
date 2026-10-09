@@ -36,7 +36,9 @@ public sealed class LogicalAnalogIoService :
         AnalogIoQuality quality = rawSample.Quality == AnalogIoQuality.Good
             ? GetQuality(point, rawValue)
             : rawSample.Quality;
-        double value = double.IsFinite(rawValue) ? point.ToEngineeringValue(rawValue) : double.NaN;
+        double value = double.IsFinite(rawValue)
+            ? AnalogIoValueConverter.ToEngineeringValue(rawValue, point.Scale)
+            : double.NaN;
         return new(point.Id, value, rawValue, rawSample.Timestamp, quality);
     }
 
@@ -52,7 +54,8 @@ public sealed class LogicalAnalogIoService :
 
         IAnalogOutputDevice device = devices.GetRequiredDevice<IAnalogOutputDevice>(point.DeviceId);
         ValidateChannel(point, device.AnalogOutputCount);
-        await device.WriteAnalogOutputRawAsync(point.Channel, point.ToRawValue(value), cancellationToken).ConfigureAwait(false);
+        double rawValue = AnalogIoValueConverter.ToRawValue(value, point.Scale);
+        await device.WriteAnalogOutputRawAsync(point.Channel, rawValue, cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask ApplyProcessSafeOutputsAsync(CancellationToken cancellationToken = default)
@@ -90,8 +93,8 @@ public sealed class LogicalAnalogIoService :
 
     private static void ValidateOutputValue(AnalogIoPointDefinition point, double value)
     {
-        if (!double.IsFinite(value) || value < point.EngineeringMinimum || value > point.EngineeringMaximum)
-            throw new ArgumentOutOfRangeException(nameof(value), value, $"模拟输出“{point.Id}”必须位于 [{point.EngineeringMinimum}, {point.EngineeringMaximum}] {point.Unit}。");
+        if (!double.IsFinite(value) || value < point.Scale.EngineeringMinimum || value > point.Scale.EngineeringMaximum)
+            throw new ArgumentOutOfRangeException(nameof(value), value, $"模拟输出“{point.Id}”必须位于 [{point.Scale.EngineeringMinimum}, {point.Scale.EngineeringMaximum}] {point.Unit}。");
         if (point.MinimumAllowedValue is { } min && value < min)
             throw new ArgumentOutOfRangeException(nameof(value), value, $"模拟输出“{point.Id}”低于允许下限 {min}。");
         if (point.MaximumAllowedValue is { } max && value > max)
@@ -109,8 +112,8 @@ public sealed class LogicalAnalogIoService :
     private static AnalogIoQuality GetQuality(AnalogIoPointDefinition point, double rawValue)
     {
         if (!double.IsFinite(rawValue)) return AnalogIoQuality.Invalid;
-        if (rawValue < point.RawMinimum) return AnalogIoQuality.UnderRange;
-        if (rawValue > point.RawMaximum) return AnalogIoQuality.OverRange;
+        if (rawValue < point.Scale.RawMinimum) return AnalogIoQuality.UnderRange;
+        if (rawValue > point.Scale.RawMaximum) return AnalogIoQuality.OverRange;
         return AnalogIoQuality.Good;
     }
 }

@@ -49,6 +49,11 @@ public sealed record PlcPointDefinition
     public ushort Length { get; init; } = 1;
     /// <summary>可选工程单位。</summary>
     public string? Unit { get; init; }
+    /// <summary>
+    /// 可选的原始数值—工程量线性换算。
+    /// 未配置时，该点位只支持原始类型读写。
+    /// </summary>
+    public PlcValueScale? Scale { get; init; }
     /// <summary>用于维护界面、诊断和筛选的可选分组。</summary>
     public string? Group { get; init; }
     /// <summary>面向维护人员的可选说明。</summary>
@@ -93,5 +98,11 @@ public sealed record PlcPointDefinition
         if (Length == 0) throw new ArgumentOutOfRangeException(nameof(Length));
         if (DataType != PlcDataType.Bytes && Length != 1)
             throw new InvalidOperationException($"PLC 点位“{Id}”仅在字节数据类型下可以指定 Length。");
+        if (Scale is { } scale)
+        {
+            if (DataType is PlcDataType.Boolean or PlcDataType.Bytes)
+                throw new InvalidOperationException($"PLC 点位“{Id}”的数据类型 {DataType} 不支持工程量换算。");
+            scale.Validate();
+        }
     }
 }

@@ -17,6 +17,8 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<LogicalPlcService>();
         services.TryAddSingleton<ILogicalPlcReader>(provider => provider.GetRequiredService<LogicalPlcService>());
         services.TryAddSingleton<ILogicalPlcWriter>(provider => provider.GetRequiredService<LogicalPlcService>());
+        services.TryAddSingleton<ILogicalPlcEngineeringReader>(provider => provider.GetRequiredService<LogicalPlcService>());
+        services.TryAddSingleton<ILogicalPlcEngineeringWriter>(provider => provider.GetRequiredService<LogicalPlcService>());
         return services;
     }
 

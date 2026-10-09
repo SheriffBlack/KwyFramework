@@ -30,3 +30,20 @@ public interface ILogicalPlcWriter
     /// <summary>写入点位值，并校验访问权限及数据类型。</summary>
     Task WriteAsync<T>(string pointId, T value, CancellationToken cancellationToken = default);
 }
+
+/// <summary>按照稳定业务点位 ID 读取换算后的 PLC 工程量。</summary>
+public interface ILogicalPlcEngineeringReader
+{
+    /// <summary>读取数值点位的原始值，并根据点位量程转换为工程量。</summary>
+    Task<double> ReadEngineeringAsync(string pointId, CancellationToken cancellationToken = default);
+}
+
+/// <summary>按照稳定业务点位 ID 写入 PLC 工程量。</summary>
+public interface ILogicalPlcEngineeringWriter
+{
+    /// <summary>
+    /// 将工程量换算为寄存器原始值并写入。
+    /// 整数寄存器使用远离零的中点舍入。
+    /// </summary>
+    Task WriteEngineeringAsync(string pointId, double value, CancellationToken cancellationToken = default);
+}
