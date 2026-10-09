@@ -1,4 +1,4 @@
-﻿using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Automation.BDaq;
 using Kwy.Device.IoCard.Core;
 using Kwy.Device.IoCard.Advantech;
@@ -8,7 +8,7 @@ namespace Kwy.Device.IoCard.Advantech;
 /// <summary>
 /// Advantech PCI/DAQNavi digital IO card implementation.
 /// </summary>
-public sealed class AdvantechIoCardDevice : IoCardBase
+public sealed class AdvantechIoCardDevice : DigitalIoDeviceBase
 {
     private readonly AdvantechIoCardConfig config;
     private readonly InstantDiCtrl diController = new();
@@ -96,7 +96,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     public override void WriteDoBit(int channel, bool state)
     {
         EnsureReady();
-        IoChannelGuard.ValidateChannel(channel, GetDoChannelCount(), nameof(channel));
+        DigitalIoChannelGuard.ValidateChannel(channel, GetDoChannelCount(), nameof(channel));
 
         ExecuteIo(() =>
         {
@@ -121,7 +121,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     public override bool ReadDiBit(int channel)
     {
         EnsureReady();
-        IoChannelGuard.ValidateChannel(channel, GetDiChannelCount(), nameof(channel));
+        DigitalIoChannelGuard.ValidateChannel(channel, GetDiChannelCount(), nameof(channel));
 
         return ExecuteIo(() =>
         {
@@ -269,7 +269,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
             byte[] portData = GetDiPortBuffer(portCount);
             ThrowIfFailed(diController.Read(0, portCount, portData), "读取 DI 端口失败");
 
-            return IoBitConverter.ToMask(portData);
+            return DigitalIoBitConverter.ToMask(portData);
         });
     }
 
@@ -277,7 +277,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
     {
         lock (interruptSync)
         {
-            IoChannelGuard.ValidateChannel(config.InterruptChannel, GetDiChannelCount(), nameof(config.InterruptChannel));
+            DigitalIoChannelGuard.ValidateChannel(config.InterruptChannel, GetDiChannelCount(), nameof(config.InterruptChannel));
             int interruptIndex = config.InterruptChannel / 8;
             if (interruptIndex >= diController.Features.PortCount)
             {
@@ -302,7 +302,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             byte[] portData = GetDiPortBuffer(portCount);
             ThrowIfFailed(diController.Read(0, portCount, portData), "读取 DI 端口失败");
-            return IoBitConverter.ToBits(portData);
+            return DigitalIoBitConverter.ToBits(portData);
         });
     }
 
@@ -312,7 +312,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             byte[] portData = GetDoPortBuffer(portCount);
             ThrowIfFailed(doController.Read(0, portCount, portData), "读取 DO 端口失败");
-            return IoBitConverter.ToBits(portData);
+            return DigitalIoBitConverter.ToBits(portData);
         });
     }
 
@@ -449,7 +449,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
         {
             RaiseHardwareInterrupt(
                 ReadDiPortMaskCore(),
-                config.InterruptRisingEdge ? IoTriggerEdge.Rising : IoTriggerEdge.Falling);
+                config.InterruptRisingEdge ? DigitalInputTriggerEdge.Rising : DigitalInputTriggerEdge.Falling);
         }
         catch (Exception ex)
         {
@@ -482,7 +482,7 @@ public sealed class AdvantechIoCardDevice : IoCardBase
 
     private ulong GetWritableDoMask()
     {
-        return IoBitConverter.CreateWritableMask(GetDoChannelCount());
+        return DigitalIoBitConverter.CreateWritableMask(GetDoChannelCount());
     }
 
     protected override int GetDigitalOutputChannelCount()

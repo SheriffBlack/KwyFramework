@@ -1,4 +1,4 @@
-﻿using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.MotionCard.Abstractions;
 using Kwy.Device.MotionCard.Abstractions.Axes;
 using Kwy.Device.MotionCard.Abstractions.Configuration;
@@ -14,7 +14,7 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
     private readonly IMotionRuntimeRegistry runtimes;
     private readonly IAxisDefinitionProvider axisDefinitions;
     private readonly IMotionGroupDefinitionProvider groups;
-    private readonly IIoPointDefinitionProvider? ioPointDefinitions;
+    private readonly IDigitalIoPointDefinitionProvider? ioPointDefinitions;
     private readonly IVirtualAxisDefinitionProvider? virtualAxes;
     private readonly IMotionSynchronizationDefinitionProvider? synchronizations;
 
@@ -22,7 +22,7 @@ public sealed class MotionConfigurationValidator : IMotionConfigurationValidator
         IMotionRuntimeRegistry runtimes,
         IAxisDefinitionProvider axisDefinitions,
         IMotionGroupDefinitionProvider groups,
-        IIoPointDefinitionProvider? ioPointDefinitions = null,
+        IDigitalIoPointDefinitionProvider? ioPointDefinitions = null,
         IVirtualAxisDefinitionProvider? virtualAxes = null,
         IMotionSynchronizationDefinitionProvider? synchronizations = null)
     {

@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.IoCard.Core;
 using Kwy.Device.MotionCard.Abstractions.Axes;
@@ -13,7 +13,7 @@ public sealed class LeadshineMotionCardDevice :
     IInterpolationMotionController,
     IAxisChannelDefinitionProvider,
     IPositionCompareOutput,
-    IIoCardDevice,
+    IDigitalIoDevice,
     IBulkAxisSnapshotReader,
     IBufferedAxisSnapshotReader
 {
@@ -28,7 +28,7 @@ public sealed class LeadshineMotionCardDevice :
     private readonly HashSet<short> homedAxes = new();
     private readonly Dictionary<short, short[]> coordinateAxes = new();
     private readonly Dictionary<short, PendingInterpolation> pendingInterpolations = new();
-    private readonly PulseOutputScheduler pulseScheduler;
+    private readonly DigitalOutputPulseScheduler pulseScheduler;
 
     public LeadshineMotionCardDevice(LeadshineMotionCardConfig config, IAxisDefinitionProvider definitions)
         : this(config.DeviceId ?? $"Leadshine-{config.CardNo}", config.Model, config, definitions)
@@ -54,7 +54,7 @@ public sealed class LeadshineMotionCardDevice :
         if (config.AxisOptions.Keys.Any(channel => !axisDefinitions.ContainsKey(channel)))
             throw new ArgumentException($"Leadshine axis options reference a channel without a device-level axis definition.", nameof(config));
 
-        pulseScheduler = new PulseOutputScheduler(
+        pulseScheduler = new DigitalOutputPulseScheduler(
             WriteDoBit,
             () => !disposed && IsConnected,
             (channel, ex) => RaiseErrorOccurred($"Reset DO pulse channel {channel} failed: {ex.Message}", ex));
@@ -758,20 +758,20 @@ public sealed class LeadshineMotionCardDevice :
     public void WriteDoBit(int channel, bool state)
     {
         EnsureReady();
-        IoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
+        DigitalIoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
         ulong bitMask = 1UL << channel;
         WriteDoPortMask(state ? bitMask : 0, bitMask);
     }
 
     public void WriteDoPortMask(ulong mask)
     {
-        WriteDoPortMask(mask, IoBitConverter.CreateWritableMask(config.DoChannelCount));
+        WriteDoPortMask(mask, DigitalIoBitConverter.CreateWritableMask(config.DoChannelCount));
     }
 
     public void WriteDoPortMask(ulong mask, ulong changedMask)
     {
         EnsureReady();
-        ulong writableMask = IoBitConverter.CreateWritableMask(config.DoChannelCount);
+        ulong writableMask = DigitalIoBitConverter.CreateWritableMask(config.DoChannelCount);
         changedMask &= writableMask;
 
         if (changedMask == 0)
@@ -816,7 +816,7 @@ public sealed class LeadshineMotionCardDevice :
     public bool ReadDiBit(int channel)
     {
         EnsureReady();
-        IoChannelGuard.ValidateChannel(channel, config.DiChannelCount, nameof(channel));
+        DigitalIoChannelGuard.ValidateChannel(channel, config.DiChannelCount, nameof(channel));
         return (ReadDiPortMask() & (1UL << channel)) != 0;
     }
 
@@ -836,7 +836,7 @@ public sealed class LeadshineMotionCardDevice :
     public void WritePulse(int channel, int durationMs)
     {
         EnsureReady();
-        IoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
+        DigitalIoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
         pulseScheduler.WritePulse(channel, durationMs);
     }
 
@@ -928,7 +928,7 @@ public sealed class LeadshineMotionCardDevice :
 
     private static bool[] ToLogicalBits(ulong logicalMask, int channelCount)
     {
-        var bits = new bool[IoBitConverter.DefaultChannelCount];
+        var bits = new bool[DigitalIoBitConverter.DefaultChannelCount];
         for (int channel = 0; channel < channelCount; channel++)
         {
             bits[channel] = (logicalMask & (1UL << channel)) != 0;
@@ -939,7 +939,7 @@ public sealed class LeadshineMotionCardDevice :
 
     private ulong ToLogicalIoValue(ulong physicalMask, int channelCount)
     {
-        ulong validMask = IoBitConverter.CreateWritableMask(channelCount);
+        ulong validMask = DigitalIoBitConverter.CreateWritableMask(channelCount);
         return config.DigitalIoActiveLow
             ? ~physicalMask & validMask
             : physicalMask & validMask;

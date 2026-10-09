@@ -1,4 +1,4 @@
-﻿using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.MotionCard.Abstractions;
 using Kwy.Device.MotionCard.Abstractions.Axes;
 using Kwy.Device.MotionCard.Abstractions.Operations;
@@ -10,12 +10,12 @@ public sealed class BusinessAxisMotionExecutor : IBusinessAxisMotionExecutor
 {
     private readonly IMotionRuntimeRegistry runtimes;
     private readonly IAxisDefinitionProvider axisDefinitions;
-    private readonly ILogicalIoReader logicalIo;
+    private readonly ILogicalDigitalInputReader logicalIo;
     private readonly IMotionResourceLock resources;
     private readonly IMotionOperationTracker operations;
     private readonly IAxisHomeLifecycle homeLifecycle;
 
-    public BusinessAxisMotionExecutor(IMotionRuntimeRegistry runtimes, IAxisDefinitionProvider axisDefinitions, ILogicalIoReader logicalIo, IMotionResourceLock resources, IMotionOperationTracker operations, IAxisHomeLifecycle homeLifecycle)
+    public BusinessAxisMotionExecutor(IMotionRuntimeRegistry runtimes, IAxisDefinitionProvider axisDefinitions, ILogicalDigitalInputReader logicalIo, IMotionResourceLock resources, IMotionOperationTracker operations, IAxisHomeLifecycle homeLifecycle)
     {
         this.runtimes = runtimes ?? throw new ArgumentNullException(nameof(runtimes));
         this.axisDefinitions = axisDefinitions ?? throw new ArgumentNullException(nameof(axisDefinitions));

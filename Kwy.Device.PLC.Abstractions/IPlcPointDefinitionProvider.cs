@@ -1,8 +1,8 @@
-﻿namespace Kwy.Device.PLC.Abstractions;
+namespace Kwy.Device.PLC.Abstractions;
 
 /// <summary>
 /// PLC 点位定义的只读查询入口。
-/// 与 IO 的 <c>IIoPointDefinitionProvider</c>、运动轴的 <c>IAxisDefinitionProvider</c> 对应；
+/// 与 IO 的 <c>IDigitalIoPointDefinitionProvider</c>、运动轴的 <c>IAxisDefinitionProvider</c> 对应；
 /// 业务通过稳定 ID 查询定义，而不直接维护 PLC 地址字典。
 /// </summary>
 public interface IPlcPointDefinitionProvider

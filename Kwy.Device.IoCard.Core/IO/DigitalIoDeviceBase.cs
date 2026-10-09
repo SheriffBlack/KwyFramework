@@ -1,4 +1,4 @@
-﻿using Kwy.Communicate.Abstractions.Enums;
+using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
@@ -10,16 +10,16 @@ namespace Kwy.Device.IoCard.Core;
 /// 物理 IO 卡适配器基类。
 /// 仅封装通道校验、端口掩码写入、普通软件定时脉冲和可选硬件中断；不保存业务点位名称或工艺规则。
 /// </summary>
-public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterruptSource
+public abstract class DigitalIoDeviceBase : DeviceBase, IDigitalIoDevice, IDigitalInputInterruptSource
 {
-    protected const int DefaultIoChannelCount = IoChannelGuard.MaxChannelCount;
+    protected const int DefaultIoChannelCount = DigitalIoChannelGuard.MaxChannelCount;
 
-    private readonly PulseOutputScheduler pulseScheduler;
+    private readonly DigitalOutputPulseScheduler pulseScheduler;
 
-    protected IoCardBase(string deviceId, string deviceName, IDeviceConfig config)
+    protected DigitalIoDeviceBase(string deviceId, string deviceName, IDeviceConfig config)
         : base(deviceId, deviceName, config)
     {
-        pulseScheduler = new PulseOutputScheduler(
+        pulseScheduler = new DigitalOutputPulseScheduler(
             WriteDoBit,
             () => !disposed && IsConnected,
             (channel, ex) => RaiseErrorOccurred($"Reset DO pulse channel {channel} failed: {ex.Message}", ex));
@@ -31,13 +31,13 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
 
     public virtual void WriteDoPortMask(ulong mask)
     {
-        WriteDoPortMask(mask, IoBitConverter.CreateWritableMask(GetDigitalOutputChannelCount()));
+        WriteDoPortMask(mask, DigitalIoBitConverter.CreateWritableMask(GetDigitalOutputChannelCount()));
     }
 
     public virtual void WriteDoPortMask(ulong mask, ulong changedMask)
     {
         int channelCount = GetDigitalOutputChannelCount();
-        ulong writableMask = IoBitConverter.CreateWritableMask(channelCount);
+        ulong writableMask = DigitalIoBitConverter.CreateWritableMask(channelCount);
         changedMask &= writableMask;
 
         for (int channel = 0; channel < channelCount; channel++)
@@ -66,7 +66,7 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
     public virtual void WritePulse(int channel, int durationMs)
     {
         ThrowIfDisposed();
-        IoChannelGuard.ValidateChannel(channel, GetDigitalOutputChannelCount(), nameof(channel));
+        DigitalIoChannelGuard.ValidateChannel(channel, GetDigitalOutputChannelCount(), nameof(channel));
         pulseScheduler.WritePulse(channel, durationMs);
     }
 
@@ -80,14 +80,14 @@ public abstract class IoCardBase : DeviceBase, IIoCardDevice, IHardwareInterrupt
     /// <summary>
     /// 驱动收到厂商硬件中断时发布，携带最多 64 位的物理 IO 快照。
     /// </summary>
-    public event EventHandler<IoSignalSnapshot>? HardwareInterruptReceived;
+    public event EventHandler<DigitalInputSnapshot>? HardwareInterruptReceived;
 
-    protected void RaiseHardwareInterrupt(ulong mask, IoTriggerEdge? triggerEdge = null)
+    protected void RaiseHardwareInterrupt(ulong mask, DigitalInputTriggerEdge? triggerEdge = null)
     {
         PublishEventSafely(
             HardwareInterruptReceived,
             this,
-            new IoSignalSnapshot(DeviceId, mask, DateTimeOffset.UtcNow, IoSnapshotSource.HardwareInterrupt, triggerEdge),
+            new DigitalInputSnapshot(DeviceId, mask, DateTimeOffset.UtcNow, DigitalInputSnapshotSource.HardwareInterrupt, triggerEdge),
             nameof(HardwareInterruptReceived));
     }
 

@@ -1,10 +1,10 @@
-﻿namespace Kwy.Device.IoCard.Core;
+namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 在厂商端口字节数组、逐点布尔数组与 64 位掩码之间进行转换。
 /// 不包含反相、点位 ID 等业务语义；这些由逻辑 IO 层处理。
 /// </summary>
-public static class IoBitConverter
+public static class DigitalIoBitConverter
 {
     /// <summary>公共 IO 模型当前支持的最大通道数。</summary>
     public const int DefaultChannelCount = 64;
@@ -13,7 +13,7 @@ public static class IoBitConverter
     public static bool[] ToBits(byte[] portData, int length = DefaultChannelCount)
     {
         ArgumentNullException.ThrowIfNull(portData);
-        IoChannelGuard.ValidateChannelCount(length, nameof(length));
+        DigitalIoChannelGuard.ValidateChannelCount(length, nameof(length));
 
         var bits = new bool[length];
         for (int port = 0; port < portData.Length; port++)
@@ -51,7 +51,7 @@ public static class IoBitConverter
     /// <summary>将掩码拆分为指定数量的端口字节，供支持端口批量读写的驱动调用。</summary>
     public static byte[] ToPortBytes(ulong mask, int portCount)
     {
-        IoChannelGuard.ValidatePortCount(portCount, nameof(portCount));
+        DigitalIoChannelGuard.ValidatePortCount(portCount, nameof(portCount));
 
         var portData = new byte[portCount];
         for (int port = 0; port < portData.Length; port++)
@@ -65,7 +65,7 @@ public static class IoBitConverter
     /// <summary>生成低 <paramref name="channelCount"/> 位为 1 的可写掩码。</summary>
     public static ulong CreateWritableMask(int channelCount)
     {
-        IoChannelGuard.ValidateChannelCount(channelCount, nameof(channelCount));
+        DigitalIoChannelGuard.ValidateChannelCount(channelCount, nameof(channelCount));
 
         return channelCount >= DefaultChannelCount
             ? ulong.MaxValue

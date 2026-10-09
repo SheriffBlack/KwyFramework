@@ -1,13 +1,15 @@
-﻿namespace Kwy.Device.IoCard.Core;
+using Kwy.Device.IoCard.Abstractions;
+
+namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// IO 通道与端口数量的统一校验工具。
 /// 物理驱动、逻辑点位初始化和位运算辅助均使用此处定义的 64 点边界。
 /// </summary>
-public static class IoChannelGuard
+public static class DigitalIoChannelGuard
 {
     /// <summary>当前公共 IO 模型支持的最大通道数。</summary>
-    public const int MaxChannelCount = 64;
+    public const int MaxChannelCount = DigitalIoChannelLimits.DefaultChannelCount;
     public const int MaxPortCount = MaxChannelCount / 8;
 
     /// <summary>校验物理通道索引位于设备实际通道范围内。</summary>

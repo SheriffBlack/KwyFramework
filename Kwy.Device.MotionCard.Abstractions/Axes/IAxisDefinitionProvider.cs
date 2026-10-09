@@ -1,8 +1,8 @@
-﻿namespace Kwy.Device.MotionCard.Abstractions.Axes;
+namespace Kwy.Device.MotionCard.Abstractions.Axes;
 
 /// <summary>
 /// 设备级业务轴定义的只读查询入口。
-/// 与 <c>IIoPointDefinitionProvider</c>、<c>IPlcPointDefinitionProvider</c> 对应：通过稳定 <c>axisId</c> 查询定义，
+/// 与 <c>IDigitalIoPointDefinitionProvider</c>、<c>IPlcPointDefinitionProvider</c> 对应：通过稳定 <c>axisId</c> 查询定义，
 /// 不要求业务层知道运动卡型号、设备 ID 或物理轴通道。
 /// </summary>
 public interface IAxisDefinitionProvider

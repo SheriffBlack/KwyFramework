@@ -1,4 +1,4 @@
-﻿using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.IoCard.Core;
 using System.Diagnostics;
 using Kwy.Device.MotionCard.Googol.DLL;
@@ -13,7 +13,7 @@ public sealed class GoogolMotionCardDevice :
     IInterpolationMotionController,
     IAxisChannelDefinitionProvider,
     IPositionCompareOutput,
-    IIoCardDevice,
+    IDigitalIoDevice,
     IBulkAxisSnapshotReader,
     IBufferedAxisSnapshotReader
 {
@@ -25,7 +25,7 @@ public sealed class GoogolMotionCardDevice :
     private readonly HashSet<short> homingAxes = new();
     private readonly HashSet<short> homedAxes = new();
     private readonly Dictionary<short, short[]> coordinateAxes = new();
-    private readonly PulseOutputScheduler pulseScheduler;
+    private readonly DigitalOutputPulseScheduler pulseScheduler;
     private readonly double[] batchProfilePositions;
     private readonly double[] batchEncoderPositions;
     private readonly double[] batchProfileVelocities;
@@ -58,7 +58,7 @@ public sealed class GoogolMotionCardDevice :
         batchProfileVelocities = new double[config.SnapshotBatchSize];
         batchStatuses = new int[config.SnapshotBatchSize];
 
-        pulseScheduler = new PulseOutputScheduler(
+        pulseScheduler = new DigitalOutputPulseScheduler(
             WriteDoBit,
             () => !disposed && IsConnected,
             (channel, ex) => RaiseErrorOccurred($"Reset GPO pulse channel {channel} failed: {ex.Message}", ex));
@@ -750,7 +750,7 @@ public sealed class GoogolMotionCardDevice :
     public void WriteDoBit(int channel, bool state)
     {
         EnsureReady();
-        IoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
+        DigitalIoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
         Execute(() =>
         {
             SelectCard();
@@ -761,13 +761,13 @@ public sealed class GoogolMotionCardDevice :
 
     public void WriteDoPortMask(ulong mask)
     {
-        WriteDoPortMask(mask, IoBitConverter.CreateWritableMask(config.DoChannelCount));
+        WriteDoPortMask(mask, DigitalIoBitConverter.CreateWritableMask(config.DoChannelCount));
     }
 
     public void WriteDoPortMask(ulong mask, ulong changedMask)
     {
         EnsureReady();
-        ulong writableMask = IoBitConverter.CreateWritableMask(config.DoChannelCount);
+        ulong writableMask = DigitalIoBitConverter.CreateWritableMask(config.DoChannelCount);
         changedMask &= writableMask;
         if (changedMask == 0)
         {
@@ -810,7 +810,7 @@ public sealed class GoogolMotionCardDevice :
     public bool ReadDiBit(int channel)
     {
         EnsureReady();
-        IoChannelGuard.ValidateChannel(channel, config.DiChannelCount, nameof(channel));
+        DigitalIoChannelGuard.ValidateChannel(channel, config.DiChannelCount, nameof(channel));
         uint raw = ReadRawDiValue();
         return ToLogicalIoState((raw & (1u << channel)) != 0);
     }
@@ -840,7 +840,7 @@ public sealed class GoogolMotionCardDevice :
     public void WritePulse(int channel, int durationMs)
     {
         EnsureReady();
-        IoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
+        DigitalIoChannelGuard.ValidateChannel(channel, config.DoChannelCount, nameof(channel));
         pulseScheduler.WritePulse(channel, durationMs);
     }
 
@@ -907,7 +907,7 @@ public sealed class GoogolMotionCardDevice :
 
     private bool[] ToLogicalBits(uint rawValue, int channelCount)
     {
-        var bits = new bool[IoBitConverter.DefaultChannelCount];
+        var bits = new bool[DigitalIoBitConverter.DefaultChannelCount];
         for (int channel = 0; channel < channelCount; channel++)
         {
             bits[channel] = ToLogicalIoState((rawValue & (1u << channel)) != 0);

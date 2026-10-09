@@ -1,10 +1,10 @@
-﻿namespace Kwy.Device.IoCard.Core;
+namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 管理可重置的单通道软件定时脉冲。
 /// 同一通道再次触发时会取消前一次复位计时并重新计时；受 Windows 调度影响，不能用于实时触发或功能安全。
 /// </summary>
-public sealed class PulseOutputScheduler : IDisposable
+public sealed class DigitalOutputPulseScheduler : IDisposable
 {
     private readonly object syncRoot = new();
     private readonly Dictionary<int, CancellationTokenSource> pulseTokens = new();
@@ -13,7 +13,7 @@ public sealed class PulseOutputScheduler : IDisposable
     private readonly Action<int, Exception> onResetError;
     private bool disposed;
 
-    public PulseOutputScheduler(
+    public DigitalOutputPulseScheduler(
         Action<int, bool> writeOutput,
         Func<bool> canResetOutput,
         Action<int, Exception> onResetError)
@@ -133,7 +133,7 @@ public sealed class PulseOutputScheduler : IDisposable
     {
         if (disposed)
         {
-            throw new ObjectDisposedException(nameof(PulseOutputScheduler));
+            throw new ObjectDisposedException(nameof(DigitalOutputPulseScheduler));
         }
     }
 }

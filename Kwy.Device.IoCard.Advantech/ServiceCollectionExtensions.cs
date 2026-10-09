@@ -1,4 +1,4 @@
-﻿using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Core;
@@ -24,7 +24,7 @@ public static class ServiceCollectionExtensions
         services.AddIoCardCore();
         var device = new Lazy<AdvantechIoCardDevice>(() => new AdvantechIoCardDevice(config));
         services.AddSingleton(_ => device.Value);
-        services.AddSingleton<IIoCardDevice>(_ => device.Value);
+        services.AddSingleton<IDigitalIoDevice>(_ => device.Value);
         services.AddSingleton<IDevice>(_ => device.Value);
 
         return services;

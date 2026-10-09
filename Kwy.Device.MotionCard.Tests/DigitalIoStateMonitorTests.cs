@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.IoCard.Core;
 using Kwy.Communicate.Abstractions.Enums;
@@ -7,12 +7,12 @@ using Xunit;
 
 namespace Kwy.Device.MotionCard.Tests;
 
-public sealed class IoStateMonitorTests
+public sealed class DigitalIoStateMonitorTests
 {
     [Fact]
     public void Initialize_RejectsUnknownDeviceWithoutReplacingCurrentConfiguration()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1");
         monitor.Initialize([device], Definitions(Input("input.ready", "io-1", 0)));
 
@@ -26,7 +26,7 @@ public sealed class IoStateMonitorTests
     [Fact]
     public void DefinitionProvider_RejectsDuplicateStableIds()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1");
 
         Assert.Throws<ArgumentException>(() => Definitions(
@@ -37,7 +37,7 @@ public sealed class IoStateMonitorTests
     [Fact]
     public void Initialize_RejectsDuplicateChannelsWithinTheSameSignalDirection()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1");
 
         Assert.Throws<ArgumentException>(() => monitor.Initialize(
@@ -48,7 +48,7 @@ public sealed class IoStateMonitorTests
     [Fact]
     public void Monitor_UsesStableIdForReadsAndEvents()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1");
         string? changedId = null;
         monitor.OnIoStateChanged += (id, _) => changedId = id;
@@ -63,7 +63,7 @@ public sealed class IoStateMonitorTests
     [Fact]
     public void ReadDi_DistinguishesUnknownPointFromMissingSnapshot()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1") { ThrowOnPortRead = true };
         monitor.Initialize([device], Definitions(Input("input.ready", "io-1", 0)));
 
@@ -74,7 +74,7 @@ public sealed class IoStateMonitorTests
     [Fact]
     public async Task HardwareInterruptWait_PreservesCancellationWhenCurrentLevelMatches()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1");
         monitor.Initialize([device], Definitions(Input("input.ready", "io-1", 0)));
         using var cancellation = new CancellationTokenSource();
@@ -88,7 +88,7 @@ public sealed class IoStateMonitorTests
     [Fact]
     public void StateNotification_IsolatesFailingSubscribers()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1");
         bool secondSubscriberCalled = false;
         Exception? callbackFailure = null;
@@ -106,20 +106,20 @@ public sealed class IoStateMonitorTests
     [Fact]
     public void DefinitionProvider_SeparatesPointDirections()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1");
 
-        IIoPointDefinitionProvider definitions = Definitions(Output("valve.open", "io-1", 0));
-        Assert.Empty(definitions.GetByKind(IoSignalKind.DigitalInput));
-        Assert.Single(definitions.GetByKind(IoSignalKind.DigitalOutput));
+        IDigitalIoPointDefinitionProvider definitions = Definitions(Output("valve.open", "io-1", 0));
+        Assert.Empty(definitions.GetByDirection(DigitalIoDirection.Input));
+        Assert.Single(definitions.GetByDirection(DigitalIoDirection.Output));
     }
 
     [Fact]
     public void WriteDo_EnforcesOwnerAndConvertsLogicalPolarity()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1");
-        IoPointDefinition output = Output("valve.open", "io-1", 2) with
+        DigitalIoPointDefinition output = Output("valve.open", "io-1", 2) with
         {
             Owner = "station.transport",
             Inverted = true
@@ -136,7 +136,7 @@ public sealed class IoStateMonitorTests
     [Fact]
     public void ApplyProcessSafeOutputs_AppliesOnlyConfiguredLogicalSafeStates()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new TestIoCard("io-1");
         monitor.Initialize(
             [device],
@@ -151,27 +151,27 @@ public sealed class IoStateMonitorTests
         Assert.True(device.GetPhysicalOutput(1));
     }
 
-    private static IoPointDefinition Input(string id, string deviceId, int channel) => new()
+    private static DigitalIoPointDefinition Input(string id, string deviceId, int channel) => new()
     {
         Id = id,
         Name = id,
         DeviceId = deviceId,
-        Kind = IoSignalKind.DigitalInput,
+        Direction = DigitalIoDirection.Input,
         Channel = channel
     };
 
-    private static IoPointDefinition Output(string id, string deviceId, int channel) => new()
+    private static DigitalIoPointDefinition Output(string id, string deviceId, int channel) => new()
     {
         Id = id,
         Name = id,
         DeviceId = deviceId,
-        Kind = IoSignalKind.DigitalOutput,
+        Direction = DigitalIoDirection.Output,
         Channel = channel
     };
 
-    private static IIoPointDefinitionProvider Definitions(params IoPointDefinition[] items) => new IoPointDefinitionProvider(items);
+    private static IDigitalIoPointDefinitionProvider Definitions(params DigitalIoPointDefinition[] items) => new DigitalIoPointDefinitionProvider(items);
 
-    private sealed class TestIoCard(string deviceId) : IIoCardDevice, IHardwareInterruptSource
+    private sealed class TestIoCard(string deviceId) : IDigitalIoDevice, IDigitalInputInterruptSource
     {
         private ulong inputs;
         private ulong outputs;
@@ -185,7 +185,7 @@ public sealed class IoStateMonitorTests
         public IDeviceConfig DeviceParameter { get; set; } = new TestConfig();
         public int DigitalInputCount => 64;
         public int DigitalOutputCount => 64;
-        public event EventHandler<IoSignalSnapshot>? HardwareInterruptReceived;
+        public event EventHandler<DigitalInputSnapshot>? HardwareInterruptReceived;
         public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged { add { } remove { } }
         public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred { add { } remove { } }
         public event EventHandler<DeviceOperationEventArgs>? OperationOccurred { add { } remove { } }
@@ -220,7 +220,7 @@ public sealed class IoStateMonitorTests
             ulong bit = 1UL << channel;
             inputs = state ? inputs | bit : inputs & ~bit;
             if (raiseInterrupt)
-                HardwareInterruptReceived?.Invoke(this, new IoSignalSnapshot(DeviceId, inputs, DateTimeOffset.UtcNow, IoSnapshotSource.HardwareInterrupt));
+                HardwareInterruptReceived?.Invoke(this, new DigitalInputSnapshot(DeviceId, inputs, DateTimeOffset.UtcNow, DigitalInputSnapshotSource.HardwareInterrupt));
         }
 
         private sealed class TestConfig : IDeviceConfig

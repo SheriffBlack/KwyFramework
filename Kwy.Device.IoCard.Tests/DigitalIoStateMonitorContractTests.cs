@@ -1,4 +1,4 @@
-﻿using Kwy.Communicate.Abstractions.Enums;
+using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
@@ -7,12 +7,12 @@ using Xunit;
 
 namespace Kwy.Device.IoCard.Tests;
 
-public sealed class IoStateMonitorContractTests
+public sealed class DigitalIoStateMonitorContractTests
 {
     [Fact]
     public void Initialize_RejectsPointOutsideDeviceCapabilities()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new FakeIoCard(inputCount: 2, outputCount: 1);
 
         Assert.Throws<ArgumentOutOfRangeException>(() => monitor.Initialize(
@@ -21,7 +21,7 @@ public sealed class IoStateMonitorContractTests
     }
 
     [Fact]
-    public void IoCardBase_UsesDeclaredCapabilitiesForOutputMask()
+    public void DigitalIoDeviceBase_UsesDeclaredCapabilitiesForOutputMask()
     {
         var card = new BaseCard();
         card.WriteDoPortMask(mask: 0b11, changedMask: ulong.MaxValue);
@@ -33,7 +33,7 @@ public sealed class IoStateMonitorContractTests
     [Fact]
     public async Task WriteTimedPulse_ReplacesEarlierPulseForTheSameLogicalOutput()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new FakeIoCard();
         monitor.Initialize([device], Definitions(Output("valve.open", 0)));
 
@@ -50,7 +50,7 @@ public sealed class IoStateMonitorContractTests
     [Fact]
     public void SafeOutputFailure_IsReportedAsAggregateFailure()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new FakeIoCard { ThrowOnWrite = true };
         monitor.Initialize([device], Definitions(Output("valve.safe", 0) with { ProcessSafeState = false }));
 
@@ -60,7 +60,7 @@ public sealed class IoStateMonitorContractTests
     [Fact]
     public void ReadFailureSubscriber_DoesNotStopOtherSubscribers()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new FakeIoCard { ThrowOnRead = true };
         using var observed = new ManualResetEventSlim();
         monitor.OnIoReadFailed += (_, _) => throw new InvalidOperationException("Test subscriber failure.");
@@ -73,37 +73,37 @@ public sealed class IoStateMonitorContractTests
     [Fact]
     public void HardwareSnapshot_ContainsSourceAndTimestamp()
     {
-        using var monitor = new IoStateMonitor();
+        using var monitor = new DigitalIoStateMonitor();
         var device = new FakeIoCard();
-        IoSignalSnapshot? received = null;
+        DigitalInputSnapshot? received = null;
         monitor.OnIoSnapshotReceived += snapshot =>
         {
-            if (snapshot.Source == IoSnapshotSource.HardwareInterrupt)
+            if (snapshot.Source == DigitalInputSnapshotSource.HardwareInterrupt)
                 received = snapshot;
         };
         monitor.Initialize([device], Definitions(Input("sensor.ready", 0)));
 
-        device.RaiseInterrupt(1, IoTriggerEdge.Rising);
+        device.RaiseInterrupt(1, DigitalInputTriggerEdge.Rising);
 
         Assert.NotNull(received);
         Assert.Equal(device.DeviceId, received!.DeviceId);
-        Assert.Equal(IoTriggerEdge.Rising, received.TriggerEdge);
+        Assert.Equal(DigitalInputTriggerEdge.Rising, received.TriggerEdge);
         Assert.NotEqual(default, received.Timestamp);
     }
 
-    private static IoPointDefinition Input(string id, int channel) => new()
+    private static DigitalIoPointDefinition Input(string id, int channel) => new()
     {
-        Id = id, Name = id, DeviceId = "io-1", Kind = IoSignalKind.DigitalInput, Channel = channel
+        Id = id, Name = id, DeviceId = "io-1", Direction = DigitalIoDirection.Input, Channel = channel
     };
 
-    private static IoPointDefinition Output(string id, int channel) => new()
+    private static DigitalIoPointDefinition Output(string id, int channel) => new()
     {
-        Id = id, Name = id, DeviceId = "io-1", Kind = IoSignalKind.DigitalOutput, Channel = channel
+        Id = id, Name = id, DeviceId = "io-1", Direction = DigitalIoDirection.Output, Channel = channel
     };
 
-    private static IIoPointDefinitionProvider Definitions(params IoPointDefinition[] items) => new IoPointDefinitionProvider(items);
+    private static IDigitalIoPointDefinitionProvider Definitions(params DigitalIoPointDefinition[] items) => new DigitalIoPointDefinitionProvider(items);
 
-    private sealed class FakeIoCard(int inputCount = 8, int outputCount = 8) : IIoCardDevice, IHardwareInterruptSource
+    private sealed class FakeIoCard(int inputCount = 8, int outputCount = 8) : IDigitalIoDevice, IDigitalInputInterruptSource
     {
         private ulong inputs;
         private ulong outputs;
@@ -116,7 +116,7 @@ public sealed class IoStateMonitorContractTests
         public int DigitalOutputCount => outputCount;
         public bool ThrowOnRead { get; init; }
         public bool ThrowOnWrite { get; init; }
-        public event EventHandler<IoSignalSnapshot>? HardwareInterruptReceived;
+        public event EventHandler<DigitalInputSnapshot>? HardwareInterruptReceived;
         public event EventHandler<ConnectionStateChangedEventArgs>? StateChanged { add { } remove { } }
         public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred { add { } remove { } }
         public event EventHandler<DeviceOperationEventArgs>? OperationOccurred { add { } remove { } }
@@ -139,15 +139,15 @@ public sealed class IoStateMonitorContractTests
         public void Dispose() { }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
         public bool GetOutput(int channel) => (outputs & (1UL << channel)) != 0;
-        public void RaiseInterrupt(ulong mask, IoTriggerEdge edge)
+        public void RaiseInterrupt(ulong mask, DigitalInputTriggerEdge edge)
         {
             inputs = mask;
-            HardwareInterruptReceived?.Invoke(this, new IoSignalSnapshot(DeviceId, mask, DateTimeOffset.UtcNow, IoSnapshotSource.HardwareInterrupt, edge));
+            HardwareInterruptReceived?.Invoke(this, new DigitalInputSnapshot(DeviceId, mask, DateTimeOffset.UtcNow, DigitalInputSnapshotSource.HardwareInterrupt, edge));
         }
         private sealed class FakeConfig : IDeviceConfig { public bool Validate() => true; }
     }
 
-    private sealed class BaseCard : IoCardBase
+    private sealed class BaseCard : DigitalIoDeviceBase
     {
         private ulong outputs;
 

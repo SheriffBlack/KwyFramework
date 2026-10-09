@@ -1,4 +1,4 @@
-﻿using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -122,7 +122,7 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<IMotionRuntimeRegistry>(),
             provider.GetRequiredService<IAxisDefinitionProvider>(),
             provider.GetRequiredService<IMotionGroupDefinitionProvider>(),
-            provider.GetService<IIoPointDefinitionProvider>(),
+            provider.GetService<IDigitalIoPointDefinitionProvider>(),
             provider.GetService<IVirtualAxisDefinitionProvider>(),
             provider.GetService<IMotionSynchronizationDefinitionProvider>()));
         services.AddSingleton<IMotionAutoModeGate, MotionAutoModeGate>();

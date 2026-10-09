@@ -1,9 +1,9 @@
-﻿namespace Kwy.Device.IoCard.Core;
+namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 物理 IO 状态掩码的位操作扩展方法。
 /// </summary>
-public static class IoMaskExtensions
+public static class DigitalIoMaskExtensions
 {
     /// <summary>
     /// 判断物理快照中的指定通道是否为高电平。
@@ -13,7 +13,7 @@ public static class IoMaskExtensions
     /// <returns>通道为高电平时返回 <see langword="true"/>。</returns>
     public static bool IsPinActive(this ulong mask, int pinIndex)
     {
-        if (pinIndex < 0 || pinIndex >= IoChannelGuard.MaxChannelCount)
+        if (pinIndex < 0 || pinIndex >= DigitalIoChannelGuard.MaxChannelCount)
         {
             return false;
         }
@@ -25,7 +25,7 @@ public static class IoMaskExtensions
     /// <summary>返回设置指定物理通道后的新掩码，不修改原掩码。</summary>
     public static ulong SetPin(this ulong mask, int pinIndex, bool active)
     {
-        IoChannelGuard.ValidateChannel(pinIndex, IoChannelGuard.MaxChannelCount, nameof(pinIndex));
+        DigitalIoChannelGuard.ValidateChannel(pinIndex, DigitalIoChannelGuard.MaxChannelCount, nameof(pinIndex));
         return active ? mask | (1UL << pinIndex) : mask & ~(1UL << pinIndex);
     }
 }

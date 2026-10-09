@@ -1,22 +1,22 @@
-﻿using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
 using System.Collections.Concurrent;
 
 namespace Kwy.Device.IoCard.Core;
 
 /// <summary>
 /// 逻辑 IO 运行时服务。
-/// 负责校验 <see cref="IoPointDefinition"/> 映射、维护 DI 采集快照，并将业务 <c>pointId</c> 转换为物理设备和通道。
+/// 负责校验 <see cref="DigitalIoPointDefinition"/> 映射、维护 DI 采集快照，并将业务 <c>pointId</c> 转换为物理设备和通道。
 /// 它是上位机软件的状态与工艺输出层，不承担确定实时控制或功能安全职责。
 /// </summary>
-public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogicalIoWriter, IProcessOutputStateController, ILogicalIoInterruptWaiter
+public sealed class DigitalIoStateMonitor : IDigitalIoStateMonitor, ILogicalDigitalInputReader, ILogicalDigitalOutputWriter, IDigitalOutputSafeStateController, ILogicalDigitalInputInterruptWaiter
 {
     // 当前配置中可用的物理 IO 设备，可以是独立 IO 卡或运动卡板载 IO。
-    private readonly ConcurrentDictionary<string, IIoCardDevice> _devices = new();
+    private readonly ConcurrentDictionary<string, IDigitalIoDevice> _devices = new();
 
     // 稳定逻辑点位 ID 到物理点位定义的映射。
-    private readonly Dictionary<string, IoPointDefinition> _diMap = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DigitalIoPointDefinition> _diMap = new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly Dictionary<string, IoPointDefinition> _doMap = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DigitalIoPointDefinition> _doMap = new(StringComparer.OrdinalIgnoreCase);
 
     // 每张设备最近一次的物理 DI 快照，用于读取缓存状态和计算边沿变化。
     private readonly ConcurrentDictionary<string, ulong> _deviceMaskCache = new();
@@ -27,9 +27,9 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
 
     private CancellationTokenSource? _scanCancellation;
     private Task? _scanTask;
-    private readonly ConcurrentDictionary<string, EventHandler<IoSignalSnapshot>> _interruptHandlers = new();
-    private readonly ConcurrentDictionary<string, PulseOutputScheduler> _logicalPulseSchedulers = new(StringComparer.OrdinalIgnoreCase);
-    private readonly IoStateMonitorOptions _options;
+    private readonly ConcurrentDictionary<string, EventHandler<DigitalInputSnapshot>> _interruptHandlers = new();
+    private readonly ConcurrentDictionary<string, DigitalOutputPulseScheduler> _logicalPulseSchedulers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly DigitalIoStateMonitorOptions _options;
     private bool _disposed;
 
     public event Action<string, Exception>? OnIoReadFailed;
@@ -38,52 +38,52 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
 
     public event Action<string, Exception>? OnIoNotificationFailed;
 
-    public event Action<IoSignalSnapshot>? OnIoSnapshotReceived;
+    public event Action<DigitalInputSnapshot>? OnIoSnapshotReceived;
 
-    public IoStateMonitor(IoStateMonitorOptions? options = null)
+    public DigitalIoStateMonitor(DigitalIoStateMonitorOptions? options = null)
     {
-        _options = options ?? new IoStateMonitorOptions();
+        _options = options ?? new DigitalIoStateMonitorOptions();
         _options.Validate();
     }
 
     /// <summary>
     /// 校验物理设备与点位定义后启动状态采集。采集用于软件状态、HMI 和动作前检查，不是实时或功能安全机制。
     /// </summary>
-    public void Initialize(IEnumerable<IIoCardDevice> devices, IIoPointDefinitionProvider pointDefinitions)
+    public void Initialize(IEnumerable<IDigitalIoDevice> devices, IDigitalIoPointDefinitionProvider pointDefinitions)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(devices);
         ArgumentNullException.ThrowIfNull(pointDefinitions);
 
-        IIoCardDevice[] deviceItems = devices.ToArray();
-        IoPointDefinition[] diItems = pointDefinitions.GetByKind(IoSignalKind.DigitalInput).ToArray();
-        IoPointDefinition[] doItems = pointDefinitions.GetByKind(IoSignalKind.DigitalOutput).ToArray();
+        IDigitalIoDevice[] deviceItems = devices.ToArray();
+        DigitalIoPointDefinition[] diItems = pointDefinitions.GetByDirection(DigitalIoDirection.Input).ToArray();
+        DigitalIoPointDefinition[] doItems = pointDefinitions.GetByDirection(DigitalIoDirection.Output).ToArray();
         InitializationMaps maps = BuildAndValidateMaps(deviceItems, diItems, doItems);
 
         // 点位定义目录不归监视器所有；候选绑定全部校验通过后再替换运行状态，避免无效配置破坏已有采集。
         Reset();
 
-        foreach (IIoCardDevice dev in deviceItems)
+        foreach (IDigitalIoDevice dev in deviceItems)
         {
             _devices[dev.DeviceId] = dev;
             // 为每张卡预分配一个数组（支持最大 64 通道）
             _fastReverseDiMap[dev.DeviceId] = new string[64];
 
             // 可选中断用于更快地更新上位机状态；回调、线程调度和订阅者均不具备确定实时性。
-            if (dev is IHardwareInterruptSource interruptSource)
+            if (dev is IDigitalInputInterruptSource interruptSource)
             {
-                EventHandler<IoSignalSnapshot> handler = (_, snapshot) => ProcessSignalSnapshot(snapshot);
+                EventHandler<DigitalInputSnapshot> handler = (_, snapshot) => ProcessSignalSnapshot(snapshot);
                 _interruptHandlers[dev.DeviceId] = handler;
                 interruptSource.HardwareInterruptReceived += handler;
             }
         }
 
-        foreach ((string id, IoPointDefinition point) in maps.DiMap)
+        foreach ((string id, DigitalIoPointDefinition point) in maps.DiMap)
         {
             _diMap[id] = point;
             _fastReverseDiMap[point.DeviceId][point.Channel] = id;
         }
-        foreach ((string id, IoPointDefinition point) in maps.DoMap)
+        foreach ((string id, DigitalIoPointDefinition point) in maps.DoMap)
         {
             _doMap[id] = point;
         }
@@ -92,12 +92,12 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
     }
 
     private static InitializationMaps BuildAndValidateMaps(
-        IReadOnlyCollection<IIoCardDevice> devices,
-        IReadOnlyCollection<IoPointDefinition> inputs,
-        IReadOnlyCollection<IoPointDefinition> outputs)
+        IReadOnlyCollection<IDigitalIoDevice> devices,
+        IReadOnlyCollection<DigitalIoPointDefinition> inputs,
+        IReadOnlyCollection<DigitalIoPointDefinition> outputs)
     {
-        var deviceMap = new Dictionary<string, IIoCardDevice>(StringComparer.OrdinalIgnoreCase);
-        foreach (IIoCardDevice device in devices)
+        var deviceMap = new Dictionary<string, IDigitalIoDevice>(StringComparer.OrdinalIgnoreCase);
+        foreach (IDigitalIoDevice device in devices)
         {
             ArgumentNullException.ThrowIfNull(device);
             ArgumentException.ThrowIfNullOrWhiteSpace(device.DeviceId);
@@ -106,35 +106,35 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
         }
 
         var allIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        Dictionary<string, IoPointDefinition> diMap = ValidatePoints(inputs, IoSignalKind.DigitalInput, deviceMap, allIds, nameof(inputs));
-        Dictionary<string, IoPointDefinition> doMap = ValidatePoints(outputs, IoSignalKind.DigitalOutput, deviceMap, allIds, nameof(outputs));
+        Dictionary<string, DigitalIoPointDefinition> diMap = ValidatePoints(inputs, DigitalIoDirection.Input, deviceMap, allIds, nameof(inputs));
+        Dictionary<string, DigitalIoPointDefinition> doMap = ValidatePoints(outputs, DigitalIoDirection.Output, deviceMap, allIds, nameof(outputs));
         return new InitializationMaps(diMap, doMap);
     }
 
-    private static Dictionary<string, IoPointDefinition> ValidatePoints(
-        IEnumerable<IoPointDefinition> points,
-        IoSignalKind expectedKind,
-        IReadOnlyDictionary<string, IIoCardDevice> devices,
+    private static Dictionary<string, DigitalIoPointDefinition> ValidatePoints(
+        IEnumerable<DigitalIoPointDefinition> points,
+        DigitalIoDirection expectedKind,
+        IReadOnlyDictionary<string, IDigitalIoDevice> devices,
         ISet<string> allIds,
         string parameterName)
     {
-        var result = new Dictionary<string, IoPointDefinition>(StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, DigitalIoPointDefinition>(StringComparer.OrdinalIgnoreCase);
         var physicalChannels = new HashSet<(string DeviceId, int Channel)>(DeviceChannelComparer.Instance);
 
-        foreach (IoPointDefinition point in points)
+        foreach (DigitalIoPointDefinition point in points)
         {
             ArgumentNullException.ThrowIfNull(point);
             point.Validate();
-            if (point.Kind != expectedKind)
+            if (point.Direction != expectedKind)
                 throw new ArgumentException(
-                    $"IO point '{point.Id}' is '{point.Kind}' but was placed in the '{expectedKind}' collection.",
+                    $"IO point '{point.Id}' is '{point.Direction}' but was placed in the '{expectedKind}' collection.",
                     parameterName);
-            if (!devices.TryGetValue(point.DeviceId, out IIoCardDevice? device))
+            if (!devices.TryGetValue(point.DeviceId, out IDigitalIoDevice? device))
                 throw new ArgumentException($"IO point '{point.Id}' references unknown device '{point.DeviceId}'.", parameterName);
-            int channelCount = expectedKind == IoSignalKind.DigitalInput
+            int channelCount = expectedKind == DigitalIoDirection.Input
                 ? device.DigitalInputCount
                 : device.DigitalOutputCount;
-            IoChannelGuard.ValidateChannel(point.Channel, channelCount, nameof(point.Channel));
+            DigitalIoChannelGuard.ValidateChannel(point.Channel, channelCount, nameof(point.Channel));
             if (!allIds.Add(point.Id))
                 throw new ArgumentException($"Duplicate IO point ID '{point.Id}'.", parameterName);
             if (!physicalChannels.Add((point.DeviceId, point.Channel)))
@@ -149,7 +149,7 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
     /// 统一处理轮询与硬件通知产生的物理输入快照。
     /// 在锁内更新缓存和计算变化，在锁外通知订阅者，避免业务回调阻塞状态采集。
     /// </summary>
-    private void ProcessSignalSnapshot(IoSignalSnapshot snapshot)
+    private void ProcessSignalSnapshot(DigitalInputSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         string deviceId = snapshot.DeviceId;
@@ -211,10 +211,10 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
         }
     }
 
-    private void PublishSnapshotReceived(IoSignalSnapshot snapshot)
+    private void PublishSnapshotReceived(DigitalInputSnapshot snapshot)
     {
         Delegate[] subscribers = OnIoSnapshotReceived?.GetInvocationList() ?? Array.Empty<Delegate>();
-        foreach (Action<IoSignalSnapshot> subscriber in subscribers.Cast<Action<IoSignalSnapshot>>())
+        foreach (Action<DigitalInputSnapshot> subscriber in subscribers.Cast<Action<DigitalInputSnapshot>>())
         {
             try { subscriber(snapshot); }
             catch (Exception exception) { PublishNotificationFailure(snapshot.DeviceId, exception); }
@@ -276,7 +276,7 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
             try
             {
                 ulong currentMask = _devices[deviceId].ReadDiPortMask();
-                ProcessSignalSnapshot(new IoSignalSnapshot(deviceId, currentMask, DateTimeOffset.UtcNow, IoSnapshotSource.Polling));
+                ProcessSignalSnapshot(new DigitalInputSnapshot(deviceId, currentMask, DateTimeOffset.UtcNow, DigitalInputSnapshotSource.Polling));
             }
             catch (Exception ex)
             {
@@ -300,9 +300,9 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
             throw new ArgumentException($"未定义的 DI 标签: {label}");
         if (!_devices.TryGetValue(point.DeviceId, out var device))
             throw new InvalidOperationException($"IO 设备 {point.DeviceId} 未就绪");
-        IoChannelGuard.ValidateChannel(point.Channel, device.DigitalInputCount, nameof(point.Channel));
+        DigitalIoChannelGuard.ValidateChannel(point.Channel, device.DigitalInputCount, nameof(point.Channel));
 
-        if (device is not IHardwareInterruptSource interruptSource)
+        if (device is not IDigitalInputInterruptSource interruptSource)
         {
             throw new NotSupportedException($"IO device '{point.DeviceId}' does not provide hardware interrupt notifications.");
         }
@@ -325,8 +325,8 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
     }
 
     private static Task WaitForHardwareInterruptCoreAsync(
-        IIoCardDevice device,
-        IHardwareInterruptSource interruptSource,
+        IDigitalIoDevice device,
+        IDigitalInputInterruptSource interruptSource,
         int channel,
         bool expectedPhysicalState,
         CancellationToken cancellationToken)
@@ -335,7 +335,7 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
             return Task.FromCanceled(cancellationToken);
 
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        EventHandler<IoSignalSnapshot> handler = (_, snapshot) =>
+        EventHandler<DigitalInputSnapshot> handler = (_, snapshot) =>
         {
             if (((snapshot.Mask & (1UL << channel)) != 0) == expectedPhysicalState)
                 completion.TrySetResult();
@@ -379,7 +379,7 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
     public bool TryReadDi(string pointId, out bool state)
     {
         state = false;
-        if (!_diMap.TryGetValue(pointId, out IoPointDefinition? point)
+        if (!_diMap.TryGetValue(pointId, out DigitalIoPointDefinition? point)
             || !_deviceMaskCache.TryGetValue(point.DeviceId, out ulong mask))
             return false;
 
@@ -393,7 +393,7 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
     /// </summary>
     public void WriteDo(string pointId, bool state, string? owner = null)
     {
-        IoPointDefinition point = GetOutputForWrite(pointId, owner);
+        DigitalIoPointDefinition point = GetOutputForWrite(pointId, owner);
         try
         {
             WriteLogicalOutput(point, state);
@@ -413,8 +413,8 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
         if (durationMs < 0)
             throw new ArgumentOutOfRangeException(nameof(durationMs), durationMs, "Pulse duration cannot be negative.");
 
-        IoPointDefinition point = GetOutputForWrite(pointId, owner);
-        PulseOutputScheduler scheduler = _logicalPulseSchedulers.GetOrAdd(point.Id, _ => CreateLogicalPulseScheduler(point));
+        DigitalIoPointDefinition point = GetOutputForWrite(pointId, owner);
+        DigitalOutputPulseScheduler scheduler = _logicalPulseSchedulers.GetOrAdd(point.Id, _ => CreateLogicalPulseScheduler(point));
         scheduler.WritePulse(0, durationMs);
     }
 
@@ -426,14 +426,14 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
     {
         ThrowIfDisposed();
         var failures = new List<Exception>();
-        foreach (IoPointDefinition point in _doMap.Values)
+        foreach (DigitalIoPointDefinition point in _doMap.Values)
         {
             if (point.ProcessSafeState is not { } safeState)
                 continue;
 
             try
             {
-                if (!_devices.TryGetValue(point.DeviceId, out IIoCardDevice? device))
+                if (!_devices.TryGetValue(point.DeviceId, out IDigitalIoDevice? device))
                     throw new InvalidOperationException($"IO device '{point.DeviceId}' is not available.");
                 device.WriteDoBit(point.Channel, safeState ^ point.Inverted);
             }
@@ -448,9 +448,9 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
             throw new AggregateException("One or more process output states could not be applied.", failures);
     }
 
-    private IoPointDefinition GetOutputForWrite(string pointId, string? owner)
+    private DigitalIoPointDefinition GetOutputForWrite(string pointId, string? owner)
     {
-        if (!_doMap.TryGetValue(pointId, out IoPointDefinition? point))
+        if (!_doMap.TryGetValue(pointId, out DigitalIoPointDefinition? point))
             throw new ArgumentException($"Undefined DO point ID: {pointId}", nameof(pointId));
 
         if (!string.IsNullOrWhiteSpace(point.Owner)
@@ -462,19 +462,19 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
         return point;
     }
 
-    private void WriteLogicalOutput(IoPointDefinition point, bool state)
+    private void WriteLogicalOutput(DigitalIoPointDefinition point, bool state)
     {
-        if (!_devices.TryGetValue(point.DeviceId, out IIoCardDevice? device))
+        if (!_devices.TryGetValue(point.DeviceId, out IDigitalIoDevice? device))
             throw new InvalidOperationException($"IO device '{point.DeviceId}' is not available.");
 
         device.WriteDoBit(point.Channel, state ^ point.Inverted);
     }
 
-    private PulseOutputScheduler CreateLogicalPulseScheduler(IoPointDefinition point)
+    private DigitalOutputPulseScheduler CreateLogicalPulseScheduler(DigitalIoPointDefinition point)
         => new(
             (_, state) => WriteLogicalOutput(point, state),
             () => !_disposed
-                && _devices.TryGetValue(point.DeviceId, out IIoCardDevice? device)
+                && _devices.TryGetValue(point.DeviceId, out IDigitalIoDevice? device)
                 && device.IsConnected,
             (_, exception) => PublishWriteFailure(point.Id, exception));
 
@@ -537,14 +537,14 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
         foreach (var pair in _interruptHandlers)
         {
             if (_devices.TryGetValue(pair.Key, out var device)
-                && device is IHardwareInterruptSource interruptSource)
+                && device is IDigitalInputInterruptSource interruptSource)
             {
                 interruptSource.HardwareInterruptReceived -= pair.Value;
             }
         }
 
         _interruptHandlers.Clear();
-        foreach (PulseOutputScheduler scheduler in _logicalPulseSchedulers.Values)
+        foreach (DigitalOutputPulseScheduler scheduler in _logicalPulseSchedulers.Values)
             scheduler.Dispose();
         _logicalPulseSchedulers.Clear();
         _devices.Clear();
@@ -558,13 +558,13 @@ public sealed class IoStateMonitor : IIoStateMonitor, ILogicalIoReader, ILogical
     {
         if (_disposed)
         {
-            throw new ObjectDisposedException(nameof(IoStateMonitor));
+            throw new ObjectDisposedException(nameof(DigitalIoStateMonitor));
         }
     }
 
     private sealed record InitializationMaps(
-        Dictionary<string, IoPointDefinition> DiMap,
-        Dictionary<string, IoPointDefinition> DoMap);
+        Dictionary<string, DigitalIoPointDefinition> DiMap,
+        Dictionary<string, DigitalIoPointDefinition> DoMap);
 
     private sealed class DeviceChannelComparer : IEqualityComparer<(string DeviceId, int Channel)>
     {
