@@ -6,4 +6,19 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="Valves\" />
+    <Folder Include="Vacuum\" />
+    <Folder Include="Thermal\" />
+    <Folder Include="Power\" />
+    <Folder Include="Robots\" />
+    <Folder Include="Definitions\" />
+    <Folder Include="Registries\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.Device.IoCard.Abstractions\Kwy.Device.IoCard.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.Device.PLC.Abstractions\Kwy.Device.PLC.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>
