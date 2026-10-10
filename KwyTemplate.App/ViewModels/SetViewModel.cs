@@ -775,7 +775,7 @@ internal class SetViewModel : BindableBase, INavigationAware
                 productionContext.MachineType,
                 machine.GetType().Name,
                 localWorkOrderRecipeMapper);
-        recipe.Parameters["MarkPrintString"] = markPrintOptions.PrintString?.Trim() ?? string.Empty;
+        recipe.Parameters["MarkPrintString"] = markPrintOptions.PrintString ?? string.Empty;
         await SaveLocalWorkOrderRecipeAsync(recipe).ConfigureAwait(true);
         localWorkOrderRecipeSession.SetCurrent(recipe);
     }

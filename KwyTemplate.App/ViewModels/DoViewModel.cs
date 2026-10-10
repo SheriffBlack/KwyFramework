@@ -1,4 +1,4 @@
-﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
 using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
@@ -17,7 +17,7 @@ public sealed class DoViewModel : BindableBase, INavigationAware
     private readonly MachineBase? machine;
     private readonly IAppNotificationService? notificationService;
     private readonly ILocalizationService localizationService;
-    private IIoCardDevice? ioCard;
+    private IDigitalIoDevice? ioCard;
     private CancellationTokenSource? activeCts;
     private double durationValue = 100;
     private bool isReverseChecked;
@@ -87,7 +87,7 @@ public sealed class DoViewModel : BindableBase, INavigationAware
         OutPutPoints.Clear();
         ioCard = TryGetMainIoCard();
 
-        // 物理卡不保存点位业务名称；正式设备应由 IoPointDefinition 配置驱动此页面。
+        // 物理卡不保存点位业务名称；正式设备应由 DigitalIoPointDefinition 配置驱动此页面。
         IEnumerable<(int Index, string Name)> points = GetEnumDefinitions<Machine_Default_PLC.PcToCard>();
 
         foreach ((int index, string name) in points)
@@ -166,7 +166,7 @@ public sealed class DoViewModel : BindableBase, INavigationAware
     }
 
     private static async Task ResetReversePulseAsync(
-        IIoCardDevice ioCard,
+        IDigitalIoDevice ioCard,
         int channel,
         bool inactiveState,
         int durationMs,
@@ -203,9 +203,9 @@ public sealed class DoViewModel : BindableBase, INavigationAware
         return (int)Math.Clamp(milliseconds, 1, int.MaxValue);
     }
 
-    private IIoCardDevice? TryGetMainIoCard()
+    private IDigitalIoDevice? TryGetMainIoCard()
     {
-        if (deviceRegistry?.TryGetDevice<IIoCardDevice>(DeviceIds.MainIoCard, out IIoCardDevice? device) == true)
+        if (deviceRegistry?.TryGetDevice<IDigitalIoDevice>(DeviceIds.MainIoCard, out IDigitalIoDevice? device) == true)
         {
             return device;
         }

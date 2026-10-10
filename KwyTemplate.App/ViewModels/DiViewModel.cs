@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Kwy.Device.Abstractions;
@@ -19,7 +19,7 @@ public sealed class DiViewModel : BindableBase, INavigationAware
     private readonly MachineBase? machine;
     private readonly ILocalizationService localizationService;
     private readonly Dictionary<int, bool> lastStates = [];
-    private IIoCardDevice? ioCard;
+    private IDigitalIoDevice? ioCard;
     private CancellationTokenSource? activeCts;
     private Task? refreshTask;
     private bool isReverseChecked;
@@ -90,7 +90,7 @@ public sealed class DiViewModel : BindableBase, INavigationAware
         lastStates.Clear();
         ioCard = TryGetMainIoCard();
 
-        // 物理卡不保存点位业务名称；正式设备应由 IoPointDefinition 配置驱动此页面。
+        // 物理卡不保存点位业务名称；正式设备应由 DigitalIoPointDefinition 配置驱动此页面。
         IEnumerable<(int Index, string Name)> points = GetEnumDefinitions<Machine_Default_PLC.CardToPc>();
 
         foreach ((int index, string name) in points)
@@ -177,9 +177,9 @@ public sealed class DiViewModel : BindableBase, INavigationAware
     private bool ReadSnapshot(int index)
         => machine != null && machine.TryReadDiSnapshotBit(index, out bool state) && state;
 
-    private IIoCardDevice? TryGetMainIoCard()
+    private IDigitalIoDevice? TryGetMainIoCard()
     {
-        if (deviceRegistry?.TryGetDevice<IIoCardDevice>(DeviceIds.MainIoCard, out IIoCardDevice? device) == true)
+        if (deviceRegistry?.TryGetDevice<IDigitalIoDevice>(DeviceIds.MainIoCard, out IDigitalIoDevice? device) == true)
         {
             return device;
         }

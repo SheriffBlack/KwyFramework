@@ -9,8 +9,8 @@ using KwyTemplate.Flow.Machines;
 namespace KwyTemplate.App.Orchestration;
 
 /// <summary>
-/// Monitors the configured A/B shift check windows. Completion remains the PLC
-/// point-check flag; this feature intentionally keeps no completion file.
+/// 监控已配置的A/B班次检查窗口。
+/// 完成状态仍为PLC点检查标志；此功能有意不保留完成文件。
 /// </summary>
 public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
 {

@@ -9,8 +9,18 @@ namespace KwyTemplate.App.Models;
 /// </summary>
 public sealed class MarkPrintOptions
 {
+    private string? printString;
+
     [DisplayName("编带字符")]
     [DisplayNameKey("MarkPrint.PrintString")]
     [InputType(InputType.TextBox)]
-    public string? PrintString { get; set; }
+    public string? PrintString
+    {
+        get => printString;
+        set => printString = value is null
+            ? null
+            : string.Join(' ', value.Split(
+                [' ', '\t', '\r', '\n'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    }
 }

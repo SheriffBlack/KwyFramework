@@ -45,7 +45,7 @@ public sealed class LocalWorkOrderRecipeRuntimeSnapshotFactory
         };
         recipe.MaterialRequirements = new LocalMaterialRequirements();
         recipe.Parameters["MatGroupNo"] = string.Empty;
-        recipe.Parameters["MarkPrintString"] = markPrintOptionsStore.Current.PrintString?.Trim() ?? string.Empty;
+        recipe.Parameters["MarkPrintString"] = markPrintOptionsStore.Current.PrintString ?? string.Empty;
         recipeMapper.CaptureInstrumentConfigs(
             recipe,
             devices.Devices,
