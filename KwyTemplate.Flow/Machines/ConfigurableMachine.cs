@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Kwy.Device.Instrument.Abstractions;
 using Kwy.Device.IoCard.Abstractions;
 using Kwy.Device.IoCard.Core;
@@ -70,7 +70,7 @@ public sealed class ConfigurableMachine : MachineBase
         }
 
         MachineDeviceProfile? ioProfile = profile.Devices.FirstOrDefault(item => item.Kind == ConfigurableDeviceKind.MainIoCard);
-        if (ioProfile != null && Devices.TryGet<IIoCardDevice>(ioProfile.DeviceId, out IIoCardDevice? ioCard) && ioCard != null)
+        if (ioProfile != null && Devices.TryGet<IDigitalIoDevice>(ioProfile.DeviceId, out IDigitalIoDevice? ioCard) && ioCard != null)
         {
             BindIoCard(ioCard);
         }

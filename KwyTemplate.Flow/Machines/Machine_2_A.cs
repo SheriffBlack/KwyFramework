@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -221,7 +221,7 @@ public class Machine_2_A :
             BindPlc(mainPlc);
         }
 
-        if (Devices.TryGet<IIoCardDevice>(DeviceIds.MainIoCard, out IIoCardDevice? mainIoCard) && mainIoCard != null)
+        if (Devices.TryGet<IDigitalIoDevice>(DeviceIds.MainIoCard, out IDigitalIoDevice? mainIoCard) && mainIoCard != null)
         {
             BindIoCard(mainIoCard);
         }
@@ -507,7 +507,7 @@ public class Machine_2_A :
     {
         await Task.Delay(ParameterCompareResultDelay).ConfigureAwait(false);
 
-        IIoCardDevice? ioCard = IoCard;
+        IDigitalIoDevice? ioCard = IoCard;
         if (ioCard is not { IsConnected: true })
         {
             return;
@@ -530,14 +530,14 @@ public class Machine_2_A :
 
     private void ResetParameterCompareResultOutputs()
     {
-        IIoCardDevice? ioCard = IoCard;
+        IDigitalIoDevice? ioCard = IoCard;
         if (ioCard is { IsConnected: true })
         {
             ResetParameterCompareResultOutputs(ioCard);
         }
     }
 
-    private static void ResetParameterCompareResultOutputs(IIoCardDevice ioCard)
+    private static void ResetParameterCompareResultOutputs(IDigitalIoDevice ioCard)
     {
         ioCard.WriteDoBit((int)PcToCard.参数对比_OK, false);
         ioCard.WriteDoBit((int)PcToCard.参数对比_NG, false);
@@ -862,7 +862,7 @@ public class Machine_2_A :
     public Task<bool> SetIndustrialPcOnlineAsync(bool online, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        IIoCardDevice? ioCard = IoCard;
+        IDigitalIoDevice? ioCard = IoCard;
         if (ioCard is not { IsConnected: true })
         {
             return Task.FromResult(false);

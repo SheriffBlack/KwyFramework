@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -66,7 +66,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
 
     protected IPlcDevice? Plc { get; private set; }
 
-    protected IIoCardDevice? IoCard { get; private set; }
+    protected IDigitalIoDevice? IoCard { get; private set; }
 
     public virtual string MachineId => GetType().Name;
 
@@ -148,7 +148,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             .FirstOrDefault()?.Description ?? value.ToString();
     }
 
-    protected void BindIoCard(IIoCardDevice? card)
+    protected void BindIoCard(IDigitalIoDevice? card)
     {
         IoCard = card;
         ResetIoSnapshot();
@@ -1518,7 +1518,7 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             return;
         }
 
-        IIoCardDevice? card = IoCard;
+        IDigitalIoDevice? card = IoCard;
         if (card == null || !card.IsConnected)
         {
             return;
