@@ -1,19 +1,17 @@
-﻿namespace KwyPecvd.Device.Mfc;
+namespace KwyPecvd.Device.Mfc;
 
-/// <summary>
-/// 描述实时状态
-/// </summary>
-public sealed record MfcState
+/// <summary>某一时刻的 MFC 不可变运行快照。</summary>
+public sealed record MfcSnapshot
 {
     public required string Id { get; init; }
 
-    /// <summary>当前下发给MFC的流量设定值。</summary>
+    /// <summary>当前下发给 MFC 的流量设定值。</summary>
     public double SetPoint { get; init; }
 
-    /// <summary>MFC反馈的实际流量。</summary>
+    /// <summary>MFC 反馈的实际流量。</summary>
     public double Feedback { get; init; }
 
-    /// <summary>MFC额定满量程。</summary>
+    /// <summary>MFC 额定满量程。</summary>
     public double FullScale { get; init; }
 
     public required string Unit { get; init; }
@@ -26,6 +24,7 @@ public sealed record MfcState
 
     public DateTimeOffset Timestamp { get; init; }
 
+    /// <summary>当前 Feedback 数值能不能被业务层信任</summary>
     public bool IsFeedbackValid { get; init; }
 
     public string? DiagnosticCode { get; init; }

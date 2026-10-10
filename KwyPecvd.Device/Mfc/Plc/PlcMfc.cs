@@ -52,7 +52,17 @@ public sealed class PlcMfc : MfcBase
                 plcDefinition.OfflineId,
                 cancellationToken).ConfigureAwait(false);
 
-        return new MfcCycleResult(feedback, offline, DateTimeOffset.UtcNow);
+        var feedbackValid = !offline;
+
+        return new MfcCycleResult(
+            Feedback: feedback,
+            IsOffline: offline,
+            IsFeedbackValid: feedbackValid,
+            Timestamp: DateTimeOffset.UtcNow,
+            DiagnosticCode:
+                offline
+                    ? MfcDiagnosticCodes.Offline
+                    : null);
     }
 
     private void ValidatePoint(

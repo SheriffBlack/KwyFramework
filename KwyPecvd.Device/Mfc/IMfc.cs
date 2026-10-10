@@ -4,9 +4,9 @@ public interface IMfc : IHardwareComponent
 {
     MfcDefinition Definition { get; }
 
-    MfcState State { get; }
+    MfcSnapshot Snapshot { get; }
 
-    event EventHandler<MfcState>? StateChanged;
+    event EventHandler<MfcSnapshot>? SnapshotChanged;
 
     /// <summary>
     /// 接受新的流量目标，并启动斜坡。

@@ -5,11 +5,11 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
 {
     private readonly object syncRoot = new();
     private readonly SemaphoreSlim operationGate = new(1, 1);
-    private MfcState state;
-    private double rampStart;
-    private double rampTarget;
-    private TimeSpan rampDuration;
-    private DateTimeOffset rampStartedAt;
+    private MfcSnapshot snapshot;
+    private double rampStart;   // 斜坡起点
+    private double rampTarget;  // 斜坡目标
+    private TimeSpan rampDuration;  // 计划持续时间
+    private DateTimeOffset rampStartedAt;   // 开始时刻
     private DateTimeOffset? outOfToleranceSince;
 
     protected MfcBase(MfcDefinition definition, bool initiallyOffline)
@@ -19,7 +19,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         Definition = definition;
         var now = DateTimeOffset.UtcNow;
         rampStartedAt = now;
-        state = new MfcState
+        snapshot = new MfcSnapshot
         {
             Id = definition.Id,
             SetPoint = 0,
@@ -29,22 +29,24 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
             IsRamping = false,
             IsOffline = initiallyOffline,
             IsOutOfTolerance = false,
-            Timestamp = now
+            Timestamp = now,
+            IsFeedbackValid = false,
+            DiagnosticCode = MfcDiagnosticCodes.NotSampled,
         };
     }
 
     public MfcDefinition Definition { get; }
 
-    public MfcState State
+    public MfcSnapshot Snapshot
     {
         get
         {
             lock (syncRoot)
-                return state;
+                return snapshot;
         }
     }
 
-    public event EventHandler<MfcState>? StateChanged;
+    public event EventHandler<MfcSnapshot>? SnapshotChanged;
 
     public sealed override async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -83,7 +85,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
                 this.rampDuration = rampDuration;
                 rampStartedAt = now;
                 outOfToleranceSince = null;
-                state = state with
+                snapshot = snapshot with
                 {
                     SetPoint = currentSetPoint,
                     IsRamping = rampDuration > TimeSpan.Zero && Math.Abs(target - currentSetPoint) > 0.001,
@@ -106,7 +108,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
     public async Task<CommandResult> HoldAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        MfcState newState;
+        MfcSnapshot newSnapshot;
         double holdValue;
 
         await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -120,8 +122,8 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
                 rampTarget = holdValue;
                 rampDuration = TimeSpan.Zero;
                 rampStartedAt = now;
-                newState = state with { SetPoint = holdValue, IsRamping = false, Timestamp = now };
-                state = newState;
+                newSnapshot = snapshot with { SetPoint = holdValue, IsRamping = false, Timestamp = now };
+                snapshot = newSnapshot;
             }
         }
         finally
@@ -129,7 +131,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
             operationGate.Release();
         }
 
-        PublishStateChanged(newState);
+        PublishSnapshotChanged(newSnapshot);
         return CommandResult.Success($"MFC {Id} is holding at {holdValue:F3} {Definition.Unit}.");
     }
 
@@ -142,27 +144,48 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
             lock (syncRoot)
                 nextSetPoint = CalculateSetPoint(DateTimeOffset.UtcNow);
 
-            MfcCycleResult result = await ExchangeAsync(nextSetPoint, cancellationToken).ConfigureAwait(false);
-            MfcState newState;
+            MfcCycleResult result =
+                await ExchangeAsync(
+                    nextSetPoint,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            MfcSnapshot newSnapshot;
+
             lock (syncRoot)
             {
-                var now = result.Timestamp;
-                var isRamping = Math.Abs(nextSetPoint - rampTarget) > 0.001;
-                var isOutOfTolerance = CalculateOutOfTolerance(
-                    nextSetPoint, result.Feedback, isRamping, result.IsOffline, now);
-                newState = state with
+                var isRamping =
+                    Math.Abs(nextSetPoint - rampTarget) >
+                    0.001;
+
+                var isOutOfTolerance =
+                    CalculateOutOfTolerance(
+                        nextSetPoint,
+                        result.Feedback,
+                        isRamping,
+                        result.IsOffline,
+                        result.IsFeedbackValid,
+                        result.Timestamp);
+
+                newSnapshot = snapshot with
                 {
                     SetPoint = nextSetPoint,
                     Feedback = result.Feedback,
                     IsRamping = isRamping,
                     IsOffline = result.IsOffline,
-                    IsOutOfTolerance = isOutOfTolerance,
-                    Timestamp = now
+                    IsFeedbackValid =
+                        result.IsFeedbackValid,
+                    IsOutOfTolerance =
+                        isOutOfTolerance,
+                    DiagnosticCode =
+                        result.DiagnosticCode,
+                    Timestamp = result.Timestamp
                 };
-                state = newState;
+
+                snapshot = newSnapshot;
             }
 
-            PublishStateChanged(newState);
+            PublishSnapshotChanged(newSnapshot);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -170,19 +193,21 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         }
         catch
         {
-            MfcState offlineState;
+            MfcSnapshot offlineSnapshot;
             lock (syncRoot)
             {
                 outOfToleranceSince = null;
-                offlineState = state with
+                offlineSnapshot = snapshot with
                 {
                     IsOffline = true,
+                    IsFeedbackValid = false,
                     IsOutOfTolerance = false,
+                    DiagnosticCode = MfcDiagnosticCodes.ExchangeFailed,
                     Timestamp = DateTimeOffset.UtcNow
                 };
-                state = offlineState;
+                snapshot = offlineSnapshot;
             }
-            PublishStateChanged(offlineState);
+            PublishSnapshotChanged(offlineSnapshot);
             throw;
         }
         finally
@@ -198,25 +223,25 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
     public override async Task ResetAsync(CancellationToken cancellationToken = default)
     {
         await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        MfcState newState;
+        MfcSnapshot newSnapshot;
         try
         {
             lock (syncRoot)
             {
                 outOfToleranceSince = null;
-                newState = state with
+                newSnapshot = snapshot with
                 {
                     IsOutOfTolerance = false,
                     Timestamp = DateTimeOffset.UtcNow
                 };
-                state = newState;
+                snapshot = newSnapshot;
             }
         }
         finally
         {
             operationGate.Release();
         }
-        PublishStateChanged(newState);
+        PublishSnapshotChanged(newSnapshot);
     }
 
     public override Task ShutdownAsync(CancellationToken cancellationToken = default)
@@ -225,6 +250,14 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 计算斜坡
+    /// </summary>
+    /// <remarks>
+    /// 进度 = 已经过的时间 ÷ 总斜坡时间
+    /// 当前设定值 = 起点 + (目标 - 起点) × 进度
+    /// </remarks>
+    /// <returns></returns>
     private double CalculateSetPoint(DateTimeOffset now)
     {
         if (rampDuration <= TimeSpan.Zero) return rampTarget;
@@ -239,10 +272,16 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         double feedback,
         bool isRamping,
         bool isOffline,
+        bool isFeedbackValid,
         DateTimeOffset now)
     {
-        var exceedsTolerance = !isOffline && !isRamping && setPoint > 0.001 &&
-                               Math.Abs(feedback - setPoint) > Definition.Tolerance;
+        var exceedsTolerance =
+            !isOffline &&
+            isFeedbackValid &&
+            !isRamping &&
+            setPoint > 0.001 &&
+            Math.Abs(feedback - setPoint) >
+                Definition.Tolerance;
         if (!exceedsTolerance)
         {
             outOfToleranceSince = null;
@@ -253,13 +292,13 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         return now - outOfToleranceSince.Value >= Definition.ToleranceDelay;
     }
 
-    private void PublishStateChanged(MfcState newState)
+    private void PublishSnapshotChanged(MfcSnapshot newSnapshot)
     {
-        var handlers = StateChanged?.GetInvocationList().Cast<EventHandler<MfcState>>().ToArray();
+        var handlers = SnapshotChanged?.GetInvocationList().Cast<EventHandler<MfcSnapshot>>().ToArray();
         if (handlers is null) return;
         foreach (var handler in handlers)
         {
-            try { handler(this, newState); }
+            try { handler(this, newSnapshot); }
             catch { /* 观察者异常不能中断硬件周期；后续接入日志。 */ }
         }
     }
@@ -267,5 +306,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
     protected readonly record struct MfcCycleResult(
         double Feedback,
         bool IsOffline,
-        DateTimeOffset Timestamp);
+        bool IsFeedbackValid,
+        DateTimeOffset Timestamp,
+        string? DiagnosticCode = null);
 }

@@ -69,14 +69,28 @@ public sealed class IoMfc : MfcBase
             ioDefinition.FeedbackAiId,
             cancellationToken).ConfigureAwait(false);
 
-        var offlineByDi = ioDefinition.OfflineDiId is not null &&
-                          digitalReader!.ReadDi(ioDefinition.OfflineDiId);
-        var invalidFeedback = sample.Quality != AnalogIoQuality.Good;
+        var offlineByDi =
+            ioDefinition.OfflineDiId is not null &&
+            digitalReader!.ReadDi(
+                ioDefinition.OfflineDiId);
+
+        var feedbackValid =
+            !offlineByDi &&
+            sample.Quality == AnalogIoQuality.Good;
+
+        var diagnosticCode =
+            offlineByDi
+                ? MfcDiagnosticCodes.Offline
+                : feedbackValid
+                    ? null
+                    : MfcDiagnosticCodes.FeedbackBadQuality;
 
         return new MfcCycleResult(
-            sample.Value,
-            offlineByDi || invalidFeedback,
-            sample.Timestamp);
+            Feedback: sample.Value,
+            IsOffline: offlineByDi,
+            IsFeedbackValid: feedbackValid,
+            Timestamp: sample.Timestamp,
+            DiagnosticCode: diagnosticCode);
     }
 
     private void ValidateAnalogPoint(

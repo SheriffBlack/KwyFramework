@@ -16,6 +16,10 @@ public sealed class SimulatedMfc : MfcBase
         cancellationToken.ThrowIfCancellationRequested();
         feedback += (setPoint - feedback) * 0.20;
         return ValueTask.FromResult(
-            new MfcCycleResult(feedback, IsOffline: false, DateTimeOffset.UtcNow));
+            new MfcCycleResult(
+                Feedback: feedback,
+                IsOffline: false,
+                IsFeedbackValid: true,
+                Timestamp: DateTimeOffset.UtcNow));
     }
 }

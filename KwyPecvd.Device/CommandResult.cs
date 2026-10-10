@@ -24,6 +24,7 @@ public sealed record CommandResult(
 public static class ResultCodes
 {
     public const string Ok = "OK";
+    public const string InvalidState = "INVALID_STATE";
     public const string InvalidArgument = "INVALID_ARGUMENT";
     public const string OutOfRange = "OUT_OF_RANGE";
     public const string NotReady = "NOT_READY";
