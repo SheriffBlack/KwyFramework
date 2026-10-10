@@ -1,5 +1,5 @@
 ﻿using Kwy.ComponentModel.Metadata;
-using KwyPecvd.Contracts.Localization;
+using KwyPecvd.Contracts.App.Localization;
 
 namespace KwyPecvd.Shell.Models;
 

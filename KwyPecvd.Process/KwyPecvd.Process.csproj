@@ -7,8 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\KwyPecvd.Contracts\KwyPecvd.Contracts.csproj" />
     <ProjectReference Include="..\KwyPecvd.Device\KwyPecvd.Device.csproj" />
   </ItemGroup>
-
 </Project>
