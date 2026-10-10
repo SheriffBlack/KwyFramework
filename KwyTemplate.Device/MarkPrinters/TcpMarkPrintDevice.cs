@@ -32,8 +32,7 @@ public sealed class TcpMarkPrintDevice : DeviceBase, IMarkPrintDevice
     public async Task SetPrintStringAsync(string printString, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        string payload = NormalizePayload(printString);
-        if (string.IsNullOrWhiteSpace(payload))
+        if (string.IsNullOrWhiteSpace(printString))
         {
             throw new InvalidOperationException("Mark print string is empty.");
         }
@@ -46,7 +45,7 @@ public sealed class TcpMarkPrintDevice : DeviceBase, IMarkPrintDevice
                 throw new InvalidOperationException($"{DeviceName} is not connected.");
             }
 
-            string command = CommandPrefix + payload;
+            string command = CommandPrefix + printString;
             await transport.WriteAsync(Encoding.ASCII.GetBytes(command), cancellationToken).ConfigureAwait(false);
 
             byte[] buffer = new byte[ReadBufferSize];
@@ -112,8 +111,4 @@ public sealed class TcpMarkPrintDevice : DeviceBase, IMarkPrintDevice
 
     protected override bool IsConnectionAlive()
         => transport is { IsConnected: true };
-
-    private static string NormalizePayload(string value)
-        => string.Join(' ', value
-            .Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 }
