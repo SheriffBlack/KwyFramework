@@ -6,7 +6,7 @@
     xmlns:kwymvvm="http://schemas.kwy.com/mvvm"
     xmlns:kwyui="http://schemas.kwy.com/ui"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:navigation="clr-namespace:KwyPecvd.Contracts.Navigation;assembly=KwyPecvd.Contracts"
+    xmlns:navigation="clr-namespace:KwyPecvd.Contracts.App.Navigation;assembly=KwyPecvd.Contracts.App"
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">

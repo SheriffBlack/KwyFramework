@@ -10,7 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Kwy.MVVM.WPF\Kwy.MVVM.WPF.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
-    <ProjectReference Include="..\KwyPecvd.Contracts\KwyPecvd.Contracts.csproj" />
+    <ProjectReference Include="..\KwyPecvd.Contracts.App\KwyPecvd.Contracts.App.csproj" />
   </ItemGroup>
 
 </Project>

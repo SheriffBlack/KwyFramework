@@ -1,6 +1,6 @@
 ﻿using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
-using KwyPecvd.Contracts.Navigation;
+using KwyPecvd.Contracts.App.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Linq;

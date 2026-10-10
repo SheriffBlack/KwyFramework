@@ -3,8 +3,31 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:kwyui="http://schemas.kwy.com/ui">
+    <UserControl.Resources>
+        <!--  复用图标轮廓，以浅色机械臂和深色底座恢复层次；底座中心为 (35,82)。  -->
+        <ControlTemplate x:Key="WaferTransferRobotTemplate" TargetType="Control">
+            <Canvas Width="70" Height="104">
+                <Path
+                    Data="{DynamicResource IconWaferTransferRobot}"
+                    Fill="{DynamicResource ControlFocusedBorderSecondBrush}"
+                    Stretch="None" />
+                <Ellipse
+                    Canvas.Left="16"
+                    Canvas.Top="63"
+                    Width="38"
+                    Height="38"
+                    Fill="{DynamicResource ControlSecondaryForegroundBrush}"
+                    Stroke="{DynamicResource ControlBorderBrush}"
+                    StrokeThickness="2" />
+            </Canvas>
+        </ControlTemplate>
+    </UserControl.Resources>
     <Grid Margin="16">
-        <Border Background="{DynamicResource ControlBackgroundBrush}" BorderBrush="{DynamicResource ControlBorderBrush}" BorderThickness="1" CornerRadius="6">
+        <Border
+            Background="{DynamicResource ControlBackgroundBrush}"
+            BorderBrush="{DynamicResource ControlBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -12,23 +35,93 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <DockPanel Margin="16,12">
-                    <Button Command="{Binding RefreshDiagramCommand}" Content="模拟状态刷新" DockPanel.Dock="Right" Padding="12,4" />
+                    <Button
+                        Padding="12,4"
+                        Command="{Binding RefreshDiagramCommand}"
+                        Content="模拟状态刷新"
+                        DockPanel.Dock="Right" />
                     <StackPanel>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Text="PECVD 机台拓扑" />
+                        <TextBlock
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Text="PECVD 机台拓扑" />
                         <TextBlock Foreground="{DynamicResource ControlSecondaryForegroundBrush}" Text="腔体、PM、Load Lock、传输腔、BF 与 LP 模块的二维状态总览。" />
                     </StackPanel>
                 </DockPanel>
-                <kwyui:KwyDiagramCanvas
+                <Viewbox
                     Grid.Row="1"
                     Margin="12,0,12,12"
-                    Background="{DynamicResource ControlSelectedBackgroundBrush}"
-                    ClipToBounds="True"
-                    Connections="{Binding Connections}"
-                    NodeClickCommand="{Binding SelectNodeCommand}"
-                    Nodes="{Binding Nodes}"
-                    PanOffset="{Binding DiagramOffset}"
-                    SelectedNode="{Binding SelectedNode}"
-                    Zoom="0.92" />
+                    Stretch="Uniform">
+                    <Grid
+                        Width="720"
+                        Height="688"
+                        Background="{DynamicResource NavigationBackgroundBrush}">
+                        <Grid.Resources>
+                            <SolidColorBrush
+                                x:Key="ControlSelectedBackgroundBrush"
+                                Opacity="0.65"
+                                Color="{DynamicResource ControlFocusedBorderSecondColor}" />
+                        </Grid.Resources>
+                        <!--  固定机台结构层：八边形下侧顶点 (280.804,309.196)、(360,342)、(439.196,309.196)，传输腔顶边 Y=440。  -->
+                        <Canvas IsHitTestVisible="False">
+                            <Canvas.RenderTransform>
+                                <TranslateTransform X="{Binding DiagramOffset.X}" Y="{Binding DiagramOffset.Y}" />
+                            </Canvas.RenderTransform>
+                            <!--  合并外轮廓只填充一次，避免透明画笔叠加产生深色接缝。  -->
+                            <Path
+                                Data="M 280.804,309.196 L 360,342 L 439.196,309.196 L 516,365 L 516,440 L 204,440 L 204,365 Z"
+                                Fill="{DynamicResource ControlSelectedBackgroundBrush}"
+                                Stroke="{DynamicResource ControlBorderBrush}"
+                                StrokeThickness="1" />
+                            <Path
+                                Data="M 360,342 L 360,440"
+                                Stroke="{DynamicResource ControlBorderBrush}"
+                                StrokeThickness="2" />
+                        </Canvas>
+                        <kwyui:KwyDiagramCanvas
+                            Width="720"
+                            Height="688"
+                            Background="{DynamicResource TransparentBrush}"
+                            ClipToBounds="True"
+                            Connections="{Binding Connections}"
+                            NodeClickCommand="{Binding SelectNodeCommand}"
+                            Nodes="{Binding Nodes}"
+                            PanOffset="{Binding DiagramOffset}"
+                            SelectedNode="{Binding SelectedNode}"
+                            Zoom="1" />
+                        <!--  两台机械手的静态示意；与节点使用相同逻辑坐标及整体缩放。  -->
+                        <Canvas IsHitTestVisible="False">
+                            <Canvas.RenderTransform>
+                                <TranslateTransform X="{Binding DiagramOffset.X}" Y="{Binding DiagramOffset.Y}" />
+                            </Canvas.RenderTransform>
+                            <!--  工作区居中于 (360,230)，无描边淡色圆盘衬托机械手。  -->
+                            <Ellipse
+                                Canvas.Left="304"
+                                Canvas.Top="174"
+                                Width="112"
+                                Height="112"
+                                Fill="{DynamicResource ControlSelectedBackgroundBrush}"
+                                Opacity="0.55" />
+                            <!--  模板整体居中，底座位于 (360,260)。  -->
+                            <Control
+                                Canvas.Left="325"
+                                Canvas.Top="178"
+                                Focusable="False"
+                                Template="{StaticResource WaferTransferRobotTemplate}" />
+                            <Path
+                                Data="M 162,486 L 558,486"
+                                Stroke="{DynamicResource ControlBorderBrush}"
+                                StrokeEndLineCap="Round"
+                                StrokeStartLineCap="Round"
+                                StrokeThickness="8" />
+                            <Control
+                                Canvas.Left="225"
+                                Canvas.Top="459"
+                                Focusable="False"
+                                Template="{StaticResource WaferTransferRobotTemplate}" />
+                        </Canvas>
+                    </Grid>
+                </Viewbox>
 
                 <Border
                     Grid.Row="2"

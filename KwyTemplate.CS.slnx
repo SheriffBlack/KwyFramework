@@ -1,8 +1,10 @@
 <Solution>
   <Project Path="KwyPecvd.App/KwyPecvd.App.csproj" />
-  <Project Path="KwyPecvd.Contracts/KwyPecvd.Contracts.csproj" />
+  <Project Path="KwyPecvd.Contracts.App/KwyPecvd.Contracts.App.csproj" Id="963db75b-c31f-4aa1-94c0-7c8bb6bc4bbc" />
+  <Project Path="KwyPecvd.Contracts.Grpc/KwyPecvd.Contracts.Grpc.csproj" />
   <Project Path="KwyPecvd.Device/KwyPecvd.Device.csproj" />
   <Project Path="KwyPecvd.Process/KwyPecvd.Process.csproj" />
   <Project Path="KwyPecvd.RT/KwyPecvd.RT.csproj" />
   <Project Path="KwyPecvd.Shell/KwyPecvd.Shell.csproj" />
+  <Project Path="KwyPecvd.Tests/KwyPecvd.Tests.csproj" Id="c98d8a50-f664-4704-bed0-246b168ce9d6" />
 </Solution>
