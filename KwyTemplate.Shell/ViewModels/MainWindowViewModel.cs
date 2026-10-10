@@ -186,28 +186,29 @@ public class MainWindowViewModel : BindableBase
     private async Task RunStatusAsync()
     {
         CancellationToken cancellationToken = DestroyToken;
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
 
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            StatusSnapshot snapshot = CaptureStatusSnapshot();
-            RunOnUi(() =>
+            // do while：启动之后立即采集一次
+            do
             {
-                ApplyOccupyMemory(snapshot.MemoryMB);
-                ApplyOccupyCPU(snapshot.CpuPercent);
-                UpdateCurrentUserDisplayName();
-                UpdateMainPlcConnectionState();
-            });
-
-            try
-            {
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+                StatusSnapshot snapshot = CaptureStatusSnapshot();
+                RunOnUi(() =>
+                {
+                    ApplyOccupyMemory(snapshot.MemoryMB);
+                    ApplyOccupyCPU(snapshot.CpuPercent);
+                    UpdateCurrentUserDisplayName();
+                    UpdateMainPlcConnectionState();
+                });
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
     }
+
 
     private void UpdateCurrentTime()
     {
