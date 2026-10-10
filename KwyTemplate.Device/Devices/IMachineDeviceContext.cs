@@ -3,8 +3,8 @@
 namespace KwyTemplate.Device.Devices;
 
 /// <summary>
-/// Provides machine flows with typed access to devices by DeviceId.
-/// Flow code uses this context instead of creating devices directly.
+/// 通过设备ID为机器流提供对设备的类型化访问。
+/// Flow 代码使用此上下文，而不是直接创建设备。
 /// </summary>
 public interface IMachineDeviceContext
 {
