@@ -1,8 +1,8 @@
 namespace Kwy.Device.Abstractions;
 
 /// <summary>
-/// Non-owning index of application devices. The component that creates a device remains
-/// responsible for disconnecting and disposing it.
+/// 应用程序设备的非所有者索引。
+/// 创建设备的组件仍需负责将其断开并释放。
 /// </summary>
 public interface IDeviceRegistry
 {
