@@ -1,4 +1,4 @@
-﻿namespace KwyPecvd.Contracts.Localization;
+﻿namespace KwyPecvd.Contracts.App.Localization;
 
 public interface ILocalizationService
 {

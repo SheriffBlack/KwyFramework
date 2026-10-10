@@ -1,4 +1,4 @@
-﻿namespace KwyPecvd.Contracts.Navigation;
+﻿namespace KwyPecvd.Contracts.App.Navigation;
 
 public class RegionNames
 {

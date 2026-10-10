@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace KwyPecvd.Contracts.Localization;
+namespace KwyPecvd.Contracts.App.Localization;
 
 public enum LanguageType
 {

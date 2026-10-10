@@ -1,4 +1,4 @@
-﻿namespace KwyPecvd.Contracts.Modularity;
+﻿namespace KwyPecvd.Contracts.App.Modularity;
 
 public class ModuleNames
 {
