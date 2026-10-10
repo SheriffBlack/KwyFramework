@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "KwyPecvd.RT": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:50036;http://localhost:50037"
+    }
+  }
+}

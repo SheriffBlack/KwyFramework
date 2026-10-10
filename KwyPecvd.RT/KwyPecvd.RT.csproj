@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\KwyPecvd.Contracts\KwyPecvd.Contracts.csproj" />
+    <ProjectReference Include="..\KwyPecvd.Contracts.Grpc\KwyPecvd.Contracts.Grpc.csproj" />
     <ProjectReference Include="..\KwyPecvd.Device\KwyPecvd.Device.csproj" />
     <ProjectReference Include="..\KwyPecvd.Process\KwyPecvd.Process.csproj" />
   </ItemGroup>
