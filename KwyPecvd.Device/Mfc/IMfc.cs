@@ -1,5 +1,8 @@
 ﻿namespace KwyPecvd.Device.Mfc;
 
+/// <summary>
+/// 质量流量控制器抽象
+/// </summary>
 public interface IMfc : IHardwareComponent
 {
     MfcDefinition Definition { get; }

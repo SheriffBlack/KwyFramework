@@ -244,10 +244,56 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         PublishSnapshotChanged(newSnapshot);
     }
 
-    public override Task ShutdownAsync(CancellationToken cancellationToken = default)
+    public sealed override async Task ShutdownAsync(
+        CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
+        await operationGate
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        try
+        {
+            var result =
+                await ExchangeAsync(
+                    0,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            MfcSnapshot newSnapshot;
+
+            lock (syncRoot)
+            {
+                var now = result.Timestamp;
+
+                rampStart = 0;
+                rampTarget = 0;
+                rampDuration = TimeSpan.Zero;
+                rampStartedAt = now;
+                outOfToleranceSince = null;
+
+                newSnapshot = snapshot with
+                {
+                    SetPoint = 0,
+                    Feedback = result.Feedback,
+                    IsRamping = false,
+                    IsOffline = result.IsOffline,
+                    IsFeedbackValid =
+                        result.IsFeedbackValid,
+                    IsOutOfTolerance = false,
+                    DiagnosticCode =
+                        result.DiagnosticCode,
+                    Timestamp = now
+                };
+
+                snapshot = newSnapshot;
+            }
+
+            PublishSnapshotChanged(newSnapshot);
+        }
+        finally
+        {
+            operationGate.Release();
+        }
     }
 
     /// <summary>

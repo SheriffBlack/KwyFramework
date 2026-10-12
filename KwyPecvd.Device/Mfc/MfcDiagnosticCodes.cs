@@ -7,9 +7,7 @@ public static class MfcDiagnosticCodes
 
     public const string Offline = "MFC_OFFLINE";
 
-    public const string FeedbackBadQuality =
-        "MFC_FEEDBACK_BAD_QUALITY";
+    public const string FeedbackBadQuality = "MFC_FEEDBACK_BAD_QUALITY";
 
-    public const string ExchangeFailed =
-        "MFC_EXCHANGE_FAILED";
+    public const string ExchangeFailed = "MFC_EXCHANGE_FAILED";
 }
