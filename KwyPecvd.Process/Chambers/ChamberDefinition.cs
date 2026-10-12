@@ -17,12 +17,17 @@ public sealed record ChamberDefinition
 
     public IReadOnlyCollection<ChamberGasLineDefinition> GasLines { get; init; } = Array.Empty<ChamberGasLineDefinition>();
 
+    public required ChamberVacuumDefinition Vacuum { get; init; }
+
     public void Validate()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(Id);
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            DisplayName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(DisplayName);
+
+        ArgumentNullException.ThrowIfNull(Vacuum);
+
+        Vacuum.Validate();
 
         foreach (var gasLine in GasLines)
         {

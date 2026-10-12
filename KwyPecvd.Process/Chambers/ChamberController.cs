@@ -3,26 +3,49 @@ using KwyPecvd.Device.Mfc;
 
 namespace KwyPecvd.Process.Chambers;
 
-/// <summary>负责腔体状态和高层操作编排。</summary>
+/// <summary>
+/// 负责腔体状态和高层操作编排。
+/// 状态转换
+///     → 调用气路系统
+///     → 处理操作结果
+/// </summary>
 public sealed class ChamberController : IChamberController
 {
     private readonly object syncRoot = new();
+    private readonly SemaphoreSlim commandGate = new(1, 1);
+    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(30);
     private readonly ChamberGasSystem gasSystem;
+    private readonly ChamberVacuumSystem vacuumSystem;
     private ChamberRuntimeState runtime = new();
+
+    private readonly ChamberInterlockEvaluator interlockEvaluator;
 
     public ChamberController(
         ChamberDefinition definition,
-        IHardwareComponentRegistry registry)
+        IHardwareComponentRegistry registry,
+        IChamberInterlockSource interlockSource)
     {
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(interlockSource);
 
         definition.Validate();
+
         Definition = definition;
+
         gasSystem = new ChamberGasSystem(
             definition.Id,
             definition.GasLines,
             registry);
+
+        vacuumSystem = new ChamberVacuumSystem(
+            definition.Id,
+            definition.Vacuum,
+            registry);
+
+        interlockEvaluator =new ChamberInterlockEvaluator(
+            definition.Id,
+            interlockSource);
     }
 
     public string Id => Definition.Id;
@@ -33,12 +56,7 @@ public sealed class ChamberController : IChamberController
     {
         get
         {
-            ChamberRuntimeState current;
-
-            lock (syncRoot)
-            {
-                current = runtime;
-            }
+            var current = GetRuntimeState();
 
             return new ChamberSnapshot
             {
@@ -48,12 +66,45 @@ public sealed class ChamberController : IChamberController
                 FaultCode = current.FaultCode,
                 FaultMessage = current.FaultMessage,
                 GasFlows = gasSystem.CreateSnapshots(),
+                Vacuum = vacuumSystem.CreateSnapshot(),
                 Timestamp = DateTimeOffset.UtcNow
             };
         }
     }
 
-    public Task<CommandResult> InitializeAsync(
+    public Task<CommandResult> InitializeAsync(CancellationToken cancellationToken = default) =>
+        ExecuteCommandAsync(() => InitializeCoreAsync(cancellationToken), cancellationToken);
+
+    public Task<CommandResult> SetGasFlowAsync(string gasName, double target,
+        TimeSpan rampDuration, CancellationToken cancellationToken = default) =>
+        ExecuteCommandAsync(() => SetGasFlowCoreAsync(gasName, target, rampDuration, cancellationToken), cancellationToken);
+
+    public Task<CommandResult> StopGasFlowAsync(string gasName, CancellationToken cancellationToken = default) =>
+        ExecuteCommandAsync(() => StopGasFlowCoreAsync(gasName, cancellationToken), cancellationToken);
+
+    public Task<CommandResult> StartGasPreparationAsync(IReadOnlyCollection<ChamberGasTarget> targets,
+        CancellationToken cancellationToken = default) =>
+        ExecuteCommandAsync(() => StartGasPreparationCoreAsync(targets, cancellationToken), cancellationToken);
+
+    public Task<CommandResult> StopProcessAsync(CancellationToken cancellationToken = default) =>
+        ExecuteCommandAsync(() => StopProcessCoreAsync(cancellationToken), cancellationToken);
+
+    public Task<CommandResult> ResetFaultAsync(CancellationToken cancellationToken = default) =>
+        ExecuteCommandAsync(() => ResetFaultCoreAsync(cancellationToken), cancellationToken);
+
+    private async Task<CommandResult> ExecuteCommandAsync(
+        Func<Task<CommandResult>> command, CancellationToken cancellationToken)
+    {
+        // 不排队执行过时的操作；调用方可以根据最新状态重试。
+        if (!await commandGate.WaitAsync(0, cancellationToken))
+            return CommandResult.Failure(ResultCodes.InvalidState,
+                $"Chamber '{Id}' is executing another command.");
+
+        try { return await command(); }
+        finally { commandGate.Release(); }
+    }
+
+    private Task<CommandResult> InitializeCoreAsync(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -71,6 +122,12 @@ public sealed class ChamberController : IChamberController
                 return Task.FromResult(failure);
             }
 
+            if (!vacuumSystem.TryValidateReady(out failure))
+            {
+                ChangeState(ChamberState.Offline);
+                return Task.FromResult(failure);
+            }
+
             ChangeState(ChamberState.Idle);
 
             return Task.FromResult(
@@ -81,7 +138,7 @@ public sealed class ChamberController : IChamberController
         {
             ChangeState(
                 ChamberState.Faulted,
-                "CHAMBER_INITIALIZE_FAILED",
+                ChamberFaultCodes.InitializeFailed,
                 exception.Message);
 
             return Task.FromResult(
@@ -91,7 +148,7 @@ public sealed class ChamberController : IChamberController
         }
     }
 
-    public Task<CommandResult> SetGasFlowAsync(
+    private Task<CommandResult> SetGasFlowCoreAsync(
         string gasName,
         double target,
         TimeSpan rampDuration,
@@ -116,7 +173,7 @@ public sealed class ChamberController : IChamberController
             cancellationToken);
     }
 
-    public Task<CommandResult> StopGasFlowAsync(
+    private Task<CommandResult> StopGasFlowCoreAsync(
         string gasName,
         CancellationToken cancellationToken = default)
     {
@@ -131,7 +188,59 @@ public sealed class ChamberController : IChamberController
         return mfc.StopAsync(cancellationToken);
     }
 
-    public async Task<CommandResult> StartGasPreparationAsync(
+    private async Task<CommandResult> StopProcessCoreAsync(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!TryBeginStopping(out var failure))
+        {
+            return failure;
+        }
+
+        try
+        {
+            // 停止一经接受，由RT在独立超时范围内完成安全停止。
+            using var stopCancellation = new CancellationTokenSource(StopTimeout);
+            var result = await gasSystem.StopAllAsync(stopCancellation.Token);
+
+            if (result.Succeeded)
+            {
+                lock (syncRoot)
+                    runtime = runtime with { StopCommandsCompletedAt = DateTimeOffset.UtcNow };
+                return result;
+            }
+
+            ChangeState(
+                ChamberState.Faulted,
+                ChamberFaultCodes.ProcessStopFailed,
+                result.Message);
+
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            ChangeState(
+                ChamberState.Faulted,
+                ChamberFaultCodes.ProcessStopTimeout,
+                "Process stop command timed out.");
+
+            return CommandResult.Failure(ResultCodes.NotReady, "Process stop command timed out.");
+        }
+        catch (Exception exception)
+        {
+            ChangeState(
+                ChamberState.Faulted,
+                ChamberFaultCodes.ProcessStopFailed,
+                exception.Message);
+
+            return CommandResult.Failure(
+                ResultCodes.NotReady,
+                exception.Message);
+        }
+    }
+
+    private async Task<CommandResult> StartGasPreparationCoreAsync(
         IReadOnlyCollection<ChamberGasTarget> targets,
         CancellationToken cancellationToken = default)
     {
@@ -142,6 +251,12 @@ public sealed class ChamberController : IChamberController
                 targets,
                 out var plan,
                 out var failure))
+        {
+            return failure;
+        }
+
+        if (!interlockEvaluator.TryValidateGasPreparation(
+            out failure))
         {
             return failure;
         }
@@ -174,9 +289,9 @@ public sealed class ChamberController : IChamberController
                         : $"{result.Message} Compensation: " +
                           compensationError;
 
-                    EndGasPreparation(
+                    ChangeState(
                         ChamberState.Faulted,
-                        "GAS_PREPARATION_FAILED",
+                        ChamberFaultCodes.GasPreparationFailed,
                         message);
 
                     return result with { Message = message };
@@ -193,13 +308,13 @@ public sealed class ChamberController : IChamberController
 
             if (compensationError is null)
             {
-                EndGasPreparation(ChamberState.Idle);
+                ChangeState(ChamberState.Idle);
             }
             else
             {
-                EndGasPreparation(
+                ChangeState(
                     ChamberState.Faulted,
-                    "GAS_PREPARATION_CANCEL_FAILED",
+                    ChamberFaultCodes.GasPreparationCancelFailed,
                     compensationError);
             }
 
@@ -215,9 +330,9 @@ public sealed class ChamberController : IChamberController
                 : $"{exception.Message} Compensation: " +
                   compensationError;
 
-            EndGasPreparation(
+            ChangeState(
                 ChamberState.Faulted,
-                "GAS_PREPARATION_FAILED",
+                ChamberFaultCodes.GasPreparationFailed,
                 message);
 
             return CommandResult.Failure(
@@ -229,17 +344,73 @@ public sealed class ChamberController : IChamberController
             $"Chamber '{Id}' started gas preparation.");
     }
 
-    public Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
+    private Task<CommandResult> ResetFaultCoreAsync(
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var current = GetRuntimeState();
-
-        if (current.State != ChamberState.Preparing)
+        lock (syncRoot)
         {
-            return Task.CompletedTask;
+            if (runtime.State !=
+                ChamberState.Faulted)
+            {
+                return Task.FromResult(
+                    CommandResult.Failure(
+                        ResultCodes.InvalidState,
+                        $"Chamber '{Id}' cannot reset " +
+                        $"from state '{runtime.State}'."));
+            }
         }
 
+        if (!gasSystem.TryValidateReady(
+                out var failure))
+        {
+            return Task.FromResult(failure);
+        }
+
+        ChangeState(ChamberState.Idle);
+
+        return Task.FromResult(
+            CommandResult.Success(
+                $"Chamber '{Id}' fault was reset."));
+    }
+
+    public async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // 命令下发期间不依据旧快照完成状态转换。
+        if (!await commandGate.WaitAsync(0, cancellationToken))
+            return;
+
+        try
+        {
+            var current = GetRuntimeState();
+
+            switch (current.State)
+            {
+                case ChamberState.Preparing:
+                    EvaluatePreparation(current);
+                    break;
+
+                case ChamberState.Stopping:
+                    EvaluateStopping(current);
+                    break;
+            }
+        }
+        finally { commandGate.Release(); }
+    }
+
+    private ChamberRuntimeState GetRuntimeState()
+    {
+        lock (syncRoot)
+        {
+            return runtime;
+        }
+    }
+
+    private void EvaluatePreparation(ChamberRuntimeState current)
+    {
         var evaluation =
             gasSystem.EvaluatePreparation(
                 current.ActiveGasTargets);
@@ -263,15 +434,40 @@ public sealed class ChamberController : IChamberController
                     evaluation.FaultMessage);
                 break;
         }
-
-        return Task.CompletedTask;
     }
 
-    private ChamberRuntimeState GetRuntimeState()
+    private void EvaluateStopping(ChamberRuntimeState current)
     {
-        lock (syncRoot)
+        if (current.StopCommandsCompletedAt is not { } completedAt)
+            return;
+
+        if (DateTimeOffset.UtcNow - completedAt >= StopTimeout)
         {
-            return runtime;
+            TryTransition(ChamberState.Stopping, ChamberState.Faulted,
+                ChamberFaultCodes.GasStopTimeout,
+                "Gas feedback did not reach zero before the stop timeout.");
+            return;
+        }
+
+        var evaluation =
+            gasSystem.EvaluateStopped(completedAt);
+
+        switch (evaluation.Status)
+        {
+            case GasStopStatus.Waiting:
+                break;
+
+            case GasStopStatus.Stopped:
+                TryTransition(ChamberState.Stopping, ChamberState.Idle);
+                break;
+
+            case GasStopStatus.Faulted:
+                TryTransition(
+                    ChamberState.Stopping,
+                    ChamberState.Faulted,
+                    evaluation.FaultCode,
+                    evaluation.FaultMessage);
+                break;
         }
     }
 
@@ -324,6 +520,7 @@ public sealed class ChamberController : IChamberController
         }
     }
 
+    /// <summary>检查并进入气体准备状态。</summary>
     private bool TryBeginGasPreparation(
         IReadOnlyDictionary<string, ChamberGasTarget> targets,
         out CommandResult failure)
@@ -383,22 +580,9 @@ public sealed class ChamberController : IChamberController
         {
             var mfc = acceptedMfcs[index];
 
-            try
-            {
-                var result = await mfc.StopAsync(
-                    CancellationToken.None);
-
-                if (!result.Succeeded)
-                {
-                    (failures ??= []).Add(
-                        $"{mfc.Id}: {result.Message}");
-                }
-            }
-            catch (Exception exception)
-            {
-                (failures ??= []).Add(
-                    $"{mfc.Id}: {exception.Message}");
-            }
+            var error = await ChamberGasSystem.TryStopMfcAsync(mfc, CancellationToken.None);
+            if (error is not null)
+                (failures ??= []).Add(error);
         }
 
         return failures is null
@@ -406,23 +590,26 @@ public sealed class ChamberController : IChamberController
             : string.Join("; ", failures);
     }
 
-    private void EndGasPreparation(
-        ChamberState newState,
-        string? faultCode = null,
-        string? faultMessage = null)
+    /// <summary>腔体先原子地占据 Stopping 状态，其他启动或停止命令就无法插进来。</summary>
+    private bool TryBeginStopping(out CommandResult failure)
     {
         lock (syncRoot)
         {
-            runtime = runtime with
+            if (runtime.State is not
+                ChamberState.Preparing and not
+                ChamberState.Processing)
             {
-                ActiveGasTargets =
-                    ChamberRuntimeState.EmptyGasTargets
-            };
+                failure = CommandResult.Failure(
+                    ResultCodes.InvalidState,
+                    $"Chamber '{Id}' cannot stop " +
+                    $"from state '{runtime.State}'.");
+                return false;
+            }
 
-            SetStateUnsafe(
-                newState,
-                faultCode,
-                faultMessage);
+            SetStateUnsafe(ChamberState.Stopping);
+
+            failure = CommandResult.Success();
+            return true;
         }
     }
 
@@ -457,7 +644,11 @@ public sealed class ChamberController : IChamberController
             State = newState,
             StateChangedAt = DateTimeOffset.UtcNow,
             FaultCode = newFaultCode,
-            FaultMessage = newFaultMessage
+            FaultMessage = newFaultMessage,
+            ActiveGasTargets = newState is ChamberState.Idle or ChamberState.Faulted or ChamberState.Offline
+                ? ChamberRuntimeState.EmptyGasTargets : runtime.ActiveGasTargets,
+            StopCommandsCompletedAt = newState == ChamberState.Stopping
+                ? runtime.StopCommandsCompletedAt : null
         };
     }
 }

@@ -17,6 +17,8 @@ public sealed record ChamberSnapshot
 
     public string? FaultMessage { get; init; }
 
+    public required ChamberVacuumSnapshot Vacuum { get; init; }
+
     public IReadOnlyCollection<ChamberGasFlowSnapshot> GasFlows { get; init; } = Array.Empty<ChamberGasFlowSnapshot>();
 
     public DateTimeOffset Timestamp { get; init; }

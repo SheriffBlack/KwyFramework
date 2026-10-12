@@ -8,9 +8,9 @@ internal sealed class ChamberGasSystem
 {
     private readonly string chamberId;
     private readonly IHardwareComponentRegistry registry;
-    private readonly IReadOnlyDictionary<
-        string,
-        ChamberGasLineDefinition> gasLines;
+
+    /// <summary>实际配置的全部气路。</summary>
+    private readonly IReadOnlyDictionary<string, ChamberGasLineDefinition> gasLines;
 
     public ChamberGasSystem(
         string chamberId,
@@ -58,6 +58,50 @@ internal sealed class ChamberGasSystem
         return true;
     }
 
+    public bool TryValidateSafeForReset(
+    out CommandResult failure)
+    {
+        foreach (var gasLine in gasLines.Values)
+        {
+            if (!TryResolveMfc(
+                    gasLine.GasName,
+                    out var mfc,
+                    out failure))
+            {
+                return false;
+            }
+
+            var snapshot = mfc.Snapshot;
+
+            if (snapshot.IsOffline ||
+                !snapshot.IsFeedbackValid)
+            {
+                failure = CommandResult.Failure(
+                    ResultCodes.NotReady,
+                    $"MFC '{mfc.Id}' is not ready.");
+                return false;
+            }
+
+            if (!double.IsFinite(
+                    snapshot.SetPoint) ||
+                Math.Abs(snapshot.SetPoint) > 0.001 ||
+                !double.IsFinite(
+                    snapshot.Feedback) ||
+                Math.Abs(snapshot.Feedback) >
+                    mfc.Definition.Tolerance)
+            {
+                failure = CommandResult.Failure(
+                    ResultCodes.NotReady,
+                    $"MFC '{mfc.Id}' has not " +
+                    "returned to zero.");
+                return false;
+            }
+        }
+
+        failure = CommandResult.Success();
+        return true;
+    }
+
     public bool TryResolveMfc(
         string gasName,
         out IMfc mfc,
@@ -94,6 +138,101 @@ internal sealed class ChamberGasSystem
         ValidateBinding(gasLine, mfc);
         failure = CommandResult.Success();
         return true;
+    }
+
+    /// <summary>停止全部气路</summary>
+    public async Task<CommandResult> StopAllAsync(CancellationToken cancellationToken = default)
+    {
+        List<string>? failures = null;
+
+        foreach (var gasLine in gasLines.Values)
+        {
+            try
+            {
+                if (!TryResolveMfc(
+                        gasLine.GasName,
+                        out var mfc,
+                        out var failure))
+                {
+                    (failures ??= []).Add(
+                        $"{gasLine.GasName}: " +
+                        failure.Message);
+
+                    continue;
+                }
+
+                var error = await TryStopMfcAsync(mfc, cancellationToken);
+                if (error is not null)
+                    (failures ??= []).Add(error);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken
+                    .IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                (failures ??= []).Add(
+                    $"{gasLine.MfcId}: " +
+                    exception.Message);
+            }
+        }
+
+        if (failures is not null)
+        {
+            return CommandResult.Failure(
+                ResultCodes.NotReady,
+                string.Join("; ", failures));
+        }
+
+        return CommandResult.Success(
+            $"All gas flows for chamber " +
+            $"'{chamberId}' are stopping.");
+    }
+
+    /// <summary>
+    /// 反馈归零判断
+    /// </summary>
+    public GasStopEvaluation EvaluateStopped(DateTimeOffset commandsCompletedAt)
+    {
+        var waiting = false;
+        foreach (var gasLine in gasLines.Values)
+        {
+            if (!TryResolveMfc(
+                    gasLine.GasName,
+                    out var mfc,
+                    out var failure))
+            {
+                return new GasStopEvaluation(
+                    GasStopStatus.Faulted,
+                    ChamberFaultCodes.GasMfcNotAvailable,
+                    failure.Message);
+            }
+
+            var snapshot = mfc.Snapshot;
+
+            if (GetFeedbackFault(mfc, snapshot) is { } fault)
+            {
+                return new GasStopEvaluation(
+                    GasStopStatus.Faulted, fault.Code, fault.Message);
+            }
+
+            // 判断反馈是否归零
+            var isAtZero = double.IsFinite(snapshot.Feedback) &&
+                Math.Abs(snapshot.Feedback) <= mfc.Definition.Tolerance;
+
+            if (snapshot.Timestamp <= commandsCompletedAt ||
+                !double.IsFinite(snapshot.SetPoint) ||
+                Math.Abs(snapshot.SetPoint) > 0.001 ||
+                snapshot.IsRamping || !isAtZero)
+            {
+                waiting = true;
+            }
+        }
+
+        return new GasStopEvaluation(
+            waiting ? GasStopStatus.Waiting : GasStopStatus.Stopped);
     }
 
     public bool TryCreatePreparationPlan(
@@ -159,6 +298,7 @@ internal sealed class ChamberGasSystem
 
     public GasPreparationEvaluation EvaluatePreparation(IReadOnlyDictionary<string, ChamberGasTarget> targets)
     {
+        var waiting = false;
         foreach (var target in targets.Values)
         {
             if (!TryResolveMfc(
@@ -168,60 +308,76 @@ internal sealed class ChamberGasSystem
             {
                 return new GasPreparationEvaluation(
                     GasPreparationStatus.Faulted,
-                    "GAS_MFC_NOT_AVAILABLE",
+                    ChamberFaultCodes.GasMfcNotAvailable,
                     failure.Message);
             }
 
             var snapshot = mfc.Snapshot;
 
-            if (snapshot.IsOffline)
+            if (GetFeedbackFault(mfc, snapshot) is { } fault)
             {
                 return new GasPreparationEvaluation(
-                    GasPreparationStatus.Faulted,
-                    "GAS_MFC_OFFLINE",
-                    $"MFC '{mfc.Id}' is offline.");
-            }
-
-            if (!snapshot.IsFeedbackValid)
-            {
-                return new GasPreparationEvaluation(
-                    GasPreparationStatus.Faulted,
-                    "GAS_FEEDBACK_INVALID",
-                    $"MFC '{mfc.Id}' feedback is invalid. " +
-                    $"Diagnostic: " +
-                    $"{snapshot.DiagnosticCode ?? "UNKNOWN"}.");
+                    GasPreparationStatus.Faulted, fault.Code, fault.Message);
             }
 
             if (snapshot.IsOutOfTolerance)
             {
                 return new GasPreparationEvaluation(
                     GasPreparationStatus.Faulted,
-                    "GAS_OUT_OF_TOLERANCE",
+                    ChamberFaultCodes.GasOutOfTolerance,
                     $"MFC '{mfc.Id}' remained outside " +
                     "the configured tolerance.");
             }
 
             if (snapshot.IsRamping)
             {
-                return new GasPreparationEvaluation(
-                    GasPreparationStatus.Waiting);
+                waiting = true;
             }
 
             var withinTolerance =
-                Math.Abs(
+                double.IsFinite(snapshot.Feedback) && Math.Abs(
                     snapshot.Feedback -
                     target.Target) <=
                 mfc.Definition.Tolerance;
 
             if (!withinTolerance)
             {
-                return new GasPreparationEvaluation(
-                    GasPreparationStatus.Waiting);
+                waiting = true;
             }
         }
 
         return new GasPreparationEvaluation(
-            GasPreparationStatus.Ready);
+            waiting ? GasPreparationStatus.Waiting : GasPreparationStatus.Ready);
+    }
+
+    private static (string Code, string Message)? GetFeedbackFault(IMfc mfc, MfcSnapshot snapshot)
+    {
+        if (snapshot.IsOffline)
+            return (ChamberFaultCodes.GasMfcOffline,
+                $"MFC '{mfc.Id}' is offline.");
+
+        if (!snapshot.IsFeedbackValid || !double.IsFinite(snapshot.Feedback))
+            return (ChamberFaultCodes.GasFeedbackInvalid,
+                $"MFC '{mfc.Id}' feedback is invalid. Diagnostic: {snapshot.DiagnosticCode ?? "UNKNOWN"}.");
+
+        return null;
+    }
+
+    internal static async Task<string?> TryStopMfcAsync(IMfc mfc, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await mfc.StopAsync(cancellationToken);
+            return result.Succeeded ? null : $"{mfc.Id}: {result.Message}";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return $"{mfc.Id}: {exception.Message}";
+        }
     }
 
     private IMfc GetRequiredMfc(
