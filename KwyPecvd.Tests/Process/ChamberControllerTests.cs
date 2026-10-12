@@ -218,6 +218,80 @@ public sealed class ChamberControllerTests
     }
 
     [Fact]
+    public async Task StopProcessAsync_EntersStopping()
+    {
+        var registry =
+            new HardwareComponentRegistry();
+
+        var mfc = CreateMfc();
+
+        registry.Add(mfc);
+
+        var chamber = CreateChamber(registry);
+
+        await mfc.InitializeAsync();
+        await mfc.ExecuteCycleAsync();
+
+        var initializeResult =
+            await chamber.InitializeAsync();
+
+        Assert.True(initializeResult.Succeeded);
+
+        var preparationResult =
+            await chamber.StartGasPreparationAsync(
+            [
+                new ChamberGasTarget
+            {
+                GasName = "SiH4",
+                Target = 100,
+                RampDuration = TimeSpan.Zero
+            }
+            ]);
+
+        Assert.True(preparationResult.Succeeded);
+
+        // 推进硬件反馈和腔体状态，直至进入Processing。
+        for (var index = 0; index < 100; index++)
+        {
+            await mfc.ExecuteCycleAsync();
+            await chamber.ExecuteCycleAsync();
+
+            if (chamber.Snapshot.State ==
+                ChamberState.Processing)
+            {
+                break;
+            }
+        }
+
+        Assert.Equal(
+            ChamberState.Processing,
+            chamber.Snapshot.State);
+
+        var stopResult =
+            await chamber.StopProcessAsync();
+
+        // 第一阶段：腔体已经接受停止命令。
+        Assert.True(stopResult.Succeeded);
+
+        Assert.Equal(
+            ChamberState.Stopping,
+            chamber.Snapshot.State);
+
+        // 第二阶段：硬件周期应用零流量目标。
+        await mfc.ExecuteCycleAsync();
+
+        Assert.Equal(
+            0,
+            mfc.Snapshot.SetPoint);
+
+        // 此时反馈可能还没有归零，
+        // 所以腔体仍应处于Stopping。
+        Assert.Equal(
+            ChamberState.Stopping,
+            chamber.Snapshot.State);
+    }
+
+    [Fact]
     public async Task InitializeAsync_RemainsOfflineWhenMfcReportsOffline()
     {
         var registry = new HardwareComponentRegistry();
@@ -401,6 +475,81 @@ public sealed class ChamberControllerTests
     }
 
     [Fact]
+    public async Task ExecuteCycleAsync_EntersIdleWhenGasStops()
+    {
+        var registry =
+            new HardwareComponentRegistry();
+
+        var mfc = CreateMfc();
+        registry.Add(mfc);
+
+        var chamber = CreateChamber(registry);
+
+        await mfc.InitializeAsync();
+        await mfc.ExecuteCycleAsync();
+
+        Assert.True(
+            (await chamber.InitializeAsync())
+            .Succeeded);
+
+        Assert.True(
+            (await chamber.StartGasPreparationAsync(
+            [
+                new ChamberGasTarget
+            {
+                GasName = "SiH4",
+                Target = 100,
+                RampDuration = TimeSpan.Zero
+            }
+            ])).Succeeded);
+
+        for (var index = 0; index < 100; index++)
+        {
+            await mfc.ExecuteCycleAsync();
+            await chamber.ExecuteCycleAsync();
+
+            if (chamber.Snapshot.State ==
+                ChamberState.Processing)
+            {
+                break;
+            }
+        }
+
+        Assert.Equal(
+            ChamberState.Processing,
+            chamber.Snapshot.State);
+
+        Assert.True(
+            (await chamber.StopProcessAsync())
+            .Succeeded);
+
+        for (var index = 0; index < 100; index++)
+        {
+            await mfc.ExecuteCycleAsync();
+            await chamber.ExecuteCycleAsync();
+
+            if (chamber.Snapshot.State ==
+                ChamberState.Idle)
+            {
+                break;
+            }
+        }
+
+        Assert.Equal(
+            ChamberState.Idle,
+            chamber.Snapshot.State);
+
+        Assert.Equal(
+            0,
+            mfc.Snapshot.SetPoint);
+
+        Assert.InRange(
+            Math.Abs(mfc.Snapshot.Feedback),
+            0,
+            mfc.Definition.Tolerance);
+    }
+
+    [Fact]
     public async Task StartGasPreparationAsync_AcceptsOnlyOneConcurrentRequest()
     {
         var registry =
@@ -459,26 +608,24 @@ public sealed class ChamberControllerTests
             chamber.Snapshot.State);
     }
 
-    private static ChamberController CreateChamber(
-        IHardwareComponentRegistry registry)
+    private static ChamberController CreateChamber(HardwareComponentRegistry registry)
     {
-        var definition = new ChamberDefinition
-        {
-            Id = "PM1",
-            DisplayName = "Process Module 1",
-            GasLines =
-            [
-                new ChamberGasLineDefinition
+        var definition =
+            ChamberTestFixture.CreateDefinition(
+                registry,
+                [
+                    new ChamberGasLineDefinition
                 {
                     GasName = "SiH4",
                     MfcId = "MFC_SIH4"
                 }
-            ]
-        };
+                ]);
 
         return new ChamberController(
             definition,
-            registry);
+            registry,
+            ChamberTestFixture
+                .CreateHealthyInterlock());
     }
 
     private static SimulatedMfc CreateMfc(
