@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Valves\" />
-    <Folder Include="Vacuum\" />
-    <Folder Include="Thermal\" />
-    <Folder Include="Power\" />
     <Folder Include="Robots\" />
     <Folder Include="Definitions\" />
     <Folder Include="Registries\" />
