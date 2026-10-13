@@ -18,6 +18,7 @@ public interface IInstrumentCorrection : IInstrumentDevice
     /// 通常来自仪表参数配置；为空时 UI 可回退到支持列表的第一项。
     /// </summary>
     string DefaultLoadCorrectionType { get; }
+
     /// <summary>
     /// 执行开路校正。
     /// 通常要求夹具处于开路状态，由仪表采集开路补偿数据。

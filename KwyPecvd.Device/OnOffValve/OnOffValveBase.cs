@@ -52,8 +52,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
         }
     }
 
-    public event EventHandler<OnOffValveSnapshot>?
-        SnapshotChanged;
+    public event EventHandler<OnOffValveSnapshot>? SnapshotChanged;
 
     public sealed override async Task InitializeAsync(
         CancellationToken cancellationToken = default)
@@ -62,8 +61,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
 
         Definition.Validate();
 
-        await InitializeCoreAsync(cancellationToken)
-            .ConfigureAwait(false);
+        await InitializeCoreAsync(cancellationToken).ConfigureAwait(false);
     }
 
     protected virtual Task InitializeCoreAsync(
@@ -219,7 +217,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
     }
 
     public sealed override async Task ShutdownAsync(
-    CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -251,9 +249,10 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
             operationGate.Release();
         }
     }
+
     private void UpdateSnapshot(
-    OnOffValvePosition requested,
-    OnOffValveCycleResult result)
+        OnOffValvePosition requested,
+        OnOffValveCycleResult result)
     {
         OnOffValveState state;
         bool timedOut;
@@ -346,8 +345,9 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
 
         return result.DiagnosticCode;
     }
+
     private void PublishSnapshotChanged(
-    OnOffValveSnapshot current)
+        OnOffValveSnapshot current)
     {
         var handlers = SnapshotChanged?
             .GetInvocationList()
@@ -376,10 +376,10 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
         CancellationToken cancellationToken);
 
     protected readonly record struct OnOffValveCycleResult(
-            OnOffValvePosition? ActualPosition,
-            bool IsOffline,
-            bool IsFeedbackValid,
-            bool IsFeedbackConflict,
-            DateTimeOffset Timestamp,
-            string? DiagnosticCode = null);
+        OnOffValvePosition? ActualPosition,
+        bool IsOffline,
+        bool IsFeedbackValid,
+        bool IsFeedbackConflict,
+        DateTimeOffset Timestamp,
+        string? DiagnosticCode = null);
 }
