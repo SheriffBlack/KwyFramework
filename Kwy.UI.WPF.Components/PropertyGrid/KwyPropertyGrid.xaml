@@ -88,9 +88,9 @@
                                 <kwyui:KwyFormItem Label="{Binding DisplayName}">
                                     <ToggleButton
                                         HorizontalAlignment="Left"
-                                        IsEnabled="{Binding IsEnabled}"
                                         helpers:ToggleSwitchHelper.IsSwitch="True"
-                                        IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        IsEnabled="{Binding IsEnabled}" />
                                 </kwyui:KwyFormItem>
                             </DataTemplate>
                         </Setter.Value>
@@ -103,8 +103,8 @@
                             <DataTemplate>
                                 <kwyui:KwyFormItem Label="{Binding DisplayName}">
                                     <kwyui:KwyRadioButtonGroup
-                                        ItemWidth="100"
                                         IsEnabled="{Binding IsEnabled}"
+                                        ItemWidth="100"
                                         ItemsSource="{Binding ItemsSource}"
                                         Value="{Binding Value, Mode=TwoWay}" />
                                 </kwyui:KwyFormItem>
@@ -112,7 +112,7 @@
                         </Setter.Value>
                     </Setter>
                 </DataTrigger>
-<DataTrigger Binding="{Binding InputType}" Value="TextBoxWithRadioButton">
+                <DataTrigger Binding="{Binding InputType}" Value="TextBoxWithRadioButton">
                     <Setter Property="ContentTemplate">
                         <Setter.Value>
                             <DataTemplate>
@@ -133,8 +133,8 @@
                                         <kwyui:KwyRadioButtonGroup
                                             Grid.Column="1"
                                             Margin="10,0,0,0"
-                                            ItemWidth="80"
                                             IsEnabled="{Binding IsEnabled}"
+                                            ItemWidth="80"
                                             ItemsSource="{Binding ItemsSource}"
                                             Value="{Binding UnitValue, Mode=TwoWay}" />
                                     </Grid>
