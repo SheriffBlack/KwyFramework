@@ -27,9 +27,9 @@
                         <Grid x:Name="PART_LayoutRoot">
                             <Grid.ColumnDefinitions>
                                 <!--  Label 列：使用 SharedSizeGroup 确保多行对齐  -->
-                                <ColumnDefinition Width="{Binding LabelWidth, RelativeSource={RelativeSource TemplatedParent}}" SharedSizeGroup="LabelGroup" />
+                                <ColumnDefinition x:Name="LabelColumn" Width="{Binding LabelWidth, RelativeSource={RelativeSource TemplatedParent}}" SharedSizeGroup="{Binding LabelSharedSizeGroup, RelativeSource={RelativeSource TemplatedParent}}" />
                                 <!--  固定间距列：统一控制标签与控件的距离  -->
-                                <ColumnDefinition Width="15" />
+                                <ColumnDefinition Width="Auto" />
                                 <!--  内容列：拉伸填充  -->
                                 <ColumnDefinition Width="{Binding InputWidth, RelativeSource={RelativeSource TemplatedParent}}" />
                             </Grid.ColumnDefinitions>
@@ -37,8 +37,7 @@
                             <TextBlock
                                 x:Name="PART_LabelBlock"
                                 Grid.Column="0"
-                                Margin="10,4,0,0"
-                                HorizontalAlignment="Right"
+                                HorizontalAlignment="Stretch"
                                 VerticalAlignment="Top"
                                 FontFamily="{TemplateBinding FontFamily}"
                                 FontSize="{TemplateBinding FontSize}"
@@ -48,12 +47,13 @@
                                 Foreground="{TemplateBinding Foreground}"
                                 Style="{StaticResource ControlTextBlockStyle}"
                                 Text="{TemplateBinding Label}"
-                                TextAlignment="Right" />
+                                TextAlignment="{TemplateBinding LabelTextAlignment}" />
+
+                            <Border x:Name="LabelGap" Grid.Column="1" Width="{TemplateBinding LabelSpacing}" />
 
                             <ContentPresenter
                                 x:Name="PART_Content"
                                 Grid.Column="2"
-                                Margin="30,0,0,0"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Top"
                                 Content="{TemplateBinding Content}"
@@ -63,15 +63,17 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <!--  布局方向调整  -->
-                        <Trigger Property="LabelPosition" Value="Left">
-                            <Setter TargetName="PART_LabelBlock" Property="HorizontalAlignment" Value="Left" />
-                            <Setter TargetName="PART_LabelBlock" Property="TextAlignment" Value="Left" />
-                        </Trigger>
                         <!--  当 Label 为空时，隐藏标签列  -->
                         <Trigger Property="Label" Value="">
+                            <Setter TargetName="LabelColumn" Property="SharedSizeGroup" Value="{x:Null}" />
+                            <Setter TargetName="LabelColumn" Property="Width" Value="0" />
+                            <Setter TargetName="LabelGap" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="PART_LabelBlock" Property="Visibility" Value="Collapsed" />
                         </Trigger>
                         <Trigger Property="Label" Value="{x:Null}">
+                            <Setter TargetName="LabelColumn" Property="SharedSizeGroup" Value="{x:Null}" />
+                            <Setter TargetName="LabelColumn" Property="Width" Value="0" />
+                            <Setter TargetName="LabelGap" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="PART_LabelBlock" Property="Visibility" Value="Collapsed" />
                         </Trigger>
                         <!--  如果用户显式设置了 VerticalAlignment="Stretch"，则内部也跟着拉伸  -->

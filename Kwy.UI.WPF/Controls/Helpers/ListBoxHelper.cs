@@ -22,8 +22,8 @@ namespace Kwy.UI.WPF.Controls.Helpers;
 ///            helpers:ListBoxHelper.AutoScroll="True" />
 ///
 ///   <!-- 完整配置（嵌套在 KwyFormItem 中） -->
-///   <controls:KwyFormItem Label="日志" InputHeight="150">
-///       <ListBox ItemsSource="{Binding Logs}"
+///   <controls:KwyFormItem Label="日志">
+///       <ListBox Height="150" ItemsSource="{Binding Logs}"
 ///                helpers:ListBoxHelper.UseTheme="True"
 ///                helpers:ListBoxHelper.AutoScroll="True"
 ///                AlternationCount="2">

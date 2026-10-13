@@ -3,9 +3,6 @@ using System.Windows.Controls;
 
 namespace Kwy.UI.WPF.Controls;
 
-/// <summary>标签位置枚举</summary>
-public enum LabelPosition { Left, Right }
-
 /// <summary>
 /// 纯粹的表单布局容器，负责 Label 对齐与排版
 /// </summary>
@@ -26,13 +23,14 @@ public class KwyFormItem : ContentControl
         set => SetValue(LabelProperty, value);
     }
 
-    public static readonly DependencyProperty LabelPositionProperty =
-        DependencyProperty.Register(nameof(LabelPosition), typeof(LabelPosition), typeof(KwyFormItem), new PropertyMetadata(LabelPosition.Right));
+    public static readonly DependencyProperty LabelTextAlignmentProperty =
+        DependencyProperty.Register(nameof(LabelTextAlignment), typeof(TextAlignment), typeof(KwyFormItem), new PropertyMetadata(TextAlignment.Right),
+            value => value is TextAlignment alignment && Enum.IsDefined(alignment));
 
-    public LabelPosition LabelPosition
+    public TextAlignment LabelTextAlignment
     {
-        get => (LabelPosition)GetValue(LabelPositionProperty);
-        set => SetValue(LabelPositionProperty, value);
+        get => (TextAlignment)GetValue(LabelTextAlignmentProperty);
+        set => SetValue(LabelTextAlignmentProperty, value);
     }
 
     public static readonly DependencyProperty LabelWidthProperty =
@@ -53,12 +51,24 @@ public class KwyFormItem : ContentControl
         set => SetValue(InputWidthProperty, value);
     }
 
-    public static readonly DependencyProperty InputHeightProperty =
-        DependencyProperty.Register(nameof(InputHeight), typeof(GridLength), typeof(KwyFormItem), new PropertyMetadata(GridLength.Auto));
+    /// <summary>标签与内容之间的距离。</summary>
+    public static readonly DependencyProperty LabelSpacingProperty =
+        DependencyProperty.Register(nameof(LabelSpacing), typeof(double), typeof(KwyFormItem), new PropertyMetadata(15d),
+            value => value is double spacing && double.IsFinite(spacing) && spacing >= 0d);
 
-    public GridLength InputHeight
+    public double LabelSpacing
     {
-        get => (GridLength)GetValue(InputHeightProperty);
-        set => SetValue(InputHeightProperty, value);
+        get => (double)GetValue(LabelSpacingProperty);
+        set => SetValue(LabelSpacingProperty, value);
     }
+
+    /// <summary>标签列共享尺寸分组；父容器需开启 Grid.IsSharedSizeScope。</summary>
+    public string? LabelSharedSizeGroup
+    {
+        get => (string?)GetValue(LabelSharedSizeGroupProperty);
+        set => SetValue(LabelSharedSizeGroupProperty, value);
+    }
+
+    public static readonly DependencyProperty LabelSharedSizeGroupProperty =
+        DependencyProperty.Register(nameof(LabelSharedSizeGroup), typeof(string), typeof(KwyFormItem), new PropertyMetadata("LabelGroup"));
 }
