@@ -12,13 +12,20 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
     private DateTimeOffset rampStartedAt;   // 开始时刻
     private DateTimeOffset? outOfToleranceSince;
 
-    protected MfcBase(MfcDefinition definition, bool initiallyOffline)
-        : base(definition?.Id ?? throw new ArgumentNullException(nameof(definition)))
+    protected MfcBase(MfcDefinition definition)
+        : base(
+            definition?.Id ??
+            throw new ArgumentNullException(
+                nameof(definition)))
     {
         definition.Validate();
+
         Definition = definition;
+
         var now = DateTimeOffset.UtcNow;
+
         rampStartedAt = now;
+
         snapshot = new MfcSnapshot
         {
             Id = definition.Id,
@@ -27,11 +34,12 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
             FullScale = definition.FullScale,
             Unit = definition.Unit,
             IsRamping = false,
-            IsOffline = initiallyOffline,
-            IsOutOfTolerance = false,
-            Timestamp = now,
+            IsOffline = true,
             IsFeedbackValid = false,
-            DiagnosticCode = MfcDiagnosticCodes.NotSampled,
+            IsOutOfTolerance = false,
+            DiagnosticCode =
+                MfcDiagnosticCodes.NotSampled,
+            Timestamp = now
         };
     }
 
@@ -73,31 +81,44 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         if (rampDuration < TimeSpan.Zero)
             return CommandResult.Failure(ResultCodes.InvalidArgument, "Ramp duration cannot be negative.");
 
+        MfcSnapshot changed;
+
         await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             lock (syncRoot)
             {
                 var now = DateTimeOffset.UtcNow;
+
                 var currentSetPoint = CalculateSetPoint(now);
+
                 rampStart = currentSetPoint;
                 rampTarget = target;
                 this.rampDuration = rampDuration;
                 rampStartedAt = now;
                 outOfToleranceSince = null;
-                snapshot = snapshot with
+
+                changed = snapshot with
                 {
                     SetPoint = currentSetPoint,
-                    IsRamping = rampDuration > TimeSpan.Zero && Math.Abs(target - currentSetPoint) > 0.001,
+                    IsRamping =
+                        rampDuration > TimeSpan.Zero &&
+                        Math.Abs(
+                            target -
+                            currentSetPoint) > 0.001,
                     IsOutOfTolerance = false,
                     Timestamp = now
                 };
+
+                snapshot = changed;
             }
         }
         finally
         {
             operationGate.Release();
         }
+
+        PublishSnapshotChanged(changed);
 
         return CommandResult.Success($"MFC {Id} accepted target {target} {Definition.Unit}.");
     }
@@ -294,6 +315,30 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         {
             operationGate.Release();
         }
+    }
+
+    private static string? GetDiagnosticCode(
+        MfcCycleResult result,
+        bool outOfTolerance)
+    {
+        if (result.IsOffline)
+        {
+            return MfcDiagnosticCodes.Offline;
+        }
+
+        if (!result.IsFeedbackValid)
+        {
+            return MfcDiagnosticCodes
+                .FeedbackBadQuality;
+        }
+
+        if (outOfTolerance)
+        {
+            return MfcDiagnosticCodes
+                .OutOfTolerance;
+        }
+
+        return result.DiagnosticCode;
     }
 
     /// <summary>

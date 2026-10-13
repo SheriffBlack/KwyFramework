@@ -18,7 +18,7 @@ public sealed class IoMfc : MfcBase
         ILogicalAnalogOutputWriter analogWriter,
         IDigitalIoPointDefinitionProvider? digitalPointProvider = null,
         ILogicalDigitalInputReader? digitalReader = null)
-        : base(definition?.Mfc ?? throw new ArgumentNullException(nameof(definition)), initiallyOffline: true)
+        : base(definition?.Mfc ?? throw new ArgumentNullException(nameof(definition)))
     {
         definition.Validate();
         ioDefinition = definition;

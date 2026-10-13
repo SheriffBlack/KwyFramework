@@ -19,8 +19,7 @@ public sealed record MfcDefinition
 
     public double Tolerance { get; init; } = 2;
 
-    public TimeSpan ToleranceDelay { get; init; }
-        = TimeSpan.FromSeconds(3);
+    public TimeSpan ToleranceDelay { get; init; } = TimeSpan.FromSeconds(3);
 
     public void Validate()
     {

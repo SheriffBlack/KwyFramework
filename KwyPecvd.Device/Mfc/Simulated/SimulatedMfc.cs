@@ -5,7 +5,7 @@ public sealed class SimulatedMfc : MfcBase
     private double feedback;
 
     public SimulatedMfc(MfcDefinition definition)
-        : base(definition, initiallyOffline: false)
+        : base(definition)
     {
     }
 

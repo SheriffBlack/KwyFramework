@@ -14,7 +14,7 @@ public sealed class PlcMfc : MfcBase
         IPlcPointDefinitionProvider pointProvider,
         ILogicalPlcReader reader,
         ILogicalPlcWriter writer)
-        : base(definition?.Mfc ?? throw new ArgumentNullException(nameof(definition)), initiallyOffline: true)
+        : base(definition?.Mfc ?? throw new ArgumentNullException(nameof(definition)))
     {
         definition.Validate();
         plcDefinition = definition;

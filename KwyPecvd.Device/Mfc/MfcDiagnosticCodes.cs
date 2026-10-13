@@ -10,4 +10,6 @@ public static class MfcDiagnosticCodes
     public const string FeedbackBadQuality = "MFC_FEEDBACK_BAD_QUALITY";
 
     public const string ExchangeFailed = "MFC_EXCHANGE_FAILED";
+
+    public const string OutOfTolerance = "MFC_OUT_OF_TOLERANCE";
 }
