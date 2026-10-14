@@ -1,5 +1,4 @@
 using KwyTemplate.Vision;
-using KwyTemplate.Vision.NodeDescriptors;
 using KwyTemplate.Vision.Registries;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;

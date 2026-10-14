@@ -16,4 +16,11 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.Vision.DeepLearning.Onnx\Kwy.Vision.DeepLearning.Onnx.csproj" />
+    <ProjectReference Include="..\Kwy.Vision.Halcon\Kwy.Vision.Halcon.csproj" />
+    <ProjectReference Include="..\Kwy.Vision.OpenCV\Kwy.Vision.OpenCV.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Vision\KwyTemplate.Vision.csproj" />
+  </ItemGroup>
 </Project>

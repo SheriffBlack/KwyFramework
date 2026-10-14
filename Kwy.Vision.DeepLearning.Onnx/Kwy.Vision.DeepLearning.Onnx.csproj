@@ -10,4 +10,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.Vision.Abstractions\Kwy.Vision.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

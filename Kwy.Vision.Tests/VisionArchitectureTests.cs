@@ -12,6 +12,15 @@ using Kwy.Vision.Halcon.Images;
 using Kwy.Vision.OpenCV;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using Kwy.Vision.Abstractions.Algorithms.Infrastructure;
+using Kwy.Vision.Halcon.Algorithms.Measurement;
+using Kwy.Vision.Abstractions.Algorithms.Measurement;
+using Kwy.Vision.Abstractions.Algorithms.Calibration;
+using Kwy.Vision.Halcon.Algorithms.Calibration;
+using Kwy.Vision.Abstractions.Algorithms.Core;
+using Kwy.Vision.Halcon.Algorithms.Core;
+using Kwy.Vision.Abstractions.Algorithms.Fitting;
+using Kwy.Vision.Halcon.Algorithms.Fitting;
 
 namespace Kwy.Vision.Tests;
 

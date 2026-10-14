@@ -1,5 +1,6 @@
 using HalconDotNet;
 using Kwy.Vision.Abstractions.Algorithms;
+using Kwy.Vision.Abstractions.Algorithms.Fitting;
 using Kwy.Vision.Abstractions.Geometry;
 
 namespace Kwy.Vision.Halcon.Algorithms.Internal;

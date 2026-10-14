@@ -1,4 +1,5 @@
 using Kwy.Vision.Abstractions.Algorithms;
+using Kwy.Vision.Abstractions.Algorithms.Infrastructure;
 using Kwy.Vision.Abstractions.Runtime;
 
 namespace Kwy.Vision.Halcon;

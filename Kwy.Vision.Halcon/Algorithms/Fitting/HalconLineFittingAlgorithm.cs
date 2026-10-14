@@ -1,9 +1,9 @@
-using System.Diagnostics;
 using HalconDotNet;
-using Kwy.Vision.Abstractions.Algorithms;
+using Kwy.Vision.Abstractions.Algorithms.Fitting;
 using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Results;
 using Kwy.Vision.Halcon.Algorithms.Internal;
+using System.Diagnostics;
 
 namespace Kwy.Vision.Halcon.Algorithms.Fitting;
 

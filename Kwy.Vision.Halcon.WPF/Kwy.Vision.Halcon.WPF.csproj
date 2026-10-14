@@ -18,4 +18,8 @@
     <None Include="..\Kwy.Vision.Halcon\DLL\halcon.dll" Link="DLL\halcon.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.Vision.Halcon\Kwy.Vision.Halcon.csproj" />
+  </ItemGroup>
+
 </Project>

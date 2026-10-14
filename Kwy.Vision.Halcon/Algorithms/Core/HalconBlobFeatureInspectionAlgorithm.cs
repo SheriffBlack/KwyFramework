@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using HalconDotNet;
 using Kwy.Vision.Abstractions.Algorithms;
+using Kwy.Vision.Abstractions.Algorithms.Core;
 using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Results;
 using Kwy.Vision.Halcon.Images;

@@ -1,7 +1,7 @@
-using System.Diagnostics;
-using Kwy.Vision.Abstractions.Algorithms;
+using Kwy.Vision.Abstractions.Algorithms.Measurement;
 using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Results;
+using System.Diagnostics;
 
 namespace Kwy.Vision.Halcon.Algorithms.Measurement;
 
