@@ -1,4 +1,4 @@
-﻿namespace KwyPecvd.Process.Chambers;
+﻿namespace KwyPecvd.Process.Chamber.Interlock;
 
 /// <summary>
 /// 为指定腔体提供最新联锁状态。

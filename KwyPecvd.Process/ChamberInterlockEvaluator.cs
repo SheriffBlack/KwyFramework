@@ -1,6 +1,7 @@
 ﻿using KwyPecvd.Device;
+using KwyPecvd.Process.Chamber.Interlock;
 
-namespace KwyPecvd.Process.Chambers;
+namespace KwyPecvd.Process;
 
 /// <summary>
 /// 解释规则：这些条件是否允许气体准备

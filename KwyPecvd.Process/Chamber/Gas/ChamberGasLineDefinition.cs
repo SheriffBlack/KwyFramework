@@ -1,4 +1,4 @@
-﻿namespace KwyPecvd.Process.Chambers;
+﻿namespace KwyPecvd.Process.Chamber.Gas;
 
 /// <summary>
 /// 腔室内一条工艺气路的静态配置。

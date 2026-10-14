@@ -2,7 +2,7 @@
 using KwyPecvd.Device.PressureGauge;
 using KwyPecvd.Device.VacuumPump;
 
-namespace KwyPecvd.Process.Chambers;
+namespace KwyPecvd.Process.Chamber.Vacuum;
 
 /// <summary>
 /// 负责腔体真空硬件绑定和状态聚合。

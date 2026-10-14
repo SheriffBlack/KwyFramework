@@ -1,4 +1,4 @@
-﻿using KwyPecvd.Process.Chambers;
+﻿using KwyPecvd.Process.Chamber.Interlock;
 
 namespace KwyPecvd.RT.Simulated;
 

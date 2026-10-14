@@ -1,7 +1,8 @@
 using KwyPecvd.Device;
 using KwyPecvd.Device.Mfc;
+using KwyPecvd.Process.Chamber;
 
-namespace KwyPecvd.Process.Chambers;
+namespace KwyPecvd.Process.Chamber.Gas;
 
 /// <summary>封装腔体气路的配置、MFC 绑定、指令预校验和快照生成。</summary>
 internal sealed class ChamberGasSystem

@@ -1,7 +1,10 @@
 using KwyPecvd.Device;
 using KwyPecvd.Device.Mfc;
+using KwyPecvd.Process.Chamber.Gas;
+using KwyPecvd.Process.Chamber.Interlock;
+using KwyPecvd.Process.Chamber.Vacuum;
 
-namespace KwyPecvd.Process.Chambers;
+namespace KwyPecvd.Process.Chamber;
 
 /// <summary>
 /// 负责腔体状态和高层操作编排。

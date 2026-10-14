@@ -1,4 +1,4 @@
-﻿namespace KwyPecvd.Process.Chambers;
+﻿namespace KwyPecvd.Process.Chamber.Interlock;
 
 /// <summary>
 /// 腔体在某一时刻的联锁输入快照。

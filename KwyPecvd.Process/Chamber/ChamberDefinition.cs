@@ -1,10 +1,12 @@
-﻿using System;
+﻿using KwyPecvd.Process.Chamber.Gas;
+using KwyPecvd.Process.Chamber.Vacuum;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KwyPecvd.Process.Chambers;
+namespace KwyPecvd.Process.Chamber;
 
 /// <summary>
 /// 一套PECVD工艺腔室的静态组成。

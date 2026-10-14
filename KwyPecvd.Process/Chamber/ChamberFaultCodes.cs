@@ -1,4 +1,4 @@
-namespace KwyPecvd.Process.Chambers;
+namespace KwyPecvd.Process.Chamber;
 
 /// <summary>腔体状态机对外发布的稳定故障码。</summary>
 public static class ChamberFaultCodes

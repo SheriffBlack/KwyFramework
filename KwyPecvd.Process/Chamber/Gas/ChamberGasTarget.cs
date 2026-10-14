@@ -1,4 +1,4 @@
-﻿namespace KwyPecvd.Process.Chambers;
+﻿namespace KwyPecvd.Process.Chamber.Gas;
 
 /// <summary>一次腔体气体准备所需的单路目标。</summary>
 public sealed record ChamberGasTarget

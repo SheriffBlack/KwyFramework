@@ -1,7 +1,10 @@
 ﻿using KwyPecvd.Device;
 using KwyPecvd.Device.PressureGauge;
 using KwyPecvd.Device.VacuumPump;
-using KwyPecvd.Process.Chambers;
+using KwyPecvd.Process.Chamber;
+using KwyPecvd.Process.Chamber.Gas;
+using KwyPecvd.Process.Chamber.Interlock;
+using KwyPecvd.Process.Chamber.Vacuum;
 
 namespace KwyPecvd.Tests.Process;
 

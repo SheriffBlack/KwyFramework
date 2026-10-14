@@ -1,4 +1,4 @@
-﻿namespace KwyPecvd.Process.Chambers;
+﻿namespace KwyPecvd.Process.Chamber.Vacuum;
 
 /// <summary>
 /// 腔体真空子系统的静态硬件绑定。

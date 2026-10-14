@@ -1,6 +1,7 @@
 using KwyPecvd.Device;
 using KwyPecvd.Device.Mfc;
-using KwyPecvd.Process.Chambers;
+using KwyPecvd.Process.Chamber;
+using KwyPecvd.Process.Chamber.Gas;
 
 namespace KwyPecvd.Tests.Process;
 

@@ -1,7 +1,8 @@
 ﻿using KwyPecvd.Device;
+using KwyPecvd.Process.Chamber.Gas;
 using KwyPecvd.Process.Equipment;
 
-namespace KwyPecvd.Process.Chambers;
+namespace KwyPecvd.Process.Chamber;
 
 /// <summary>
 /// PM 腔室的控制器

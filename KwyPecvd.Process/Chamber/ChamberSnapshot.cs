@@ -1,6 +1,7 @@
 using KwyPecvd.Device.Mfc;
+using KwyPecvd.Process.Chamber.Vacuum;
 
-namespace KwyPecvd.Process.Chambers;
+namespace KwyPecvd.Process.Chamber;
 
 /// <summary>某一时刻的腔室聚合运行快照。</summary>
 public sealed record ChamberSnapshot

@@ -1,6 +1,7 @@
+using KwyPecvd.Process.Chamber.Gas;
 using System.Collections.Immutable;
 
-namespace KwyPecvd.Process.Chambers;
+namespace KwyPecvd.Process.Chamber;
 
 /// <summary>腔体控制器内部的不可变运行状态。</summary>
 internal sealed record ChamberRuntimeState
