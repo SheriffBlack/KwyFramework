@@ -14,7 +14,6 @@
     mc:Ignorable="d">
     <UserControl.Resources>
         <kwyui:EqualityConverter x:Key="EqualityConverter" />
-        <SolidColorBrush x:Key="HsyLogoBackgroundBrush" Color="#E60012" />
 
         <Style
             x:Key="MainNavigationButtonStyle"
@@ -79,17 +78,16 @@
                 <Border
                     Grid.Column="1"
                     Height="52"
-                    MinWidth="96"
+                    MinWidth="128"
                     Padding="10,6"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
-                    Background="{StaticResource HsyLogoBackgroundBrush}"
                     BorderThickness="0"
                     CornerRadius="3"
-                    Visibility="Collapsed">
+                    Visibility="Visible">
                     <Image
                         RenderOptions.BitmapScalingMode="HighQuality"
-                        Source="{StaticResource ImgInfoHsy}"
+                        Source="{StaticResource ImgLogoKawayi}"
                         Stretch="Uniform"
                         Visibility="Visible" />
                 </Border>

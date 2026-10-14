@@ -29,6 +29,11 @@ public sealed class ProgramSettingsStore
         }
 
         Current = JsonHelper.Read<ProgramSettingsModel>(SettingsFilePath) ?? new ProgramSettingsModel();
+        if (MigrateLegacyBranding(Current))
+        {
+            JsonHelper.Write(SettingsFilePath, Current);
+        }
+
         return new ProgramSettingsLoadResult(Current, SettingsFilePath, false);
     }
 
@@ -37,6 +42,31 @@ public sealed class ProgramSettingsStore
         ArgumentNullException.ThrowIfNull(settings);
         await JsonHelper.WriteAsync(SettingsFilePath, settings).ConfigureAwait(false);
         Current = settings;
+    }
+
+    private static bool MigrateLegacyBranding(ProgramSettingsModel settings)
+    {
+        bool changed = false;
+
+        if (settings.Company.Contains("和胜", StringComparison.OrdinalIgnoreCase))
+        {
+            settings.Company = "Kwy";
+            changed = true;
+        }
+
+        if (settings.Copyright.Contains("和胜", StringComparison.OrdinalIgnoreCase))
+        {
+            settings.Copyright = "Copyright © 2026 Kwy";
+            changed = true;
+        }
+
+        if (settings.OfficialUrl.Contains("heshengyu.com", StringComparison.OrdinalIgnoreCase))
+        {
+            settings.OfficialUrl = "https://github.com/SheriffBlack/KwyFramework";
+            changed = true;
+        }
+
+        return changed;
     }
 }
 

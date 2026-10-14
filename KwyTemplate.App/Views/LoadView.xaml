@@ -145,15 +145,15 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 BorderThickness="0"
-                Visibility="Collapsed">
-                <Image RenderOptions.BitmapScalingMode="HighQuality" Source="{StaticResource ImgInfoHsy}" />
+                Visibility="Visible">
+                <Image RenderOptions.BitmapScalingMode="HighQuality" Source="{StaticResource ImgLogoKawayiCn}" />
             </Border>
 
             <DockPanel
                 Grid.Row="1"
                 Margin="50,0,30,10"
                 VerticalAlignment="Center"
-                Visibility="Collapsed">
+                Visibility="Visible">
                 <TextBlock
                     HorizontalAlignment="Left"
                     FontSize="11"

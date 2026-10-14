@@ -32,13 +32,13 @@ public sealed class ProgramSettingsModel
     [InputType(InputType.TextBox)]
     [EditorWidth(500)]
     [ReadOnly(true)]
-    public string Company { get; set; } = "苏州和胜禹机电";
+    public string Company { get; set; } = "Kwy";
 
     [DisplayName("版权信息")]
     [InputType(InputType.TextBox)]
     [EditorWidth(500)]
     [ReadOnly(true)]
-    public string Copyright { get; set; } = "Copyright © 2025-2026 苏州和胜禹机电 All Rights Reserved.";
+    public string Copyright { get; set; } = "Copyright © 2026 Kwy";
 
     [DisplayName("程序集版本")]
     [InputType(InputType.TextBox)]
@@ -60,5 +60,5 @@ public sealed class ProgramSettingsModel
     [InputType(InputType.TextBox)]
     [EditorWidth(500)]
     [ReadOnly(true)]
-    public string OfficialUrl { get; set; } = "http://www.heshengyu.com";
+    public string OfficialUrl { get; set; } = "https://github.com/SheriffBlack/KwyFramework";
 }
