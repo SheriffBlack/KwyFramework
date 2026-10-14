@@ -7,12 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Robots\" />
-    <Folder Include="Definitions\" />
-    <Folder Include="Registries\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Kwy.Device.IoCard.Abstractions\Kwy.Device.IoCard.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.PLC.Abstractions\Kwy.Device.PLC.Abstractions.csproj" />
   </ItemGroup>

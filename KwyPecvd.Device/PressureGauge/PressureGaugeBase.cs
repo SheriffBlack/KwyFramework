@@ -58,6 +58,14 @@ public abstract class PressureGaugeBase :
     protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) =>
         Task.CompletedTask;
 
+    public sealed override Task ShutdownAsync(
+        CancellationToken cancellationToken = default) =>
+        ShutdownCoreAsync(cancellationToken);
+
+    protected virtual Task ShutdownCoreAsync(
+        CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+
     public sealed override async Task ExecuteCycleAsync(
             CancellationToken cancellationToken = default)
     {
@@ -166,7 +174,7 @@ public abstract class PressureGaugeBase :
 
     protected abstract ValueTask<PressureGaugeCycleResult> ReadPressureAsync(CancellationToken cancellationToken);
 
-    protected sealed record PressureGaugeCycleResult(
+    protected readonly record struct PressureGaugeCycleResult(
         double Pressure,
         bool IsOffline,
         bool IsReadingValid,

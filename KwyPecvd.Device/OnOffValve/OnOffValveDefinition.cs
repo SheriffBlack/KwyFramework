@@ -26,7 +26,9 @@ public sealed record OnOffValveDefinition
             OnOffValvePosition.Open and
             not OnOffValvePosition.Closed)
         {
-            throw new InvalidOperationException(
+            throw new ArgumentOutOfRangeException(
+                nameof(SafePosition),
+                SafePosition,
                 "Valve safe position must be Open or Closed.");
         }
 

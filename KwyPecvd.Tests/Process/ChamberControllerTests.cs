@@ -666,7 +666,7 @@ public sealed class ChamberControllerTests
     private sealed class OfflineMfc : MfcBase
     {
         public OfflineMfc(MfcDefinition definition)
-            : base(definition, initiallyOffline: true)
+            : base(definition)
         {
         }
 

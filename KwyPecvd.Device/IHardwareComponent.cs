@@ -24,13 +24,6 @@ public interface IHardwareComponent
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// MFC 复位不能擅自改流量，先只清除软件状态
-    /// </summary>
-    /// <returns></returns>
-    Task ResetAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// 结束软件对该硬件组件的管理
     /// </summary>
     /// <returns></returns>

@@ -11,7 +11,7 @@ public sealed record MfcDefinition
 
     public required string DisplayName { get; init; }
 
-    public string GasName { get; init; } = string.Empty;
+    public required string GasName { get; init; }
 
     public string Unit { get; init; } = "sccm";
 
@@ -26,19 +26,25 @@ public sealed record MfcDefinition
         ArgumentException.ThrowIfNullOrWhiteSpace(Id);
         ArgumentException.ThrowIfNullOrWhiteSpace(ModuleId);
         ArgumentException.ThrowIfNullOrWhiteSpace(DisplayName);
-
+        ArgumentException.ThrowIfNullOrWhiteSpace(GasName);
         ArgumentException.ThrowIfNullOrWhiteSpace(Unit);
 
         if (!double.IsFinite(FullScale) || FullScale <= 0)
-            throw new InvalidOperationException(
+            throw new ArgumentOutOfRangeException(
+                nameof(FullScale),
+                FullScale,
                 $"MFC {Id} full scale must be a finite number greater than zero.");
 
         if (!double.IsFinite(Tolerance) || Tolerance < 0)
-            throw new InvalidOperationException(
+            throw new ArgumentOutOfRangeException(
+                nameof(Tolerance),
+                Tolerance,
                 $"MFC {Id} tolerance must be a finite non-negative number.");
 
         if (ToleranceDelay < TimeSpan.Zero)
-            throw new InvalidOperationException(
+            throw new ArgumentOutOfRangeException(
+                nameof(ToleranceDelay),
+                ToleranceDelay,
                 $"MFC {Id} tolerance delay cannot be negative.");
     }
 }

@@ -66,7 +66,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
     public event EventHandler<TemperatureControllerSnapshot>? SnapshotChanged;
 
     public override sealed async Task InitializeAsync(
-    CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -238,6 +238,8 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        TemperatureControllerSnapshot? snapshotToPublish = null;
+
         try
         {
             double target;
@@ -299,6 +301,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
                 };
 
             UpdateSnapshot(changed);
+            snapshotToPublish = changed;
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
@@ -330,21 +333,30 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
                 snapshot = failed;
             }
 
-            PublishSnapshotChanged(failed);
+            snapshotToPublish = failed;
             throw;
         }
         finally
         {
             operationGate.Release();
+
+            if (snapshotToPublish is not null)
+            {
+                PublishSnapshotChanged(
+                    snapshotToPublish);
+            }
         }
     }
 
     public override sealed async Task ShutdownAsync(
-    CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        TemperatureControllerSnapshot?
+            snapshotToPublish = null;
 
         try
         {
@@ -381,20 +393,40 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
                 };
 
             UpdateSnapshot(changed);
+            snapshotToPublish = changed;
         }
         finally
         {
-            operationGate.Release();
+            try
+            {
+                await ShutdownCoreAsync(
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                operationGate.Release();
+
+                if (snapshotToPublish is not null)
+                {
+                    PublishSnapshotChanged(
+                        snapshotToPublish);
+                }
+            }
         }
     }
 
+    protected virtual Task ShutdownCoreAsync(
+        CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+
     private bool CalculateOutOfTolerance(
-    double target,
-    double feedback,
-    bool enabled,
-    bool offline,
-    bool feedbackValid,
-    DateTimeOffset now)
+        double target,
+        double feedback,
+        bool enabled,
+        bool offline,
+        bool feedbackValid,
+        DateTimeOffset now)
     {
         var exceedsTolerance =
             enabled &&
@@ -422,8 +454,6 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
         {
             snapshot = current;
         }
-
-        PublishSnapshotChanged(current);
     }
 
     private void PublishSnapshotChanged(

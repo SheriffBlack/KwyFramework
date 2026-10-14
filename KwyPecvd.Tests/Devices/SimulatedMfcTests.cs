@@ -72,7 +72,7 @@ namespace KwyPecvd.Tests.Devices
         }
 
         [Fact]
-        public async Task ShutdownAsync_DoesNotChangeProcessSetPoint()
+        public async Task ShutdownAsync_ResetsProcessSetPointToZero()
         {
             var mfc = CreateMfc();
             await mfc.SetFlowAsync(100, TimeSpan.Zero);
@@ -81,7 +81,7 @@ namespace KwyPecvd.Tests.Devices
             await mfc.ShutdownAsync();
             await mfc.ExecuteCycleAsync();
 
-            Assert.Equal(100, mfc.Snapshot.SetPoint);
+            Assert.Equal(0, mfc.Snapshot.SetPoint);
         }
 
         [Fact]
@@ -89,7 +89,7 @@ namespace KwyPecvd.Tests.Devices
         {
             var definition = CreateDefinition() with { FullScale = double.NaN };
 
-            Assert.Throws<InvalidOperationException>(definition.Validate);
+            Assert.Throws<ArgumentOutOfRangeException>(definition.Validate);
         }
 
         private static SimulatedMfc CreateMfc(TimeSpan? toleranceDelay = null)

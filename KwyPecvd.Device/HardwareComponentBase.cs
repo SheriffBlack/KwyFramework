@@ -16,10 +16,6 @@ public abstract class HardwareComponentBase : IHardwareComponent
     public abstract Task ExecuteCycleAsync(
         CancellationToken cancellationToken = default);
 
-    public virtual Task ResetAsync(
-        CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
-
     public virtual Task ShutdownAsync(
         CancellationToken cancellationToken = default)
         => Task.CompletedTask;

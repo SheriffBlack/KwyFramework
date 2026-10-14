@@ -4,6 +4,7 @@ using KwyPecvd.Device.Mfc.Simulated;
 using KwyPecvd.Device.OnOffValve;
 using KwyPecvd.Device.OnOffValve.Simulated;
 using KwyPecvd.Device.PressureGauge;
+using KwyPecvd.Device.PressureGauge.Simulated;
 using KwyPecvd.Device.RfMatcher;
 using KwyPecvd.Device.RfMatcher.Simulated;
 using KwyPecvd.Device.RfPowerSupply;

@@ -1,7 +1,8 @@
 namespace KwyPecvd.Device.Mfc;
 
 /// <summary>统一实现MFC命令、线性斜坡、容差延时、状态快照和并发控制。</summary>
-public abstract class MfcBase : HardwareComponentBase, IMfc
+public abstract class MfcBase : HardwareComponentBase, IMfc,
+    IResettableHardwareComponent
 {
     private readonly object syncRoot = new();
     private readonly SemaphoreSlim operationGate = new(1, 1);
@@ -159,6 +160,8 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
     public sealed override async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
         await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        MfcSnapshot? snapshotToPublish = null;
+
         try
         {
             double nextSetPoint;
@@ -199,14 +202,16 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
                     IsOutOfTolerance =
                         isOutOfTolerance,
                     DiagnosticCode =
-                        result.DiagnosticCode,
+                        GetDiagnosticCode(
+                            result,
+                            isOutOfTolerance),
                     Timestamp = result.Timestamp
                 };
 
                 snapshot = newSnapshot;
             }
 
-            PublishSnapshotChanged(newSnapshot);
+            snapshotToPublish = newSnapshot;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -228,12 +233,18 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
                 };
                 snapshot = offlineSnapshot;
             }
-            PublishSnapshotChanged(offlineSnapshot);
+            snapshotToPublish = offlineSnapshot;
             throw;
         }
         finally
         {
             operationGate.Release();
+
+            if (snapshotToPublish is not null)
+            {
+                PublishSnapshotChanged(
+                    snapshotToPublish);
+            }
         }
     }
 
@@ -241,7 +252,8 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         double setPoint,
         CancellationToken cancellationToken);
 
-    public override async Task ResetAsync(CancellationToken cancellationToken = default)
+    public async Task<CommandResult> ResetAsync(
+        CancellationToken cancellationToken = default)
     {
         await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         MfcSnapshot newSnapshot;
@@ -263,6 +275,9 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
             operationGate.Release();
         }
         PublishSnapshotChanged(newSnapshot);
+
+        return CommandResult.Success(
+            $"MFC '{Id}' software diagnostic state was reset.");
     }
 
     public sealed override async Task ShutdownAsync(
@@ -271,6 +286,8 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
         await operationGate
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        MfcSnapshot? snapshotToPublish = null;
 
         try
         {
@@ -302,20 +319,41 @@ public abstract class MfcBase : HardwareComponentBase, IMfc
                         result.IsFeedbackValid,
                     IsOutOfTolerance = false,
                     DiagnosticCode =
-                        result.DiagnosticCode,
+                        GetDiagnosticCode(
+                            result,
+                            outOfTolerance: false),
                     Timestamp = now
                 };
 
                 snapshot = newSnapshot;
             }
 
-            PublishSnapshotChanged(newSnapshot);
+            snapshotToPublish = newSnapshot;
         }
         finally
         {
-            operationGate.Release();
+            try
+            {
+                await ShutdownCoreAsync(
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                operationGate.Release();
+
+                if (snapshotToPublish is not null)
+                {
+                    PublishSnapshotChanged(
+                        snapshotToPublish);
+                }
+            }
         }
     }
+
+    protected virtual Task ShutdownCoreAsync(
+        CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 
     private static string? GetDiagnosticCode(
         MfcCycleResult result,

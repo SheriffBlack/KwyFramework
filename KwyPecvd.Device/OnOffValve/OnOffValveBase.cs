@@ -157,6 +157,8 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        OnOffValveSnapshot? snapshotToPublish = null;
+
         try
         {
             OnOffValvePosition requested;
@@ -172,7 +174,8 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
                         cancellationToken)
                     .ConfigureAwait(false);
 
-            UpdateSnapshot(requested, result);
+            snapshotToPublish =
+                UpdateSnapshot(requested, result);
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
@@ -207,12 +210,18 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
                 snapshot = failed;
             }
 
-            PublishSnapshotChanged(failed);
+            snapshotToPublish = failed;
             throw;
         }
         finally
         {
             operationGate.Release();
+
+            if (snapshotToPublish is not null)
+            {
+                PublishSnapshotChanged(
+                    snapshotToPublish);
+            }
         }
     }
 
@@ -222,6 +231,8 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
         await operationGate
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        OnOffValveSnapshot? snapshotToPublish = null;
 
         try
         {
@@ -240,17 +251,36 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
                         cancellationToken)
                     .ConfigureAwait(false);
 
-            UpdateSnapshot(
+            snapshotToPublish = UpdateSnapshot(
                 safePosition,
                 result);
         }
         finally
         {
-            operationGate.Release();
+            try
+            {
+                await ShutdownCoreAsync(
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                operationGate.Release();
+
+                if (snapshotToPublish is not null)
+                {
+                    PublishSnapshotChanged(
+                        snapshotToPublish);
+                }
+            }
         }
     }
 
-    private void UpdateSnapshot(
+    protected virtual Task ShutdownCoreAsync(
+        CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+
+    private OnOffValveSnapshot UpdateSnapshot(
         OnOffValvePosition requested,
         OnOffValveCycleResult result)
     {
@@ -313,7 +343,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
             };
         }
 
-        PublishSnapshotChanged(snapshot);
+        return snapshot;
     }
 
     private static string? GetDiagnosticCode(

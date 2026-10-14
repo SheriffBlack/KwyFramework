@@ -6,26 +6,26 @@ public sealed record MfcSnapshot
     public required string Id { get; init; }
 
     /// <summary>当前下发给 MFC 的流量设定值。</summary>
-    public double SetPoint { get; init; }
+    public required double SetPoint { get; init; }
 
     /// <summary>MFC 反馈的实际流量。</summary>
-    public double Feedback { get; init; }
+    public required double Feedback { get; init; }
 
     /// <summary>MFC 额定满量程。</summary>
-    public double FullScale { get; init; }
+    public required double FullScale { get; init; }
 
     public required string Unit { get; init; }
 
-    public bool IsRamping { get; init; }
+    public required bool IsRamping { get; init; }
 
-    public bool IsOffline { get; init; }
+    public required bool IsOffline { get; init; }
 
-    public bool IsOutOfTolerance { get; init; }
+    public required bool IsOutOfTolerance { get; init; }
 
-    public DateTimeOffset Timestamp { get; init; }
+    public required DateTimeOffset Timestamp { get; init; }
 
     /// <summary>当前 Feedback 数值能不能被业务层信任</summary>
-    public bool IsFeedbackValid { get; init; }
+    public required bool IsFeedbackValid { get; init; }
 
-    public string? DiagnosticCode { get; init; }
+    public required string? DiagnosticCode { get; init; }
 }

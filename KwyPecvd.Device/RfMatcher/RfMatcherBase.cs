@@ -223,11 +223,13 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
     }
 
     public override sealed async Task ExecuteCycleAsync(
-    CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        RfMatcherSnapshot? snapshotToPublish = null;
 
         try
         {
@@ -292,6 +294,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
                 };
 
             UpdateSnapshot(changed);
+            snapshotToPublish = changed;
         }
         catch (OperationCanceledException)
             when (cancellationToken
@@ -319,13 +322,69 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
             };
 
             UpdateSnapshot(failed);
+            snapshotToPublish = failed;
             throw;
         }
         finally
         {
             operationGate.Release();
+
+            if (snapshotToPublish is not null)
+            {
+                PublishSnapshotChanged(
+                    snapshotToPublish);
+            }
         }
     }
+
+    public override sealed async Task ShutdownAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await operationGate
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        RfMatcherSnapshot? snapshotToPublish = null;
+
+        try
+        {
+            await ShutdownCoreAsync(
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            lock (syncRoot)
+            {
+                snapshotToPublish = snapshot with
+                {
+                    ActualMode = RfMatcherMode.Unknown,
+                    IsTuning = false,
+                    IsMatched = false,
+                    IsOffline = true,
+                    IsFeedbackValid = false,
+                    IsPositionOutOfTolerance = false,
+                    DiagnosticCode =
+                        RfMatcherDiagnosticCodes.Offline,
+                    Timestamp = DateTimeOffset.UtcNow
+                };
+
+                snapshot = snapshotToPublish;
+            }
+        }
+        finally
+        {
+            operationGate.Release();
+
+            if (snapshotToPublish is not null)
+            {
+                PublishSnapshotChanged(
+                    snapshotToPublish);
+            }
+        }
+    }
+
+    protected virtual Task ShutdownCoreAsync(
+        CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 
     private bool CalculatePositionOutOfTolerance(
         RfMatcherMode mode,
@@ -408,7 +467,6 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
             snapshot = current;
         }
 
-        PublishSnapshotChanged(current);
     }
 
     private void PublishSnapshotChanged(

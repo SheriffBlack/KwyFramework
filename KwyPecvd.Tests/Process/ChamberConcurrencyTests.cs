@@ -142,9 +142,15 @@ public sealed class ChamberConcurrencyTests
             Current = new MfcSnapshot
             {
                 Id = Id,
+                SetPoint = 0,
+                Feedback = 0,
                 Unit = "sccm",
                 FullScale = 500,
+                IsRamping = false,
+                IsOffline = false,
+                IsOutOfTolerance = false,
                 IsFeedbackValid = true,
+                DiagnosticCode = null,
                 Timestamp = DateTimeOffset.UtcNow
             };
         }

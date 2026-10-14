@@ -65,6 +65,14 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
         CancellationToken cancellationToken) =>
         Task.CompletedTask;
 
+    public sealed override Task ShutdownAsync(
+        CancellationToken cancellationToken = default) =>
+        ShutdownCoreAsync(cancellationToken);
+
+    protected virtual Task ShutdownCoreAsync(
+        CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+
     public sealed override async Task ExecuteCycleAsync(
         CancellationToken cancellationToken = default)
     {
@@ -181,7 +189,7 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
         }
     }
 
-    protected sealed record
+    protected readonly record struct
         TemperatureSensorCycleResult(
             double Temperature,
             bool IsOffline,

@@ -1,7 +1,8 @@
 ﻿using KwyPecvd.Device.PressureGauge;
 
-public sealed class SimulatedPressureGauge :
-    PressureGaugeBase
+namespace KwyPecvd.Device.PressureGauge.Simulated;
+
+public sealed class SimulatedPressureGauge : PressureGaugeBase
 {
     private readonly object simulationSync = new();
 

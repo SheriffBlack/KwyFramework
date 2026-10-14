@@ -27,7 +27,9 @@ public sealed record PressureGaugeDefinition
         if (!double.IsFinite(Minimum) ||
             Minimum < 0)
         {
-            throw new InvalidOperationException(
+            throw new ArgumentOutOfRangeException(
+                nameof(Minimum),
+                Minimum,
                 $"Pressure gauge {Id} minimum " +
                 "must be a finite non-negative number.");
         }
@@ -35,7 +37,9 @@ public sealed record PressureGaugeDefinition
         if (!double.IsFinite(Maximum) ||
             Maximum <= Minimum)
         {
-            throw new InvalidOperationException(
+            throw new ArgumentOutOfRangeException(
+                nameof(Maximum),
+                Maximum,
                 $"Pressure gauge {Id} maximum " +
                 "must be greater than minimum.");
         }

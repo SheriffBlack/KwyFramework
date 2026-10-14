@@ -262,6 +262,8 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        RfPowerSupplySnapshot? snapshotToPublish = null;
+
         try
         {
             double setPoint;
@@ -345,7 +347,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
                 snapshot = changed;
             }
 
-            PublishSnapshotChanged(changed);
+            snapshotToPublish = changed;
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
@@ -377,12 +379,18 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
                 snapshot = failed;
             }
 
-            PublishSnapshotChanged(failed);
+            snapshotToPublish = failed;
             throw;
         }
         finally
         {
             operationGate.Release();
+
+            if (snapshotToPublish is not null)
+            {
+                PublishSnapshotChanged(
+                    snapshotToPublish);
+            }
         }
     }
 
@@ -490,6 +498,8 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
             .WaitAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        RfPowerSupplySnapshot? snapshotToPublish = null;
+
         try
         {
             var result =
@@ -531,13 +541,32 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
                 snapshot = changed;
             }
 
-            PublishSnapshotChanged(changed);
+            snapshotToPublish = changed;
         }
         finally
         {
-            operationGate.Release();
+            try
+            {
+                await ShutdownCoreAsync(
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                operationGate.Release();
+
+                if (snapshotToPublish is not null)
+                {
+                    PublishSnapshotChanged(
+                        snapshotToPublish);
+                }
+            }
         }
     }
+
+    protected virtual Task ShutdownCoreAsync(
+        CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 
     private void PublishSnapshotChanged(
         RfPowerSupplySnapshot current)
