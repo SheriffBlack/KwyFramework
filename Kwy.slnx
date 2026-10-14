@@ -69,7 +69,6 @@
   <Project Path="Kwy.Device.IoCard.Leadshine/Kwy.Device.IoCard.Leadshine.csproj" Id="15aad508-1f53-4b44-a4ab-9188723d625e" />
   <Project Path="Kwy.Device.IoCard.Tests/Kwy.Device.IoCard.Tests.csproj" />
   <Project Path="Kwy.Device.MotionCard.Abstractions/Kwy.Device.MotionCard.Abstractions.csproj" />
-  <Project Path="Kwy.Device.MotionCard.Benchmarks/Kwy.Device.MotionCard.Benchmarks.csproj" />
   <Project Path="Kwy.Device.MotionCard.Core/Kwy.Device.MotionCard.Core.csproj" />
   <Project Path="Kwy.Device.MotionCard.Googol/Kwy.Device.MotionCard.Googol.csproj" Id="4db6d6d7-7041-4f9e-96cd-2e4e3a7a587c" />
   <Project Path="Kwy.Device.MotionCard.Leadshine/Kwy.Device.MotionCard.Leadshine.csproj" Id="ba4a18f1-456d-4b3c-8366-504becca2cc1" />
