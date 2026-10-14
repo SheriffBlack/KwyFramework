@@ -82,9 +82,10 @@
                     Padding="10,6"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center"
+                    Background="Red"
                     BorderThickness="0"
                     CornerRadius="3"
-                    Visibility="Visible">
+                    Visibility="Collapsed">
                     <Image
                         RenderOptions.BitmapScalingMode="HighQuality"
                         Source="{StaticResource ImgLogoKawayi}"

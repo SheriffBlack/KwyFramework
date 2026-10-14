@@ -288,14 +288,14 @@
                         Margin="20,0,0,0"
                         Label="{DynamicResource Home.Field.MaterialInputCount}">
                         <TextBlock
-                            Margin="-20,4,0,0"
                             VerticalAlignment="Center"
                             Foreground="{DynamicResource ControlDisabledForegroundBrush}"
                             Text="{Binding MaterialInputCount, Mode=OneWay}" />
                     </kwyui:KwyFormItem>
-                    <kwyui:KwyFormItem Grid.Column="2" Label="{DynamicResource Home.Field.ElectricalTestOkCount}">
+                    <kwyui:KwyFormItem
+                        Grid.Column="2"
+                        Label="{DynamicResource Home.Field.ElectricalTestOkCount}">
                         <TextBlock
-                            Margin="-20,4,0,0"
                             VerticalAlignment="Center"
                             Foreground="{DynamicResource ControlDisabledForegroundBrush}"
                             Text="{Binding ElectricalTestOkCount, Mode=OneWay}" />

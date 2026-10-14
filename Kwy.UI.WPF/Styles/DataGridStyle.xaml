@@ -74,8 +74,8 @@
         <Setter Property="Background" Value="{DynamicResource BackgroundBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="FontSize" Value="14" />
-        <Setter Property="Padding" Value="{DynamicResource KwyDataGridHeaderPadding}" />
-        <Setter Property="Height" Value="{DynamicResource KwyDataGridHeaderHeight}" />
+        <Setter Property="Padding" Value="15,12" />
+        <Setter Property="Height" Value="45" />
         <Setter Property="BorderBrush" Value="{DynamicResource WindowBorderBrush}" />
         <Setter Property="BorderThickness" Value="0,0,1,1" />
         <Style.Triggers>
@@ -87,8 +87,8 @@
 
     <!--  DataGrid 行样式。  -->
     <Style x:Key="ModernDataGridRowStyle" TargetType="DataGridRow">
-        <Setter Property="Height" Value="{DynamicResource KwyDataGridRowHeight}" />
-        <Setter Property="MinHeight" Value="{DynamicResource KwyDataGridRowMinHeight}" />
+        <Setter Property="Height" Value="38" />
+        <Setter Property="MinHeight" Value="28" />
         <!--  默认背景：偶数行使用控件背景色。  -->
         <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
         <!--  行边框不占用列布局宽度，确保所有 CellStyle 均与列头对齐。  -->
@@ -135,12 +135,12 @@
         x:Key="ModernDataGridCellStyle"
         BasedOn="{StaticResource ControlBaseStyle}"
         TargetType="DataGridCell">
-        <Setter Property="MinHeight" Value="{DynamicResource KwyDataGridRowMinHeight}" />
+        <Setter Property="MinHeight" Value="40" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <!--  保留单元格键盘焦点，以支持 Ctrl+C、方向键和连续选择。  -->
         <Setter Property="Focusable" Value="True" />
-        <Setter Property="Padding" Value="{DynamicResource KwyDataGridCellPadding}" />
+        <Setter Property="Padding" Value="10" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>

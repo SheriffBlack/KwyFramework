@@ -53,7 +53,7 @@ public class KwyFormItem : ContentControl
 
     /// <summary>标签与内容之间的距离。</summary>
     public static readonly DependencyProperty LabelSpacingProperty =
-        DependencyProperty.Register(nameof(LabelSpacing), typeof(double), typeof(KwyFormItem), new PropertyMetadata(15d),
+        DependencyProperty.Register(nameof(LabelSpacing), typeof(double), typeof(KwyFormItem), new PropertyMetadata(30d),
             value => value is double spacing && double.IsFinite(spacing) && spacing >= 0d);
 
     public double LabelSpacing

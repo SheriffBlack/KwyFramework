@@ -114,7 +114,7 @@
         TargetType="TextBox">
         <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
         <Setter Property="Template" Value="{StaticResource BaseTextBoxTemplate}" />
-        <Setter Property="MinHeight" Value="{DynamicResource KwyTextBoxMinHeight}" />
+        <Setter Property="MinHeight" Value="28.4" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 

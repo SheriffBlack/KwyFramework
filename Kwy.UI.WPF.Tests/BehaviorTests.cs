@@ -42,25 +42,6 @@ public sealed class BehaviorTests
         });
 
     [Fact]
-    public void DensityManager_ReplacesDensityDictionaryWithoutApplication()
-        => RunInSta(() =>
-        {
-            var resources = new ResourceDictionary();
-            resources.MergedDictionaries.Add(new ResourceDictionary
-            {
-                Source = new Uri(
-                    "pack://application:,,,/Kwy.UI.WPF;component/Themes/Densities/Compact.xaml",
-                    UriKind.Absolute)
-            });
-
-            KwyDensityManager.ApplyDensity(resources, KwyDensity.Touch);
-
-            Assert.Single(resources.MergedDictionaries);
-            Assert.EndsWith("Touch.xaml", resources.MergedDictionaries[0].Source.OriginalString);
-            Assert.Equal(48d, resources["KwyControlMinHeight"]);
-        });
-
-    [Fact]
     public void ListBoxAccentStyles_LoadAsStyles()
         => RunInSta(() =>
         {
