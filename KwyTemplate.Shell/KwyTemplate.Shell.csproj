@@ -14,22 +14,22 @@
     <ProgramSettingsConfigFile>$(MSBuildProjectDirectory)\bin\$(Configuration)\$(TargetFramework)\Config\System\ProgramSettings.json</ProgramSettingsConfigFile>
 
     <AssemblyTitle>TP测包机</AssemblyTitle>
-    <AssemblyProduct>TP测包机</AssemblyProduct>
-    <AssemblyDescription>电子元器件测试包装机</AssemblyDescription>
-    <AssemblyCompany>苏州和胜禹机电</AssemblyCompany>
-    <AssemblyCopyright>Copyright © 2025-2026 苏州和胜禹机电 All Rights Reserved.</AssemblyCopyright>
+    <Product>TP测包机</Product>
+    <Description>电子元器件测试包装机</Description>
+    <Company>Kwy</Company>
+    <Copyright>Copyright © 2026 Kwy</Copyright>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
     <InformationalVersion>1.0.0.0</InformationalVersion>
   </PropertyGroup>
 
-  <Target Name="LoadAssemblyInfoFromProgramSettings" BeforeTargets="GenerateAssemblyInfo" Condition="'$(8TargetFramework)' != ''">
+  <Target Name="LoadAssemblyInfoFromProgramSettings" BeforeTargets="GenerateAssemblyInfo" Condition="'$(TargetFramework)' != ''">
     <ReadProgramSettingsFromJson ConfigFile="$(ProgramSettingsConfigFile)">
       <Output TaskParameter="AssemblyTitle" PropertyName="AssemblyTitle" />
-      <Output TaskParameter="AssemblyProduct" PropertyName="AssemblyProduct" />
-      <Output TaskParameter="AssemblyDescription" PropertyName="AssemblyDescription" />
-      <Output TaskParameter="AssemblyCompany" PropertyName="AssemblyCompany" />
-      <Output TaskParameter="AssemblyCopyright" PropertyName="AssemblyCopyright" />
+      <Output TaskParameter="AssemblyProduct" PropertyName="Product" />
+      <Output TaskParameter="AssemblyDescription" PropertyName="Description" />
+      <Output TaskParameter="AssemblyCompany" PropertyName="Company" />
+      <Output TaskParameter="AssemblyCopyright" PropertyName="Copyright" />
       <Output TaskParameter="AssemblyVersion" PropertyName="AssemblyVersion" />
       <Output TaskParameter="FileVersion" PropertyName="FileVersion" />
       <Output TaskParameter="InformationalVersion" PropertyName="InformationalVersion" />
@@ -60,10 +60,10 @@
           const string DefaultTitle = "测包机";
           const string DefaultProduct = "测包机";
           const string DefaultDescription = "电子元器件测试包装机";
-          const string DefaultCompany = "苏州和胜裕机电";
-          const string DefaultCopyright = "Copyright © 2025-2026 苏州和胜裕机电 All Rights Reserved.";
+          const string DefaultCompany = "Kwy";
+          const string DefaultCopyright = "Copyright © 2026 Kwy";
           const string DefaultVersion = "1.0.0.0";
-          const string DefaultOfficialUrl = "http://www.heshengyu.com";
+          const string DefaultOfficialUrl = "https://github.com/SheriffBlack/KwyFramework";
 
           string EscapeJson(string value)
           {
@@ -130,6 +130,13 @@
               return string.IsNullOrWhiteSpace(value) ? fallback : value;
           }
 
+          string SetString(string json, string propertyName, string value)
+          {
+              string pattern = "(\\\"" + Regex.Escape(propertyName) + "\\\"\\s*:\\s*)\\\"(?:\\\\.|[^\\\"])*\\\"";
+              var regex = new Regex(pattern, RegexOptions.CultureInvariant);
+              return regex.Replace(json, match => match.Groups[1].Value + "\"" + EscapeJson(value) + "\"", 1);
+          }
+
           string NormalizeVersion(string value, string fallback)
           {
               if (!string.IsNullOrWhiteSpace(value) && Version.TryParse(value, out _))
@@ -182,6 +189,22 @@
               }
 
               string json = File.ReadAllText(ConfigFile, Encoding.UTF8);
+              string configuredCompany = GetString(json, "Company", DefaultCompany);
+              string configuredCopyright = GetString(json, "Copyright", DefaultCopyright);
+              string configuredOfficialUrl = GetString(json, "OfficialUrl", DefaultOfficialUrl);
+              bool hasLegacyBranding = configuredCompany.Contains("和胜") ||
+                  configuredCopyright.Contains("和胜") ||
+                  configuredOfficialUrl.IndexOf("heshengyu.com", StringComparison.OrdinalIgnoreCase) >= 0;
+
+              if (hasLegacyBranding)
+              {
+                  json = SetString(json, "Company", DefaultCompany);
+                  json = SetString(json, "Copyright", DefaultCopyright);
+                  json = SetString(json, "OfficialUrl", DefaultOfficialUrl);
+                  File.WriteAllText(ConfigFile, json, new UTF8Encoding(false));
+                  Log.LogMessage(MessageImportance.Normal, $"Migrated legacy branding in ProgramSettings: {ConfigFile}");
+              }
+
               AssemblyTitle = GetString(json, "Title", DefaultTitle);
               AssemblyProduct = GetString(json, "Product", DefaultProduct);
               AssemblyDescription = GetString(json, "Description", DefaultDescription);
