@@ -292,9 +292,7 @@
                             Foreground="{DynamicResource ControlDisabledForegroundBrush}"
                             Text="{Binding MaterialInputCount, Mode=OneWay}" />
                     </kwyui:KwyFormItem>
-                    <kwyui:KwyFormItem
-                        Grid.Column="2"
-                        Label="{DynamicResource Home.Field.ElectricalTestOkCount}">
+                    <kwyui:KwyFormItem Grid.Column="2" Label="{DynamicResource Home.Field.ElectricalTestOkCount}">
                         <TextBlock
                             VerticalAlignment="Center"
                             Foreground="{DynamicResource ControlDisabledForegroundBrush}"
