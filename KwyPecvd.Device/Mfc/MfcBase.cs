@@ -1,8 +1,7 @@
 namespace KwyPecvd.Device.Mfc;
 
 /// <summary>统一实现MFC命令、线性斜坡、容差延时、状态快照和并发控制。</summary>
-public abstract class MfcBase : HardwareComponentBase, IMfc,
-    IResettableHardwareComponent
+public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardwareComponent
 {
     private readonly object syncRoot = new();
     private readonly SemaphoreSlim operationGate = new(1, 1);
@@ -57,7 +56,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc,
 
     public event EventHandler<MfcSnapshot>? SnapshotChanged;
 
-    public sealed override async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public override sealed async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Definition.Validate();
@@ -124,8 +123,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc,
         return CommandResult.Success($"MFC {Id} accepted target {target} {Definition.Unit}.");
     }
 
-    public Task<CommandResult> StopAsync(CancellationToken cancellationToken = default) =>
-        SetFlowAsync(0, TimeSpan.Zero, cancellationToken);
+    public Task<CommandResult> StopAsync(CancellationToken cancellationToken = default) => SetFlowAsync(0, TimeSpan.Zero, cancellationToken);
 
     public async Task<CommandResult> HoldAsync(CancellationToken cancellationToken = default)
     {
@@ -157,7 +155,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc,
         return CommandResult.Success($"MFC {Id} is holding at {holdValue:F3} {Definition.Unit}.");
     }
 
-    public sealed override async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
+    public override sealed async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
         await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         MfcSnapshot? snapshotToPublish = null;
@@ -191,6 +189,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc,
                         result.IsFeedbackValid,
                         result.Timestamp);
 
+                // with生成新Snapshot
                 newSnapshot = snapshot with
                 {
                     SetPoint = nextSetPoint,
@@ -248,12 +247,15 @@ public abstract class MfcBase : HardwareComponentBase, IMfc,
         }
     }
 
+    /// <summary>
+    /// 将本周期命令写入硬件，并读取实际反馈。
+    /// 该方法只负责硬件数据交换，不负责业务状态判断。
+    /// </summary>
     protected abstract ValueTask<MfcCycleResult> ExchangeAsync(
         double setPoint,
         CancellationToken cancellationToken);
 
-    public async Task<CommandResult> ResetAsync(
-        CancellationToken cancellationToken = default)
+    public async Task<CommandResult> ResetAsync(CancellationToken cancellationToken = default)
     {
         await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         MfcSnapshot newSnapshot;
@@ -280,8 +282,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc,
             $"MFC '{Id}' software diagnostic state was reset.");
     }
 
-    public sealed override async Task ShutdownAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task ShutdownAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -351,8 +352,7 @@ public abstract class MfcBase : HardwareComponentBase, IMfc,
         }
     }
 
-    protected virtual Task ShutdownCoreAsync(
-        CancellationToken cancellationToken) =>
+    protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) =>
         Task.CompletedTask;
 
     private static string? GetDiagnosticCode(

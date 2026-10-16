@@ -1,8 +1,6 @@
 ﻿namespace KwyPecvd.Device.PressureGauge;
 
-public abstract class PressureGaugeBase :
-    HardwareComponentBase,
-    IPressureGauge
+public abstract class PressureGaugeBase : HardwareComponentBase, IPressureGauge
 {
     private readonly object syncRoot = new();
 
@@ -30,10 +28,7 @@ public abstract class PressureGaugeBase :
         };
     }
 
-    public PressureGaugeDefinition Definition
-    {
-        get;
-    }
+    public PressureGaugeDefinition Definition { get; }
 
     public PressureGaugeSnapshot Snapshot
     {
@@ -55,19 +50,13 @@ public abstract class PressureGaugeBase :
         await InitializeCoreAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    public sealed override Task ShutdownAsync(
-        CancellationToken cancellationToken = default) =>
-        ShutdownCoreAsync(cancellationToken);
+    public sealed override Task ShutdownAsync(CancellationToken cancellationToken = default) => ShutdownCoreAsync(cancellationToken);
 
-    protected virtual Task ShutdownCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    public sealed override async Task ExecuteCycleAsync(
-            CancellationToken cancellationToken = default)
+    public sealed override async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
         try
         {

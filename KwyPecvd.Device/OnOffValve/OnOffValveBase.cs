@@ -12,8 +12,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
 
     private OnOffValveSnapshot snapshot;
 
-    protected OnOffValveBase(
-        OnOffValveDefinition definition)
+    protected OnOffValveBase(OnOffValveDefinition definition)
         : base(
             definition?.Id ??
             throw new ArgumentNullException(
@@ -54,8 +53,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
 
     public event EventHandler<OnOffValveSnapshot>? SnapshotChanged;
 
-    public sealed override async Task InitializeAsync(
-        CancellationToken cancellationToken = default)
+    public sealed override async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -64,18 +62,14 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
         await InitializeCoreAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    protected virtual Task InitializeCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    public Task<CommandResult> OpenAsync(
-        CancellationToken cancellationToken = default) =>
+    public Task<CommandResult> OpenAsync(CancellationToken cancellationToken = default) =>
         RequestPositionAsync(
             OnOffValvePosition.Open,
             cancellationToken);
 
-    public Task<CommandResult> CloseAsync(
-        CancellationToken cancellationToken = default) =>
+    public Task<CommandResult> CloseAsync(CancellationToken cancellationToken = default) =>
         RequestPositionAsync(
             OnOffValvePosition.Closed,
             cancellationToken);
@@ -150,8 +144,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
             $"Valve '{Id}' accepted {target}.");
     }
 
-    public sealed override async Task ExecuteCycleAsync(
-        CancellationToken cancellationToken = default)
+    public sealed override async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -225,8 +218,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
         }
     }
 
-    public sealed override async Task ShutdownAsync(
-        CancellationToken cancellationToken = default)
+    public sealed override async Task ShutdownAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -276,9 +268,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
         }
     }
 
-    protected virtual Task ShutdownCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     private OnOffValveSnapshot UpdateSnapshot(
         OnOffValvePosition requested,
@@ -376,8 +366,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
         return result.DiagnosticCode;
     }
 
-    private void PublishSnapshotChanged(
-        OnOffValveSnapshot current)
+    private void PublishSnapshotChanged(OnOffValveSnapshot current)
     {
         var handlers = SnapshotChanged?
             .GetInvocationList()

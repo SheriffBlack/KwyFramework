@@ -4,8 +4,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
 {
     private readonly object syncRoot = new();
 
-    private readonly SemaphoreSlim operationGate =
-        new(1, 1);
+    private readonly SemaphoreSlim operationGate = new(1, 1);
 
     private double powerSetPoint;
 
@@ -63,8 +62,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
 
     public event EventHandler<RfPowerSupplySnapshot>? SnapshotChanged;
 
-    public override sealed async Task InitializeAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -74,9 +72,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
             .ConfigureAwait(false);
     }
 
-    protected virtual Task InitializeCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public async Task<CommandResult> SetPowerAsync(
         double power,
@@ -135,8 +131,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
             $"power {power} {Definition.Unit}.");
     }
 
-    public async Task<CommandResult> EnableAsync(
-        CancellationToken cancellationToken = default)
+    public async Task<CommandResult> EnableAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -215,8 +210,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
             "enable command.");
     }
 
-    public async Task<CommandResult> DisableAsync(
-        CancellationToken cancellationToken = default)
+    public async Task<CommandResult> DisableAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -255,8 +249,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
             "disable command.");
     }
 
-    public override sealed async Task ExecuteCycleAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -491,8 +484,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
         return result.DiagnosticCode;
     }
 
-    public override sealed async Task ShutdownAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task ShutdownAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -564,12 +556,9 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
         }
     }
 
-    protected virtual Task ShutdownCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    private void PublishSnapshotChanged(
-        RfPowerSupplySnapshot current)
+    private void PublishSnapshotChanged(RfPowerSupplySnapshot current)
     {
         var handlers = SnapshotChanged?
             .GetInvocationList()

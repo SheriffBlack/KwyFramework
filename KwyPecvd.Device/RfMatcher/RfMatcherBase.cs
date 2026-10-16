@@ -75,8 +75,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
 
     public event EventHandler<RfMatcherSnapshot>? SnapshotChanged;
 
-    public override sealed async Task InitializeAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken
             .ThrowIfCancellationRequested();
@@ -88,9 +87,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
             .ConfigureAwait(false);
     }
 
-    protected virtual Task InitializeCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public async Task<CommandResult> SetModeAsync(
         RfMatcherMode mode,
@@ -143,8 +140,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
             $"mode '{mode}'.");
     }
 
-    public async Task<CommandResult>
-        SetManualPositionAsync(
+    public async Task<CommandResult> SetManualPositionAsync(
             double tunePosition,
             double loadPosition,
             CancellationToken cancellationToken =
@@ -222,8 +218,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
                    Definition.MaximumPosition;
     }
 
-    public override sealed async Task ExecuteCycleAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -337,8 +332,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
         }
     }
 
-    public override sealed async Task ShutdownAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task ShutdownAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -382,9 +376,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
         }
     }
 
-    protected virtual Task ShutdownCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     private bool CalculatePositionOutOfTolerance(
         RfMatcherMode mode,
@@ -459,8 +451,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
         return result.DiagnosticCode;
     }
 
-    private void UpdateSnapshot(
-    RfMatcherSnapshot current)
+    private void UpdateSnapshot(RfMatcherSnapshot current)
     {
         lock (syncRoot)
         {
@@ -469,8 +460,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
 
     }
 
-    private void PublishSnapshotChanged(
-        RfMatcherSnapshot current)
+    private void PublishSnapshotChanged(RfMatcherSnapshot current)
     {
         var handlers = SnapshotChanged?
             .GetInvocationList()
