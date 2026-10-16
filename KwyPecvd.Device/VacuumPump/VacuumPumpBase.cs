@@ -38,10 +38,7 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
         };
     }
 
-    public VacuumPumpDefinition Definition
-    {
-        get;
-    }
+    public VacuumPumpDefinition Definition { get; }
 
     public VacuumPumpSnapshot Snapshot
     {
@@ -54,11 +51,9 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
         }
     }
 
-    public event EventHandler<VacuumPumpSnapshot>?
-        SnapshotChanged;
+    public event EventHandler<VacuumPumpSnapshot>? SnapshotChanged;
 
-    public sealed override async Task InitializeAsync(
-        CancellationToken cancellationToken = default)
+    public sealed override async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken
             .ThrowIfCancellationRequested();
@@ -70,12 +65,9 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
             .ConfigureAwait(false);
     }
 
-    protected virtual Task InitializeCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    public async Task<CommandResult> StartAsync(
-        CancellationToken cancellationToken = default)
+    public async Task<CommandResult> StartAsync(CancellationToken cancellationToken = default)
     {
         VacuumPumpSnapshot changed;
 
@@ -158,8 +150,7 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
             "the start command.");
     }
 
-    public async Task<CommandResult> StopAsync(
-        CancellationToken cancellationToken = default)
+    public async Task<CommandResult> StopAsync(CancellationToken cancellationToken = default)
     {
         VacuumPumpSnapshot changed;
 
@@ -194,8 +185,7 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
             "the stop command.");
     }
 
-    public sealed override async Task ExecuteCycleAsync(
-        CancellationToken cancellationToken = default)
+    public sealed override async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -276,8 +266,7 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
         }
     }
 
-    public sealed override async Task ShutdownAsync(
-        CancellationToken cancellationToken = default)
+    public sealed override async Task ShutdownAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -324,13 +313,9 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
         }
     }
 
-    protected virtual Task ShutdownCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    protected abstract ValueTask<
-        VacuumPumpCycleResult>
-        ExchangeAsync(
+    protected abstract ValueTask<VacuumPumpCycleResult> ExchangeAsync(
             bool commandedOn,
             CancellationToken cancellationToken);
 
@@ -338,8 +323,7 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
         VacuumPumpCycleResult result,
         bool effectiveCommand)
     {
-        var diagnosticCode =
-            GetDiagnosticCode(result);
+        var diagnosticCode = GetDiagnosticCode(result);
 
         VacuumPumpSnapshot current;
 
@@ -370,8 +354,7 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
         return current;
     }
 
-    private static string? GetDiagnosticCode(
-        VacuumPumpCycleResult result)
+    private static string? GetDiagnosticCode(VacuumPumpCycleResult result)
     {
         if (result.IsOffline)
         {
@@ -418,8 +401,7 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
         return result.DiagnosticCode;
     }
 
-    private void PublishSnapshotChanged(
-        VacuumPumpSnapshot current)
+    private void PublishSnapshotChanged(VacuumPumpSnapshot current)
     {
         var handlers = SnapshotChanged?
             .GetInvocationList()
@@ -444,16 +426,15 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
         }
     }
 
-    protected readonly record struct
-        VacuumPumpCycleResult(
-            bool IsRunning,
-            bool HasWarning,
-            bool HasAlarm,
-            bool IsOverloaded,
-            bool IsN2Ready,
-            bool IsExhaustReady,
-            bool IsOffline,
-            bool IsFeedbackValid,
-            DateTimeOffset Timestamp,
-            string? DiagnosticCode = null);
+    protected readonly record struct VacuumPumpCycleResult(
+        bool IsRunning,
+        bool HasWarning,
+        bool HasAlarm,
+        bool IsOverloaded,
+        bool IsN2Ready,
+        bool IsExhaustReady,
+        bool IsOffline,
+        bool IsFeedbackValid,
+        DateTimeOffset Timestamp,
+        string? DiagnosticCode = null);
 }
