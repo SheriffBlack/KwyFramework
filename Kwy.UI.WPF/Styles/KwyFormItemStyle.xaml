@@ -27,7 +27,10 @@
                         <Grid x:Name="PART_LayoutRoot">
                             <Grid.ColumnDefinitions>
                                 <!--  Label 列：使用 SharedSizeGroup 确保多行对齐  -->
-                                <ColumnDefinition x:Name="LabelColumn" Width="{Binding LabelWidth, RelativeSource={RelativeSource TemplatedParent}}" SharedSizeGroup="{Binding LabelSharedSizeGroup, RelativeSource={RelativeSource TemplatedParent}}" />
+                                <ColumnDefinition
+                                    x:Name="LabelColumn"
+                                    Width="{Binding LabelWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                    SharedSizeGroup="{Binding LabelSharedSizeGroup, RelativeSource={RelativeSource TemplatedParent}}" />
                                 <!--  固定间距列：统一控制标签与控件的距离  -->
                                 <ColumnDefinition Width="Auto" />
                                 <!--  内容列：拉伸填充  -->
@@ -49,7 +52,10 @@
                                 Text="{TemplateBinding Label}"
                                 TextAlignment="{TemplateBinding LabelTextAlignment}" />
 
-                            <Border x:Name="LabelGap" Grid.Column="1" Width="{TemplateBinding LabelSpacing}" />
+                            <Border
+                                x:Name="LabelGap"
+                                Grid.Column="1"
+                                Width="{TemplateBinding LabelSpacing}" />
 
                             <ContentPresenter
                                 x:Name="PART_Content"
