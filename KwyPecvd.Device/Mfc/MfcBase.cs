@@ -1,18 +1,19 @@
+using KwyPecvd.Device.Mfc.Ramp;
+
 namespace KwyPecvd.Device.Mfc;
 
-/// <summary>统一实现MFC命令、线性斜坡、容差延时、状态快照和并发控制。</summary>
+/// <summary>统一实现 MFC 命令、容差延时、状态快照和并发控制。</summary>
 public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardwareComponent
 {
     private readonly object syncRoot = new();
     private readonly SemaphoreSlim operationGate = new(1, 1);
+    private readonly IMfcRampProfile rampProfile;
     private MfcSnapshot snapshot;
-    private double rampStart;   // 斜坡起点
-    private double rampTarget;  // 斜坡目标
-    private TimeSpan rampDuration;  // 计划持续时间
-    private DateTimeOffset rampStartedAt;   // 开始时刻
     private DateTimeOffset? outOfToleranceSince;
 
-    protected MfcBase(MfcDefinition definition)
+    protected MfcBase(
+        MfcDefinition definition,
+        IMfcRampProfile rampProfile)
         : base(
             definition?.Id ??
             throw new ArgumentNullException(
@@ -21,15 +22,14 @@ public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardware
         definition.Validate();
 
         Definition = definition;
+        this.rampProfile = rampProfile ?? throw new ArgumentNullException(nameof(rampProfile));
 
         var now = DateTimeOffset.UtcNow;
-
-        rampStartedAt = now;
 
         snapshot = new MfcSnapshot
         {
             Id = definition.Id,
-            SetPoint = 0,
+            TargetSetPoint = 0,
             Feedback = 0,
             FullScale = definition.FullScale,
             Unit = definition.Unit,
@@ -81,31 +81,22 @@ public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardware
         if (rampDuration < TimeSpan.Zero)
             return CommandResult.Failure(ResultCodes.InvalidArgument, "Ramp duration cannot be negative.");
 
-        MfcSnapshot changed;
-
         await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        MfcSnapshot changed;
         try
         {
+            var now = DateTimeOffset.UtcNow;
+            MfcRampStep step = rampProfile.SetTarget(target, rampDuration, now);
+            await WriteIfRequiredAsync(step, cancellationToken).ConfigureAwait(false);
+
             lock (syncRoot)
             {
-                var now = DateTimeOffset.UtcNow;
-
-                var currentSetPoint = CalculateSetPoint(now);
-
-                rampStart = currentSetPoint;
-                rampTarget = target;
-                this.rampDuration = rampDuration;
-                rampStartedAt = now;
                 outOfToleranceSince = null;
 
                 changed = snapshot with
                 {
-                    SetPoint = currentSetPoint,
-                    IsRamping =
-                        rampDuration > TimeSpan.Zero &&
-                        Math.Abs(
-                            target -
-                            currentSetPoint) > 0.001,
+                    TargetSetPoint = step.TargetSetPoint,
+                    IsRamping = step.IsRamping,
                     IsOutOfTolerance = false,
                     Timestamp = now
                 };
@@ -128,21 +119,26 @@ public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardware
     public async Task<CommandResult> HoldAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        MfcSnapshot newSnapshot;
-        double holdValue;
-
         await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        MfcSnapshot newSnapshot;
         try
         {
+            var now = DateTimeOffset.UtcNow;
+            double feedback;
+            lock (syncRoot)
+                feedback = snapshot.Feedback;
+
+            MfcRampStep step = rampProfile.Hold(feedback, now);
+            await WriteIfRequiredAsync(step, cancellationToken).ConfigureAwait(false);
+
             lock (syncRoot)
             {
-                var now = DateTimeOffset.UtcNow;
-                holdValue = CalculateSetPoint(now);
-                rampStart = holdValue;
-                rampTarget = holdValue;
-                rampDuration = TimeSpan.Zero;
-                rampStartedAt = now;
-                newSnapshot = snapshot with { SetPoint = holdValue, IsRamping = false, Timestamp = now };
+                newSnapshot = snapshot with
+                {
+                    TargetSetPoint = step.TargetSetPoint,
+                    IsRamping = false,
+                    Timestamp = now
+                };
                 snapshot = newSnapshot;
             }
         }
@@ -152,7 +148,8 @@ public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardware
         }
 
         PublishSnapshotChanged(newSnapshot);
-        return CommandResult.Success($"MFC {Id} is holding at {holdValue:F3} {Definition.Unit}.");
+        return CommandResult.Success(
+            $"MFC {Id} is holding at {newSnapshot.TargetSetPoint:F3} {Definition.Unit}.");
     }
 
     public override sealed async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
@@ -162,29 +159,20 @@ public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardware
 
         try
         {
-            double nextSetPoint;
-            lock (syncRoot)
-                nextSetPoint = CalculateSetPoint(DateTimeOffset.UtcNow);
+            MfcRampStep step = rampProfile.Evaluate(DateTimeOffset.UtcNow);
+            await WriteIfRequiredAsync(step, cancellationToken).ConfigureAwait(false);
 
-            MfcCycleResult result =
-                await ExchangeAsync(
-                    nextSetPoint,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            MfcCycleResult result = await ReadFeedbackAsync(cancellationToken).ConfigureAwait(false);
 
             MfcSnapshot newSnapshot;
 
             lock (syncRoot)
             {
-                var isRamping =
-                    Math.Abs(nextSetPoint - rampTarget) >
-                    0.001;
-
                 var isOutOfTolerance =
                     CalculateOutOfTolerance(
-                        nextSetPoint,
+                        step.TargetSetPoint,
                         result.Feedback,
-                        isRamping,
+                        step.IsRamping,
                         result.IsOffline,
                         result.IsFeedbackValid,
                         result.Timestamp);
@@ -192,9 +180,9 @@ public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardware
                 // with生成新Snapshot
                 newSnapshot = snapshot with
                 {
-                    SetPoint = nextSetPoint,
+                    TargetSetPoint = step.TargetSetPoint,
                     Feedback = result.Feedback,
-                    IsRamping = isRamping,
+                    IsRamping = step.IsRamping,
                     IsOffline = result.IsOffline,
                     IsFeedbackValid =
                         result.IsFeedbackValid,
@@ -247,12 +235,14 @@ public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardware
         }
     }
 
-    /// <summary>
-    /// 将本周期命令写入硬件，并读取实际反馈。
-    /// 该方法只负责硬件数据交换，不负责业务状态判断。
-    /// </summary>
-    protected abstract ValueTask<MfcCycleResult> ExchangeAsync(
+    /// <summary> 将当前斜坡决策写入硬件或输出映像。</summary>
+    protected abstract ValueTask WriteSetPointAsync(
         double setPoint,
+        TimeSpan rampDuration,
+        CancellationToken cancellationToken);
+
+    /// <summary>读取硬件反馈或总线输入映像。</summary>
+    protected abstract ValueTask<MfcCycleResult> ReadFeedbackAsync(
         CancellationToken cancellationToken);
 
     public async Task<CommandResult> ResetAsync(CancellationToken cancellationToken = default)
@@ -292,27 +282,24 @@ public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardware
 
         try
         {
-            var result =
-                await ExchangeAsync(
-                    0,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            var now = DateTimeOffset.UtcNow;
+            MfcRampStep step = rampProfile.SetTarget(0, TimeSpan.Zero, now);
+            await WriteIfRequiredAsync(step, cancellationToken).ConfigureAwait(false);
+
+            step = rampProfile.Evaluate(now);
+            await WriteIfRequiredAsync(step, cancellationToken).ConfigureAwait(false);
+
+            var result = await ReadFeedbackAsync(cancellationToken).ConfigureAwait(false);
 
             MfcSnapshot newSnapshot;
 
             lock (syncRoot)
             {
-                var now = result.Timestamp;
-
-                rampStart = 0;
-                rampTarget = 0;
-                rampDuration = TimeSpan.Zero;
-                rampStartedAt = now;
                 outOfToleranceSince = null;
 
                 newSnapshot = snapshot with
                 {
-                    SetPoint = 0,
+                    TargetSetPoint = 0,
                     Feedback = result.Feedback,
                     IsRamping = false,
                     IsOffline = result.IsOffline,
@@ -379,23 +366,25 @@ public abstract class MfcBase : HardwareComponentBase, IMfc, IResettableHardware
         return result.DiagnosticCode;
     }
 
-    /// <summary>
-    /// 计算斜坡
-    /// </summary>
-    /// <remarks>
-    /// 进度 = 已经过的时间 ÷ 总斜坡时间
-    /// 当前设定值 = 起点 + (目标 - 起点) × 进度
-    /// </remarks>
-    /// <returns></returns>
-    private double CalculateSetPoint(DateTimeOffset now)
+    private async ValueTask WriteIfRequiredAsync(
+        MfcRampStep step,
+        CancellationToken cancellationToken)
     {
-        if (rampDuration <= TimeSpan.Zero) return rampTarget;
-        var elapsed = now - rampStartedAt;
-        if (elapsed >= rampDuration) return rampTarget;
-        var progress = Math.Clamp(elapsed.TotalMilliseconds / rampDuration.TotalMilliseconds, 0, 1);
-        return rampStart + (rampTarget - rampStart) * progress;
+        if (!step.RequiresWrite)
+            return;
+
+        await WriteSetPointAsync(
+                step.CommandSetPoint,
+                step.RampDuration,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        rampProfile.ConfirmWritten(step.CommandSetPoint);
     }
 
+    /// <summary>判断 MFC 的实际流量是否长时间没有跟上目标流量。
+    /// 类似运动控制卡是否到达位置，在额度范围内就算到位
+    /// </summary>
     private bool CalculateOutOfTolerance(
         double setPoint,
         double feedback,

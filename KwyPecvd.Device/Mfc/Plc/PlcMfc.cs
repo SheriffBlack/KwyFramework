@@ -1,4 +1,5 @@
 using Kwy.Device.PLC.Abstractions;
+using KwyPecvd.Device.Mfc.Ramp;
 
 namespace KwyPecvd.Device.Mfc.Plc;
 
@@ -14,7 +15,9 @@ public sealed class PlcMfc : MfcBase
         IPlcPointDefinitionProvider pointProvider,
         ILogicalPlcReader reader,
         ILogicalPlcWriter writer)
-        : base(definition?.Mfc ?? throw new ArgumentNullException(nameof(definition)))
+        : base(
+            definition?.Mfc ?? throw new ArgumentNullException(nameof(definition)),
+            new SoftwareRampProfile())
     {
         definition.Validate();
         plcDefinition = definition;
@@ -34,15 +37,20 @@ public sealed class PlcMfc : MfcBase
         return Task.CompletedTask;
     }
 
-    protected override async ValueTask<MfcCycleResult> ExchangeAsync(
+    protected override async ValueTask WriteSetPointAsync(
         double setPoint,
+        TimeSpan rampDuration,
         CancellationToken cancellationToken)
     {
         await writer.WriteAsync(
             plcDefinition.SetPointId,
             (float)setPoint,
             cancellationToken).ConfigureAwait(false);
+    }
 
+    protected override async ValueTask<MfcCycleResult> ReadFeedbackAsync(
+        CancellationToken cancellationToken)
+    {
         var feedback = await reader.ReadAsync<float>(
             plcDefinition.FeedbackId,
             cancellationToken).ConfigureAwait(false);

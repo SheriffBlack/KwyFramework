@@ -1,4 +1,5 @@
 using Kwy.Device.IoCard.Abstractions;
+using KwyPecvd.Device.Mfc.Ramp;
 
 namespace KwyPecvd.Device.Mfc.Io;
 
@@ -18,7 +19,9 @@ public sealed class IoMfc : MfcBase
         ILogicalAnalogOutputWriter analogWriter,
         IDigitalIoPointDefinitionProvider? digitalPointProvider = null,
         ILogicalDigitalInputReader? digitalReader = null)
-        : base(definition?.Mfc ?? throw new ArgumentNullException(nameof(definition)))
+        : base(
+            definition?.Mfc ?? throw new ArgumentNullException(nameof(definition)),
+            new SoftwareRampProfile())
     {
         definition.Validate();
         ioDefinition = definition;
@@ -55,8 +58,9 @@ public sealed class IoMfc : MfcBase
         return Task.CompletedTask;
     }
 
-    protected override async ValueTask<MfcCycleResult> ExchangeAsync(
+    protected override async ValueTask WriteSetPointAsync(
         double setPoint,
+        TimeSpan rampDuration,
         CancellationToken cancellationToken)
     {
         await analogWriter.WriteAsync(
@@ -64,7 +68,11 @@ public sealed class IoMfc : MfcBase
             setPoint,
             ioDefinition.OutputOwner,
             cancellationToken).ConfigureAwait(false);
+    }
 
+    protected override async ValueTask<MfcCycleResult> ReadFeedbackAsync(
+        CancellationToken cancellationToken)
+    {
         AnalogIoSample sample = await analogReader.ReadSampleAsync(
             ioDefinition.FeedbackAiId,
             cancellationToken).ConfigureAwait(false);

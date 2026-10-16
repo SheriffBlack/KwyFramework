@@ -5,8 +5,8 @@ public sealed record MfcSnapshot
 {
     public required string Id { get; init; }
 
-    /// <summary>当前下发给 MFC 的流量设定值。</summary>
-    public required double SetPoint { get; init; }
+    /// <summary>工艺要求 MFC 最终达到的目标流量。</summary>
+    public required double TargetSetPoint { get; init; }
 
     /// <summary>MFC 反馈的实际流量。</summary>
     public required double Feedback { get; init; }
