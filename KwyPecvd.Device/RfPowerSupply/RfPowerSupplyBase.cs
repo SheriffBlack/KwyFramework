@@ -106,6 +106,11 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
 
         try
         {
+            await WritePowerSetPointAsync(
+                    power,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             lock (syncRoot)
             {
                 powerSetPoint = power;
@@ -185,6 +190,15 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
                         "reflected power is high.");
                 }
 
+            }
+
+            await WriteEnabledAsync(
+                    enabled: true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            lock (syncRoot)
+            {
                 commandedEnabled = true;
                 outOfToleranceSince = null;
                 reflectedPowerHighSince = null;
@@ -222,6 +236,11 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
 
         try
         {
+            await WriteEnabledAsync(
+                    enabled: false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             lock (syncRoot)
             {
                 commandedEnabled = false;
@@ -269,9 +288,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
             }
 
             var result =
-                await ExchangeAsync(
-                        setPoint,
-                        requestedEnabled,
+                await ReadFeedbackAsync(
                         cancellationToken)
                     .ConfigureAwait(false);
 
@@ -301,6 +318,14 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
                 result.IsFeedbackValid &&
                 !result.IsFaulted &&
                 !reflectedPowerHigh;
+
+            if (requestedEnabled && !effectiveEnabled)
+            {
+                await WriteEnabledAsync(
+                        enabled: false,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
             var diagnosticCode =
                 GetDiagnosticCode(
@@ -349,6 +374,18 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
         }
         catch
         {
+            try
+            {
+                await WriteEnabledAsync(
+                        enabled: false,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                // 保留原始周期异常；快照仍进入离线安全状态。
+            }
+
             RfPowerSupplySnapshot failed;
 
             lock (syncRoot)
@@ -494,10 +531,18 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
 
         try
         {
+            await WriteEnabledAsync(
+                    enabled: false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            await WritePowerSetPointAsync(
+                    power: 0,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             var result =
-                await ExchangeAsync(
-                        powerSetPoint: 0,
-                        enabled: false,
+                await ReadFeedbackAsync(
                         cancellationToken)
                     .ConfigureAwait(false);
 
@@ -584,9 +629,18 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
         }
     }
 
-    protected abstract ValueTask<RfPowerSupplyCycleResult> ExchangeAsync(
-        double powerSetPoint,
+    /// <summary>立即向硬件写入功率目标。</summary>
+    protected abstract ValueTask WritePowerSetPointAsync(
+        double power,
+        CancellationToken cancellationToken);
+
+    /// <summary>立即向硬件写入 RF 输出使能。</summary>
+    protected abstract ValueTask WriteEnabledAsync(
         bool enabled,
+        CancellationToken cancellationToken);
+
+    /// <summary>周期读取 RF 实际反馈，不重复写入命令。</summary>
+    protected abstract ValueTask<RfPowerSupplyCycleResult> ReadFeedbackAsync(
         CancellationToken cancellationToken);
 
     protected readonly record struct RfPowerSupplyCycleResult(

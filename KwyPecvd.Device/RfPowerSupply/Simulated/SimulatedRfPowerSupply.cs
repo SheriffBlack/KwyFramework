@@ -3,15 +3,15 @@
 /*
 SetPowerAsync(500)
     ↓
-基类保存 powerSetPoint = 500
+基类立即调用 WritePowerSetPointAsync(500)
     ↓
 EnableAsync()
     ↓
-基类保存 commandedEnabled = true
+基类立即调用 WriteEnabledAsync(true)
     ↓
 RT周期调用 ExecuteCycleAsync()
     ↓
-基类调用 SimulatedRfPowerSupply.ExchangeAsync()
+基类调用 SimulatedRfPowerSupply.ReadFeedbackAsync()
     ↓
 仿真正向功率逐步接近500 W
     ↓
@@ -44,6 +44,8 @@ public sealed class SimulatedRfPowerSupply: RfPowerSupplyBase
     private bool hasBadQuality;
 
     private bool isFaulted;
+    private double commandedPower;
+    private bool commandedEnabled;
 
     public SimulatedRfPowerSupply(
         RfPowerSupplyDefinition definition,
@@ -72,11 +74,37 @@ public sealed class SimulatedRfPowerSupply: RfPowerSupplyBase
             reflectedPowerRatio;
     }
 
-    protected override ValueTask<
-        RfPowerSupplyCycleResult> ExchangeAsync(
-            double powerSetPoint,
-            bool enabled,
-            CancellationToken cancellationToken)
+    protected override ValueTask WritePowerSetPointAsync(
+        double power,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (simulationSync)
+        {
+            commandedPower = power;
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask WriteEnabledAsync(
+        bool enabled,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (simulationSync)
+        {
+            if (enabled && isOffline)
+                throw new IOException($"Simulated RF power supply '{Id}' is offline.");
+
+            commandedEnabled = enabled;
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask<RfPowerSupplyCycleResult> ReadFeedbackAsync(
+        CancellationToken cancellationToken)
     {
         cancellationToken
             .ThrowIfCancellationRequested();
@@ -90,13 +118,13 @@ public sealed class SimulatedRfPowerSupply: RfPowerSupplyBase
                 !hasBadQuality;
 
             var outputOn =
-                enabled &&
+                commandedEnabled &&
                 feedbackValid &&
                 !isFaulted;
 
             var targetPower =
                 outputOn
-                    ? powerSetPoint
+                    ? commandedPower
                     : 0;
 
             forwardPower +=
