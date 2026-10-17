@@ -18,8 +18,7 @@ public sealed class SoftwareRampProfile : IMfcRampProfile
         return CreateStep(now, allowWrite: false);
     }
 
-    public MfcRampStep Evaluate(DateTimeOffset now) =>
-        CreateStep(now, allowWrite: true);
+    public MfcRampStep Evaluate(DateTimeOffset now) => CreateStep(now, allowWrite: true);
 
     public MfcRampStep Hold(double feedback, DateTimeOffset now)
     {

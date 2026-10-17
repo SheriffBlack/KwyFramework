@@ -220,9 +220,7 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
 
     public override sealed async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
-        await operationGate
-            .WaitAsync(cancellationToken)
-            .ConfigureAwait(false);
+        await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         RfMatcherSnapshot? snapshotToPublish = null;
 

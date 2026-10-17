@@ -1,23 +1,21 @@
-﻿namespace KwyPecvd.Device.Thermal
-    .TemperatureController;
+﻿namespace KwyPecvd.Device.Thermal.TemperatureController;
 
 public abstract class TemperatureControllerBase : HardwareComponentBase, ITemperatureController
 {
     private readonly object syncRoot = new();
 
-    private readonly SemaphoreSlim operationGate =
-        new(1, 1);
+    private readonly SemaphoreSlim operationGate = new(1, 1);
 
     private double targetTemperature;
 
+    /// <summary>软件当前是否要求硬件使能输出。</summary>
     private bool commandedEnabled;
 
     private DateTimeOffset? outOfToleranceSince;
 
     private TemperatureControllerSnapshot snapshot;
 
-    protected TemperatureControllerBase(
-        TemperatureControllerDefinition definition)
+    protected TemperatureControllerBase(TemperatureControllerDefinition definition)
         : base(
             definition?.Id ??
             throw new ArgumentNullException(
@@ -47,10 +45,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
         };
     }
 
-    public TemperatureControllerDefinition Definition
-    {
-        get;
-    }
+    public TemperatureControllerDefinition Definition { get; }
 
     public TemperatureControllerSnapshot Snapshot
     {
@@ -65,8 +60,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
 
     public event EventHandler<TemperatureControllerSnapshot>? SnapshotChanged;
 
-    public override sealed async Task InitializeAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -76,9 +70,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
             .ConfigureAwait(false);
     }
 
-    protected virtual Task InitializeCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public async Task<CommandResult> SetTargetTemperatureAsync(
         double target,
@@ -139,8 +131,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
             $"{Definition.Unit}.");
     }
 
-    public async Task<CommandResult> EnableAsync(
-        CancellationToken cancellationToken = default)
+    public async Task<CommandResult> EnableAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -193,8 +184,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
             "accepted enable command.");
     }
 
-    public async Task<CommandResult> DisableAsync(
-        CancellationToken cancellationToken = default)
+    public async Task<CommandResult> DisableAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -231,8 +221,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
             "accepted disable command.");
     }
 
-    public override sealed async Task ExecuteCycleAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -348,8 +337,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
         }
     }
 
-    public override sealed async Task ShutdownAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task ShutdownAsync(CancellationToken cancellationToken = default)
     {
         await operationGate
             .WaitAsync(cancellationToken)
@@ -360,8 +348,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
 
         try
         {
-            var safeTarget =
-                Definition.MinimumSetPoint;
+            var safeTarget = Definition.MinimumSetPoint;
 
             var result =
                 await ExchangeAsync(
@@ -416,9 +403,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
         }
     }
 
-    protected virtual Task ShutdownCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     private bool CalculateOutOfTolerance(
         double target,
@@ -447,8 +432,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
             Definition.ToleranceDelay;
     }
 
-    private void UpdateSnapshot(
-    TemperatureControllerSnapshot current)
+    private void UpdateSnapshot(TemperatureControllerSnapshot current)
     {
         lock (syncRoot)
         {
@@ -456,8 +440,7 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
         }
     }
 
-    private void PublishSnapshotChanged(
-        TemperatureControllerSnapshot current)
+    private void PublishSnapshotChanged(TemperatureControllerSnapshot current)
     {
         var handlers = SnapshotChanged?
             .GetInvocationList()
@@ -483,19 +466,16 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
         }
     }
 
-    protected abstract ValueTask<
-        TemperatureControllerCycleResult>
-        ExchangeAsync(
-            double target,
-            bool enabled,
-            CancellationToken cancellationToken);
+    protected abstract ValueTask<TemperatureControllerCycleResult> ExchangeAsync(
+        double target,
+        bool enabled,
+        CancellationToken cancellationToken);
 
-    protected readonly record struct
-        TemperatureControllerCycleResult(
-            double Feedback,
-            bool IsPowerOn,
-            bool IsOffline,
-            bool IsFeedbackValid,
-            DateTimeOffset Timestamp,
-            string? DiagnosticCode = null);
+    protected readonly record struct TemperatureControllerCycleResult(
+        double Feedback,
+        bool IsPowerOn,
+        bool IsOffline,
+        bool IsFeedbackValid,
+        DateTimeOffset Timestamp,
+        string? DiagnosticCode = null);
 }

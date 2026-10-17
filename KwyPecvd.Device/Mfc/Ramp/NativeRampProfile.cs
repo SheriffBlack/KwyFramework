@@ -15,8 +15,7 @@ public sealed class NativeRampProfile : IMfcRampProfile
         return CreateStep(now, requiresWrite: true);
     }
 
-    public MfcRampStep Evaluate(DateTimeOffset now) =>
-        CreateStep(now, requiresWrite: false);
+    public MfcRampStep Evaluate(DateTimeOffset now) => CreateStep(now, requiresWrite: false);
 
     public MfcRampStep Hold(double feedback, DateTimeOffset now)
     {

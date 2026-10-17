@@ -6,8 +6,7 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
 
     private TemperatureSensorSnapshot snapshot;
 
-    protected TemperatureSensorBase(
-        TemperatureSensorDefinition definition)
+    protected TemperatureSensorBase(TemperatureSensorDefinition definition)
         : base(
             definition?.Id ??
             throw new ArgumentNullException(
@@ -31,10 +30,7 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
         };
     }
 
-    public TemperatureSensorDefinition Definition
-    {
-        get;
-    }
+    public TemperatureSensorDefinition Definition { get; }
 
     public TemperatureSensorSnapshot Snapshot
     {
@@ -47,11 +43,9 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
         }
     }
 
-    public event EventHandler<TemperatureSensorSnapshot>?
-        SnapshotChanged;
+    public event EventHandler<TemperatureSensorSnapshot>? SnapshotChanged;
 
-    public sealed override async Task InitializeAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -61,28 +55,20 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
             .ConfigureAwait(false);
     }
 
-    protected virtual Task InitializeCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    public sealed override Task ShutdownAsync(
-        CancellationToken cancellationToken = default) =>
-        ShutdownCoreAsync(cancellationToken);
+    public override sealed Task ShutdownAsync(CancellationToken cancellationToken = default) => ShutdownCoreAsync(cancellationToken);
 
-    protected virtual Task ShutdownCoreAsync(
-        CancellationToken cancellationToken) =>
-        Task.CompletedTask;
+    protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    public sealed override async Task ExecuteCycleAsync(
-        CancellationToken cancellationToken = default)
+    public override sealed async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var result =
-                await ReadTemperatureAsync(
-                        cancellationToken)
-                    .ConfigureAwait(false);
+            // 读取原始结果
+            var result = await ReadTemperatureAsync(cancellationToken).ConfigureAwait(false);
 
+            // 对温度做业务范围校验
             var readingInRange =
                 double.IsFinite(result.Temperature) &&
                 result.Temperature >=
@@ -90,42 +76,43 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
                 result.Temperature <=
                     Definition.Maximum;
 
+            // 综合判断反馈是否有效
             var readingValid =
                 !result.IsOffline &&
                 result.IsReadingValid &&
                 readingInRange;
 
+            // 统一诊断原因
             var diagnosticCode =
                 result.IsOffline
-                    ? TemperatureSensorDiagnosticCodes
-                        .Offline
-                    : !readingInRange
-                        ? TemperatureSensorDiagnosticCodes
-                            .ReadingOutOfRange
+                    ? TemperatureSensorDiagnosticCodes                    // 离线                → Offline
+                        .Offline                                          // 数值越界            → ReadingOutOfRange
+                    : !readingInRange                                     // 底层读取质量无效    → ReadingBadQuality
+                        ? TemperatureSensorDiagnosticCodes                // 其他驱动特有问题    → result.DiagnosticCode
+                            .ReadingOutOfRange                            // 正常                → null
                         : !result.IsReadingValid
                             ? TemperatureSensorDiagnosticCodes
                                 .ReadingBadQuality
                             : result.DiagnosticCode;
 
-            var current =
-                new TemperatureSensorSnapshot
-                {
-                    Id = Definition.Id,
-                    Temperature =
-                        result.Temperature,
-                    Unit = Definition.Unit,
-                    IsOffline = result.IsOffline,
-                    IsReadingValid = readingValid,
-                    DiagnosticCode =
-                        diagnosticCode,
-                    Timestamp = result.Timestamp
-                };
+            // 生成对外快照
+            var current = new TemperatureSensorSnapshot
+            {
+                Id = Definition.Id,
+                Temperature =
+                    result.Temperature,
+                Unit = Definition.Unit,
+                IsOffline = result.IsOffline,
+                IsReadingValid = readingValid,
+                DiagnosticCode =
+                    diagnosticCode,
+                Timestamp = result.Timestamp
+            };
 
             UpdateSnapshot(current);
         }
         catch (OperationCanceledException)
-            when (cancellationToken
-                .IsCancellationRequested)
+            when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
@@ -146,13 +133,9 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
         }
     }
 
-    protected abstract ValueTask<
-        TemperatureSensorCycleResult>
-        ReadTemperatureAsync(
-            CancellationToken cancellationToken);
+    protected abstract ValueTask<TemperatureSensorCycleResult> ReadTemperatureAsync(CancellationToken cancellationToken);
 
-    private void UpdateSnapshot(
-        TemperatureSensorSnapshot current)
+    private void UpdateSnapshot(TemperatureSensorSnapshot current)
     {
         lock (syncRoot)
         {
@@ -162,8 +145,7 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
         PublishSnapshotChanged(current);
     }
 
-    private void PublishSnapshotChanged(
-        TemperatureSensorSnapshot current)
+    private void PublishSnapshotChanged(TemperatureSensorSnapshot current)
     {
         var handlers = SnapshotChanged?
             .GetInvocationList()
@@ -189,11 +171,10 @@ public abstract class TemperatureSensorBase : HardwareComponentBase, ITemperatur
         }
     }
 
-    protected readonly record struct
-        TemperatureSensorCycleResult(
-            double Temperature,
-            bool IsOffline,
-            bool IsReadingValid,
-            DateTimeOffset Timestamp,
-            string? DiagnosticCode = null);
+    protected readonly record struct TemperatureSensorCycleResult(
+        double Temperature,
+        bool IsOffline,
+        bool IsReadingValid,
+        DateTimeOffset Timestamp,
+        string? DiagnosticCode = null);
 }

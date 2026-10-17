@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Kwy.Communicate.Abstractions\Kwy.Communicate.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.IoCard.Abstractions\Kwy.Device.IoCard.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.Device.PLC.Abstractions\Kwy.Device.PLC.Abstractions.csproj" />
   </ItemGroup>

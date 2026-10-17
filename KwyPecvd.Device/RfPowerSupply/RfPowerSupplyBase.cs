@@ -6,8 +6,10 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
 
     private readonly SemaphoreSlim operationGate = new(1, 1);
 
+    /// <summary>要输出多少功率</summary>
     private double powerSetPoint;
 
+    /// <summary>软件当前是否要求硬件使能输出。</summary>
     private bool commandedEnabled;
 
     private DateTimeOffset? outOfToleranceSince;
@@ -251,9 +253,7 @@ public abstract class RfPowerSupplyBase : HardwareComponentBase, IRfPowerSupply
 
     public override sealed async Task ExecuteCycleAsync(CancellationToken cancellationToken = default)
     {
-        await operationGate
-            .WaitAsync(cancellationToken)
-            .ConfigureAwait(false);
+        await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         RfPowerSupplySnapshot? snapshotToPublish = null;
 

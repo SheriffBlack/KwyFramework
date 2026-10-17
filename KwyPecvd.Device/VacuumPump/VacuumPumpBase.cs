@@ -6,6 +6,7 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
 
     private readonly SemaphoreSlim operationGate = new(1, 1);
 
+    /// <summary>软件当前要求真空泵启动还是停止。</summary>
     private bool commandedOn;
 
     private VacuumPumpSnapshot snapshot;
