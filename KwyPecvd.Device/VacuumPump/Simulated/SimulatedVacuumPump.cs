@@ -11,6 +11,7 @@ public sealed class SimulatedVacuumPump : VacuumPumpBase
     private bool isN2Ready = true;
     private bool isExhaustReady = true;
     private bool isOffline;
+    private bool commandedRunning;
 
     public SimulatedVacuumPump(
         VacuumPumpDefinition definition)
@@ -50,11 +51,28 @@ public sealed class SimulatedVacuumPump : VacuumPumpBase
         }
     }
 
-    protected override ValueTask<
-        VacuumPumpCycleResult>
-        ExchangeAsync(
-            bool commandedOn,
-            CancellationToken cancellationToken)
+    protected override ValueTask WriteRunningAsync(
+        bool running,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (simulationSync)
+        {
+            if (running && isOffline)
+            {
+                throw new IOException(
+                    $"Simulated vacuum pump '{Id}' is offline.");
+            }
+
+            commandedRunning = running;
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask<VacuumPumpCycleResult> ReadFeedbackAsync(
+        CancellationToken cancellationToken)
     {
         cancellationToken
             .ThrowIfCancellationRequested();
@@ -64,7 +82,7 @@ public sealed class SimulatedVacuumPump : VacuumPumpBase
             var feedbackValid = !isOffline;
 
             var running =
-                commandedOn &&
+                commandedRunning &&
                 feedbackValid &&
                 !hasAlarm &&
                 !isOverloaded;

@@ -68,18 +68,19 @@ public sealed class IoVacuumPump : VacuumPumpBase
         return Task.CompletedTask;
     }
 
-    protected override ValueTask<VacuumPumpCycleResult> ExchangeAsync(
-            bool commandedOn,
-            CancellationToken cancellationToken)
+    protected override ValueTask WriteRunningAsync(
+        bool running,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        WriteRunCommand(running);
+        return ValueTask.CompletedTask;
+    }
 
-        // 停止命令优先输出。
-        // 即使随后读取反馈失败，泵的运行DO也已经撤销。
-        if (!commandedOn)
-        {
-            WriteRunCommand(false);
-        }
+    protected override ValueTask<VacuumPumpCycleResult> ReadFeedbackAsync(
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
         var running =
             inputReader.ReadDi(ioDefinition.RunningDiId);
@@ -107,18 +108,6 @@ public sealed class IoVacuumPump : VacuumPumpBase
 
         var offline =
             ReadOptional(ioDefinition.OfflineDiId);
-
-        if (commandedOn)
-        {
-            // 当前周期已经检测到严重故障时，
-            // 不允许运行DO继续保持。
-            var safeCommand =
-                !offline &&
-                !alarm &&
-                !overload;
-
-            WriteRunCommand(safeCommand);
-        }
 
         var now = DateTimeOffset.UtcNow;
 

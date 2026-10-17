@@ -128,6 +128,15 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
                         "exhaust pressure is not ready.");
                 }
 
+            }
+
+            await WriteRunningAsync(
+                    running: true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            lock (syncRoot)
+            {
                 commandedOn = true;
 
                 changed = snapshot with
@@ -161,6 +170,11 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
 
         try
         {
+            await WriteRunningAsync(
+                    running: false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             lock (syncRoot)
             {
                 commandedOn = false;
@@ -204,16 +218,25 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
             }
 
             var result =
-                await ExchangeAsync(
-                        requestedOn,
+                await ReadFeedbackAsync(
                         cancellationToken)
                     .ConfigureAwait(false);
 
-            // 严重硬件故障出现后，不再保持启动请求。
+            // 严重硬件故障出现后，立即撤销硬件启动命令。
             var effectiveCommand =
                 requestedOn &&
+                !result.IsOffline &&
+                result.IsFeedbackValid &&
                 !result.HasAlarm &&
                 !result.IsOverloaded;
+
+            if (requestedOn && !effectiveCommand)
+            {
+                await WriteRunningAsync(
+                        running: false,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
             lock (syncRoot)
             {
@@ -232,6 +255,18 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
         }
         catch
         {
+            try
+            {
+                await WriteRunningAsync(
+                        running: false,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                // 保留原始周期异常；快照仍进入离线安全状态。
+            }
+
             VacuumPumpSnapshot failed;
 
             lock (syncRoot)
@@ -277,15 +312,18 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
 
         try
         {
+            await WriteRunningAsync(
+                    running: false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             lock (syncRoot)
             {
                 commandedOn = false;
             }
 
-            // RT周期已经停止，因此这里直接向驱动下发关闭。
             var result =
-                await ExchangeAsync(
-                        false,
+                await ReadFeedbackAsync(
                         cancellationToken)
                     .ConfigureAwait(false);
 
@@ -316,9 +354,14 @@ public abstract class VacuumPumpBase : HardwareComponentBase, IVacuumPump
 
     protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    protected abstract ValueTask<VacuumPumpCycleResult> ExchangeAsync(
-            bool commandedOn,
-            CancellationToken cancellationToken);
+    /// <summary>立即向硬件写入泵的运行命令。</summary>
+    protected abstract ValueTask WriteRunningAsync(
+        bool running,
+        CancellationToken cancellationToken);
+
+    /// <summary>周期读取泵反馈，不重复写入运行命令。</summary>
+    protected abstract ValueTask<VacuumPumpCycleResult> ReadFeedbackAsync(
+        CancellationToken cancellationToken);
 
     private VacuumPumpSnapshot UpdateSnapshot(
         VacuumPumpCycleResult result,
