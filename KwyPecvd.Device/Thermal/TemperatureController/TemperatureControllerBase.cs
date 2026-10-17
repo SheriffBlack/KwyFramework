@@ -103,6 +103,11 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
 
         try
         {
+            await WriteTargetTemperatureAsync(
+                    target,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             lock (syncRoot)
             {
                 targetTemperature = target;
@@ -159,6 +164,15 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
                         $"'{Id}' feedback is invalid.");
                 }
 
+            }
+
+            await WriteEnabledAsync(
+                    enabled: true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            lock (syncRoot)
+            {
                 commandedEnabled = true;
                 outOfToleranceSince = null;
 
@@ -194,6 +208,11 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
 
         try
         {
+            await WriteEnabledAsync(
+                    enabled: false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             lock (syncRoot)
             {
                 commandedEnabled = false;
@@ -241,11 +260,26 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
             }
 
             var result =
-                await ExchangeAsync(
-                        target,
-                        enabled,
+                await ReadFeedbackAsync(
                         cancellationToken)
                     .ConfigureAwait(false);
+
+            // 反馈失效时统一撤销加热命令，避免各具体驱动遗漏安全关闭。
+            if (enabled &&
+                (result.IsOffline ||
+                 !result.IsFeedbackValid))
+            {
+                await WriteEnabledAsync(
+                        enabled: false,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                lock (syncRoot)
+                {
+                    commandedEnabled = false;
+                    enabled = false;
+                }
+            }
 
             var outOfTolerance =
                 CalculateOutOfTolerance(
@@ -299,6 +333,18 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
         }
         catch
         {
+            try
+            {
+                await WriteEnabledAsync(
+                        enabled: false,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                // 保留原始周期异常；快照仍进入离线安全状态。
+            }
+
             TemperatureControllerSnapshot failed;
 
             lock (syncRoot)
@@ -350,10 +396,18 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
         {
             var safeTarget = Definition.MinimumSetPoint;
 
+            await WriteEnabledAsync(
+                    enabled: false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            await WriteTargetTemperatureAsync(
+                    safeTarget,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             var result =
-                await ExchangeAsync(
-                        safeTarget,
-                        enabled: false,
+                await ReadFeedbackAsync(
                         cancellationToken)
                     .ConfigureAwait(false);
 
@@ -466,9 +520,18 @@ public abstract class TemperatureControllerBase : HardwareComponentBase, ITemper
         }
     }
 
-    protected abstract ValueTask<TemperatureControllerCycleResult> ExchangeAsync(
+    /// <summary>立即向硬件写入温度目标；成功返回表示硬件已接受写入。</summary>
+    protected abstract ValueTask WriteTargetTemperatureAsync(
         double target,
+        CancellationToken cancellationToken);
+
+    /// <summary>立即向硬件写入加热使能状态。</summary>
+    protected abstract ValueTask WriteEnabledAsync(
         bool enabled,
+        CancellationToken cancellationToken);
+
+    /// <summary>周期读取硬件反馈，不重复下发已接受的命令。</summary>
+    protected abstract ValueTask<TemperatureControllerCycleResult> ReadFeedbackAsync(
         CancellationToken cancellationToken);
 
     protected readonly record struct TemperatureControllerCycleResult(

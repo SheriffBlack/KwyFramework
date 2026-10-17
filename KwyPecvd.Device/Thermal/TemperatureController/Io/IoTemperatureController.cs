@@ -96,35 +96,29 @@ public sealed class IoTemperatureController : TemperatureControllerBase
             .ConfigureAwait(false);
     }
 
-    protected override async ValueTask<TemperatureControllerCycleResult> ExchangeAsync(
+    protected override ValueTask WriteTargetTemperatureAsync(
         double target,
+        CancellationToken cancellationToken)
+    {
+        return WriteSetPointAsync(target, cancellationToken);
+    }
+
+    protected override ValueTask WriteEnabledAsync(
         bool enabled,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        WriteEnable(enabled);
+        return ValueTask.CompletedTask;
+    }
+
+    protected override async ValueTask<TemperatureControllerCycleResult> ReadFeedbackAsync(
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         try
         {
-            if (!enabled)
-            {
-                // 禁用方向优先撤销DO。
-                WriteEnable(false);
-
-                await WriteSetPointAsync(
-                        Definition.MinimumSetPoint,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                // 启用前先准备目标AO，
-                // 最后才允许接通加热DO。
-                await WriteSetPointAsync(
-                        target,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-            }
-
             var sample =
                 await analogReader.ReadSampleAsync(
                         ioDefinition.FeedbackAiId,
@@ -145,24 +139,14 @@ public sealed class IoTemperatureController : TemperatureControllerBase
                 sample.Quality ==
                     AnalogIoQuality.Good;
 
-            var effectiveEnabled =
-                enabled &&
-                feedbackValid;
-
-            if (enabled)
-            {
-                // 只有反馈和在线状态正常时，
-                // 才真正接通加热允许。
-                WriteEnable(effectiveEnabled);
-            }
-
             var powerOn =
                 ioDefinition.PowerOnDiId is not null
                     ? digitalReader.ReadDi(
                         ioDefinition.PowerOnDiId)
                     : ioDefinition
                         .UseEnableCommandAsPowerFeedback &&
-                      effectiveEnabled;
+                      Snapshot.CommandedEnabled &&
+                      feedbackValid;
 
             var diagnosticCode =
                 sensorFault

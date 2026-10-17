@@ -10,6 +10,10 @@ public sealed class SimulatedTemperatureController : TemperatureControllerBase
 
     private readonly double controlDeadband;
 
+    private double commandedTarget;
+
+    private bool commandedEnabled;
+
     private bool isPowerOn;
 
     private bool isOffline;
@@ -33,11 +37,44 @@ public sealed class SimulatedTemperatureController : TemperatureControllerBase
 
         this.plant = plant;
         this.controlDeadband = controlDeadband;
+        commandedTarget = definition.MinimumSetPoint;
     }
 
-    protected override ValueTask<TemperatureControllerCycleResult> ExchangeAsync(
+    protected override ValueTask WriteTargetTemperatureAsync(
         double target,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (simulationSync)
+        {
+            commandedTarget = target;
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask WriteEnabledAsync(
         bool enabled,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (simulationSync)
+        {
+            commandedEnabled = enabled;
+
+            if (!enabled)
+            {
+                isPowerOn = false;
+                plant.SetHeaterPower(false, DateTimeOffset.UtcNow);
+            }
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask<TemperatureControllerCycleResult> ReadFeedbackAsync(
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -54,7 +91,7 @@ public sealed class SimulatedTemperatureController : TemperatureControllerBase
                 isPowerOn = false;
 
                 plant.SetHeaterPower(
-                    enabled: false,
+                    false,
                     now);
 
                 return ValueTask.FromResult(
@@ -84,8 +121,8 @@ public sealed class SimulatedTemperatureController : TemperatureControllerBase
             }
 
             UpdatePowerState(
-                target,
-                enabled,
+                commandedTarget,
+                commandedEnabled,
                 feedback);
 
             plant.SetHeaterPower(
