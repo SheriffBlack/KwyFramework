@@ -36,11 +36,33 @@ public sealed class SimulatedOnOffValve : OnOffValveBase
         motionTarget = definition.SafePosition;
     }
 
-    protected override ValueTask<
-        OnOffValveCycleResult>
-        ExchangeAsync(
-            OnOffValvePosition commandedPosition,
-            CancellationToken cancellationToken)
+    protected override ValueTask WritePositionAsync(
+        OnOffValvePosition position,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (simulationSync)
+        {
+            if (isOffline)
+            {
+                throw new IOException(
+                    $"Simulated valve '{Id}' is offline.");
+            }
+
+            if (motionTarget != position)
+            {
+                motionTarget = position;
+                movementStartedAt = DateTimeOffset.UtcNow;
+            }
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask<OnOffValveCycleResult> ReadFeedbackAsync(
+        OnOffValvePosition commandedPosition,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -68,12 +90,6 @@ public sealed class SimulatedOnOffValve : OnOffValveBase
                         IsFeedbackValid: false,
                         IsFeedbackConflict: true,
                         Timestamp: now));
-            }
-
-            if (motionTarget != commandedPosition)
-            {
-                motionTarget = commandedPosition;
-                movementStartedAt = now;
             }
 
             if (actualPosition != motionTarget &&

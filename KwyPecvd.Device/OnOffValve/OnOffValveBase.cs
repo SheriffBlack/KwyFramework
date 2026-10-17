@@ -115,6 +115,15 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
                         $"{target}.");
                 }
 
+            }
+
+            await WritePositionAsync(
+                    target,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            lock (syncRoot)
+            {
                 commandedPosition = target;
                 motionStartedAt = DateTimeOffset.UtcNow;
 
@@ -162,10 +171,28 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
             }
 
             var result =
-                await ExchangeAsync(
+                await ReadFeedbackAsync(
                         requested,
                         cancellationToken)
                     .ConfigureAwait(false);
+
+            if (requested != Definition.SafePosition &&
+                (result.IsOffline ||
+                 !result.IsFeedbackValid ||
+                 result.IsFeedbackConflict))
+            {
+                await WritePositionAsync(
+                        Definition.SafePosition,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                lock (syncRoot)
+                {
+                    commandedPosition = Definition.SafePosition;
+                    requested = Definition.SafePosition;
+                    motionStartedAt = result.Timestamp;
+                }
+            }
 
             snapshotToPublish =
                 UpdateSnapshot(requested, result);
@@ -177,6 +204,18 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
         }
         catch
         {
+            try
+            {
+                await WritePositionAsync(
+                        Definition.SafePosition,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                // 保留原始周期异常；快照仍进入未知安全状态。
+            }
+
             OnOffValveSnapshot failed;
 
             lock (syncRoot)
@@ -231,6 +270,11 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
             var safePosition =
                 Definition.SafePosition;
 
+            await WritePositionAsync(
+                    safePosition,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             lock (syncRoot)
             {
                 commandedPosition = safePosition;
@@ -238,7 +282,7 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
             }
 
             var result =
-                await ExchangeAsync(
+                await ReadFeedbackAsync(
                         safePosition,
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -390,7 +434,13 @@ public abstract class OnOffValveBase : HardwareComponentBase, IOnOffValve
             }
         }
     }
-    protected abstract ValueTask<OnOffValveCycleResult> ExchangeAsync(
+    /// <summary>立即向硬件写入目标位置。</summary>
+    protected abstract ValueTask WritePositionAsync(
+        OnOffValvePosition position,
+        CancellationToken cancellationToken);
+
+    /// <summary>周期读取位置反馈，不重复写入阀门命令。</summary>
+    protected abstract ValueTask<OnOffValveCycleResult> ReadFeedbackAsync(
         OnOffValvePosition commandedPosition,
         CancellationToken cancellationToken);
 

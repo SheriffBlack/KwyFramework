@@ -12,4 +12,8 @@
     <ProjectReference Include="..\Kwy.Device.PLC.Abstractions\Kwy.Device.PLC.Abstractions.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="ThrottleValve\Simulated\" />
+  </ItemGroup>
+
 </Project>

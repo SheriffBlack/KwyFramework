@@ -84,66 +84,44 @@ public sealed class IoOnOffValve :
         return Task.CompletedTask;
     }
 
-    protected override ValueTask<
-    OnOffValveCycleResult>
-    ExchangeAsync(
+    protected override ValueTask WritePositionAsync(
+        OnOffValvePosition position,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        WritePosition(position);
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask<OnOffValveCycleResult> ReadFeedbackAsync(
         OnOffValvePosition commandedPosition,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var safePosition = Definition.SafePosition;
+        var offline =
+            ReadOptional(
+                ioDefinition.OfflineDiId);
 
-        try
-        {
-            // 安全方向命令优先执行。
-            // 即使后续读取反馈失败，也已写入安全输出。
-            if (commandedPosition == safePosition)
-            {
-                WritePosition(safePosition);
-            }
+        var feedback =
+            ReadPositionFeedback(
+                commandedPosition);
 
-            var offline =
-                ReadOptional(
-                    ioDefinition.OfflineDiId);
+        var feedbackValid =
+            !offline &&
+            !feedback.IsConflict;
 
-            // 非安全方向只有在线时才允许输出。
-            var effectivePosition =
-                offline
-                    ? safePosition
-                    : commandedPosition;
-
-            if (commandedPosition != safePosition)
-            {
-                WritePosition(effectivePosition);
-            }
-
-            var feedback =
-                ReadPositionFeedback(
-                    effectivePosition);
-
-            var feedbackValid =
-                !offline &&
-                !feedback.IsConflict;
-
-            return ValueTask.FromResult(
-                new OnOffValveCycleResult(
-                    ActualPosition:
-                        feedback.Position,
-                    IsOffline: offline,
-                    IsFeedbackValid:
-                        feedbackValid,
-                    IsFeedbackConflict:
-                        feedback.IsConflict,
-                    Timestamp:
-                        DateTimeOffset.UtcNow));
-        }
-        catch
-        {
-            // 任意IO异常都尽力恢复安全输出。
-            WritePosition(safePosition);
-            throw;
-        }
+        return ValueTask.FromResult(
+            new OnOffValveCycleResult(
+                ActualPosition:
+                    feedback.Position,
+                IsOffline: offline,
+                IsFeedbackValid:
+                    feedbackValid,
+                IsFeedbackConflict:
+                    feedback.IsConflict,
+                Timestamp:
+                    DateTimeOffset.UtcNow));
     }
 
     private void WritePosition(
