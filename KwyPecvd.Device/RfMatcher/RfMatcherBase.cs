@@ -111,6 +111,11 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
 
         try
         {
+            await WriteModeAsync(
+                    mode,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             lock (syncRoot)
             {
                 commandedMode = mode;
@@ -178,6 +183,16 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
                         "positions.");
                 }
 
+            }
+
+            await WriteManualPositionsAsync(
+                    tunePosition,
+                    loadPosition,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            lock (syncRoot)
+            {
                 tuneSetPoint = tunePosition;
                 loadSetPoint = loadPosition;
                 positionOutOfToleranceSince = null;
@@ -238,12 +253,25 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
             }
 
             var result =
-                await ExchangeAsync(
-                        mode,
-                        tuneTarget,
-                        loadTarget,
+                await ReadFeedbackAsync(
                         cancellationToken)
                     .ConfigureAwait(false);
+
+            if ((result.IsOffline ||
+                 !result.IsFeedbackValid ||
+                 result.IsFaulted) &&
+                mode != RfMatcherMode.Unknown)
+            {
+                await StopMotionAsync(cancellationToken).ConfigureAwait(false);
+
+                mode = RfMatcherMode.Unknown;
+
+                lock (syncRoot)
+                {
+                    commandedMode = mode;
+                    positionOutOfToleranceSince = null;
+                }
+            }
 
             var positionOutOfTolerance =
                 CalculatePositionOutOfTolerance(
@@ -297,10 +325,26 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
         }
         catch
         {
+            try
+            {
+                await StopMotionAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // 保留原始周期异常。
+            }
+
             positionOutOfToleranceSince = null;
+
+            lock (syncRoot)
+            {
+                commandedMode = RfMatcherMode.Unknown;
+            }
 
             var failed = Snapshot with
             {
+                CommandedMode =
+                    RfMatcherMode.Unknown,
                 ActualMode =
                     RfMatcherMode.Unknown,
                 IsTuning = false,
@@ -340,14 +384,20 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
 
         try
         {
+            await StopMotionAsync(cancellationToken).ConfigureAwait(false);
+
             await ShutdownCoreAsync(
                     cancellationToken)
                 .ConfigureAwait(false);
 
             lock (syncRoot)
             {
+                commandedMode = RfMatcherMode.Unknown;
+                positionOutOfToleranceSince = null;
+
                 snapshotToPublish = snapshot with
                 {
+                    CommandedMode = RfMatcherMode.Unknown,
                     ActualMode = RfMatcherMode.Unknown,
                     IsTuning = false,
                     IsMatched = false,
@@ -484,10 +534,19 @@ public abstract class RfMatcherBase : HardwareComponentBase, IRfMatcher
         }
     }
 
-    protected abstract ValueTask<RfMatcherCycleResult> ExchangeAsync(
-        RfMatcherMode commandedMode,
-        double tuneSetPoint,
-        double loadSetPoint,
+    protected abstract ValueTask WriteModeAsync(
+        RfMatcherMode mode,
+        CancellationToken cancellationToken);
+
+    protected abstract ValueTask WriteManualPositionsAsync(
+        double tunePosition,
+        double loadPosition,
+        CancellationToken cancellationToken);
+
+    protected abstract ValueTask StopMotionAsync(
+        CancellationToken cancellationToken);
+
+    protected abstract ValueTask<RfMatcherCycleResult> ReadFeedbackAsync(
         CancellationToken cancellationToken);
 
     protected readonly record struct RfMatcherCycleResult(

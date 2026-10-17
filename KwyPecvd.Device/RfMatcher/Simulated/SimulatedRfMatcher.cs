@@ -19,6 +19,9 @@ public sealed class SimulatedRfMatcher : RfMatcherBase
     private bool hasBadQuality;
 
     private bool isFaulted;
+    private RfMatcherMode commandedMode = RfMatcherMode.Unknown;
+    private double commandedTunePosition;
+    private double commandedLoadPosition;
 
     public SimulatedRfMatcher(
         RfMatcherDefinition definition,
@@ -54,14 +57,49 @@ public sealed class SimulatedRfMatcher : RfMatcherBase
 
         loadPosition =
             definition.MinimumPosition;
+
+        commandedTunePosition = definition.MinimumPosition;
+        commandedLoadPosition = definition.MinimumPosition;
     }
 
-    protected override ValueTask<
-        RfMatcherCycleResult> ExchangeAsync(
-            RfMatcherMode commandedMode,
-            double tuneSetPoint,
-            double loadSetPoint,
-            CancellationToken cancellationToken)
+    protected override ValueTask WriteModeAsync(
+        RfMatcherMode mode,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (simulationSync)
+        {
+            commandedMode = mode;
+        }
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask WriteManualPositionsAsync(
+        double tunePosition,
+        double loadPosition,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (simulationSync)
+        {
+            commandedTunePosition = tunePosition;
+            commandedLoadPosition = loadPosition;
+        }
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask StopMotionAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (simulationSync)
+        {
+            commandedMode = RfMatcherMode.Unknown;
+        }
+        return ValueTask.CompletedTask;
+    }
+
+    protected override ValueTask<RfMatcherCycleResult> ReadFeedbackAsync(
+        CancellationToken cancellationToken)
     {
         cancellationToken
             .ThrowIfCancellationRequested();
@@ -102,11 +140,11 @@ public sealed class SimulatedRfMatcher : RfMatcherBase
                 case RfMatcherMode.Manual:
                     MoveTowards(
                         ref tunePosition,
-                        tuneSetPoint);
+                        commandedTunePosition);
 
                     MoveTowards(
                         ref loadPosition,
-                        loadSetPoint);
+                        commandedLoadPosition);
 
                     break;
 
