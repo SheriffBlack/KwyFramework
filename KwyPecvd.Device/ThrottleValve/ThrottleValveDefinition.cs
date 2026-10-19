@@ -21,6 +21,12 @@ public sealed record ThrottleValveDefinition
 
     public required double MaximumPressure { get; init; }
 
+    /// <summary>
+    /// 通信异常或停机时要求的安全模式。
+    /// 只能配置为全开或全关。
+    /// </summary>
+    public ThrottleValveMode SafeMode { get; init; } = ThrottleValveMode.Closed;
+
     /// <summary>位置反馈允许误差。</summary>
     public double PositionTolerance { get; init; } = 1;
 
@@ -56,6 +62,15 @@ public sealed record ThrottleValveDefinition
         {
             throw new ArgumentOutOfRangeException(
                 nameof(MaximumPressure));
+        }
+
+        if (SafeMode is not (
+            ThrottleValveMode.Open or
+            ThrottleValveMode.Closed))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(SafeMode),
+                "Safe mode must be Open or Closed.");
         }
 
         if (!double.IsFinite(PositionTolerance) ||

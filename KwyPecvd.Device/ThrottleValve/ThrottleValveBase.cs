@@ -5,8 +5,7 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
     private readonly object syncRoot = new();
 
     private readonly SemaphoreSlim operationGate = new(1, 1);
-
-    private ThrottleValveMode commandedMode = ThrottleValveMode.Closed;
+    private ThrottleValveMode commandedMode;
 
     private double positionSetPoint;
 
@@ -28,6 +27,8 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
 
         Definition = definition;
 
+        commandedMode = definition.SafeMode;
+
         positionSetPoint = definition.MinimumPosition;
 
         pressureSetPoint = 0;
@@ -36,7 +37,7 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
         {
             Id = definition.Id,
 
-            CommandedMode = ThrottleValveMode.Closed,
+            CommandedMode = definition.SafeMode,
 
             ActualMode = ThrottleValveMode.Unknown,
 
@@ -54,7 +55,9 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
 
             IsOffline = true,
 
-            IsFeedbackValid = false,
+            IsPositionFeedbackValid = false,
+
+            IsPressureFeedbackValid = false,
 
             IsFaulted = false,
 
@@ -62,7 +65,7 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
 
             IsPressureOutOfTolerance = false,
 
-            DiagnosticCode = ThrottleValveDiagnosticCodes .NotSampled,
+            DiagnosticCode = ThrottleValveDiagnosticCodes.NotSampled,
 
             Timestamp = DateTimeOffset.UtcNow
         };
@@ -101,11 +104,89 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
 
         ThrottleValveSnapshot? changed = null;
 
+        var safetyCommandAttempted = false;
+        var safetyCommandSucceeded = false;
+
         try
         {
             var result =
                 await ReadFeedbackAsync(cancellationToken)
                     .ConfigureAwait(false);
+
+            ThrottleValveMode requestedMode;
+            double requestedPosition;
+            double requestedPressure;
+
+            lock (syncRoot)
+            {
+                requestedMode = commandedMode;
+                requestedPosition = positionSetPoint;
+                requestedPressure = pressureSetPoint;
+            }
+
+            var feedbackUsable =
+                IsFeedbackUsable(
+                    requestedMode,
+                    result);
+
+            if (!feedbackUsable && requestedMode != Definition.SafeMode)
+            {
+                safetyCommandAttempted = true;
+
+                await WriteSafeModeAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                safetyCommandSucceeded = true;
+
+                requestedMode = Definition.SafeMode;
+
+                lock (syncRoot)
+                {
+                    commandedMode =
+                        Definition.SafeMode;
+
+                    positionOutOfToleranceSince = null;
+                    pressureOutOfToleranceSince = null;
+                }
+            }
+
+            var positionOutOfTolerance =
+                CalculateOutOfTolerance(
+                    shouldEvaluate:
+                        feedbackUsable &&
+                        requestedMode ==
+                            ThrottleValveMode.Position &&
+                        result.ActualMode ==
+                            ThrottleValveMode.Position,
+
+                    setPoint: requestedPosition,
+                    feedback: result.PositionFeedback,
+                    tolerance:
+                        Definition.PositionTolerance,
+                    toleranceDelay:
+                        Definition.ToleranceDelay,
+                    now: result.Timestamp,
+                    outOfToleranceSince:
+                        ref positionOutOfToleranceSince);
+
+            var pressureOutOfTolerance =
+                CalculateOutOfTolerance(
+                    shouldEvaluate:
+                        feedbackUsable &&
+                        requestedMode ==
+                            ThrottleValveMode.Pressure &&
+                        result.ActualMode ==
+                            ThrottleValveMode.Pressure,
+
+                    setPoint: requestedPressure,
+                    feedback: result.PressureFeedback,
+                    tolerance:
+                        Definition.PressureTolerance,
+                    toleranceDelay:
+                        Definition.ToleranceDelay,
+                    now: result.Timestamp,
+                    outOfToleranceSince:
+                        ref pressureOutOfToleranceSince);
 
             string? diagnosticCode = null;
 
@@ -113,13 +194,22 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
             {
                 diagnosticCode = ThrottleValveDiagnosticCodes.Offline;
             }
-            else if (!result.IsFeedbackValid)
+            else if (!feedbackUsable &&
+                     !result.IsFaulted)
             {
                 diagnosticCode = ThrottleValveDiagnosticCodes.FeedbackBadQuality;
             }
             else if (result.IsFaulted)
             {
                 diagnosticCode = ThrottleValveDiagnosticCodes.DeviceFault;
+            }
+            else if (positionOutOfTolerance)
+            {
+                diagnosticCode = ThrottleValveDiagnosticCodes.PositionOutOfTolerance;
+            }
+            else if (pressureOutOfTolerance)
+            {
+                diagnosticCode = ThrottleValveDiagnosticCodes.PressureOutOfTolerance;
             }
 
             lock (syncRoot)
@@ -146,13 +236,17 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
 
                     IsOffline = result.IsOffline,
 
-                    IsFeedbackValid = result.IsFeedbackValid,
+                    IsPositionFeedbackValid =
+                        result.IsPositionFeedbackValid,
+
+                    IsPressureFeedbackValid =
+                        result.IsPressureFeedbackValid,
 
                     IsFaulted = result.IsFaulted,
 
-                    IsPositionOutOfTolerance = false,
+                    IsPositionOutOfTolerance = positionOutOfTolerance,
 
-                    IsPressureOutOfTolerance = false,
+                    IsPressureOutOfTolerance = pressureOutOfTolerance,
 
                     DiagnosticCode = diagnosticCode,
 
@@ -170,18 +264,56 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
         }
         catch
         {
+            ThrottleValveMode mode;
+
             lock (syncRoot)
             {
+                mode = commandedMode;
+            }
+
+            // 如果读取反馈本身抛出异常，此前还没有机会
+            // 执行安全命令，则在这里尝试一次。
+            if (!safetyCommandAttempted &&
+                mode != Definition.SafeMode)
+            {
+                try
+                {
+                    safetyCommandAttempted = true;
+
+                    await WriteSafeModeAsync(
+                            cancellationToken)
+                        .ConfigureAwait(false);
+
+                    safetyCommandSucceeded = true;
+                }
+                catch
+                {
+                    // 保留最初的通信/读取异常。
+                }
+            }
+
+            lock (syncRoot)
+            {
+                if (safetyCommandSucceeded)
+                {
+                    commandedMode =
+                        Definition.SafeMode;
+                }
+
                 positionOutOfToleranceSince = null;
                 pressureOutOfToleranceSince = null;
 
                 changed = snapshot with
                 {
+                    CommandedMode = commandedMode,
+
                     ActualMode = ThrottleValveMode.Unknown,
 
                     IsOffline = true,
 
-                    IsFeedbackValid = false,
+                    IsPositionFeedbackValid = false,
+
+                    IsPressureFeedbackValid = false,
 
                     IsPositionOutOfTolerance = false,
 
@@ -209,6 +341,8 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
     }
 
     protected virtual Task InitializeCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    protected virtual Task ShutdownCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     protected abstract ValueTask WriteCloseAsync(CancellationToken cancellationToken);
 
@@ -299,6 +433,65 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
             cancellationToken);
     }
 
+    public override sealed async Task ShutdownAsync(CancellationToken cancellationToken = default)
+    {
+        await operationGate
+            .WaitAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        ThrottleValveSnapshot? changed = null;
+
+        try
+        {
+            await WriteSafeModeAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            lock (syncRoot)
+            {
+                commandedMode =
+                    Definition.SafeMode;
+
+                positionOutOfToleranceSince = null;
+                pressureOutOfToleranceSince = null;
+
+                changed = snapshot with
+                {
+                    CommandedMode =
+                        Definition.SafeMode,
+
+                    IsPositionOutOfTolerance =
+                        false,
+
+                    IsPressureOutOfTolerance =
+                        false,
+
+                    Timestamp =
+                        DateTimeOffset.UtcNow
+                };
+
+                snapshot = changed;
+            }
+        }
+        finally
+        {
+            try
+            {
+                await ShutdownCoreAsync(
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                operationGate.Release();
+
+                if (changed is not null)
+                {
+                    PublishSnapshotChanged(changed);
+                }
+            }
+        }
+    }
+
     /// <summary>统一命令入口 </summary>
     private async Task<CommandResult> ExecuteCommandAsync(
         ThrottleValveMode mode,
@@ -322,7 +515,7 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
                 if (requiresReadyFeedback)
                 {
                     var rejected =
-                        GetCommandRejection();
+                        GetCommandRejection(mode);
 
                     if (rejected is not null)
                     {
@@ -399,7 +592,8 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
     }
 
     /// <summary>就绪检查</summary>
-    private CommandResult? GetCommandRejection()
+    private CommandResult? GetCommandRejection(
+        ThrottleValveMode requestedMode)
     {
         if (snapshot.IsOffline)
         {
@@ -408,7 +602,15 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
                 $"Throttle valve '{Id}' is offline.");
         }
 
-        if (!snapshot.IsFeedbackValid)
+        var feedbackValid =
+            requestedMode ==
+                ThrottleValveMode.Pressure
+                ? snapshot
+                    .IsPressureFeedbackValid
+                : snapshot
+                    .IsPositionFeedbackValid;
+
+        if (!feedbackValid)
         {
             return CommandResult.Failure(
                 ResultCodes.NotReady,
@@ -426,6 +628,27 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
         return null;
     }
 
+    private static bool CalculateOutOfTolerance(
+        bool shouldEvaluate,
+        double setPoint,
+        double feedback,
+        double tolerance,
+        TimeSpan toleranceDelay,
+        DateTimeOffset now,
+        ref DateTimeOffset? outOfToleranceSince)
+    {
+        if (!shouldEvaluate ||
+            Math.Abs(feedback - setPoint) <= tolerance)
+        {
+            outOfToleranceSince = null;
+            return false;
+        }
+
+        outOfToleranceSince ??= now;
+
+        return now - outOfToleranceSince >= toleranceDelay;
+    }
+
     /// <summary>幂等判断 </summary>
     private bool IsSameCommand(
         ThrottleValveMode mode,
@@ -437,21 +660,45 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
             return false;
         }
 
+        var requiredFeedbackValid =
+            mode == ThrottleValveMode.Pressure
+                ? snapshot
+                    .IsPressureFeedbackValid
+                : snapshot
+                    .IsPositionFeedbackValid;
+
+        // 离线、当前模式所需反馈无效或故障时，
+        // 不能仅凭 Commanded 判断硬件已经执行命令。
+        if (snapshot.IsOffline ||
+            !requiredFeedbackValid ||
+            snapshot.IsFaulted)
+        {
+            return false;
+        }
+
         return mode switch
         {
+            ThrottleValveMode.Closed =>
+                snapshot.ActualMode ==
+                    ThrottleValveMode.Closed,
+
+            ThrottleValveMode.Open =>
+                snapshot.ActualMode ==
+                    ThrottleValveMode.Open,
+
             ThrottleValveMode.Position =>
                 requestedPosition.HasValue &&
+                snapshot.ActualMode ==
+                    ThrottleValveMode.Position &&
                 positionSetPoint ==
                     requestedPosition.Value,
 
             ThrottleValveMode.Pressure =>
                 requestedPressure.HasValue &&
+                snapshot.ActualMode ==
+                    ThrottleValveMode.Pressure &&
                 pressureSetPoint ==
                     requestedPressure.Value,
-
-            ThrottleValveMode.Open or
-            ThrottleValveMode.Closed =>
-                true,
 
             _ => false
         };
@@ -484,6 +731,38 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
         }
     }
 
+    private ValueTask WriteSafeModeAsync(CancellationToken cancellationToken)
+    {
+        return Definition.SafeMode switch
+        {
+            ThrottleValveMode.Closed =>
+                WriteCloseAsync(cancellationToken),
+
+            ThrottleValveMode.Open =>
+                WriteOpenAsync(cancellationToken),
+
+            _ => throw new InvalidOperationException(
+                $"Throttle valve '{Id}' has an " +
+                "invalid safe mode.")
+        };
+    }
+
+    private static bool IsFeedbackUsable(
+        ThrottleValveMode requestedMode,
+        ThrottleValveCycleResult result)
+    {
+        if (result.IsOffline ||
+            result.IsFaulted)
+        {
+            return false;
+        }
+
+        return requestedMode ==
+            ThrottleValveMode.Pressure
+                ? result.IsPressureFeedbackValid
+                : result.IsPositionFeedbackValid;
+    }
+
     protected abstract ValueTask<ThrottleValveCycleResult> ReadFeedbackAsync(
         CancellationToken cancellationToken);
 
@@ -492,7 +771,8 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
         double PositionFeedback,
         double PressureFeedback,
         bool IsOffline,
-        bool IsFeedbackValid,
+        bool IsPositionFeedbackValid,
+        bool IsPressureFeedbackValid,
         bool IsFaulted,
         DateTimeOffset Timestamp);
 }

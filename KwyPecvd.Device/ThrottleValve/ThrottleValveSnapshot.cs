@@ -25,7 +25,11 @@ public sealed record ThrottleValveSnapshot
 
     public required bool IsOffline { get; init; }
 
-    public required bool IsFeedbackValid { get; init; }
+    /// <summary>阀门位置及控制模式反馈是否可信。</summary>
+    public required bool IsPositionFeedbackValid { get; init; }
+
+    /// <summary>压力闭环使用的压力反馈是否可信。</summary>
+    public required bool IsPressureFeedbackValid { get; init; }
 
     public required bool IsFaulted { get; init; }
 
