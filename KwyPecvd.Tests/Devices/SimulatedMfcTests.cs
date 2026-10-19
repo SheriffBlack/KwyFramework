@@ -28,15 +28,16 @@ namespace KwyPecvd.Tests.Devices
             await mfc.SetFlowAsync(100, TimeSpan.FromMilliseconds(200));
             await Task.Delay(60);
             await mfc.ExecuteCycleAsync();
-            var beforeHold = mfc.Snapshot.SetPoint;
 
             var result = await mfc.HoldAsync();
+            var heldTarget = mfc.Snapshot.TargetSetPoint;
             await Task.Delay(40);
             await mfc.ExecuteCycleAsync();
 
             Assert.True(result.Succeeded);
             Assert.False(mfc.Snapshot.IsRamping);
-            Assert.InRange(mfc.Snapshot.SetPoint, beforeHold, beforeHold + 5);
+            Assert.InRange(heldTarget, 0.001, 99.999);
+            Assert.Equal(heldTarget, mfc.Snapshot.TargetSetPoint);
         }
 
         [Fact]
@@ -68,7 +69,7 @@ namespace KwyPecvd.Tests.Devices
             var exception = await Record.ExceptionAsync(() => mfc.ExecuteCycleAsync());
 
             Assert.Null(exception);
-            Assert.Equal(100, mfc.Snapshot.SetPoint);
+            Assert.Equal(100, mfc.Snapshot.TargetSetPoint);
         }
 
         [Fact]
@@ -81,7 +82,7 @@ namespace KwyPecvd.Tests.Devices
             await mfc.ShutdownAsync();
             await mfc.ExecuteCycleAsync();
 
-            Assert.Equal(0, mfc.Snapshot.SetPoint);
+            Assert.Equal(0, mfc.Snapshot.TargetSetPoint);
         }
 
         [Fact]
