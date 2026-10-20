@@ -56,7 +56,7 @@ Device.Abstractions        Device.Core
 services.AddDeviceCore();
 services.AddCameraCore();
 services.AddIoCardCore();
-services.AddMotionCardCore();
+services.AddMotionCore();
 services.AddPLCCore();
 services.AddInstrumentCore();
 ```

@@ -122,7 +122,7 @@ Kwy.Device.Core
         ▲
         │ 引用 Core + Abstractions；实现厂商 SDK 映射
         │
-Kwy.Device.MotionCards.*
+Kwy.Device.Motions.*
   ├─ Simulation        仿真与 Core 行为验证
   ├─ Leadshine         雷赛 SDK 适配
   ├─ Googol            固高 SDK 适配
@@ -138,7 +138,7 @@ Kwy.Device.MotionCards.*
 | --- | --- | --- |
 | `Kwy.Device.Abstractions` | 基础通用库 | `Kwy.Device.Core`、任何厂商卡项目、厂商 SDK。 |
 | `Kwy.Device.Core` | `Abstractions` | 任意 `MotionCards.*` 项目、厂商 SDK、工艺项目。 |
-| `Kwy.Device.MotionCards.*` | `Abstractions`、`Core`、本厂商 SDK | 其他厂商卡项目、工艺/UI/配方项目。 |
+| `Kwy.Device.Motions.*` | `Abstractions`、`Core`、本厂商 SDK | 其他厂商卡项目、工艺/UI/配方项目。 |
 | 设备项目 | 上述稳定业务服务 | 厂商 SDK、物理轴号和原始状态字。 |
 
 新同事建议按下面顺序阅读和使用：
@@ -165,14 +165,14 @@ IMotionRuntimeRegistry
 IAxisChannelDefinitionProvider
     short channel → 卡内轴通道配置
         ↓
-IMotionCard / IAxisMotionController
+IMotionController / IAxisMotionController
 ```
 
 工艺、配方、HMI 与运动组使用 `axisId`；`short channel` 只允许出现在 Core 物理运行时和厂商适配器中。设备项目必须通过 `AddAxisDefinitions(...)` 注册唯一的 `AxisDefinition[]`；该目录是业务解析与启动校验的唯一来源。厂商卡构造时按 `DeviceId` 筛选此目录，并在卡内部建立 `channel → AxisDefinition` 映射，用于工程单位换算与硬件通道校验；厂商配置不得再保存通用轴定义。
 
 ## 4. 物理能力接口
 
-`IMotionCard` 只表示运动设备生命周期。设备按真实能力实现细粒度接口，而不存在“标准卡”或“高级卡”的大组合接口。
+`IMotionController` 只表示运动设备生命周期。设备按真实能力实现细粒度接口，而不存在“标准卡”或“高级卡”的大组合接口。
 
 | 接口 | 职责 |
 | --- | --- |
@@ -394,7 +394,7 @@ IMotionOperationTracker
 IMotionAutoModeGate
 ```
 
-工艺层不得直接注入 `IMotionCard`、`IAxisMotionController`、`IInterpolationMotionController`，不得出现物理轴号、脉冲换算、厂商 SDK 类型或原始状态字。
+工艺层不得直接注入 `IMotionController`、`IAxisMotionController`、`IInterpolationMotionController`，不得出现物理轴号、脉冲换算、厂商 SDK 类型或原始状态字。
 
 每个单轴、运动组、回零、寻边和原生程序动作都必须通过 `IMotionOperationTracker` 记录操作 ID、资源、目标、开始时间、结束状态、取消原因和故障。
 
