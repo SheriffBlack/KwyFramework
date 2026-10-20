@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>雷赛 LTDMC SDK 的原生互操作与运行时资产。</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Kwy.Device.Motion.Leadshine.Dmc" />
+    <InternalsVisibleTo Include="Kwy.Device.Motion.Leadshine.DmcE" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PlatformTarget)' == 'x86' Or '$(RuntimeIdentifier)' == 'win-x86'">
+    <None Update="runtimes\win-x86\native\LTDMC.dll">
+      <Link>LTDMC.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
