@@ -1,20 +1,40 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\eng\Kwy.Logging.Serilog.Version.props" />
+
   <PropertyGroup>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackageId>Kwy.Logging.Serilog</PackageId>
+    <Title>Kwy Logging Serilog</Title>
+    <Copyright>Copyright © 2026 Kwy</Copyright>
+    <Description>Serilog provider and rolling text/JSON file logging integration for Microsoft.Extensions.Logging.</Description>
+    <PackageTags>logging;serilog;dotnet;structured-logging;microsoft-extensions-logging</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/SheriffBlack/KwyFramework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SheriffBlack/KwyFramework.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
     <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="Serilog.Enrichers.Thread" Version="3.1.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Kwy.Logging.Abstractions\Kwy.Logging.Abstractions.csproj" />
+    <None Remove="..\README.md" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSES\MIT.txt" Pack="true" PackagePath="\" Link="LICENSE.txt" />
   </ItemGroup>
 
 </Project>
