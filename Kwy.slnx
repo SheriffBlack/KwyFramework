@@ -71,13 +71,14 @@
   <Project Path="Kwy.Device.IoCard.Core/Kwy.Device.IoCard.Core.csproj" />
   <Project Path="Kwy.Device.IoCard.Leadshine/Kwy.Device.IoCard.Leadshine.csproj" Id="15aad508-1f53-4b44-a4ab-9188723d625e" />
   <Project Path="Kwy.Device.IoCard.Tests/Kwy.Device.IoCard.Tests.csproj" />
-  <Project Path="Kwy.Device.MotionCard.Abstractions/Kwy.Device.MotionCard.Abstractions.csproj" />
-  <Project Path="Kwy.Device.MotionCard.Core/Kwy.Device.MotionCard.Core.csproj" />
-  <Project Path="Kwy.Device.MotionCard.Googol/Kwy.Device.MotionCard.Googol.csproj" Id="4db6d6d7-7041-4f9e-96cd-2e4e3a7a587c" />
-  <Project Path="Kwy.Device.MotionCard.Leadshine/Kwy.Device.MotionCard.Leadshine.csproj" Id="ba4a18f1-456d-4b3c-8366-504becca2cc1" />
-  <Project Path="Kwy.Device.MotionCard.Simulation/Kwy.Device.MotionCard.Simulation.csproj" />
-  <Project Path="Kwy.Device.MotionCard.Tests/Kwy.Device.MotionCard.Tests.csproj" />
-  <Project Path="Kwy.Device.MotionCard.ZMotion/Kwy.Device.MotionCard.ZMotion.csproj" Id="97a0abb8-3092-41af-a5d6-c3719c91db7b" />
+  <Project Path="Kwy.Device.Motion.Abstractions/Kwy.Device.Motion.Abstractions.csproj" />
+  <Project Path="Kwy.Device.Motion.Core/Kwy.Device.Motion.Core.csproj" />
+  <Project Path="Kwy.Device.Motion.Googol/Kwy.Device.Motion.Googol.csproj" Id="4db6d6d7-7041-4f9e-96cd-2e4e3a7a587c" />
+  <Project Path="Kwy.Device.Motion.Leadshine.Dmc/Kwy.Device.Motion.Leadshine.Dmc.csproj" Id="ba4a18f1-456d-4b3c-8366-504becca2cc1" />
+  <Project Path="Kwy.Device.Motion.Leadshine.Ltdmc.Native/Kwy.Device.Motion.Leadshine.Ltdmc.Native.csproj" />
+  <Project Path="Kwy.Device.Motion.Simulation/Kwy.Device.Motion.Simulation.csproj" />
+  <Project Path="Kwy.Device.Motion.Tests/Kwy.Device.Motion.Tests.csproj" />
+  <Project Path="Kwy.Device.Motion.ZMotion/Kwy.Device.Motion.ZMotion.csproj" Id="97a0abb8-3092-41af-a5d6-c3719c91db7b" />
   <Project Path="Kwy.Device.PLC.Abstractions/Kwy.Device.PLC.Abstractions.csproj" />
   <Project Path="Kwy.Device.PLC.Beckhoff/Kwy.Device.PLC.Beckhoff.csproj" Id="6380ecd1-80dc-4bdb-9230-cb093a24f806" />
   <Project Path="Kwy.Device.PLC.Core/Kwy.Device.PLC.Core.csproj" />
@@ -90,7 +91,6 @@
   <Project Path="Kwy.Files.Tests/Kwy.Files.Tests.csproj" />
   <Project Path="Kwy.Files/Kwy.Files.csproj" Id="e6643907-ecc0-48a5-8b2a-fb66b1384938" />
   <Project Path="Kwy.Licensing.Abstractions/Kwy.Licensing.Abstractions.csproj" />
-  <Project Path="Kwy.Logging.Abstractions/Kwy.Logging.Abstractions.csproj" Id="b6f594d4-55a3-44a0-97e2-8f2d7a69f7c5" />
   <Project Path="Kwy.Logging.Serilog/Kwy.Logging.Serilog.csproj" Id="55279d5c-9e76-4b0a-b452-2d6a60b748bb" />
   <Project Path="Kwy.MVVM.Tests/Kwy.MVVM.Tests.csproj" />
   <Project Path="Kwy.MVVM.WPF.Tests/Kwy.MVVM.WPF.Tests.csproj" />
