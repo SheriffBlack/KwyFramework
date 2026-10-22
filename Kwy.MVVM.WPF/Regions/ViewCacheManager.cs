@@ -172,31 +172,57 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
         var dispatcher = view.Dispatcher;
         if (dispatcher.CheckAccess())
         {
-            DestroyViewOnUiThread(view);
+            DestroyViewOnUiThread(item, view);
             return;
         }
 
         if (dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
+            DisposeViewLifetime(item, view, clearDataContext: false);
             return;
         }
 
         try
         {
-            _ = dispatcher.BeginInvoke(() => DestroyViewOnUiThread(view), DispatcherPriority.Background);
+            _ = dispatcher.BeginInvoke(() => DestroyViewOnUiThread(item, view), DispatcherPriority.Background);
         }
         catch (InvalidOperationException)
         {
             // 应用关闭阶段 Dispatcher 可能已经不可访问，缓存释放不能阻塞进程退出。
+            DisposeViewLifetime(item, view, clearDataContext: false);
         }
         catch (TaskCanceledException)
         {
             // Dispatcher 正在关闭时会取消排队任务，视图缓存销毁直接跳过剩余 UI 清理。
+            DisposeViewLifetime(item, view, clearDataContext: false);
         }
     }
 
-    private static void DestroyViewOnUiThread(FrameworkElement view)
+    private static void DestroyViewOnUiThread(ViewCacheItem item, FrameworkElement view)
     {
+        DisposeViewLifetime(item, view, clearDataContext: true);
+    }
+
+    private static void DisposeViewLifetime(
+        ViewCacheItem item,
+        FrameworkElement view,
+        bool clearDataContext)
+    {
+        var serviceScope = item.ServiceScope;
+        item.ServiceScope = null;
+
+        if (serviceScope != null)
+        {
+            // 作用域统一拥有并释放 View、ViewModel 及其 scoped/transient 依赖，
+            // 避免手动 Dispose 后根容器在退出时再次 Dispose。
+            serviceScope.Dispose();
+            if (clearDataContext)
+            {
+                view.DataContext = null;
+            }
+            return;
+        }
+
         if (view is IDisposable viewDisposable)
         {
             viewDisposable.Dispose();
@@ -207,7 +233,10 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
             vmDisposable.Dispose();
         }
 
-        view.DataContext = null;
+        if (clearDataContext)
+        {
+            view.DataContext = null;
+        }
     }
 
     private void OnCleanupTimerTick(object? sender, EventArgs e) => CleanupExpiredViews();

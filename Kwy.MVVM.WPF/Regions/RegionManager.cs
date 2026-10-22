@@ -79,6 +79,7 @@ public class RegionManager : IRegionManager, IDisposable
     #endregion XAML 附加属性 (RegionName)
 
     private readonly IServiceProvider _serviceProvider;
+    private readonly ConcurrentDictionary<FrameworkElement, IServiceScope> _uncachedViewScopes = new();
 
     // 活跃区域字典：RegionName -> ContentControl (UI 挂载点)
     private readonly ConcurrentDictionary<string, ContentControl> _activeRegions = new ConcurrentDictionary<string, ContentControl>();
@@ -209,18 +210,37 @@ public class RegionManager : IRegionManager, IDisposable
             {
                 cacheManager.MarkAsDeactive(oldView.GetType().Name);
             }
+            else if (oldView != null && _uncachedViewScopes.TryRemove(oldView, out var oldScope))
+            {
+                oldScope.Dispose();
+            }
 
             // 5. 【极致性能关键 2】: 使用 .NET 8 键控服务进行 O(1) 解析。
             // 相比原来的 FindTypeByFullName 全局扫包，这里不再需要反射，直接由容器返回实例。
             FrameworkElement newView;
+            IServiceScope? createdScope = null;
             if (cacheManager != null)
             {
-                newView = cacheManager.GetOrCreateView(target, () =>
-                    _serviceProvider.GetRequiredKeyedService<FrameworkElement>(target), regionName);
+                newView = cacheManager.GetOrCreateView(
+                    target,
+                    () => CreateScopedView(target, out createdScope),
+                    regionName);
+
+                if (createdScope != null)
+                {
+                    var cacheItem = cacheManager.GetCacheItem(target);
+                    if (cacheItem == null)
+                    {
+                        createdScope.Dispose();
+                        throw new InvalidOperationException($"视图 '{target}' 已创建，但未能建立缓存项。");
+                    }
+                    cacheItem.ServiceScope = createdScope;
+                }
             }
             else
             {
-                newView = _serviceProvider.GetRequiredKeyedService<FrameworkElement>(target);
+                newView = CreateScopedView(target, out createdScope);
+                _uncachedViewScopes[newView] = createdScope;
             }
 
             // 自动装配 ViewModel (如果 DataContext 为空且没有明确禁止)
@@ -229,7 +249,10 @@ public class RegionManager : IRegionManager, IDisposable
                 var autoWire = ViewModelLocator.GetAutoWireViewModel(newView);
                 if (autoWire == null || (autoWire is bool b && b))
                 {
-                    ViewModelLocator.AutoWire(newView);
+                    var activationProvider = createdScope?.ServiceProvider
+                        ?? cacheManager?.GetCacheItem(target)?.ServiceScope?.ServiceProvider
+                        ?? _serviceProvider;
+                    ViewModelLocator.AutoWire(newView, activationProvider);
                 }
             }
 
@@ -360,12 +383,33 @@ public class RegionManager : IRegionManager, IDisposable
         return Task.CompletedTask;
     }
 
+    private FrameworkElement CreateScopedView(string target, out IServiceScope scope)
+    {
+        scope = _serviceProvider.CreateScope();
+        try
+        {
+            using var activation = ViewModelLocator.PushActivationServiceProvider(scope.ServiceProvider);
+            return scope.ServiceProvider.GetRequiredKeyedService<FrameworkElement>(target);
+        }
+        catch
+        {
+            scope.Dispose();
+            throw;
+        }
+    }
+
     public void Dispose()
     {
         _activeRegions.Clear();
         _defaultViews.Clear();
         _viewOwners.Clear();
         _deferredRequests.Clear();
+
+        foreach (var viewScope in _uncachedViewScopes.Values)
+        {
+            viewScope.Dispose();
+        }
+        _uncachedViewScopes.Clear();
 
         foreach (var navigationLock in _navigationLocks.Values)
         {

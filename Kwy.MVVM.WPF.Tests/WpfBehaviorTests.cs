@@ -73,6 +73,37 @@ public class WpfBehaviorTests
     });
 
     [Fact]
+    public Task NavigationScopeDisposesTransientViewModelExactlyOnce() => StaTest.RunAsync(async () =>
+    {
+        var lifetime = new DisposalTracker();
+        var services = new ServiceCollection();
+        services.AddSingleton(lifetime);
+        services.AddSingleton<IViewCacheManager, ViewCacheManager>();
+        services.AddKeyedTransient<FrameworkElement, ScopedNavigationView>(nameof(ScopedNavigationView));
+        services.AddTransient<ScopedNavigationViewModel>();
+
+        using (var provider = services.BuildServiceProvider())
+        {
+            ViewModelLocator.SetDefaultServiceProvider(provider);
+            ViewModelLocator.Register(typeof(ScopedNavigationView), typeof(ScopedNavigationViewModel));
+
+            using var manager = new RegionManager(provider);
+            var region = new ContentControl();
+            RegionManager.SetRegionName(region, "ScopedRegion");
+            region.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+
+            var result = await manager.RequestNavigateAsync("ScopedRegion", nameof(ScopedNavigationView));
+            Assert.True(result.Result);
+            Assert.Equal(0, lifetime.DisposeCount);
+
+            provider.GetRequiredService<IViewCacheManager>().RemoveView(nameof(ScopedNavigationView));
+            Assert.Equal(1, lifetime.DisposeCount);
+        }
+
+        Assert.Equal(1, lifetime.DisposeCount);
+    });
+
+    [Fact]
     public Task DialogCompletesWhenViewModelRequestsClose() => StaTest.RunAsync(async () =>
     {
         var services = new ServiceCollection();
@@ -116,6 +147,31 @@ public class WpfBehaviorTests
         {
             ViewModelLocator.SetDefaultServiceProvider(new ServiceCollection().BuildServiceProvider());
         }
+    });
+
+    [Fact]
+    public Task DialogScopeDisposesTransientViewModelExactlyOnce() => StaTest.RunAsync(async () =>
+    {
+        var lifetime = new DisposalTracker();
+        var services = new ServiceCollection();
+        services.AddSingleton(lifetime);
+        services.AddKeyedTransient<FrameworkElement, ScopedDialogView>(nameof(ScopedDialogView));
+        services.AddTransient<ScopedDialogViewModel>();
+        services.AddTransient<IDialogWindow, DefaultDialogWindow>();
+
+        using (var provider = services.BuildServiceProvider())
+        {
+            ViewModelLocator.SetDefaultServiceProvider(provider);
+            ViewModelLocator.Register(typeof(ScopedDialogView), typeof(ScopedDialogViewModel));
+
+            var service = new DialogService(provider);
+            var result = await service.ShowDialogAsync(nameof(ScopedDialogView));
+
+            Assert.Equal(ButtonResult.OK, result.Result);
+            Assert.Equal(1, lifetime.DisposeCount);
+        }
+
+        Assert.Equal(1, lifetime.DisposeCount);
     });
 
     [Fact]
@@ -223,6 +279,68 @@ public class WpfBehaviorTests
 
         public void OnDialogOpened(IDialogParameters parameters)
             => RequestClose?.Invoke(new DialogResult(ButtonResult.Cancel));
+    }
+
+    public sealed class ScopedNavigationView : UserControl
+    {
+    }
+
+    public sealed class ScopedNavigationViewModel : BindableBase
+    {
+        private readonly DisposalTracker lifetime;
+
+        public ScopedNavigationViewModel(DisposalTracker lifetime)
+        {
+            this.lifetime = lifetime;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                lifetime.DisposeCount++;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    public sealed class ScopedDialogView : UserControl
+    {
+    }
+
+    public sealed class ScopedDialogViewModel : BindableBase, IDialogAware
+    {
+        private readonly DisposalTracker lifetime;
+
+        public ScopedDialogViewModel(DisposalTracker lifetime)
+        {
+            this.lifetime = lifetime;
+        }
+
+        public string Title => "Scoped";
+        public event Action<IDialogResult>? RequestClose;
+        public bool CanCloseDialog() => true;
+        public void OnDialogClosed() { }
+
+        public void OnDialogOpened(IDialogParameters parameters)
+            => System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                () => RequestClose?.Invoke(new DialogResult(ButtonResult.OK)));
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                lifetime.DisposeCount++;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    public sealed class DisposalTracker
+    {
+        public int DisposeCount { get; set; }
     }
 
     private sealed class MutablePermissionService : IPermissionService

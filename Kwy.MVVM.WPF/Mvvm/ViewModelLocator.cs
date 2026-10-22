@@ -12,6 +12,7 @@ namespace Kwy.MVVM.WPF.Mvvm;
 public static class ViewModelLocator
 {
     private static IServiceProvider? _serviceProvider;
+    private static readonly AsyncLocal<IServiceProvider?> _activationServiceProvider = new();
 
     /// <summary>
     /// 全局设置 ServiceProvider，由 KwyApplication 在启动时调用。
@@ -80,6 +81,13 @@ public static class ViewModelLocator
     /// 核心装配逻辑：根据约定为 View 寻找并实例化 ViewModel，并设置为其 DataContext。
     /// </summary>
     public static void AutoWire(DependencyObject view)
+        => AutoWire(view, _activationServiceProvider.Value ?? _serviceProvider);
+
+    /// <summary>
+    /// 使用指定的服务提供者为视图装配 ViewModel。
+    /// 导航和对话框应传入各自的作用域 Provider，避免可释放的瞬时 ViewModel 被根容器持有。
+    /// </summary>
+    public static void AutoWire(DependencyObject view, IServiceProvider? serviceProvider)
     {
         if (view is FrameworkElement frameworkElement)
         {
@@ -102,12 +110,12 @@ public static class ViewModelLocator
                 }
             }
 
-            if (viewModelType != null && _serviceProvider != null)
+            if (viewModelType != null && serviceProvider != null)
             {
                 try
                 {
                     // 先尝试直接从容器获取已注册的服务
-                    object? viewModel = _serviceProvider.GetService(viewModelType);
+                    object? viewModel = serviceProvider.GetService(viewModelType);
 
                     if (viewModel == null)
                     {
@@ -117,7 +125,7 @@ public static class ViewModelLocator
                             viewModelType,
                             static t => ActivatorUtilities.CreateFactory(t, Type.EmptyTypes));
 
-                        viewModel = factory(_serviceProvider, Array.Empty<object>());
+                        viewModel = factory(serviceProvider, Array.Empty<object>());
                     }
 
                     frameworkElement.DataContext = viewModel;
@@ -128,6 +136,34 @@ public static class ViewModelLocator
                     throw new InvalidOperationException(message, ex);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 在视图由 DI 容器构造期间设置当前作用域。
+    /// 这使 XAML 加载过程中立即触发的 AutoWireViewModel 也能使用正确作用域。
+    /// </summary>
+    internal static IDisposable PushActivationServiceProvider(IServiceProvider serviceProvider)
+    {
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        var previous = _activationServiceProvider.Value;
+        _activationServiceProvider.Value = serviceProvider;
+        return new ActivationServiceProviderScope(previous);
+    }
+
+    private sealed class ActivationServiceProviderScope(IServiceProvider? previous) : IDisposable
+    {
+        private bool isDisposed;
+
+        public void Dispose()
+        {
+            if (isDisposed)
+            {
+                return;
+            }
+
+            isDisposed = true;
+            _activationServiceProvider.Value = previous;
         }
     }
 

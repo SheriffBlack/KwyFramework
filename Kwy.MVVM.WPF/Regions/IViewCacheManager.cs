@@ -26,6 +26,9 @@ public class ViewCacheItem
     public TimeSpan CacheExpiration { get; set; }
     public bool IsExpired => (DateTime.Now - LastDeactiveTime) > CacheExpiration;
 
+    // 每个导航视图拥有独立 DI 作用域，由缓存项在视图真正销毁时释放。
+    internal Microsoft.Extensions.DependencyInjection.IServiceScope? ServiceScope { get; set; }
+
     public void MarkAsActive()
     {
         State = ViewCacheState.Active;

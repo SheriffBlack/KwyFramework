@@ -92,32 +92,47 @@ public sealed class DialogService : IDialogService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        FrameworkElement view = serviceProvider.GetRequiredKeyedService<FrameworkElement>(name);
-        if (view.DataContext == null)
+        var scope = serviceProvider.CreateScope();
+        try
         {
-            ViewModelLocator.AutoWire(view);
-        }
+            FrameworkElement view;
+            IDialogWindow dialogWindow;
+            using (ViewModelLocator.PushActivationServiceProvider(scope.ServiceProvider))
+            {
+                view = scope.ServiceProvider.GetRequiredKeyedService<FrameworkElement>(name);
+                if (view.DataContext == null)
+                {
+                    ViewModelLocator.AutoWire(view, scope.ServiceProvider);
+                }
 
-        var viewModel = view.DataContext as IDialogAware
-            ?? throw new InvalidOperationException($"对话框视图 '{name}' 的 DataContext 必须实现 {nameof(IDialogAware)}。");
-        IDialogWindow dialogWindow = serviceProvider.GetRequiredService<IDialogWindow>();
-        if (dialogWindow is not Window window)
+                dialogWindow = scope.ServiceProvider.GetRequiredService<IDialogWindow>();
+            }
+
+            var viewModel = view.DataContext as IDialogAware
+                ?? throw new InvalidOperationException($"对话框视图 '{name}' 的 DataContext 必须实现 {nameof(IDialogAware)}。");
+            if (dialogWindow is not Window window)
+            {
+                throw new InvalidOperationException($"{nameof(IDialogWindow)} 的实现必须继承 {nameof(Window)}。");
+            }
+
+            window.Content = view;
+            window.DataContext = viewModel;
+            window.Owner = ResolveOwnerWindow();
+            window.WindowStartupLocation = Dialog.GetWindowStartupLocation(view);
+            window.SetBinding(Window.TitleProperty, new Binding(nameof(IDialogAware.Title)) { Source = viewModel });
+
+            if (Dialog.GetWindowStyle(view) is Style style)
+            {
+                window.Style = style;
+            }
+
+            return new DialogSession(window, viewModel, scope, completed, failed, isModal);
+        }
+        catch
         {
-            throw new InvalidOperationException($"{nameof(IDialogWindow)} 的实现必须继承 {nameof(Window)}。");
+            scope.Dispose();
+            throw;
         }
-
-        window.Content = view;
-        window.DataContext = viewModel;
-        window.Owner = ResolveOwnerWindow();
-        window.WindowStartupLocation = Dialog.GetWindowStartupLocation(view);
-        window.SetBinding(Window.TitleProperty, new Binding(nameof(IDialogAware.Title)) { Source = viewModel });
-
-        if (Dialog.GetWindowStyle(view) is Style style)
-        {
-            window.Style = style;
-        }
-
-        return new DialogSession(window, viewModel, completed, failed, isModal);
     }
 
     private static Window? ResolveOwnerWindow()
@@ -137,6 +152,7 @@ public sealed class DialogService : IDialogService
     {
         private readonly Window window;
         private readonly IDialogAware viewModel;
+        private readonly IServiceScope serviceScope;
         private readonly Action<IDialogResult>? completed;
         private readonly Action<Exception>? failed;
         private readonly bool isModal;
@@ -149,12 +165,14 @@ public sealed class DialogService : IDialogService
         public DialogSession(
             Window window,
             IDialogAware viewModel,
+            IServiceScope serviceScope,
             Action<IDialogResult>? completed,
             Action<Exception>? failed,
             bool isModal)
         {
             this.window = window;
             this.viewModel = viewModel;
+            this.serviceScope = serviceScope;
             this.completed = completed;
             this.failed = failed;
             this.isModal = isModal;
@@ -260,6 +278,7 @@ public sealed class DialogService : IDialogService
             }
             finally
             {
+                ReleaseScope();
                 completed?.Invoke(result);
             }
         }
@@ -281,6 +300,7 @@ public sealed class DialogService : IDialogService
             }
             finally
             {
+                ReleaseScope();
                 if (failed == null)
                 {
                     ExceptionDispatchInfo.Capture(exception).Throw();
@@ -290,6 +310,14 @@ public sealed class DialogService : IDialogService
                     failed(exception);
                 }
             }
+        }
+
+        private void ReleaseScope()
+        {
+            window.ClearValue(Window.ContentProperty);
+            window.ClearValue(FrameworkElement.DataContextProperty);
+            BindingOperations.ClearBinding(window, Window.TitleProperty);
+            serviceScope.Dispose();
         }
     }
 }
