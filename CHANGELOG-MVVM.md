@@ -26,4 +26,4 @@ Initial public preview.
 
 ### License
 
-Copyright © 2026 Kwy. Licensed under the MIT License described in `LICENSE-MVVM.md`.
+Copyright © 2026 Kwy. Licensed under the MIT License described in `LICENSES/MIT.txt`.
