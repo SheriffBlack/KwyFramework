@@ -1,7 +1,7 @@
 # Kwy.MVVM
 
 [![NuGet](https://img.shields.io/nuget/v/Kwy.MVVM.svg)](https://www.nuget.org/packages/Kwy.MVVM)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE-MVVM.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSES/MIT.txt)
 
 `Kwy.MVVM` 是一套基于 `CommunityToolkit.Mvvm` 和 `Microsoft.Extensions.DependencyInjection` 构建的轻量级 MVVM 应用框架。它保留 CommunityToolkit.Mvvm 简洁、高性能的属性通知、命令和消息机制，并在此基础上补充导航、弹窗、模块化、鉴权和生命周期等工程化能力。
 
@@ -392,4 +392,4 @@ if (!result.Succeeded)
 
 当前公共 API 仍处于 `0.x` 阶段，可能在次要版本中调整。生产项目建议锁定具体包版本。
 
-本项目由 Kwy 发布，Copyright © 2026 Kwy，基于 [MIT License](../LICENSE-MVVM.md) 开源。
+本项目由 Kwy 发布，Copyright © 2026 Kwy，基于 [MIT License](../LICENSES/MIT.txt) 开源。

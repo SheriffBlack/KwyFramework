@@ -31,7 +31,7 @@
   <ItemGroup>
     <None Remove="..\README.md" />
     <None Include="README.md" Pack="true" PackagePath="\" />
-    <None Include="..\LICENSE-MVVM.md" Pack="true" PackagePath="\" Link="LICENSE-MVVM.md" />
+    <None Include="..\LICENSES\MIT.txt" Pack="true" PackagePath="\" Link="LICENSE.txt" />
   </ItemGroup>
 
 </Project>

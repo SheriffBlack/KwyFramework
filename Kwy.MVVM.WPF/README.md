@@ -1,7 +1,7 @@
 # Kwy.MVVM.WPF
 
 [![NuGet](https://img.shields.io/nuget/v/Kwy.MVVM.WPF.svg)](https://www.nuget.org/packages/Kwy.MVVM.WPF)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE-MVVM.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSES/MIT.txt)
 
 `Kwy.MVVM.WPF` 是 Kwy MVVM 的 WPF 平台实现。它在 `CommunityToolkit.Mvvm` 和 `Microsoft.Extensions.DependencyInjection` 的基础上，把 `Kwy.MVVM` 的核心契约接入 WPF 的依赖属性、视觉树、窗口和应用启动流程，面向模块化桌面应用提供导航、弹窗、鉴权和 UI 生命周期管理。
 
@@ -128,4 +128,4 @@ PermissionsChanged?.Invoke(this, new PermissionChangedEventArgs());
 
 当前公共 API 仍处于 `0.x` 阶段，可能在次要版本中调整。生产项目建议锁定具体包版本。
 
-本项目由 Kwy 发布，Copyright © 2026 Kwy，基于 [MIT License](../LICENSE-MVVM.md) 开源。
+本项目由 Kwy 发布，Copyright © 2026 Kwy，基于 [MIT License](../LICENSES/MIT.txt) 开源。
