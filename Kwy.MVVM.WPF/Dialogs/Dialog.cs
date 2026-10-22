@@ -5,7 +5,7 @@ namespace Kwy.MVVM.WPF.Dialogs;
 /// <summary>
 /// 对话框附加属性类。
 /// 允许在 UserControl (View) 中通过 XAML 声明对话框的样式、启动位置等。
-/// 对标 Prism 的 Prism.Services.Dialogs.Dialog 类。
+/// 用于集中管理对话框视图的窗口配置。
 /// </summary>
 public static class Dialog
 {

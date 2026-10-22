@@ -1,7 +1,7 @@
 namespace Kwy.MVVM.Messaging;
 
 /// <summary>
-/// Options used when subscribing to a message.
+/// 订阅消息时使用的选项。
 /// </summary>
 public sealed class MessageSubscribeOptions<TMessage>
 {
@@ -24,17 +24,17 @@ public sealed class MessageSubscribeOptions<TMessage>
     };
 
     /// <summary>
-    /// The thread used to invoke the handler.
+    /// 用于调用处理程序的线程。
     /// </summary>
     public MessageThread Thread { get; init; } = MessageThread.Publisher;
 
     /// <summary>
-    /// Immediately replays the latest retained message if one exists.
+    /// 如果存在最新的保留消息，则立即回放。
     /// </summary>
     public bool ReplayLatest { get; init; }
 
     /// <summary>
-    /// Optional filter. The handler is invoked only when the filter returns true.
+    /// 可选过滤器。仅当过滤器返回 true 时才调用处理程序。
     /// </summary>
     public Predicate<TMessage>? Filter { get; init; }
 }

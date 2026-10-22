@@ -3,11 +3,11 @@ using Kwy.MVVM.Messaging;
 
 namespace Kwy.MVVM.WPF.Messaging;
 
-public sealed class WpfMessageDispatcher : IMessageDispatcher
+public sealed class MessageDispatcher : IMessageDispatcher
 {
     private readonly Dispatcher dispatcher;
 
-    public WpfMessageDispatcher(Dispatcher dispatcher)
+    public MessageDispatcher(Dispatcher dispatcher)
     {
         this.dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
     }

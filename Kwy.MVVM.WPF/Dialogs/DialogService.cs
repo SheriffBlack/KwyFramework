@@ -32,7 +32,7 @@ public sealed class DialogService : IDialogService
 
     public Task<IDialogResult> ShowDialogAsync(string name, IDialogParameters? parameters = null)
     {
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher != null && !dispatcher.CheckAccess())
         {
             return dispatcher.InvokeAsync(
@@ -51,7 +51,7 @@ public sealed class DialogService : IDialogService
             IDialogParameters dialogParameters = parameters ?? new DialogParameters();
 
             // Closing 是同步事件。将弹窗启动推迟到下一轮 UI 消息处理，确保调用方有机会
-            // 先设置 e.Cancel=true；否则拥有者窗口仍处于关闭调用栈时，Owned Window 可能
+            // 先设置 e.Cancel=true；否则拥有者窗口仍处于关闭调用栈时，从属窗口可能
             // 在首次布局阶段被一并卸载，只留下标题栏。
             if (dispatcher is null)
             {
@@ -74,7 +74,7 @@ public sealed class DialogService : IDialogService
 
     private bool TryDispatchToApplicationUiThread(Action action)
     {
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher == null || dispatcher.CheckAccess())
         {
             return false;
@@ -137,7 +137,7 @@ public sealed class DialogService : IDialogService
 
     private static Window? ResolveOwnerWindow()
     {
-        if (Application.Current == null)
+        if (System.Windows.Application.Current == null)
         {
             return null;
         }

@@ -10,7 +10,7 @@ public interface IDialogParameters : IParameters
 }
 
 /// <summary>
-/// 对话框参数类。兼容 Prism 语法。
+/// 对话框参数类，支持键值和查询字符串语法。
 /// </summary>
 public class DialogParameters : ParametersBase, IDialogParameters
 {

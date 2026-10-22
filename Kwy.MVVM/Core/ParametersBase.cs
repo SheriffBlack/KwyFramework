@@ -4,15 +4,14 @@ namespace Kwy.MVVM.Core;
 
 /// <summary>
 /// 参数容器的基础实现。
-/// 已针对 .NET 8 进行了极致性能优化，使用 <c>ReadOnlySpan&lt;char&gt;</c> 消除字符串解析时的数组内存分配。
-/// <c>ParametersBase(string query)</c> 是一个高性能 query 参数解析器，用于把 <c>a=1&amp;b=2</c> 转成内部的 <c>List&lt;KeyValuePair&lt;string, object?&gt;&gt;</c> 参数列表。
+/// 支持从查询字符串（如 <c>a=1&amp;b=2</c>）解析键值参数，并减少解析过程中不必要的中间分配。a=1，b=2
 /// </summary>
 public abstract class ParametersBase : IParameters
 {
     // 【性能优化 2】：延迟初始化列表。很多导航不需要参数，我们在此实现了真正的零堆积分配
-    private List<KeyValuePair<string, object?>>? _entries;
+    private List<KeyValuePair<string, object?>>? entries;
 
-    private List<KeyValuePair<string, object?>> Entries => _entries ??= new List<KeyValuePair<string, object?>>();
+    private List<KeyValuePair<string, object?>> Entries => entries ??= new List<KeyValuePair<string, object?>>();
 
     protected ParametersBase()
     { }
@@ -79,8 +78,8 @@ public abstract class ParametersBase : IParameters
     // 【性能优化】：抛弃 LINQ 的 .Any()，避免闭包和枚举器分配
     public bool ContainsKey(string key)
     {
-        if (_entries == null) return false;
-        foreach (var entry in _entries)
+        if (entries == null) return false;
+        foreach (var entry in entries)
         {
             if (string.Equals(entry.Key, key, StringComparison.Ordinal))
                 return true;
@@ -88,13 +87,13 @@ public abstract class ParametersBase : IParameters
         return false;
     }
 
-    public int Count => _entries?.Count ?? 0;
+    public int Count => entries?.Count ?? 0;
 
     // 【性能优化】：抛弃 LINQ 的 .FirstOrDefault()
     public T? GetValue<T>(string key)
     {
-        if (_entries == null) return default;
-        foreach (var entry in _entries)
+        if (entries == null) return default;
+        foreach (var entry in entries)
         {
             if (string.Equals(entry.Key, key, StringComparison.Ordinal))
             {
@@ -109,8 +108,8 @@ public abstract class ParametersBase : IParameters
     // 但为了极致统一，也可以用 yield return 重写
     public IEnumerable<T> GetValues<T>(string key)
     {
-        if (_entries == null) yield break;
-        foreach (var entry in _entries)
+        if (entries == null) yield break;
+        foreach (var entry in entries)
         {
             if (string.Equals(entry.Key, key, StringComparison.Ordinal) && entry.Value is T typedValue)
             {
@@ -123,9 +122,9 @@ public abstract class ParametersBase : IParameters
     public bool TryGetValue<T>(string key, out T value)
     {
         value = default!;
-        if (_entries == null) return false;
+        if (entries == null) return false;
 
-        foreach (var entry in _entries)
+        foreach (var entry in entries)
         {
             if (string.Equals(entry.Key, key, StringComparison.Ordinal))
             {
@@ -146,8 +145,8 @@ public abstract class ParametersBase : IParameters
 
     public override string ToString()
     {
-        if (_entries == null || _entries.Count == 0) return string.Empty;
-        var query = string.Join("&", _entries.Select(x => $"{x.Key}={Uri.EscapeDataString(x.Value?.ToString() ?? string.Empty)}"));
+        if (entries == null || entries.Count == 0) return string.Empty;
+        var query = string.Join("&", entries.Select(x => $"{x.Key}={Uri.EscapeDataString(x.Value?.ToString() ?? string.Empty)}"));
         return query;
     }
 }

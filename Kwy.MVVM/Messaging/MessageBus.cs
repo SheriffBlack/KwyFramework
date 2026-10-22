@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.Messaging;
 namespace Kwy.MVVM.Messaging;
 
 /// <summary>
-/// Default message bus implementation based on CommunityToolkit WeakReferenceMessenger.
+/// 默认的弱引用消息总线实现。
 /// </summary>
 public sealed class MessageBus : IMessageBus
 {
@@ -159,8 +159,8 @@ public sealed class MessageBus : IMessageBus
         MessageSubscribeOptions<TMessage> options)
         where TMessage : class
     {
-        // WeakReferenceMessenger allows one registration per recipient/message pair.
-        // Kwy keeps the latest subscription for that pair, which matches most ViewModel usage.
+        // 底层消息器对每个接收者与消息组合只允许一个注册。
+        // Kwy 保留该组合的最新订阅，符合大多数 ViewModel 的使用方式。
         messenger.Unregister<TMessage>(recipient);
         messenger.Register<TMessage>(recipient, (target, message) =>
         {

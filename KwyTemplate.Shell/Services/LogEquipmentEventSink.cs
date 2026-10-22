@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using Kwy.Device.Abstractions.Equipment;
-using Kwy.Logging.Abstractions;
 using Kwy.UI.WPF.Components.Logging;
 using KwyTemplate.Contracts.Services;
+using Microsoft.Extensions.Logging;
 
 namespace KwyTemplate.Shell.Services;
 
@@ -12,11 +12,11 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
     private readonly ConcurrentQueue<EquipmentEvent> events = new();
     private readonly ConcurrentDictionary<string, DateTimeOffset> lastLoggedAt = new(StringComparer.Ordinal);
     private readonly KwyLogService logService;
-    private readonly ILogService developerLog;
+    private readonly ILogger<LogEquipmentEventSink> developerLog;
     private readonly UserVisibleLogFileService userLogFile;
     private readonly StartupProgressService startupProgress;
 
-    public LogEquipmentEventSink(KwyLogService logService, ILogService developerLog, UserVisibleLogFileService userLogFile, StartupProgressService startupProgress)
+    public LogEquipmentEventSink(KwyLogService logService, ILogger<LogEquipmentEventSink> developerLog, UserVisibleLogFileService userLogFile, StartupProgressService startupProgress)
     {
         this.logService = logService ?? throw new ArgumentNullException(nameof(logService));
         this.developerLog = developerLog ?? throw new ArgumentNullException(nameof(developerLog));
@@ -118,7 +118,7 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
             ? null
             : new Exception(exceptionText);
 
-        using IDisposable scope = developerLog.BeginScope(new
+        using IDisposable? scope = developerLog.BeginScope(new
         {
             equipmentEvent.Code,
             equipmentEvent.Kind,
@@ -135,17 +135,17 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
 
         if (string.Equals(level, "Error", StringComparison.OrdinalIgnoreCase))
         {
-            developerLog.Error(message, exception);
+            developerLog.LogError(exception, "{Message}", message);
             return;
         }
 
         if (string.Equals(level, "Warn", StringComparison.OrdinalIgnoreCase))
         {
-            developerLog.Warning(message);
+            developerLog.LogWarning("{Message}", message);
             return;
         }
 
-        developerLog.Info(message);
+        developerLog.LogInformation("{Message}", message);
     }
 
     private bool IsDuplicateSuppressed(EquipmentEvent equipmentEvent, string message)

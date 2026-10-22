@@ -3,71 +3,71 @@
 namespace Kwy.MVVM.Core;
 
 /// <summary>
-/// 无参数的委托命令，对标 Prism 的 DelegateCommand。
-/// 内部组合包装了 CommunityToolkit.Mvvm 的 RelayCommand。
+/// 无参数的委托命令，支持执行条件和状态刷新。
+/// 对外提供统一的命令 API。
 /// </summary>
 public class DelegateCommand : IRelayCommand
 {
-    private readonly RelayCommand _internalCommand;
+    private readonly RelayCommand internalCommand;
 
     public DelegateCommand(Action execute)
     {
-        _internalCommand = new RelayCommand(execute);
+        internalCommand = new RelayCommand(execute);
     }
 
     public DelegateCommand(Action execute, Func<bool> canExecute)
     {
-        _internalCommand = new RelayCommand(execute, canExecute);
+        internalCommand = new RelayCommand(execute, canExecute);
     }
 
-    public void RaiseCanExecuteChanged() => _internalCommand.NotifyCanExecuteChanged();
+    public void RaiseCanExecuteChanged() => internalCommand.NotifyCanExecuteChanged();
 
-    public void NotifyCanExecuteChanged() => _internalCommand.NotifyCanExecuteChanged();
+    public void NotifyCanExecuteChanged() => internalCommand.NotifyCanExecuteChanged();
 
-    public bool CanExecute(object? parameter) => _internalCommand.CanExecute(parameter);
+    public bool CanExecute(object? parameter) => internalCommand.CanExecute(parameter);
 
-    public void Execute(object? parameter) => _internalCommand.Execute(parameter);
+    public void Execute(object? parameter) => internalCommand.Execute(parameter);
 
     public event EventHandler? CanExecuteChanged
     {
-        add => _internalCommand.CanExecuteChanged += value;
-        remove => _internalCommand.CanExecuteChanged -= value;
+        add => internalCommand.CanExecuteChanged += value;
+        remove => internalCommand.CanExecuteChanged -= value;
     }
 }
 
 /// <summary>
-/// 带参数的委托命令，对标 Prism 的 DelegateCommand&lt;T&gt;。
+/// 带参数的委托命令。
 /// </summary>
 /// <typeparam name="T">参数类型</typeparam>
 public class DelegateCommand<T> : IRelayCommand<T>
 {
-    private readonly RelayCommand<T> _internalCommand;
+    private readonly RelayCommand<T> internalCommand;
 
     public DelegateCommand(Action<T?> execute)
     {
-        _internalCommand = new RelayCommand<T>(execute);
+        internalCommand = new RelayCommand<T>(execute);
     }
 
     public DelegateCommand(Action<T?> execute, Predicate<T?> canExecute)
     {
-        _internalCommand = new RelayCommand<T>(execute, canExecute);
+        internalCommand = new RelayCommand<T>(execute, canExecute);
     }
 
-    public void RaiseCanExecuteChanged() => _internalCommand.NotifyCanExecuteChanged();
+    public void RaiseCanExecuteChanged() => internalCommand.NotifyCanExecuteChanged();
 
-    public void NotifyCanExecuteChanged() => _internalCommand.NotifyCanExecuteChanged();
+    public void NotifyCanExecuteChanged() => internalCommand.NotifyCanExecuteChanged();
 
-    public bool CanExecute(T? parameter) => _internalCommand.CanExecute(parameter);
+    public bool CanExecute(T? parameter) => internalCommand.CanExecute(parameter);
 
-    public void Execute(T? parameter) => _internalCommand.Execute(parameter);
+    public void Execute(T? parameter) => internalCommand.Execute(parameter);
 
-    public bool CanExecute(object? parameter) => _internalCommand.CanExecute(parameter);
+    public bool CanExecute(object? parameter) => internalCommand.CanExecute(parameter);
 
-    public void Execute(object? parameter) => _internalCommand.Execute(parameter);
+    public void Execute(object? parameter) => internalCommand.Execute(parameter);
 
     public event EventHandler? CanExecuteChanged
     {
-        add => _internalCommand.CanExecuteChanged += value;
-        remove => _internalCommand.CanExecuteChanged -= value;
+        add => internalCommand.CanExecuteChanged += value;
+        remove => internalCommand.CanExecuteChanged -= value;
     }
 }

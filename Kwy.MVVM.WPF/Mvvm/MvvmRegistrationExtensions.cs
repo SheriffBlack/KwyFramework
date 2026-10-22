@@ -5,7 +5,7 @@ using System.Windows;
 namespace Kwy.MVVM.WPF.Mvvm;
 
 /// <summary>
-/// 为 IServiceCollection 提供高度还原 Prism 体验的扩展方法。
+/// 为 IServiceCollection 提供视图、ViewModel 和区域导航注册扩展。
 /// </summary>
 public static class MvvmRegistrationExtensions
 {
@@ -18,7 +18,7 @@ public static class MvvmRegistrationExtensions
     /// <typeparam name="TViewModel">关联的 ViewModel 类型</typeparam>
     /// <param name="services">DI 容器集合</param>
     /// <param name="regionName">可选。如果提供，将自动向该区域注册此视图 (RegisterViewWithRegion)。</param>
-    /// <param name="isSingleton">是否注册为单例。默认为 false (Transient)。</param>
+    /// <param name="isSingleton">是否注册为单例。默认为 false，即瞬时生命周期。</param>
     /// <returns>容器集合本身，支持链式调用</returns>
     public static IServiceCollection RegisterForNavigation<TView, TViewModel>(
         this IServiceCollection services,

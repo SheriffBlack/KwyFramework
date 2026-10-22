@@ -4,15 +4,15 @@ namespace Kwy.MVVM.Modularity;
 
 /// <summary>
 /// 基于 .NET 8 AssemblyLoadContext 的目录模块扫描器。
-/// 专为解决工业视觉平台动态加载算法 DLL 插件而生。
+/// 用于从指定目录动态发现并加载模块程序集。
 /// </summary>
 public class DirectoryModuleCatalog : IModuleCatalog
 {
     public const string DefaultModulePath = "Modules";
 
-    private readonly List<Type> _modules = new();
+    private readonly List<Type> modules = new();
 
-    public IEnumerable<Type> Modules => _modules;
+    public IEnumerable<Type> Modules => modules;
 
     /// <summary>
     /// 插件存放的相对或绝对路径 (默认值为 "Modules" 或 "Plugins")
@@ -27,9 +27,9 @@ public class DirectoryModuleCatalog : IModuleCatalog
             throw new ArgumentException($"类型 {moduleType.Name} 必须实现 {nameof(IModule)} 接口。", nameof(moduleType));
         }
 
-        if (!_modules.Contains(moduleType))
+        if (!modules.Contains(moduleType))
         {
-            _modules.Add(moduleType);
+            modules.Add(moduleType);
         }
         return this;
     }

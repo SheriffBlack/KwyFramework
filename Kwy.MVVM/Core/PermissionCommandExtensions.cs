@@ -10,7 +10,7 @@ namespace Kwy.MVVM.Core;
 public enum PermissionCheckMode
 {
     /// <summary>
-    /// 禁用模式：没有权限时不可执行。WPF 控件同时显示统一的无权限提示。
+    /// 禁用模式：没有权限时命令不可执行。
     /// </summary>
     Disable,
 
@@ -123,7 +123,7 @@ public class PermissionCommandDecorator : ICommand, IDisposable
 
     private static IPermissionService? ResolvePermissionService()
     {
-        var provider = KwyContainer.Current;
+        var provider = Container.Current;
         if (provider == null)
         {
             return null;

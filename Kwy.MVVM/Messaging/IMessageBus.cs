@@ -1,7 +1,7 @@
 namespace Kwy.MVVM.Messaging;
 
 /// <summary>
-/// Weak-reference application message bus.
+/// 基于弱引用的应用消息总线。
 /// </summary>
 public interface IMessageBus
 {

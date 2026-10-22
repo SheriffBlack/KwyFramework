@@ -1,7 +1,6 @@
 ﻿using Kwy.MVVM.Modularity;
 using Kwy.Device.Abstractions.Equipment;
 using Kwy.Logging.Serilog;
-using Kwy.Logging.Abstractions;
 using Kwy.MVVM.WPF;
 using Kwy.MVVM.WPF.Dialogs;
 using Kwy.MVVM.WPF.Mvvm;
@@ -24,6 +23,7 @@ using KwyTemplate.Security.SuperDog;
 using KwyTemplate.Shell.Services;
 using KwyTemplate.Shell.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -36,7 +36,7 @@ namespace KwyTemplate.Shell;
 /// <summary>
 /// Interaction logic for App.xaml
 /// </summary>
-public partial class App : KwyApplication
+public partial class App : Kwy.MVVM.WPF.Application
 {
     private Window? startupWindow;
     private bool startupProgressLogWired;
@@ -81,24 +81,24 @@ public partial class App : KwyApplication
             return;
         }
 
-        var developerLog = serviceProvider.GetRequiredService<ILogService>();
+        var developerLog = serviceProvider.GetRequiredService<ILogger<App>>();
         DispatcherUnhandledException += (_, args) =>
         {
-            developerLog.Error("Unhandled UI exception.", args.Exception);
+            developerLog.LogError(args.Exception, "Unhandled UI exception.");
         };
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
-            developerLog.Error("Unobserved task exception.", args.Exception);
+            developerLog.LogError(args.Exception, "Unobserved task exception.");
         };
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
             if (args.ExceptionObject is Exception exception)
             {
-                developerLog.Fatal("Unhandled application exception.", exception);
+                developerLog.LogCritical(exception, "Unhandled application exception.");
                 return;
             }
 
-            developerLog.Fatal($"Unhandled application exception object: {args.ExceptionObject}");
+            developerLog.LogCritical("Unhandled application exception object: {ExceptionObject}", args.ExceptionObject);
         };
         globalExceptionLogWired = true;
     }
@@ -113,7 +113,7 @@ public partial class App : KwyApplication
         var startupProgress = serviceProvider.GetRequiredService<StartupProgressService>();
         var logService = serviceProvider.GetRequiredService<KwyLogService>();
         var userLogFile = serviceProvider.GetRequiredService<UserVisibleLogFileService>();
-        var developerLog = serviceProvider.GetRequiredService<ILogService>();
+        var developerLog = serviceProvider.GetRequiredService<ILogger<App>>();
         startupProgress.ProgressChanged += (_, args) =>
         {
             string message = $"启动进度 {args.ProgressValue:0}%：{args.CurrentItem}";
@@ -134,15 +134,15 @@ public partial class App : KwyApplication
         startupProgressLogWired = true;
     }
 
-    private static void WriteStartupDeveloperLog(ILogService developerLog, string level, string message)
+    private static void WriteStartupDeveloperLog(ILogger developerLog, string level, string message)
     {
         if (string.Equals(level, "Error", StringComparison.OrdinalIgnoreCase))
         {
-            developerLog.Error(message);
+            developerLog.LogError("{Message}", message);
             return;
         }
 
-        developerLog.Info(message);
+        developerLog.LogInformation("{Message}", message);
     }
 
     protected override Window CreateShell()
@@ -155,12 +155,12 @@ public partial class App : KwyApplication
     {
         services.AddSingleton<IFileDialogService, WpfFileDialogService>();
         services.AddKwyWpfComponents();
-        services.AddKwySerilogLogging(options =>
+        services.AddSerilogLogging(options =>
         {
             options.LogDirectory = Path.Combine("Logs", "Developer");
             options.FileNamePrefix = string.Empty;
             options.RetainedFileCountLimit = 31;
-            options.MinimumLevel = Kwy.Logging.Abstractions.LogLevel.Info;
+            options.MinimumLevel = LogLevel.Information;
             options.ApplicationName = "KwyTemplate";
         });
         services.AddSingleton<ProgramSettingsStore>();
@@ -226,14 +226,14 @@ public partial class App : KwyApplication
 
         var logService = serviceProvider.GetRequiredService<KwyLogService>();
         var userLogFile = serviceProvider.GetRequiredService<UserVisibleLogFileService>();
-        var developerLog = serviceProvider.GetRequiredService<ILogService>();
+        var developerLog = serviceProvider.GetRequiredService<ILogger<App>>();
 
         cacheManager.ViewCached += item =>
         {
             string message = string.Concat("[Cache] ", item.ViewName);
             logService.Info(message);
             userLogFile.Add("Info", message);
-            developerLog.Info("[Cache] View cached: {View}", item.ViewName);
+            developerLog.LogInformation("[Cache] View cached: {View}", item.ViewName);
         };
 
         cacheManager.ViewRestored += item =>
@@ -241,7 +241,7 @@ public partial class App : KwyApplication
             string message = string.Concat("[Cache] ", item.ViewName);
             logService.Info(message);
             userLogFile.Add("Info", message);
-            developerLog.Info("[Cache] View restored: {View}", item.ViewName);
+            developerLog.LogInformation("[Cache] View restored: {View}", item.ViewName);
         };
 
         cacheManager.ViewDestroyed += item =>
@@ -249,7 +249,7 @@ public partial class App : KwyApplication
             string message = string.Concat("[Cache] ", item.ViewName);
             logService.Warn(message);
             userLogFile.Add("Warn", message);
-            developerLog.Warning("[Cache] View destroyed: {View}", item.ViewName);
+            developerLog.LogWarning("[Cache] View destroyed: {View}", item.ViewName);
         };
 
         viewCacheLogWired = true;
@@ -312,8 +312,8 @@ public partial class App : KwyApplication
             return;
         }
 
-        ILogService? developerLog = provider.GetService<ILogService>();
-        developerLog?.Info("[Shutdown] Runtime shutdown started.");
+        ILogger<App>? developerLog = provider.GetService<ILogger<App>>();
+        developerLog?.LogInformation("[Shutdown] Runtime shutdown started.");
 
         RunShutdownStep(developerLog, "MachineRuntimeOrchestrator.Stop", static serviceProvider =>
         {
@@ -326,21 +326,21 @@ public partial class App : KwyApplication
             serviceProvider.GetService<KwyTemplate.Device.Devices.IDeviceStartupConnector>()?.Dispose();
         }, provider);
 
-        developerLog?.Info("[Shutdown] Runtime shutdown finished.");
+        developerLog?.LogInformation("[Shutdown] Runtime shutdown finished.");
     }
 
-    private static void RunShutdownStep(ILogService? developerLog, string stepName, Action<IServiceProvider> action, IServiceProvider provider)
+    private static void RunShutdownStep(ILogger? developerLog, string stepName, Action<IServiceProvider> action, IServiceProvider provider)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        developerLog?.Info("[Shutdown] {Step} started.", stepName);
+        developerLog?.LogInformation("[Shutdown] {Step} started.", stepName);
         try
         {
             action(provider);
-            developerLog?.Info("[Shutdown] {Step} finished in {ElapsedMilliseconds} ms.", stepName, stopwatch.ElapsedMilliseconds);
+            developerLog?.LogInformation("[Shutdown] {Step} finished in {ElapsedMilliseconds} ms.", stepName, stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
-            developerLog?.Error($"[Shutdown] {stepName} failed in {stopwatch.ElapsedMilliseconds} ms.", ex);
+            developerLog?.LogError(ex, "[Shutdown] {Step} failed in {ElapsedMilliseconds} ms.", stepName, stopwatch.ElapsedMilliseconds);
         }
     }
 }

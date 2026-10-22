@@ -5,14 +5,14 @@ using System.Windows;
 namespace Kwy.MVVM.WPF.Mvvm;
 
 /// <summary>
-/// 提供基于约定（Convention）的 ViewModel 自动装配功能。
+/// 提供基于命名约定的 ViewModel 自动装配功能。
 /// 例如在 View 的 XAML 中加入 `kwy:ViewModelLocator.AutoWireViewModel="True"`，会自动去 DI 容器拉取对应的 ViewModel 并设置 DataContext。
-/// 相当于 Prism.Mvvm.ViewModelLocator。
+/// 支持显式类型映射和默认命名规则。
 /// </summary>
 public static class ViewModelLocator
 {
-    private static IServiceProvider? _serviceProvider;
-    private static readonly AsyncLocal<IServiceProvider?> _activationServiceProvider = new();
+    private static IServiceProvider? serviceProvider;
+    private static readonly AsyncLocal<IServiceProvider?> activationServiceProvider = new();
 
     /// <summary>
     /// 全局设置 ServiceProvider，由 KwyApplication 在启动时调用。
@@ -20,15 +20,15 @@ public static class ViewModelLocator
     /// </summary>
     public static void SetDefaultServiceProvider(IServiceProvider serviceProvider)
     {
-        _serviceProvider = serviceProvider;
+        ViewModelLocator.serviceProvider = serviceProvider;
     }
 
     internal static void ClearDefaultServiceProvider()
     {
-        _serviceProvider = null;
+        serviceProvider = null;
     }
 
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Type> _mappings = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Type> mappings = new();
 
     /// <summary>
     /// 指示是否自动装配 ViewModel 的附加属性。
@@ -67,7 +67,7 @@ public static class ViewModelLocator
     /// </summary>
     public static void Register(Type viewType, Type viewModelType)
     {
-        _mappings[viewType] = viewModelType;
+        mappings[viewType] = viewModelType;
     }
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, ObjectFactory> _vmFactories = new();
@@ -81,7 +81,7 @@ public static class ViewModelLocator
     /// 核心装配逻辑：根据约定为 View 寻找并实例化 ViewModel，并设置为其 DataContext。
     /// </summary>
     public static void AutoWire(DependencyObject view)
-        => AutoWire(view, _activationServiceProvider.Value ?? _serviceProvider);
+        => AutoWire(view, activationServiceProvider.Value ?? serviceProvider);
 
     /// <summary>
     /// 使用指定的服务提供者为视图装配 ViewModel。
@@ -98,15 +98,15 @@ public static class ViewModelLocator
                 return;
 
             // 1. 先尝试从映射字典获取 (由 RegisterForNavigation 注入)
-            if (!_mappings.TryGetValue(viewType, out Type? viewModelType))
+            if (!mappings.TryGetValue(viewType, out Type? viewModelType))
             {
                 // 2. 如果没有显式映射，则走命名约定
                 viewModelType = DefaultViewModelFactory?.Invoke(viewType);
 
-                // 【性能压榨】：将约定查找的结果缓存下来！下次再解析这个 View 时，O(1) 极速直达！
+                // 缓存命名约定的查找结果，后续可直接获取对应类型
                 if (viewModelType != null)
                 {
-                    _mappings.TryAdd(viewType, viewModelType);
+                    mappings.TryAdd(viewType, viewModelType);
                 }
             }
 
@@ -119,8 +119,8 @@ public static class ViewModelLocator
 
                     if (viewModel == null)
                     {
-                        // 【极致压栈性能优化】：不要每次使用反射的 CreateInstance！
-                        // 使用 ActivatorUtilities.CreateFactory 编译动态方法并缓存委托，从而在未注册服务中直接享受零反射实例化！
+                        // 对未注册类型缓存对象工厂，避免每次创建时重复分析构造函数
+                        // 对象工厂使用当前服务提供者填充构造函数依赖
                         var factory = _vmFactories.GetOrAdd(
                             viewModelType,
                             static t => ActivatorUtilities.CreateFactory(t, Type.EmptyTypes));
@@ -146,8 +146,8 @@ public static class ViewModelLocator
     internal static IDisposable PushActivationServiceProvider(IServiceProvider serviceProvider)
     {
         ArgumentNullException.ThrowIfNull(serviceProvider);
-        var previous = _activationServiceProvider.Value;
-        _activationServiceProvider.Value = serviceProvider;
+        var previous = activationServiceProvider.Value;
+        activationServiceProvider.Value = serviceProvider;
         return new ActivationServiceProviderScope(previous);
     }
 
@@ -163,12 +163,12 @@ public static class ViewModelLocator
             }
 
             isDisposed = true;
-            _activationServiceProvider.Value = previous;
+            activationServiceProvider.Value = previous;
         }
     }
 
     /// <summary>
-    /// 最基础的基于命名约定的解析策略（同 Prism 默认行为相似）。
+    /// 默认的命名约定解析策略。
     /// 将形如: `ProjectName.Views.MainView` 或者 `ProjectName.Views.Folder.MainView`
     /// 映射到: `ProjectName.ViewModels.MainViewModel` 或者 `ProjectName.ViewModels.Folder.MainViewModel`
     /// </summary>
@@ -198,7 +198,7 @@ public static class ViewModelLocator
         // 尝试从包含该 View 的同个程序集中去拉取对应的类型
         Type? type = viewType.Assembly.GetType(viewModelName);
 
-        // 若找不到可以扩展：遍历所有已加载的 Assembly，以应对 ViewModel 放在单独程序集的情况。
+        // 如需支持 ViewModel 位于独立程序集，可扩展为遍历所有已加载程序集
 
         return type;
     }

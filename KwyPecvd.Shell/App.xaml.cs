@@ -9,7 +9,7 @@ using System.Windows;
 
 namespace KwyPecvd.Shell;
 
-public partial class App : KwyApplication
+public partial class App : Kwy.MVVM.WPF.Application
 {
     protected override Window CreateShell()
     {

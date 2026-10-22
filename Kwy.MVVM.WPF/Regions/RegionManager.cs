@@ -8,8 +8,8 @@ using System.Windows.Controls;
 namespace Kwy.MVVM.WPF.Regions;
 
 /// <summary>
-/// 优化版区域管理器：基于 .NET 8 键控服务 (Keyed Services) 实现。
-/// 彻底抛弃 AppDomain 遍历，实现零反射导航。
+/// 基于键控服务的区域管理器。
+/// 通过视图注册名直接解析导航目标，无需遍历程序集。
 /// </summary>
 public class RegionManager : IRegionManager, IDisposable
 {
@@ -78,23 +78,23 @@ public class RegionManager : IRegionManager, IDisposable
 
     #endregion XAML 附加属性 (RegionName)
 
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ConcurrentDictionary<FrameworkElement, IServiceScope> _uncachedViewScopes = new();
+    private readonly IServiceProvider serviceProvider;
+    private readonly ConcurrentDictionary<FrameworkElement, IServiceScope> uncachedViewScopes = new();
 
     // 活跃区域字典：RegionName -> ContentControl (UI 挂载点)
-    private readonly ConcurrentDictionary<string, ContentControl> _activeRegions = new ConcurrentDictionary<string, ContentControl>();
+    private readonly ConcurrentDictionary<string, ContentControl> activeRegions = new ConcurrentDictionary<string, ContentControl>();
 
     // 默认视图注册：Region 控件加载后自动导航。
-    private readonly ConcurrentDictionary<string, string> _defaultViews = new();
+    private readonly ConcurrentDictionary<string, string> defaultViews = new();
 
     // 视图名称只能归属于一个 Region，避免同一实例跨视觉树挂载。
-    private readonly ConcurrentDictionary<string, string> _viewOwners = new();
+    private readonly ConcurrentDictionary<string, string> viewOwners = new();
 
     // 每个 Region 独立串行导航，不阻塞其他 Region。
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _navigationLocks = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> navigationLocks = new();
 
     // 延迟导航队列：当 Region 控件尚未加载完成时，暂存导航请求
-    private readonly ConcurrentDictionary<string, (string Target, INavigationParameters? Params, Action<NavigationResult>? Callback)> _deferredRequests = new();
+    private readonly ConcurrentDictionary<string, (string Target, INavigationParameters? Params, Action<NavigationResult>? Callback)> deferredRequests = new();
 
     public event Action<NavigationResult>? NavigationFailed;
 
@@ -102,7 +102,7 @@ public class RegionManager : IRegionManager, IDisposable
 
     public RegionManager(IServiceProvider serviceProvider)
     {
-        _serviceProvider = serviceProvider;
+        this.serviceProvider = serviceProvider;
         Default = this;
 
         // 【核心补丁】：把之前在服务注册阶段堆积的“默认关联”应用掉
@@ -121,14 +121,14 @@ public class RegionManager : IRegionManager, IDisposable
 
     internal void AddActiveRegion(string regionName, ContentControl control)
     {
-        _activeRegions[regionName] = control;
+        activeRegions[regionName] = control;
 
         // 检查是否有由于 UI 未就绪而积压的导航请求，并在就绪后立即触发
-        if (_deferredRequests.TryRemove(regionName, out var request))
+        if (deferredRequests.TryRemove(regionName, out var request))
         {
             NavigateAndInvokeCallback(regionName, request.Target, request.Params, request.Callback);
         }
-        else if (_defaultViews.TryGetValue(regionName, out var defaultView))
+        else if (defaultViews.TryGetValue(regionName, out var defaultView))
         {
             NavigateAndInvokeCallback(regionName, defaultView, null, null);
         }
@@ -136,10 +136,10 @@ public class RegionManager : IRegionManager, IDisposable
 
     internal void RemoveActiveRegion(string regionName, ContentControl control)
     {
-        if (_activeRegions.TryGetValue(regionName, out var activeControl)
+        if (activeRegions.TryGetValue(regionName, out var activeControl)
             && ReferenceEquals(activeControl, control))
         {
-            _activeRegions.TryRemove(regionName, out _);
+            activeRegions.TryRemove(regionName, out _);
         }
     }
 
@@ -148,8 +148,8 @@ public class RegionManager : IRegionManager, IDisposable
     #region IRegionManager 异步核心引擎
 
     /// <summary>
-    /// 【核心优化】支持 await 的异步导航引擎。
-    /// 解决了 WPF 视觉树 Logical Child 冲突与非确定性内存清理。
+    /// 支持 await 的异步导航引擎。
+    /// 避免缓存视图复用时的视觉树父子关系冲突，并统一管理视图生命周期。
     /// </summary>
     public async Task<NavigationResult> RequestNavigateAsync(string regionName, string target, INavigationParameters? parameters = null)
     {
@@ -160,24 +160,24 @@ public class RegionManager : IRegionManager, IDisposable
         var context = new NavigationContext(regionName, target, parameters ?? new NavigationParameters());
 
         // 1. 查找目标 UI 容器
-        if (!_activeRegions.TryGetValue(regionName, out var regionControl))
+        if (!activeRegions.TryGetValue(regionName, out var regionControl))
         {
             // 若容器未就绪，将最新请求放入延迟队列，等待 Region 加载。
-            _deferredRequests[regionName] = (target, parameters, null);
+            deferredRequests[regionName] = (target, parameters, null);
             return new NavigationResult(false, null, context);
         }
 
-        var navigationLock = _navigationLocks.GetOrAdd(regionName, static _ => new SemaphoreSlim(1, 1));
+        var navigationLock = navigationLocks.GetOrAdd(regionName, static _ => new SemaphoreSlim(1, 1));
         await navigationLock.WaitAsync();
         try
         {
-            if (!_activeRegions.TryGetValue(regionName, out regionControl))
+            if (!activeRegions.TryGetValue(regionName, out regionControl))
             {
-                _deferredRequests[regionName] = (target, parameters, null);
+                deferredRequests[regionName] = (target, parameters, null);
                 return new NavigationResult(false, null, context);
             }
 
-            var cacheManager = _serviceProvider.GetService<IViewCacheManager>();
+            var cacheManager = serviceProvider.GetService<IViewCacheManager>();
             var oldView = regionControl.Content as FrameworkElement;
             var oldViewModel = oldView?.DataContext;
 
@@ -201,7 +201,7 @@ public class RegionManager : IRegionManager, IDisposable
                 await OnNavigatedFromAsync(oldViewModel, context);
             }
 
-            // 【极致性能关键 1】: 在解析新视图前，先切断旧视图的视觉树连接。
+            // 在解析新视图前，先切断旧视图的视觉树连接
             // 这样做可以防止缓存复用时 WPF 抛出 "已经属于另一个父级" 的致命异常。
             regionControl.Content = null;
 
@@ -210,12 +210,12 @@ public class RegionManager : IRegionManager, IDisposable
             {
                 cacheManager.MarkAsDeactive(oldView.GetType().Name);
             }
-            else if (oldView != null && _uncachedViewScopes.TryRemove(oldView, out var oldScope))
+            else if (oldView != null && uncachedViewScopes.TryRemove(oldView, out var oldScope))
             {
                 oldScope.Dispose();
             }
 
-            // 5. 【极致性能关键 2】: 使用 .NET 8 键控服务进行 O(1) 解析。
+            // 5. 使用键控服务直接解析目标视图
             // 相比原来的 FindTypeByFullName 全局扫包，这里不再需要反射，直接由容器返回实例。
             FrameworkElement newView;
             IServiceScope? createdScope = null;
@@ -240,7 +240,7 @@ public class RegionManager : IRegionManager, IDisposable
             else
             {
                 newView = CreateScopedView(target, out createdScope);
-                _uncachedViewScopes[newView] = createdScope;
+                uncachedViewScopes[newView] = createdScope;
             }
 
             // 自动装配 ViewModel (如果 DataContext 为空且没有明确禁止)
@@ -251,7 +251,7 @@ public class RegionManager : IRegionManager, IDisposable
                 {
                     var activationProvider = createdScope?.ServiceProvider
                         ?? cacheManager?.GetCacheItem(target)?.ServiceScope?.ServiceProvider
-                        ?? _serviceProvider;
+                        ?? serviceProvider;
                     ViewModelLocator.AutoWire(newView, activationProvider);
                 }
             }
@@ -298,9 +298,9 @@ public class RegionManager : IRegionManager, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
         EnsureViewOwnership(regionName, target);
 
-        if (!_activeRegions.ContainsKey(regionName))
+        if (!activeRegions.ContainsKey(regionName))
         {
-            _deferredRequests[regionName] = (target, parameters, callback);
+            deferredRequests[regionName] = (target, parameters, callback);
             return;
         }
 
@@ -313,17 +313,17 @@ public class RegionManager : IRegionManager, IDisposable
         ArgumentNullException.ThrowIfNull(viewType);
 
         EnsureViewOwnership(regionName, viewType.Name);
-        _defaultViews[regionName] = viewType.Name;
+        defaultViews[regionName] = viewType.Name;
         if (ContainsRegion(regionName))
         {
             RequestNavigate(regionName, viewType.Name);
         }
     }
 
-    public bool ContainsRegion(string regionName) => _activeRegions.ContainsKey(regionName);
+    public bool ContainsRegion(string regionName) => activeRegions.ContainsKey(regionName);
 
     public object? GetActiveView(string regionName)
-        => _activeRegions.TryGetValue(regionName, out var c) ? c.Content : null;
+        => activeRegions.TryGetValue(regionName, out var c) ? c.Content : null;
 
     public void RequestNavigate(string regionName, Type viewType) => RequestNavigate(regionName, viewType.Name);
 
@@ -345,7 +345,7 @@ public class RegionManager : IRegionManager, IDisposable
 
     private void EnsureViewOwnership(string regionName, string target)
     {
-        string owner = _viewOwners.GetOrAdd(target, regionName);
+        string owner = viewOwners.GetOrAdd(target, regionName);
         if (!string.Equals(owner, regionName, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
@@ -385,7 +385,7 @@ public class RegionManager : IRegionManager, IDisposable
 
     private FrameworkElement CreateScopedView(string target, out IServiceScope scope)
     {
-        scope = _serviceProvider.CreateScope();
+        scope = serviceProvider.CreateScope();
         try
         {
             using var activation = ViewModelLocator.PushActivationServiceProvider(scope.ServiceProvider);
@@ -400,22 +400,22 @@ public class RegionManager : IRegionManager, IDisposable
 
     public void Dispose()
     {
-        _activeRegions.Clear();
-        _defaultViews.Clear();
-        _viewOwners.Clear();
-        _deferredRequests.Clear();
+        activeRegions.Clear();
+        defaultViews.Clear();
+        viewOwners.Clear();
+        deferredRequests.Clear();
 
-        foreach (var viewScope in _uncachedViewScopes.Values)
+        foreach (var viewScope in uncachedViewScopes.Values)
         {
             viewScope.Dispose();
         }
-        _uncachedViewScopes.Clear();
+        uncachedViewScopes.Clear();
 
-        foreach (var navigationLock in _navigationLocks.Values)
+        foreach (var navigationLock in navigationLocks.Values)
         {
             navigationLock.Dispose();
         }
-        _navigationLocks.Clear();
+        navigationLocks.Clear();
 
         if (ReferenceEquals(Default, this))
         {

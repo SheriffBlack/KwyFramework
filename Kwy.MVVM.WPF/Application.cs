@@ -9,9 +9,9 @@ namespace Kwy.MVVM.WPF;
 
 /// <summary>
 /// 基础 WPF 应用程序类，提供依赖注入和模块化支持。
-/// 相当于 Prism.Unity 里的 PrismApplication 基类。
+/// 统一管理服务注册、模块初始化和主窗口启动流程。
 /// </summary>
-public abstract class KwyApplication : Application
+public abstract class Application : System.Windows.Application
 {
     private static readonly TimeSpan ServiceProviderDisposeTimeout = TimeSpan.FromSeconds(4);
     /// <summary>
@@ -38,17 +38,17 @@ public abstract class KwyApplication : Application
         // 4. 初始化模块化系统：构建目录并实例化所有已配置的模块
         var moduleCatalog = CreateModuleCatalog();
 
-        // 【新增】：如果是目录扫描器，必须先触发 Initialize 扫描本地文件，把 Type 装进池子
+        // 如果使用目录扫描器，先扫描本地文件并记录发现的模块类型
         if (moduleCatalog is Kwy.MVVM.Modularity.DirectoryModuleCatalog dirCatalog)
         {
             dirCatalog.Initialize();
         }
 
-        // 这里依然保留 ConfigureModuleCatalog，因为你可能还会硬编码加入一些“内置”的核心模块
+        // 保留 ConfigureModuleCatalog，用于手动加入内置核心模块
         ConfigureModuleCatalog(moduleCatalog);
         services.AddSingleton<Kwy.MVVM.Modularity.IModuleCatalog>(moduleCatalog);
 
-        // 【核心修复】：对模块进行拓扑排序，确保被依赖的模块先加载！
+        // 对模块进行拓扑排序，确保被依赖的模块先加载
         var sortedModuleTypes = SortModulesByDependencies(moduleCatalog.Modules);
 
         var moduleInstances = new List<Modularity.IModule>();
@@ -69,8 +69,8 @@ public abstract class KwyApplication : Application
         // 5. 构建全局唯一的 ServiceProvider
         CurrentServiceProvider = services.BuildServiceProvider();
 
-        // 6. 将 IServiceProvider 传递给全局定位器支持跨平台访问
-        Core.KwyContainer.Current = CurrentServiceProvider;
+        // 6. 将 IServiceProvider 传递给全局定位器
+        Core.Container.Current = CurrentServiceProvider;
         ViewModelLocator.SetDefaultServiceProvider(CurrentServiceProvider);
         Permission.DefaultPermissionService = ResolvePermissionService(CurrentServiceProvider);
 
@@ -87,11 +87,11 @@ public abstract class KwyApplication : Application
             moduleManager.LoadModule(Modularity.ModuleManager.GetModuleName(moduleType));
         }
 
-        // 8. 创建主窗体 (Shell)
+        // 8. 创建主窗口
         var shell = CreateShell();
         if (shell != null)
         {
-            // 9. 初始化主窗体壳子 (钩子)
+            // 9. 调用主窗口初始化钩子
             InitializeShell(shell);
 
             if (shell is Window window)
@@ -103,7 +103,7 @@ public abstract class KwyApplication : Application
             shell.Show();
         }
 
-        // 11. 整个生命周期加载完成 (钩子)
+        // 11. 调用应用初始化完成钩子
         OnInitialized();
     }
 
@@ -219,8 +219,8 @@ public abstract class KwyApplication : Application
         services.AddTransient<Dialogs.IDialogWindow, Dialogs.DefaultDialogWindow>();
 
         // 注册全局消息总线 MessageBus。
-        services.AddSingleton<Kwy.MVVM.Messaging.IMessageDispatcher>(_ =>
-            new Kwy.MVVM.WPF.Messaging.WpfMessageDispatcher(Application.Current.Dispatcher));
+        services.AddSingleton<MVVM.Messaging.IMessageDispatcher>(_ =>
+            new Kwy.MVVM.WPF.Messaging.MessageDispatcher(System.Windows.Application.Current.Dispatcher));
         Kwy.MVVM.Messaging.ServiceCollectionExtensions.AddKwyMessageBus(services);
 
         services.AddSingleton<IAuthorizationService>(provider =>
@@ -264,7 +264,7 @@ public abstract class KwyApplication : Application
     protected override void OnExit(ExitEventArgs e)
     {
         ViewModelLocator.ClearDefaultServiceProvider();
-        Core.KwyContainer.Current = null;
+        Core.Container.Current = null;
         Permission.DefaultPermissionService = null;
 
         IServiceProvider? provider = CurrentServiceProvider;

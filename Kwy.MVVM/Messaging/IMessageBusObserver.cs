@@ -1,7 +1,7 @@
 namespace Kwy.MVVM.Messaging;
 
 /// <summary>
-/// Optional diagnostics hook for message bus tracing.
+/// 用于跟踪消息总线的可选诊断钩子。
 /// </summary>
 public interface IMessageBusObserver
 {

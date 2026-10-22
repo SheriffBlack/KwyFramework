@@ -4,7 +4,7 @@ namespace Kwy.MVVM.Modularity;
 
 /// <summary>
 /// 模块化接口。每个独立拆分的业务项目需实现此接口，以便在应用程序启动时无缝集成。
-/// 完全对应 Prism 的 IModule 概念（分离注册阶段与初始化阶段）。
+/// 将服务注册阶段与模块初始化阶段分离。
 /// </summary>
 public interface IModule
 {

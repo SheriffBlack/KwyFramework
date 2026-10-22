@@ -1,7 +1,7 @@
 namespace Kwy.MVVM.Messaging;
 
 /// <summary>
-/// Options used when publishing a message.
+/// 发布消息时使用的选项。
 /// </summary>
 public sealed class MessagePublishOptions
 {
@@ -10,7 +10,7 @@ public sealed class MessagePublishOptions
     public static MessagePublishOptions Retained { get; } = new() { RetainLatest = true };
 
     /// <summary>
-    /// Stores the message as the latest value for future replay subscriptions.
+    /// 将消息保存为最新值，供后续回放订阅使用。
     /// </summary>
     public bool RetainLatest { get; init; }
 }

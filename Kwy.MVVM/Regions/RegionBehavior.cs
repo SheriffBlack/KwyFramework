@@ -1,9 +1,9 @@
 ﻿namespace Kwy.MVVM.Regions;
 
 /// <summary>
-/// 区域行为基类 (Prism 兼容层)。
-/// 在 Kwy.MVVM 极简框架中，我们推荐直接在 RegionManager 中处理逻辑，
-/// 但为了解决旧代码的编译引用，我们保留这个占位符。
+/// 区域行为基类。
+/// 推荐由区域管理器统一处理区域逻辑，
+/// 此类保留用于兼容现有的区域行为扩展。
 /// </summary>
 public abstract class RegionBehavior
 {
@@ -19,7 +19,7 @@ public abstract class RegionBehavior
 }
 
 /// <summary>
-/// 区域接口 (Prism 兼容层)
+/// 区域接口。
 /// </summary>
 public interface IRegion
 {

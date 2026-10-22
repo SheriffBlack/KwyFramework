@@ -3,7 +3,7 @@
 /// <summary>
 /// 区域管理器接口。
 /// 提供向 UI 占位符 (Region) 中注册视图、导航的功能。
-/// 放在核心库 (Kwy.MVVM) 中，使得 ViewModel 不必直接引用 WPF 即可要求页面导航。
+/// 调用方无需依赖具体 UI 实现即可请求页面导航。
 /// </summary>
 public interface IRegionManager
 {
@@ -15,14 +15,14 @@ public interface IRegionManager
 
     /// <summary>
     /// 【全局监控】：当应用中任何一个 Region 成功完成一次导航时触发。
-    /// 可以用来代替 Prism 的 RegionBehavior 做全局路由日志、面包屑导航或埋点。
+    /// 可用于全局路由日志、面包屑导航或埋点。
     /// </summary>
     event Action<NavigationContext>? Navigated;
 
     /// <summary>
     /// 将指定的视图类型注册到指定名称的区域中。
     /// 该操作无需等待控件加载，区域控件一旦出现在 UI 中，管理器将自动实例化并填入该视图。
-    /// 相当于 Prism 的 `_regionManager.RegisterViewWithRegion("MainRegion", typeof(ViewA));`
+    /// 区域控件就绪后会自动显示已注册的视图。
     /// </summary>
     void RegisterViewWithRegion(string regionName, Type viewType);
 

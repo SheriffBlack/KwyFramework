@@ -2,19 +2,19 @@
 
 /// <summary>
 /// 全局服务定位器 (核心层)
-/// 允许跨平台逻辑在不引用 UI 框架的情况下访问依赖注入容器。
+/// 允许无法使用构造注入的调用方访问依赖注入容器。
 /// </summary>
-public static class KwyContainer
+public static class Container
 {
-    private static IServiceProvider? _current;
+    private static IServiceProvider? current;
 
     /// <summary>
-    /// 当前全局 ServiceProvider。由 KwyApplication 在初始化时注入。
+    /// 当前全局 ServiceProvider。由应用入口在初始化时注入。
     /// </summary>
     public static IServiceProvider? Current
     {
-        get => _current;
-        set => _current = value;
+        get => current;
+        set => current = value;
     }
 
     /// <summary>

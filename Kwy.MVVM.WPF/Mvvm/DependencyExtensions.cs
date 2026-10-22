@@ -3,8 +3,8 @@
 namespace Kwy.MVVM.WPF.Mvvm;
 
 /// <summary>
-/// 为 Microsoft.Extensions.DependencyInjection 提供的增强扩展。
-/// 提供类似 Prism 的透明解析 (Resolve) 能力。
+/// 依赖注入服务提供者的解析扩展。
+/// 支持解析已注册服务和自动创建未注册的具体类型。
 /// </summary>
 public static class DependencyExtensions
 {
@@ -26,7 +26,7 @@ public static class DependencyExtensions
         var instance = provider.GetService(type);
         if (instance != null) return instance;
 
-        // 2. 如果没注册，利用 ActivatorUtilities 强行解析（前提是依赖项都在容器里）
+        // 2. 如果未注册，在构造函数依赖均可解析时自动创建实例
         try
         {
             return ActivatorUtilities.GetServiceOrCreateInstance(provider, type);

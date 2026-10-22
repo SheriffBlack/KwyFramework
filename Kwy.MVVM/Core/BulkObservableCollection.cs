@@ -6,11 +6,11 @@ namespace Kwy.MVVM.Core;
 
 /// <summary>
 /// 支持高性能批量操作的 ObservableCollection。
-/// 专为解决 WPF 中大量数据更新导致 UI 线程卡死的问题而设计。
+/// 用于减少大量数据更新产生的集合通知和 UI 刷新。
 /// </summary>
 public class BulkObservableCollection<T> : ObservableCollection<T>
 {
-    private bool _suppressNotification;
+    private bool suppressNotification;
 
     public BulkObservableCollection() : base()
     {
@@ -25,7 +25,7 @@ public class BulkObservableCollection<T> : ObservableCollection<T>
     /// </summary>
     protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
     {
-        if (!_suppressNotification)
+        if (!suppressNotification)
         {
             base.OnCollectionChanged(e);
         }
@@ -36,7 +36,7 @@ public class BulkObservableCollection<T> : ObservableCollection<T>
     /// </summary>
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
-        if (!_suppressNotification)
+        if (!suppressNotification)
         {
             base.OnPropertyChanged(e);
         }
@@ -51,7 +51,7 @@ public class BulkObservableCollection<T> : ObservableCollection<T>
 
         try
         {
-            _suppressNotification = true;
+            suppressNotification = true;
             foreach (var item in items)
             {
                 Add(item);
@@ -59,7 +59,7 @@ public class BulkObservableCollection<T> : ObservableCollection<T>
         }
         finally
         {
-            _suppressNotification = false;
+            suppressNotification = false;
             RaiseResetNotifications();
         }
     }
@@ -73,7 +73,7 @@ public class BulkObservableCollection<T> : ObservableCollection<T>
 
         try
         {
-            _suppressNotification = true;
+            suppressNotification = true;
             Clear();
             foreach (var item in items)
             {
@@ -82,7 +82,7 @@ public class BulkObservableCollection<T> : ObservableCollection<T>
         }
         finally
         {
-            _suppressNotification = false;
+            suppressNotification = false;
             RaiseResetNotifications();
         }
     }

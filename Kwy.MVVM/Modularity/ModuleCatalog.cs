@@ -6,9 +6,9 @@
 /// </summary>
 public class ModuleCatalog : IModuleCatalog
 {
-    private readonly List<Type> _modules = new();
+    private readonly List<Type> modules = new();
 
-    public IEnumerable<Type> Modules => _modules;
+    public IEnumerable<Type> Modules => modules;
 
     public IModuleCatalog AddModule(Type moduleType)
     {
@@ -17,9 +17,9 @@ public class ModuleCatalog : IModuleCatalog
             throw new ArgumentException($"类型 {moduleType.Name} 必须实现 {nameof(IModule)} 接口。", nameof(moduleType));
         }
 
-        if (!_modules.Contains(moduleType))
+        if (!modules.Contains(moduleType))
         {
-            _modules.Add(moduleType);
+            modules.Add(moduleType);
         }
 
         return this;

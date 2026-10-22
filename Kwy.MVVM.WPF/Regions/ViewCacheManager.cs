@@ -10,9 +10,9 @@ namespace Kwy.MVVM.WPF.Regions;
 /// </summary>
 public class ViewCacheManager : IViewCacheManager, IDisposable
 {
-    private readonly ConcurrentDictionary<string, ViewCacheItem> _cache = new();
-    private readonly DispatcherTimer _cleanupTimer;
-    private bool _isDisposed;
+    private readonly ConcurrentDictionary<string, ViewCacheItem> cache = new();
+    private readonly DispatcherTimer cleanupTimer;
+    private bool isDisposed;
 
     public event Action<ViewCacheItem>? ViewCached;
 
@@ -30,19 +30,19 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
     /// </summary>
     public TimeSpan CleanupInterval
     {
-        get => _cleanupTimer.Interval;
-        set => _cleanupTimer.Interval = value;
+        get => cleanupTimer.Interval;
+        set => cleanupTimer.Interval = value;
     }
 
     public ViewCacheManager()
     {
         // 创建定时器，检查过期视图
-        _cleanupTimer = new DispatcherTimer
+        cleanupTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMinutes(1)
         };
-        _cleanupTimer.Tick += OnCleanupTimerTick;
-        _cleanupTimer.Start();
+        cleanupTimer.Tick += OnCleanupTimerTick;
+        cleanupTimer.Start();
     }
 
     public FrameworkElement GetOrCreateView(string viewName, Func<FrameworkElement> viewFactory, string? regionName = null)
@@ -54,11 +54,11 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
             throw new ArgumentNullException(nameof(viewFactory));
 
         // 1. 检查缓存中是否存在且有效
-        if (_cache.TryGetValue(viewName, out var cacheItem))
+        if (cache.TryGetValue(viewName, out var cacheItem))
         {
             if (cacheItem.State == ViewCacheState.Destroyed)
             {
-                _cache.TryRemove(viewName, out _);
+                cache.TryRemove(viewName, out _);
             }
             else
             {
@@ -88,13 +88,13 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
         };
         cacheItem.MarkAsActive();
 
-        _cache.TryAdd(viewName, cacheItem);
+        cache.TryAdd(viewName, cacheItem);
         return view;
     }
 
     public void SetRegionName(string viewName, string regionName)
     {
-        if (_cache.TryGetValue(viewName, out var cacheItem))
+        if (cache.TryGetValue(viewName, out var cacheItem))
         {
             cacheItem.RegionName = regionName;
         }
@@ -102,7 +102,7 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
 
     public void MarkAsActive(string viewName)
     {
-        if (_cache.TryGetValue(viewName, out var cacheItem))
+        if (cache.TryGetValue(viewName, out var cacheItem))
         {
             cacheItem.MarkAsActive();
         }
@@ -110,7 +110,7 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
 
     public void MarkAsDeactive(string viewName)
     {
-        if (_cache.TryGetValue(viewName, out var cacheItem))
+        if (cache.TryGetValue(viewName, out var cacheItem))
         {
             cacheItem.MarkAsDeactive();
             ViewCached?.Invoke(cacheItem);
@@ -119,7 +119,7 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
 
     public void RemoveView(string viewName)
     {
-        if (_cache.TryRemove(viewName, out var cacheItem))
+        if (cache.TryRemove(viewName, out var cacheItem))
         {
             DestroyViewInternal(cacheItem);
         }
@@ -127,13 +127,13 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
 
     public void CleanupExpiredViews()
     {
-        var expiredItems = _cache.Values
+        var expiredItems = cache.Values
             .Where(item => item.IsExpired && item.State == ViewCacheState.Cached)
             .ToList();
 
         foreach (var item in expiredItems)
         {
-            if (_cache.TryRemove(item.ViewName, out var removedItem))
+            if (cache.TryRemove(item.ViewName, out var removedItem))
             {
                 DestroyViewInternal(removedItem);
             }
@@ -142,8 +142,8 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
 
     public void ClearCache()
     {
-        var allItems = _cache.Values.ToList();
-        _cache.Clear();
+        var allItems = cache.Values.ToList();
+        cache.Clear();
 
         foreach (var item in allItems)
         {
@@ -153,7 +153,7 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
 
     public ViewCacheItem? GetCacheItem(string viewName)
     {
-        _cache.TryGetValue(viewName, out var cacheItem);
+        cache.TryGetValue(viewName, out var cacheItem);
         return cacheItem;
     }
 
@@ -243,14 +243,14 @@ public class ViewCacheManager : IViewCacheManager, IDisposable
 
     public void Dispose()
     {
-        if (_isDisposed)
+        if (isDisposed)
         {
             return;
         }
 
-        _isDisposed = true;
-        _cleanupTimer.Stop();
-        _cleanupTimer.Tick -= OnCleanupTimerTick;
+        isDisposed = true;
+        cleanupTimer.Stop();
+        cleanupTimer.Tick -= OnCleanupTimerTick;
         ClearCache();
         GC.SuppressFinalize(this);
     }

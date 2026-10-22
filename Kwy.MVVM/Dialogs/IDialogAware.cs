@@ -2,7 +2,6 @@
 
 /// <summary>
 /// 弹窗的 ViewModel 需实现此接口，以便接收弹窗参数并控制窗口生命周期。
-/// 对应 Prism 中的 `IDialogAware`。
 /// </summary>
 public interface IDialogAware
 {

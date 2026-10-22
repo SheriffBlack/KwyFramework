@@ -32,7 +32,6 @@ public class NavigationContext
 /// <summary>
 /// 导航感知接口。
 /// 当 ViewModel 实现此接口时，RegionManager 在导航过程中会触发相应的生命周期方法。
-/// 对应 Prism 的 INavigationAware。
 /// </summary>
 public interface INavigationAware
 {

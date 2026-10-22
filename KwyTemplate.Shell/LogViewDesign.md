@@ -26,7 +26,7 @@ LogView 不建议直接显示完整异常堆栈。
 | 层级 | 面向对象 | 职责 | 持久化 |
 | --- | --- | --- | --- |
 | LogView / KwyLogService | 用户、现场人员 | 实时显示关键事件摘要 | 当前为内存日志 |
-| Serilog / ILogService | 开发者、售后工程师 | 记录完整异常和上下文 | 已写入文件 |
+| Serilog / ILogger<T> | 开发者、售后工程师 | 记录完整异常和上下文 | 已写入文件 |
 
 LogView 关注清晰、低噪声、可理解。
 开发者日志关注完整、可追溯、可定位。
@@ -249,7 +249,7 @@ UI 层只负责展示
 
 ```text
 用户摘要日志 -> KwyLogService -> LogView
-开发者完整日志 -> ILogService / Serilog -> 文件
+开发者完整日志 -> ILogger<T> / Serilog -> 文件
 ```
 
 建议规则：
@@ -300,7 +300,7 @@ Shell 层通过 LogEquipmentEventSink 统一筛选和格式化日志。
 
 ## 13. 当前落地配置
 
-- Shell 通过 AddKwySerilogLogging 注册 ILogService。
+- Shell 通过 AddSerilogLogging 把 Serilog 注册为 Microsoft.Extensions.Logging Provider。
 - 普通用户摘要日志：Logs/yyyyMMdd.txt。
 - 开发者日志：Logs/Developer/yyyyMMdd.txt 与 Logs/Developer/yyyyMMdd.json。
 - 普通用户摘要日志保留 31 天。

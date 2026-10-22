@@ -1,7 +1,7 @@
 namespace Kwy.MVVM.Messaging;
 
 /// <summary>
-/// UI dispatcher abstraction. Platform projects provide concrete implementations.
+/// UI 线程调度器抽象。
 /// </summary>
 public interface IMessageDispatcher
 {

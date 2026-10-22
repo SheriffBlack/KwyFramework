@@ -21,8 +21,8 @@ public interface IDialogWindow
 }
 
 /// <summary>
-/// 默认的 WPF 版对话框窗口实现。只作为弹窗 View 的容器壳子。
-/// 没有任何自身的界面逻辑，Content 全靠你传入的 UserControl 视填充。
+/// 默认的 WPF 对话框窗口实现，仅作为弹窗视图的容器。
+/// 不包含额外界面逻辑，窗口内容由传入的 UserControl 填充。
 /// </summary>
 public class DefaultDialogWindow : Window, IDialogWindow
 {

@@ -2,7 +2,7 @@
 
 /// <summary>
 /// 参数容器接口，提供强类型的参数存取机制。
-/// 模仿 Prism 9.0 中的 IParameters，统一 Dialog 和 Navigation 参数。
+/// 统一对话框和导航场景的参数访问方式。
 /// </summary>
 public interface IParameters : IEnumerable<KeyValuePair<string, object?>>
 {
