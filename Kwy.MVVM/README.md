@@ -3,12 +3,15 @@
 [![NuGet](https://img.shields.io/nuget/v/Kwy.MVVM.svg)](https://www.nuget.org/packages/Kwy.MVVM)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE-MVVM.md)
 
-`Kwy.MVVM` 是 Kwy 系列的 UI 无关 MVVM 核心库。它只提供命令、通知、导航参数、全局消息总线、依赖注入入口和权限抽象，不引用 WPF、WinUI、MAUI 等具体 UI 平台。
+`Kwy.MVVM` 是一套基于 `CommunityToolkit.Mvvm` 和 `Microsoft.Extensions.DependencyInjection` 构建的轻量级 MVVM 应用框架。它保留 CommunityToolkit.Mvvm 简洁、高性能的属性通知、命令和消息机制，并在此基础上补充导航、弹窗、模块化、鉴权和生命周期等工程化能力。
 
-平台相关能力放在对应平台项目中，例如：
+Kwy.MVVM 不试图替代 CommunityToolkit.Mvvm，而是将它的基础构件组合成更适合模块化桌面应用的开发模型。核心库保持 UI 无关，不引用 WPF、Avalonia 等具体 UI 平台。
 
-- `Kwy.MVVM.WPF`：WPF 启动、Region、ViewModelLocator、Dialog、声明式权限等。
-- `Kwy.UI.WPF` / `Kwy.UI.WPF.Components`：WPF 控件样式和通用组件。
+## 项目分层
+
+- `Kwy.MVVM`：UI 无关的核心层，提供 MVVM 基础构件、消息总线、导航与弹窗契约、模块化和鉴权抽象。
+- `Kwy.MVVM.WPF`：WPF 平台实现，提供应用启动、Region 导航、Dialog、ViewModelLocator、视图缓存和声明式权限。
+- `Kwy.MVVM.Avalonia`：未来规划的 Avalonia 平台实现，用于在复用核心契约和 ViewModel 的同时支持跨平台桌面应用。
 
 ## 核心模块
 
@@ -100,7 +103,24 @@ messageBus.Publish(
 - `INavigationAware`：同步导航生命周期接口。
 - `IAsyncNavigationAware`：异步导航生命周期接口。
 
-### 4. 权限与授权
+### 4. 弹窗契约
+
+- `IDialogService`：统一的弹窗调用入口。
+- `IDialogAware`：定义弹窗 ViewModel 的打开、关闭和返回结果生命周期。
+- `DialogParameters` / `DialogResult`：在调用方与弹窗之间传递参数和结果。
+
+核心库只定义契约，窗口创建和 UI 行为由对应平台项目实现。
+
+### 5. 模块化
+
+- `IModule`：定义模块的服务注册和初始化入口。
+- `IModuleCatalog`：管理应用中可用的模块类型。
+- `DirectoryModuleCatalog`：支持从目录扫描模块程序集。
+- `IModuleManager`：按依赖顺序初始化模块，并支持延迟初始化。
+
+> 按需模块指服务在应用启动期完成注册，模块的 `OnInitialized` 延迟到首次加载时执行；不表示向已构建的 DI 容器追加注册。
+
+### 6. 权限与授权
 
 权限系统分为两层：
 
@@ -361,6 +381,12 @@ if (!result.Succeeded)
 - `.NET 8.0+`
 - `Microsoft.Extensions.DependencyInjection`
 - `CommunityToolkit.Mvvm`
+
+## 平台路线
+
+当前首个平台实现是 `Kwy.MVVM.WPF`。未来可创建 `Kwy.MVVM.Avalonia`，将导航、弹窗、ViewModel 装配和声明式权限接入 Avalonia，使同一套业务服务、ViewModel 和核心契约可用于 Windows、Linux 和 macOS。
+
+`Kwy.MVVM.Avalonia` 目前属于路线规划，尚未作为已发布组件承诺具体 API 或版本时间。
 
 ## 版本与许可证
 

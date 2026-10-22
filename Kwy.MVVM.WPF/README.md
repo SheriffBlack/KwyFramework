@@ -3,15 +3,22 @@
 [![NuGet](https://img.shields.io/nuget/v/Kwy.MVVM.WPF.svg)](https://www.nuget.org/packages/Kwy.MVVM.WPF)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE-MVVM.md)
 
-`Kwy.MVVM.WPF` 是 Kwy MVVM 在 WPF 平台上的实现层。它负责把 `Kwy.MVVM` 的核心抽象接入 WPF 的依赖属性、视觉树、窗口、Region 和应用启动流程。
+`Kwy.MVVM.WPF` 是 Kwy MVVM 的 WPF 平台实现。它在 `CommunityToolkit.Mvvm` 和 `Microsoft.Extensions.DependencyInjection` 的基础上，把 `Kwy.MVVM` 的核心契约接入 WPF 的依赖属性、视觉树、窗口和应用启动流程，面向模块化桌面应用提供导航、弹窗、鉴权和 UI 生命周期管理。
 
 核心原则：
 
 - `Kwy.MVVM` 保持 UI 无关。
 - `Kwy.MVVM.WPF` 只处理 WPF 平台行为。
 - 业务权限、导航、对话框等能力通过接口注入，不直接绑定具体业务实现。
+- 页面和弹窗使用独立 DI 作用域，关闭或缓存回收时统一释放 ViewModel 及其依赖。
 
 ## 核心能力
+
+### KwyApplication 与模块化
+
+`KwyApplication` 统一组织 WPF 应用的服务注册、模块发现与依赖排序、容器构建、Shell 创建和应用退出清理。
+
+模块在启动阶段完成服务注册；标记为按需的模块会延迟执行初始化逻辑。
 
 ### ViewModelLocator
 
@@ -43,6 +50,8 @@ cache.DefaultCacheExpiration = TimeSpan.FromMinutes(5);
 cache.CleanupInterval = TimeSpan.FromSeconds(30);
 ```
 
+导航页面在缓存期内保留独立 DI 作用域；缓存过期、手动移除或应用退出时，作用域与 ViewModel 会被一并释放。
+
 ### DialogService
 
 提供基于 `IDialogWindow` / `IDialogAware` 的对话框服务。业务侧通过服务打开弹窗，不需要直接调用 `Window.ShowDialog()`。
@@ -50,6 +59,8 @@ cache.CleanupInterval = TimeSpan.FromSeconds(30);
 ```csharp
 services.AddTransient<IDialogWindow, MyDialogWindow>();
 ```
+
+每次弹窗会话都拥有独立 DI 作用域，弹窗关闭后自动释放 View、ViewModel 及其 scoped/transient 依赖。
 
 ## 声明式权限
 
