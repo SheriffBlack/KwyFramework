@@ -34,7 +34,7 @@ public sealed class BehaviorTests
                     UriKind.Absolute)
             });
 
-            KwyThemeManager.ApplyTheme(resources, KwyTheme.Dark);
+            ThemeManager.ApplyTheme(resources, ThemeMode.Dark);
 
             Assert.Single(resources.MergedDictionaries);
             Assert.EndsWith("DarkTheme.xaml", resources.MergedDictionaries[0].Source.OriginalString);

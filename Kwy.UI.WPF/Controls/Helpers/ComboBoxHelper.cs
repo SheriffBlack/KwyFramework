@@ -58,7 +58,7 @@ public static class ComboBoxHelper
             "StyleKey",
             typeof(object),
             typeof(ComboBoxHelper),
-            new PropertyMetadata(KwyResourceKeys.DefaultComboBoxStyle, OnStyleKeyChanged));
+            new PropertyMetadata(ResourceKeys.DefaultComboBoxStyle, OnStyleKeyChanged));
 
     public static object? GetStyleKey(DependencyObject obj) => obj.GetValue(StyleKeyProperty);
     public static void SetStyleKey(DependencyObject obj, object? value) => obj.SetValue(StyleKeyProperty, value);
@@ -118,7 +118,7 @@ public static class ComboBoxHelper
     private static void ApplyAutoStyle(ComboBox cb)
     {
         var icon = IconHelper.GetIcon(cb);
-        object key = icon != null ? KwyResourceKeys.IconComboBoxStyle : KwyResourceKeys.DefaultComboBoxStyle;
+        object key = icon != null ? ResourceKeys.IconComboBoxStyle : ResourceKeys.DefaultComboBoxStyle;
         ApplyStyle(cb, key);
     }
 

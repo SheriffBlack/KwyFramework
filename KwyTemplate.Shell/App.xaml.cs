@@ -153,7 +153,7 @@ public partial class App : Kwy.MVVM.WPF.Application
 
     protected override void RegisterTypes(IServiceCollection services)
     {
-        services.AddSingleton<IFileDialogService, WpfFileDialogService>();
+        services.AddSingleton<IFileDialogService, FileDialogService>();
         services.AddKwyWpfComponents();
         services.AddSerilogLogging(options =>
         {

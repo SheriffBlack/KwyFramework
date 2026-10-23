@@ -9,8 +9,9 @@ namespace Kwy.UI.WPF.Services.FileDialogs;
 /// <summary>
 /// <see cref="IFileDialogService"/> 的 WPF 实现。
 /// </summary>
-public sealed class WpfFileDialogService : IFileDialogService
+public sealed class FileDialogService : IFileDialogService
 {
+    // Windows Shell 中“此电脑”的命名空间标识，用于在未指定路径时打开资源管理器。
     private const string ThisPcShellNamespace = "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
     private readonly object syncRoot = new();
     private string? lastDirectory;

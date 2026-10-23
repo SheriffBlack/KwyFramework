@@ -85,7 +85,7 @@ public static class DataGridColumnsHelper
             "DefaultElementStyleKey",
             typeof(object),
             typeof(DataGridColumnsHelper),
-            new PropertyMetadata(KwyResourceKeys.DataGridCellTextBlockStyle));
+            new PropertyMetadata(ResourceKeys.DataGridCellTextBlockStyle));
 
     public static void SetDefaultElementStyleKey(DependencyObject element, object value)
         => element.SetValue(DefaultElementStyleKeyProperty, value);
@@ -255,10 +255,10 @@ public static class DataGridColumnsHelper
             return dataGrid.CellStyle;
         }
 
-        return dataGrid.TryFindResource(KwyResourceKeys.DynamicValidationDataGridCellStyle) as Style
-            ?? Application.Current?.TryFindResource(KwyResourceKeys.DynamicValidationDataGridCellStyle) as Style
-            ?? dataGrid.TryFindResource(KwyResourceKeys.ModernDataGridCellStyle) as Style
-            ?? Application.Current?.TryFindResource(KwyResourceKeys.ModernDataGridCellStyle) as Style;
+        return dataGrid.TryFindResource(ResourceKeys.DynamicValidationDataGridCellStyle) as Style
+            ?? Application.Current?.TryFindResource(ResourceKeys.DynamicValidationDataGridCellStyle) as Style
+            ?? dataGrid.TryFindResource(ResourceKeys.ModernDataGridCellStyle) as Style
+            ?? Application.Current?.TryFindResource(ResourceKeys.ModernDataGridCellStyle) as Style;
     }
     private static void ApplyElementStyle(DataGrid dataGrid, DataGridTextColumn textColumn, WpfDataGridColumnOptions? options)
     {

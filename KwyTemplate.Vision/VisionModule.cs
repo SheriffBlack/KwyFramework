@@ -71,7 +71,7 @@ public class VisionModule : IModule
         containerRegistry.AddSingleton<VisionImageCache>();
         containerRegistry.TryAddSingleton<ILocalVisionImageFactory, LocalVisionImageFactory>();
         containerRegistry.TryAddSingleton<IVisionFrameSourceFactory, VisionFrameSourceFactory>();
-        containerRegistry.TryAddSingleton<IFileDialogService, WpfFileDialogService>();
+        containerRegistry.TryAddSingleton<IFileDialogService, FileDialogService>();
 
         containerRegistry.RegisterForNavigation<FlowEditorView, FlowEditorViewModel>();
         containerRegistry.RegisterForNavigation<NodePaletteView, NodePaletteViewModel>();

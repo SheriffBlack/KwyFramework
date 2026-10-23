@@ -82,8 +82,8 @@ public static class ListBoxHelper
 
     private static void ApplyTheme(ListBox lb)
     {
-        var style = lb.TryFindResource(KwyResourceKeys.ListBoxItemStyle) as Style
-                 ?? Application.Current?.TryFindResource(KwyResourceKeys.ListBoxItemStyle) as Style;
+        var style = lb.TryFindResource(ResourceKeys.ListBoxItemStyle) as Style
+                 ?? Application.Current?.TryFindResource(ResourceKeys.ListBoxItemStyle) as Style;
         if (style != null)
             StyleApplicationHelper.ApplyItemContainerStyle(lb, style);
     }

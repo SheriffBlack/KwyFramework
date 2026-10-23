@@ -3,7 +3,7 @@ namespace Kwy.UI.WPF;
 /// <summary>
 /// Public resource keys used by Kwy WPF controls and helpers.
 /// </summary>
-public static class KwyResourceKeys
+public static class ResourceKeys
 {
     public const string DataGridCellTextBlockStyle = "DataGridCellTextBlockStyle";
     public const string ModernDataGridCellStyle = "ModernDataGridCellStyle";

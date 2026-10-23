@@ -1,6 +1,6 @@
 namespace Kwy.UI.WPF.Themes;
 
-public enum KwyTheme
+public enum ThemeMode
 {
     Light,
     Dark

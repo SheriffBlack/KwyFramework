@@ -5,15 +5,15 @@ namespace Kwy.UI.WPF.Themes;
 /// <summary>
 /// Applies Kwy color resources to an application or an isolated resource dictionary.
 /// </summary>
-public static class KwyThemeManager
+public static class ThemeManager
 {
     private const string ThemePathPrefix = "/Kwy.UI.WPF;component/Themes/";
-    public static KwyTheme? CurrentTheme { get; private set; }
+    public static ThemeMode? CurrentTheme { get; private set; }
 
     /// <summary>
     /// Applies a theme to <see cref="Application.Current"/>. Returns false when no application exists.
     /// </summary>
-    public static bool ApplyTheme(KwyTheme theme)
+    public static bool ApplyTheme(ThemeMode theme)
     {
         Application? application = Application.Current;
         if (application == null)
@@ -35,14 +35,14 @@ public static class KwyThemeManager
     /// Applies a theme to the supplied resources, allowing controls to be themed without an application.
     /// The caller must access the dictionary from its owning UI thread.
     /// </summary>
-    public static void ApplyTheme(ResourceDictionary resources, KwyTheme theme)
+    public static void ApplyTheme(ResourceDictionary resources, ThemeMode theme)
     {
         ArgumentNullException.ThrowIfNull(resources);
 
         ReplaceThemeDictionary(resources, theme);
     }
 
-    private static void ReplaceThemeDictionary(ResourceDictionary resources, KwyTheme theme)
+    private static void ReplaceThemeDictionary(ResourceDictionary resources, ThemeMode theme)
     {
         Uri source = CreateThemeUri(theme);
 
@@ -57,7 +57,7 @@ public static class KwyThemeManager
         resources.MergedDictionaries.Add(new ResourceDictionary { Source = source });
     }
 
-    private static Uri CreateThemeUri(KwyTheme theme)
+    private static Uri CreateThemeUri(ThemeMode theme)
         => new($"{ThemePathPrefix}{theme}Theme.xaml", UriKind.Relative);
 
     private static bool IsKwyThemeDictionary(ResourceDictionary dictionary)

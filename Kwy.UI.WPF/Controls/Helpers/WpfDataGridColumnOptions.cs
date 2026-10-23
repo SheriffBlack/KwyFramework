@@ -33,7 +33,7 @@ public class WpfDataGridColumnOptions : DataGridColumnDescriptor
 
     public bool CanUserReorder { get; set; } = true;
 
-    public object? ElementStyleKey { get; set; } = KwyResourceKeys.DataGridCellTextBlockStyle;
+    public object? ElementStyleKey { get; set; } = ResourceKeys.DataGridCellTextBlockStyle;
 
     public Style? ElementStyle { get; set; }
 

@@ -71,7 +71,7 @@ public static class ToggleSwitchHelper
             "StyleKey",
             typeof(object),
             typeof(ToggleSwitchHelper),
-            new PropertyMetadata(KwyResourceKeys.ToggleButtonSwitchNoContentStyle, OnStyleKeyChanged));
+            new PropertyMetadata(ResourceKeys.ToggleButtonSwitchNoContentStyle, OnStyleKeyChanged));
 
     public static object? GetStyleKey(DependencyObject obj) => obj.GetValue(StyleKeyProperty);
     public static void SetStyleKey(DependencyObject obj, object? value) => obj.SetValue(StyleKeyProperty, value);
