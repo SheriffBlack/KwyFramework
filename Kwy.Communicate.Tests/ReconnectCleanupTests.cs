@@ -26,7 +26,7 @@ public sealed class ReconnectCleanupTests
         public bool Validate() => true;
     }
 
-    private sealed class FailingReconnectClient(IProtocolConfig config) : CommunicationClientBase(config)
+    private sealed class FailingReconnectClient(IProtocolConfig config) : ProtocolClientBase(config)
     {
         public int DisconnectCalls { get; private set; }
         public Task StartReconnectAsync() => TriggerReconnectAsync();

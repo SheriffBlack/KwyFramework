@@ -3,14 +3,14 @@ using Kwy.Communicate.Abstractions;
 namespace Kwy.Communicate.Core;
 
 /// <summary>
-/// 主动读取字节流传输的基类。
+/// 面向主动读写字节流客户端的通用基类。
 /// </summary>
-public abstract class CommunicationBase : CommunicationClientBase, IByteTransport
+public abstract class ByteStreamClientBase : ProtocolClientBase, IByteStreamClient
 {
     private readonly SemaphoreSlim readSemaphore = new(1, 1);
     private readonly SemaphoreSlim writeSemaphore = new(1, 1);
 
-    protected CommunicationBase(IProtocolConfig config) : base(config)
+    protected ByteStreamClientBase(IProtocolConfig config) : base(config)
     {
     }
 

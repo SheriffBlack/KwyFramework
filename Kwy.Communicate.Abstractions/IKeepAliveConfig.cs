@@ -1,17 +1,17 @@
 namespace Kwy.Communicate.Abstractions;
 
 /// <summary>
-/// Optional active health-check configuration for protocols that need it.
+/// 为需要主动连接健康检查的协议提供可选配置。
 /// </summary>
 public interface IKeepAliveConfig
 {
     /// <summary>
-    /// Whether to enable active connection health checks.
+    /// 是否启用主动连接健康检查。
     /// </summary>
     bool KeepAlive { get; set; }
 
     /// <summary>
-    /// Health-check interval in milliseconds.
+    /// 连接健康检查间隔，单位为毫秒。
     /// </summary>
     int KeepAliveInterval { get; set; }
 }

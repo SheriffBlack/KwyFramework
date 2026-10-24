@@ -3,16 +3,16 @@ using Kwy.Communicate.Core;
 
 namespace Kwy.Communicate.Tests;
 
-public sealed class CommunicationFactoryTests
+public sealed class ProtocolClientFactoryTests
 {
     [Fact]
     public void CreateClient_UsesRegisteredBaseConfigForDerivedConfig()
     {
-        CommunicationFactory factory = new CommunicationFactoryBuilder()
+        ProtocolClientFactory factory = new ProtocolClientFactoryBuilder()
             .RegisterCreator<TestConfig>(config => new TestClient(config))
             .Build();
 
-        using ICommunicationClient client = factory.CreateClient(new DerivedTestConfig());
+        using IProtocolClient client = factory.CreateClient(new DerivedTestConfig());
 
         Assert.IsType<TestClient>(client);
     }
@@ -20,7 +20,7 @@ public sealed class CommunicationFactoryTests
     [Fact]
     public void Builder_RejectsDuplicateConfigurationType()
     {
-        var builder = new CommunicationFactoryBuilder()
+        var builder = new ProtocolClientFactoryBuilder()
             .RegisterCreator<TestConfig>(config => new TestClient(config));
 
         Assert.Throws<InvalidOperationException>(() =>
@@ -38,7 +38,7 @@ public sealed class CommunicationFactoryTests
 
     private sealed class DerivedTestConfig : TestConfig;
 
-    internal sealed class TestClient(IProtocolConfig config) : CommunicationClientBase(config)
+    internal sealed class TestClient(IProtocolConfig config) : ProtocolClientBase(config)
     {
         protected override Task ConnectCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         protected override Task DisconnectCoreAsync(CancellationToken cancellationToken) => Task.CompletedTask;

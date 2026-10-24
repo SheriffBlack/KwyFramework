@@ -1,4 +1,4 @@
-﻿using Kwy.Communicate.Abstractions;
+using Kwy.Communicate.Abstractions;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Instruments.Lcr;
 using KwyTemplate.Device.Devices;
@@ -32,7 +32,7 @@ public sealed class HiokiLcrDeviceDefinition : InstrumentDeviceDefinition
             DeviceName,
             (HiokiLcrConfig)DeviceParameter!,
             ConnectionConfig,
-            GetRequiredService<ICommunicationFactory>(services));
+            GetRequiredService<IProtocolClientFactory>(services));
         return instrument;
     }
 }

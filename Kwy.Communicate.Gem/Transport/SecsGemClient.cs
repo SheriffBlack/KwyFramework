@@ -3,7 +3,7 @@ using Secs4Net;
 
 namespace Kwy.Communicate.Gem;
 
-public sealed class SecsGemClient : CommunicationClientBase, ISecsGemClient
+public sealed class SecsGemClient : ProtocolClientBase, ISecsGemClient
 {
     private readonly ISecsGem secsGem;
     private readonly ISecsConnection hsmsConnection;

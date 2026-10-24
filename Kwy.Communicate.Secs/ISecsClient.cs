@@ -2,7 +2,7 @@ using Kwy.Communicate.Abstractions;
 
 namespace Kwy.Communicate.Secs;
 
-public interface ISecsClient : ICommunicationClient
+public interface ISecsClient : IProtocolClient
 {
     HsmsSessionState SessionState { get; }
 

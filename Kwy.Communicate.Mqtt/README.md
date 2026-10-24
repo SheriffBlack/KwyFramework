@@ -22,12 +22,12 @@ await mqtt.PublishAsync("factory/machine-01/status", "online"u8.ToArray());
 For applications that select a protocol from configuration at runtime, register only the MQTT creator:
 
 ```csharp
-var factory = new CommunicationFactoryBuilder()
+var factory = new ProtocolClientFactoryBuilder()
     .RegisterMqtt()
     .Build();
 ```
 
-`DangerousAcceptAnyServerCertificate` defaults to `false`. Enable it only in a controlled test environment. Incoming messages are available through both `MessageReceived` and `ReadMessagesAsync`. Configure `MessageOverflowStrategy` for backpressure or message dropping, and inspect `DroppedMessageCount` when using a drop strategy.
+`DangerousAcceptAnyServerCertificate` defaults to `false`. Enable it only in a controlled test environment. Incoming messages are available through both `MessageReceived` and `ReadAllAsync`. Configure `MessageOverflowStrategy` for backpressure or message dropping, and inspect `DroppedMessageCount` when using a drop strategy.
 
 Create the NuGet and symbol packages with:
 

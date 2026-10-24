@@ -1,4 +1,4 @@
-﻿using Kwy.Communicate.Abstractions;
+using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Core;
 using Kwy.Communicate.Visa;
 using Kwy.Communicate.TcpSerial;
@@ -28,9 +28,9 @@ public sealed class DeviceModule : IModule
         services.AddPLCCore();
         // The configurable device catalog selects a protocol at runtime. DI owns only this
         // immutable routing factory; each device owns and disposes the client it creates.
-        services.TryAddSingleton<ICommunicationFactory>(_ =>
+        services.TryAddSingleton<IProtocolClientFactory>(_ =>
         {
-            var builder = new CommunicationFactoryBuilder();
+            var builder = new ProtocolClientFactoryBuilder();
             builder.RegisterTcp();
             builder.RegisterSerialPort();
             builder.RegisterVisa();

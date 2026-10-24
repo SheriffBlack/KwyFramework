@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using Kwy.Converter;
 using Kwy.Communicate.Abstractions;
 using Kwy.Device.Instrument.Core;
@@ -88,12 +88,12 @@ public class HiokiLcr :
         limits[testName] = new InstrumentMeasurementLimit(lowerLimit, normalizedUpperLimit, displayUnit);
     }
 
-    public HiokiLcr(string deviceId, string deviceName, HiokiLcrConfig deviceParameter, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
+    public HiokiLcr(string deviceId, string deviceName, HiokiLcrConfig deviceParameter, IProtocolConfig protocolConfig, IProtocolClientFactory? factory = null)
         : base(deviceId, deviceName, deviceParameter, protocolConfig, factory)
     {
     }
 
-    public HiokiLcr(string deviceId, string deviceName, HiokiLcrConfig deviceParameter, ICommunicationClient protocol)
+    public HiokiLcr(string deviceId, string deviceName, HiokiLcrConfig deviceParameter, IProtocolClient protocol)
         : base(deviceId, deviceName, deviceParameter, protocol)
     {
     }
@@ -363,7 +363,7 @@ public class HiokiLcr :
     private async ValueTask<string> QueryLcrCommandAsync(string command, CancellationToken cancellationToken)
     {
         string normalizedCommand = EnsureCommandTerminator(command);
-        if (protocol is ICommandQueryClient queryClient)
+        if (protocol is ITextCommandClient  queryClient)
         {
             return (await queryClient.QueryAsync(normalizedCommand, cancellationToken).ConfigureAwait(false)).Trim();
         }

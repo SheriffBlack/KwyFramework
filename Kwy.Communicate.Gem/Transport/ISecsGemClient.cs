@@ -6,7 +6,7 @@ namespace Kwy.Communicate.Gem;
 /// <summary>
 /// 管理 HSMS/SECS 通信与 Primary/Secondary 消息
 /// </summary>
-public interface ISecsGemClient : ICommunicationClient
+public interface ISecsGemClient : IProtocolClient
 {
     ConnectionState HsmsState { get; }
 

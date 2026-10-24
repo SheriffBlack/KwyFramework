@@ -10,7 +10,7 @@ namespace Kwy.Communicate.FMdb;
 /// <summary>
 /// FluentModbus 5.3.2 client wrapper integrated with the Kwy communication lifecycle.
 /// </summary>
-public sealed class FMdbCommunication : CommunicationClientBase, ICommunicationFMdb
+public sealed class FMdbCommunication : ProtocolClientBase, ICommunicationFMdb
 {
     private const int MaxAddress = ushort.MaxValue;
     private const int MaxReadBits = 2000;

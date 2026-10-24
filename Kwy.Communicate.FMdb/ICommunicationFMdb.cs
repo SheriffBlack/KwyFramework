@@ -5,7 +5,7 @@ namespace Kwy.Communicate.FMdb;
 /// <summary>
 /// Modbus client operations exposed by the FluentModbus wrapper.
 /// </summary>
-public interface ICommunicationFMdb : ICommunicationClient
+public interface ICommunicationFMdb : IProtocolClient
 {
     /// <summary>
     /// Reads coil values.

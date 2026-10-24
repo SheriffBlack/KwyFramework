@@ -1,9 +1,9 @@
 using Kwy.Communicate.Abstractions.Enums;
-using static Kwy.Communicate.Tests.CommunicationFactoryTests;
+using static Kwy.Communicate.Tests.ProtocolClientFactoryTests;
 
 namespace Kwy.Communicate.Tests;
 
-public sealed class CommunicationLifecycleTests
+public sealed class ProtocolClientLifecycleTests
 {
     [Fact]
     public async Task TryConnectAsync_ExpectedConnectionFailure_IsReportedAsErrorState()
@@ -39,7 +39,7 @@ public sealed class CommunicationLifecycleTests
         Assert.True(client.IsConnected);
     }
 
-    private sealed class FailingClient(TestConfig config) : Kwy.Communicate.Core.CommunicationClientBase(config)
+    private sealed class FailingClient(TestConfig config) : Kwy.Communicate.Core.ProtocolClientBase(config)
     {
         protected override Task ConnectCoreAsync(CancellationToken cancellationToken)
             => throw new IOException("设备离线");

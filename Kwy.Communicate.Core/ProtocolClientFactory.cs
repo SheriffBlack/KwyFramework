@@ -2,15 +2,15 @@ using Kwy.Communicate.Abstractions;
 
 namespace Kwy.Communicate.Core;
 
-public sealed class CommunicationFactory : ICommunicationFactory
+public sealed class ProtocolClientFactory : IProtocolClientFactory
 {
-    private readonly IReadOnlyDictionary<Type, ICommunicationClientCreator> creators;
+    private readonly IReadOnlyDictionary<Type, IProtocolClientCreator> creators;
 
-    public CommunicationFactory(IEnumerable<ICommunicationClientCreator> creators)
+    public ProtocolClientFactory(IEnumerable<IProtocolClientCreator> creators)
     {
         ArgumentNullException.ThrowIfNull(creators);
-        var byConfigType = new Dictionary<Type, ICommunicationClientCreator>();
-        foreach (ICommunicationClientCreator creator in creators)
+        var byConfigType = new Dictionary<Type, IProtocolClientCreator>();
+        foreach (IProtocolClientCreator creator in creators)
         {
             ArgumentNullException.ThrowIfNull(creator);
             if (!typeof(IProtocolConfig).IsAssignableFrom(creator.ConfigType))
@@ -23,21 +23,21 @@ public sealed class CommunicationFactory : ICommunicationFactory
             if (!byConfigType.TryAdd(creator.ConfigType, creator))
             {
                 throw new InvalidOperationException(
-                    $"A communication creator for configuration type '{creator.ConfigType.FullName}' is already registered.");
+                    $"A protocol client creator for configuration type '{creator.ConfigType.FullName}' is already registered.");
             }
         }
 
         this.creators = byConfigType;
     }
 
-    public ICommunicationClient CreateClient(IProtocolConfig config)
+    public IProtocolClient CreateClient(IProtocolConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
         config.ValidateAndThrow();
         Type configType = config.GetType();
-        if (!creators.TryGetValue(configType, out ICommunicationClientCreator? creator))
+        if (!creators.TryGetValue(configType, out IProtocolClientCreator? creator))
         {
-            ICommunicationClientCreator[] compatibleCreators = creators
+            IProtocolClientCreator[] compatibleCreators = creators
                 .Where(pair => pair.Key.IsAssignableFrom(configType))
                 .Select(pair => pair.Value)
                 .ToArray();
@@ -47,24 +47,24 @@ public sealed class CommunicationFactory : ICommunicationFactory
                 0 => throw new NotSupportedException($"Unregistered protocol configuration type: {configType.Name}"),
                 1 => compatibleCreators[0],
                 _ => throw new InvalidOperationException(
-                    $"Multiple communication creators can handle configuration type '{configType.FullName}'. Register an exact creator for that type.")
+                    $"Multiple protocol client creators can handle configuration type '{configType.FullName}'. Register an exact creator for that type.")
             };
         }
 
         return creator.Create(config)
             ?? throw new InvalidOperationException(
-                $"Communication creator for '{configType.FullName}' returned null.");
+                $"Protocol client creator for '{configType.FullName}' returned null.");
     }
 
-    public TCommunication Create<TCommunication, TConfig>(TConfig config)
-        where TCommunication : class, ICommunicationClient
+    public TClient Create<TClient, TConfig>(TConfig config)
+        where TClient : class, IProtocolClient
         where TConfig : IProtocolConfig
     {
         var client = CreateClient(config);
-        if (client is TCommunication typedClient)
+        if (client is TClient typedClient)
             return typedClient;
 
         client.Dispose();
-        throw new InvalidCastException($"Registered creator returned {client.GetType().Name}, not {typeof(TCommunication).Name}.");
+        throw new InvalidCastException($"Registered creator returned {client.GetType().Name}, not {typeof(TClient).Name}.");
     }
 }

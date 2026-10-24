@@ -7,7 +7,7 @@ namespace Kwy.Communicate.TcpSerial;
 /// <summary>
 /// Active-read TCP byte transport.
 /// </summary>
-public sealed class TcpCommunication : CommunicationBase
+public sealed class TcpCommunication : ByteStreamClientBase
 {
     private readonly TcpConfig tcpConfig;
     private TcpClient? tcpClient;

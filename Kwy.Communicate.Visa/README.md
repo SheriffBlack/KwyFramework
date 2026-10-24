@@ -68,7 +68,7 @@ if (!availability.IsAvailable)
 可选的运行时通信工厂同样不依赖 Microsoft 依赖注入：
 
 ```csharp
-ICommunicationFactory factory = new CommunicationFactoryBuilder()
+IProtocolClientFactory factory = new ProtocolClientFactoryBuilder()
     .RegisterVisa()
     .Build();
 ```

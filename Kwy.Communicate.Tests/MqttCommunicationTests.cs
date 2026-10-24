@@ -54,9 +54,9 @@ public sealed class MqttCommunicationTests
         await using var client = new MqttCommunication(CreateValidConfig());
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => client.PublishAsync(new MqttMessage("invalid/+", ReadOnlyMemory<byte>.Empty)).AsTask());
+            () => client.SendAsync(new MqttMessage("invalid/+", ReadOnlyMemory<byte>.Empty)).AsTask());
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () => client.PublishAsync(new MqttMessage("valid/topic", ReadOnlyMemory<byte>.Empty, 3)).AsTask());
+            () => client.SendAsync(new MqttMessage("valid/topic", ReadOnlyMemory<byte>.Empty, 3)).AsTask());
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class MqttCommunicationTests
     [Fact]
     public void Factory_CreatesMqttClientWithoutDependencyInjection()
     {
-        CommunicationFactory factory = new CommunicationFactoryBuilder()
+        ProtocolClientFactory factory = new ProtocolClientFactoryBuilder()
             .RegisterMqtt()
             .Build();
 
@@ -104,7 +104,7 @@ public sealed class MqttCommunicationTests
 
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await using IAsyncEnumerator<MqttMessage> messages = client
-                .ReadMessagesAsync(timeout.Token)
+                .ReadAllAsync(timeout.Token)
                 .GetAsyncEnumerator(timeout.Token);
             Assert.True(await messages.MoveNextAsync());
             MqttMessage received = messages.Current;

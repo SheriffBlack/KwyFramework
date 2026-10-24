@@ -111,7 +111,7 @@ public sealed class VisaCommunicationTests
     [Fact]
     public void RegisterVisa_CreatesClientsForBothConfigurationStyles()
     {
-        CommunicationFactory factory = new CommunicationFactoryBuilder()
+        ProtocolClientFactory factory = new ProtocolClientFactoryBuilder()
             .RegisterVisa()
             .Build();
 

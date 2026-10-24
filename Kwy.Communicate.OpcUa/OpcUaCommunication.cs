@@ -10,7 +10,7 @@ using System.Threading.Channels;
 namespace Kwy.Communicate.OpcUa;
 
 /// <summary>基于 OPC Foundation .NET SDK 的 OPC UA 客户端。</summary>
-public sealed class OpcUaCommunication : CommunicationClientBase, IMessageClient<OpcUaMonitoredItemMessage>
+public sealed class OpcUaCommunication : ProtocolClientBase, IMessageClient<OpcUaMonitoredItemMessage>
 {
     private readonly OpcUaConfig opcUaConfig;
     private readonly ISessionFactory sessionFactory;
@@ -130,7 +130,7 @@ public sealed class OpcUaCommunication : CommunicationClientBase, IMessageClient
     }
 
     /// <inheritdoc />
-    public ValueTask PublishAsync(OpcUaMonitoredItemMessage message, CancellationToken cancellationToken = default)
+    public ValueTask SendAsync(OpcUaMonitoredItemMessage message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
         if (message.Value is null) throw new ArgumentException("写入值不能为空。", nameof(message));
@@ -138,7 +138,7 @@ public sealed class OpcUaCommunication : CommunicationClientBase, IMessageClient
     }
 
     /// <inheritdoc />
-    public IAsyncEnumerable<OpcUaMonitoredItemMessage> ReadMessagesAsync(CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<OpcUaMonitoredItemMessage> ReadAllAsync(CancellationToken cancellationToken = default)
         => messages.Reader.ReadAllAsync(cancellationToken);
 
     /// <summary>读取指定节点并转换为目标类型。</summary>

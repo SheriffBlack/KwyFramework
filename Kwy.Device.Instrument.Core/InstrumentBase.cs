@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Abstractions;
@@ -16,16 +16,16 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
     private const int ResponseBufferSize = 4096;
     private readonly SemaphoreSlim executionSemaphore = new(1, 1);
 
-    protected readonly ICommunicationClient protocol;
-    protected readonly IByteTransport transport;
+    protected readonly IProtocolClient protocol;
+    protected readonly IByteStreamClient transport;
 
-    protected InstrumentBase(string deviceId, string deviceName, IDeviceConfig deviceParameter, ICommunicationClient protocol)
+    protected InstrumentBase(string deviceId, string deviceName, IDeviceConfig deviceParameter, IProtocolClient protocol)
         : base(deviceId, deviceName)
     {
         ArgumentNullException.ThrowIfNull(deviceParameter);
         this.protocol = protocol ?? throw new ArgumentNullException(nameof(protocol));
-        transport = protocol as IByteTransport
-            ?? throw new ArgumentException("Instrument communication must support IByteTransport.", nameof(protocol));
+        transport = protocol as IByteStreamClient
+            ?? throw new ArgumentException("Instrument communication must support IByteStreamClient.", nameof(protocol));
         DeviceParameter = deviceParameter;
         SubscribeProtocolEvents();
     }
@@ -35,7 +35,7 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         string deviceName,
         IDeviceConfig deviceParameter,
         IProtocolConfig protocolConfig,
-        ICommunicationFactory? factory = null)
+        IProtocolClientFactory? factory = null)
         : base(deviceId, deviceName)
     {
         ArgumentNullException.ThrowIfNull(deviceParameter);
@@ -43,8 +43,8 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         ArgumentNullException.ThrowIfNull(factory);
 
         protocol = factory.CreateClient(protocolConfig);
-        transport = protocol as IByteTransport
-            ?? throw new InvalidOperationException("Instrument communication must support IByteTransport.");
+        transport = protocol as IByteStreamClient
+            ?? throw new InvalidOperationException("Instrument communication must support IByteStreamClient.");
         DeviceParameter = deviceParameter;
         SubscribeProtocolEvents();
     }
@@ -54,14 +54,7 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         await executionSemaphore.WaitAsync(cancellationToken);
         try
         {
-            if (protocol is ITryConnectCommunicationClient tryConnectClient)
-            {
-                _ = await tryConnectClient.TryConnectAsync(cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                await protocol.ConnectAsync(cancellationToken).ConfigureAwait(false);
-            }
+            _ = await protocol.TryConnectAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -88,7 +81,7 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         return ExecuteSerializedAsync(
-            token => transport.WriteTextAsync(command, cancellationToken: token),
+            token => transport.WriteTextAsync(command, CommandEncoding, token),
             cancellationToken);
     }
 
@@ -107,7 +100,7 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         {
             return await ExecuteSerializedAsync(async token =>
             {
-                await transport.WriteTextAsync(command, cancellationToken: token);
+                await transport.WriteTextAsync(command, CommandEncoding, token);
                 return await ReadResponseCoreAsync(token);
             }, cancellationToken).ConfigureAwait(false);
         }
@@ -137,7 +130,7 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
         try
         {
             await ExecuteSerializedAsync(
-                token => transport.WriteTextAsync(command, cancellationToken: token),
+                token => transport.WriteTextAsync(command, CommandEncoding, token),
                 cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -180,7 +173,7 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
 
                 var command = JoinCommand();
                 if (!string.IsNullOrWhiteSpace(command))
-                    await transport.WriteTextAsync(command, cancellationToken: token);
+                    await transport.WriteTextAsync(command, CommandEncoding, token);
             }, cancellationToken).ConfigureAwait(false);
 
             RaiseOperationOccurred(
@@ -198,8 +191,11 @@ public abstract class InstrumentBase : DeviceBase, IInstrumentDevice
 
     public virtual string JoinCommand() => string.Empty;
 
-    protected ICommunicationClient Protocol => protocol;
-    protected IByteTransport Transport => transport;
+    protected IProtocolClient Protocol => protocol;
+    protected IByteStreamClient Transport => transport;
+
+    /// <summary>仪器命令的文本编码；SCPI 默认使用 ASCII，特定设备可覆写。</summary>
+    protected virtual Encoding CommandEncoding => Encoding.ASCII;
 
     protected virtual string ParseResponse(ReadOnlySpan<byte> responseBytes)
         => Encoding.UTF8.GetString(responseBytes).Trim();

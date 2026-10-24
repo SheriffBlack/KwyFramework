@@ -7,7 +7,7 @@ namespace Kwy.Communicate.TcpSerial;
 /// <summary>
 /// Active-read serial port byte transport.
 /// </summary>
-public sealed class SerialPortCommunication : CommunicationBase
+public sealed class SerialPortCommunication : ByteStreamClientBase
 {
     private readonly SerialPortConfig serialConfig;
     private SerialPort? serialPort;

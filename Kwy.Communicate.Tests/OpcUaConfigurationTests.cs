@@ -32,7 +32,7 @@ public sealed class OpcUaConfigurationTests
     [Fact]
     public void RegisterOpcUa_CreatesClientWithoutDependencyInjection()
     {
-        CommunicationFactory factory = new CommunicationFactoryBuilder().RegisterOpcUa().Build();
+        ProtocolClientFactory factory = new ProtocolClientFactoryBuilder().RegisterOpcUa().Build();
 
         using var client = factory.CreateClient(CreateValidConfig());
 

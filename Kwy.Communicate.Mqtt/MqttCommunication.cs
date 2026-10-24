@@ -9,7 +9,7 @@ using System.Threading.Channels;
 namespace Kwy.Communicate.Mqtt;
 
 /// <summary>MQTT 消息客户端。</summary>
-public sealed class MqttCommunication : CommunicationClientBase, IMqttCommunication
+public sealed class MqttCommunication : ProtocolClientBase, IMqttCommunication
 {
     private readonly MqttConfig mqttConfig;
     private readonly MqttFactory mqttFactory = new();
@@ -148,7 +148,7 @@ public sealed class MqttCommunication : CommunicationClientBase, IMqttCommunicat
     protected override bool IsConnectionAlive() => mqttClient?.IsConnected == true;
 
     /// <inheritdoc />
-    public async ValueTask PublishAsync(MqttMessage message, CancellationToken cancellationToken = default)
+    public async ValueTask SendAsync(MqttMessage message, CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(message);
@@ -184,11 +184,11 @@ public sealed class MqttCommunication : CommunicationClientBase, IMqttCommunicat
     /// <summary>向指定主题发布二进制负载。</summary>
     public ValueTask PublishAsync(string topic, ReadOnlyMemory<byte> payload, byte? qualityOfServiceLevel = null,
         bool retain = false, CancellationToken cancellationToken = default)
-        => PublishAsync(new MqttMessage(topic, payload,
+        => SendAsync(new MqttMessage(topic, payload,
             qualityOfServiceLevel ?? mqttConfig.QualityOfServiceLevel, retain), cancellationToken);
 
     /// <inheritdoc />
-    public IAsyncEnumerable<MqttMessage> ReadMessagesAsync(CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<MqttMessage> ReadAllAsync(CancellationToken cancellationToken = default)
         => messages.Reader.ReadAllAsync(cancellationToken);
 
     /// <summary>订阅一个主题筛选器。</summary>

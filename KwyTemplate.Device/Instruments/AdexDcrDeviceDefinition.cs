@@ -1,4 +1,4 @@
-﻿using Kwy.Communicate.Abstractions;
+using Kwy.Communicate.Abstractions;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Instruments.Dcr;
 using KwyTemplate.Device.Devices;
@@ -24,7 +24,7 @@ public sealed class AdexDcrDeviceDefinition : InstrumentDeviceDefinition
             DeviceName,
             (AdexDcrConfig)DeviceParameter!,
             ConnectionConfig,
-            GetRequiredService<ICommunicationFactory>(services));
+            GetRequiredService<IProtocolClientFactory>(services));
         return instrument;
     }
 }

@@ -25,6 +25,6 @@ public sealed class MarkPrintDeviceDefinition : DeviceDefinition
             DeviceId,
             DeviceName,
             config,
-            GetRequiredService<ICommunicationFactory>(services));
+            GetRequiredService<IProtocolClientFactory>(services));
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Kwy.Communicate.Abstractions;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Core;
@@ -13,15 +13,15 @@ public sealed class TcpMarkPrintDevice : DeviceBase, IMarkPrintDevice
     private const string SuccessResponse = "SUCCESS";
     private const int ReadBufferSize = 1024;
 
-    private readonly ICommunicationFactory communicationFactory;
+    private readonly IProtocolClientFactory communicationFactory;
     private readonly SemaphoreSlim operationSemaphore = new(1, 1);
-    private IByteTransport? transport;
+    private IByteStreamClient? transport;
 
     public TcpMarkPrintDevice(
         string deviceId,
         string deviceName,
         MarkPrintConfig config,
-        ICommunicationFactory communicationFactory)
+        IProtocolClientFactory communicationFactory)
         : base(deviceId, deviceName, config)
     {
         this.communicationFactory = communicationFactory ?? throw new ArgumentNullException(nameof(communicationFactory));
@@ -85,8 +85,8 @@ public sealed class TcpMarkPrintDevice : DeviceBase, IMarkPrintDevice
             throw new InvalidOperationException($"{DeviceName} mark printer configuration is invalid.");
         }
 
-        ICommunicationClient client = communicationFactory.CreateClient(Config.Tcp);
-        if (client is not IByteTransport byteTransport)
+        IProtocolClient client = communicationFactory.CreateClient(Config.Tcp);
+        if (client is not IByteStreamClient byteTransport)
         {
             await client.DisposeAsync().ConfigureAwait(false);
             throw new InvalidOperationException("Configured mark printer communication client does not support byte transport.");
@@ -98,7 +98,7 @@ public sealed class TcpMarkPrintDevice : DeviceBase, IMarkPrintDevice
 
     protected override async Task DisconnectCoreAsync(CancellationToken cancellationToken)
     {
-        IByteTransport? current = transport;
+        IByteStreamClient? current = transport;
         transport = null;
         if (current == null)
         {

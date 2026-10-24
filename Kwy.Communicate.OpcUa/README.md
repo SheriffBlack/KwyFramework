@@ -24,7 +24,7 @@ object? value = await client.ReadNodeAsync<object>("ns=2;s=Machine.Status");
 只有在协议由配置动态选择时才需要注册 Factory：
 
 ```csharp
-ICommunicationFactory factory = new CommunicationFactoryBuilder()
+IProtocolClientFactory factory = new ProtocolClientFactoryBuilder()
     .RegisterOpcUa()
     .Build();
 ```

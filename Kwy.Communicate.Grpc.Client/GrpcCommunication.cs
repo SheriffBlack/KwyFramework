@@ -12,7 +12,7 @@ namespace Kwy.Communicate.Grpc.Client;
 /// 持有一个 gRPC Channel，并将其生命周期接入 Kwy 通信客户端。
 /// 业务 RPC 仍由基于 <see cref="CallInvoker"/> 创建的强类型生成客户端调用。
 /// </summary>
-public sealed class GrpcCommunication : CommunicationClientBase
+public sealed class GrpcCommunication : ProtocolClientBase
 {
     private readonly GrpcConfig grpcConfig;
     private GrpcChannel? channel;

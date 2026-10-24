@@ -7,7 +7,7 @@ namespace Kwy.Communicate.TcpSerial;
 /// <summary>
 /// HTTP/HTTPS request-response client.
 /// </summary>
-public sealed class HttpCommunication : CommunicationClientBase, IRequestClient<HttpRequestMessage, HttpResponseMessage>
+public sealed class HttpCommunication : ProtocolClientBase, IRequestClient<HttpRequestMessage, HttpResponseMessage>
 {
     private readonly HttpConfig httpConfig;
     private readonly IHttpMessageHandlerFactory handlerFactory;

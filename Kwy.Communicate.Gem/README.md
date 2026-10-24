@@ -1,7 +1,7 @@
 # Kwy.Communicate.Gem
 
 `Kwy.Communicate.Gem` 是基于 Secs4Net 的 SEMI E30 GEM 行为层，通过
-`CommunicationClientBase` 接入 Kwy 统一通信生命周期。
+`ProtocolClientBase` 接入 Kwy 统一通信生命周期。
 
 本包面向需要将设备业务接入 Fab Host/EAP 的开发者。它提供 HSMS/SECS 客户端、GEM
 状态与数据模型、常用消息工厂、注册表、事件、报警、配方、Trace 和诊断扩展点，但不包含

@@ -7,7 +7,7 @@ using System.Text;
 namespace Kwy.Communicate.Visa;
 
 /// <summary>基于 NI-VISA 的消息型仪器通信客户端，主要用于 GPIB 和 SCPI 仪器。</summary>
-public class VisaCommunication : CommunicationBase, ICommandQueryClient
+public class VisaCommunication : ByteStreamClientBase, ITextCommandClient
 {
     private readonly VisaConfig visaConfig;
     private readonly SemaphoreSlim ioSemaphore = new(1, 1);
@@ -90,7 +90,7 @@ public class VisaCommunication : CommunicationBase, ICommandQueryClient
     }
 
     /// <inheritdoc />
-    public ValueTask WriteCommandAsync(string command, CancellationToken cancellationToken = default)
+    public ValueTask WriteAsync(string command, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         return WriteAsync(Encoding.ASCII.GetBytes(AppendTerminator(command)), cancellationToken);

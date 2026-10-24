@@ -1,4 +1,4 @@
-﻿using Kwy.Communicate.Abstractions;
+using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Abstractions.Events;
 using System.Collections.Concurrent;
@@ -7,9 +7,9 @@ using System.Runtime.ExceptionServices;
 namespace Kwy.Communicate.Core;
 
 /// <summary>
-/// 通用的生命周期、状态、释放以及单次飞行重新连接行为。
+/// 为协议客户端提供统一的生命周期、连接状态、资源释放、保活和单飞重连行为。
 /// </summary>
-public abstract class CommunicationClientBase : ICommunicationClient, ITryConnectCommunicationClient
+public abstract class ProtocolClientBase : IProtocolClient
 {
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(3);
     protected readonly IProtocolConfig config;
@@ -48,7 +48,7 @@ public abstract class CommunicationClientBase : ICommunicationClient, ITryConnec
     public event EventHandler<ConnectionStateChangedEventArgs>? ConnectionStateChanged;
     public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred;
 
-    protected CommunicationClientBase(IProtocolConfig config)
+    protected ProtocolClientBase(IProtocolConfig config)
     {
         this.config = config ?? throw new ArgumentNullException(nameof(config));
     }
@@ -58,8 +58,8 @@ public abstract class CommunicationClientBase : ICommunicationClient, ITryConnec
     protected abstract bool IsConnectionAlive();
 
     /// <summary>
-    /// Gets a token that is cancelled when the current connection lifetime ends.
-    /// Derived transports should link long-running operations to this token.
+    /// 当前连接生命周期结束时会取消的标记。
+    /// 派生客户端应将长时间运行的操作与此标记关联。
     /// </summary>
     protected CancellationToken LifetimeToken => lifetimeCancellation.Token;
 
@@ -346,7 +346,7 @@ public abstract class CommunicationClientBase : ICommunicationClient, ITryConnec
         => EnqueueObserverNotification(() => ErrorOccurred?.Invoke(this, new ErrorOccurredEventArgs(exception, message)));
 
     /// <summary>
-    /// Dispatches an observer notification in order on a thread-pool thread and isolates observer exceptions.
+    /// 按入队顺序在线程池线程上分发观察者通知，并隔离观察者自身抛出的异常。
     /// </summary>
     protected void EnqueueObserverNotification(Action notification)
     {
@@ -372,7 +372,7 @@ public abstract class CommunicationClientBase : ICommunicationClient, ITryConnec
                 }
                 catch
                 {
-                    // Observers must never alter the communication state machine.
+                    // 观察者异常不得影响协议客户端状态机。
                 }
             }
 

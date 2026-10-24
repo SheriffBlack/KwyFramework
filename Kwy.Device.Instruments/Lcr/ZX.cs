@@ -7,12 +7,12 @@ namespace Kwy.Device.Instruments.Lcr;
 
 public class ZX : InstrumentBase, IMeasurementInstrument
 {
-    public ZX(string deviceId, string deviceName, IDeviceConfig deviceParameter, IProtocolConfig protocolConfig, ICommunicationFactory? factory = null)
+    public ZX(string deviceId, string deviceName, IDeviceConfig deviceParameter, IProtocolConfig protocolConfig, IProtocolClientFactory? factory = null)
     : base(deviceId, deviceName, deviceParameter, protocolConfig, factory)
     {
     }
 
-    public ZX(string deviceId, string deviceName, IDeviceConfig deviceParameter, ICommunicationClient protocol)
+    public ZX(string deviceId, string deviceName, IDeviceConfig deviceParameter, IProtocolClient protocol)
         : base(deviceId, deviceName, deviceParameter, protocol)
     {
     }

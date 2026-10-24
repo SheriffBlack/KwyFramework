@@ -1,9 +1,9 @@
 namespace Kwy.Communicate.Abstractions;
 
 /// <summary>
-/// Active-read byte stream transport, such as TCP, serial port, or GPIB.
+/// 面向主动读写字节流的通信客户端，例如 TCP、串口或 VISA/GPIB。
 /// </summary>
-public interface IByteTransport : ICommunicationClient
+public interface IByteStreamClient : IProtocolClient
 {
     ValueTask WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default);
     ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default);
