@@ -105,10 +105,10 @@
   <Project Path="Kwy.UI.WPF.Components/Kwy.UI.WPF.Components.csproj" Id="87b75c32-f346-451d-a853-ecd027fbd982" />
   <Project Path="Kwy.UI.WPF.FlowDesigner/Kwy.UI.WPF.FlowDesigner.csproj" />
   <Project Path="Kwy.UI.WPF.Tests/Kwy.UI.WPF.Tests.csproj" />
-  <Project Path="Kwy.UI.WPF.ThreeD.Abstractions/Kwy.UI.WPF.ThreeD.csproj" />
   <Project Path="Kwy.UI.WPF.ThreeD.Demo/Kwy.UI.WPF.ThreeD.Demo.csproj" Id="2751c040-f5c2-469e-a4e5-8cf28637588f" />
   <Project Path="Kwy.UI.WPF.ThreeD.HelixToolkit/Kwy.UI.WPF.ThreeD.HelixToolkit.csproj" />
   <Project Path="Kwy.UI.WPF.ThreeD.OpenGL/Kwy.UI.WPF.ThreeD.OpenGL.csproj" />
+  <Project Path="Kwy.UI.WPF.ThreeD/Kwy.UI.WPF.ThreeD.csproj" />
   <Project Path="Kwy.UI.WPF/Kwy.UI.WPF.csproj" />
   <Project Path="Kwy.UI/Kwy.UI.csproj" />
   <Project Path="Kwy.Vision.Abstractions/Kwy.Vision.Abstractions.csproj" />
