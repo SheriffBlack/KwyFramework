@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
-using System.Windows.Media;
-using Kwy.UI.WPF.Charts.Abstractions;
+using Kwy.UI.Charts.Abstractions;
+using Kwy.UI.Primitives;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Legends;
@@ -114,7 +114,7 @@ public sealed class PiePlot : ChartBindableBase, IChartPlot, IDisposable, IOxyRe
         }
     }
 
-    public void AddOrUpdateSlice(string key, string label, double value, Color? color = null, bool isExploded = false)
+    public void AddOrUpdateSlice(string key, string label, double value, Rgba32? color = null, bool isExploded = false)
     {
         incomingUpdates.Enqueue(new PieSliceData
         {

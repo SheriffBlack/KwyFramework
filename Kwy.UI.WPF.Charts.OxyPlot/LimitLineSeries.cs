@@ -1,5 +1,5 @@
 using System.Globalization;
-using Kwy.UI.WPF.Charts.Abstractions;
+using Kwy.UI.Charts.Abstractions;
 using OxyPlot;
 using OxyPlot.Series;
 

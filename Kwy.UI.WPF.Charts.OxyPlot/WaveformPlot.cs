@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
-using System.Windows.Media;
-using Kwy.UI.WPF.Charts.Abstractions;
+using Kwy.UI.Charts.Abstractions;
+using Kwy.UI.Primitives;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
@@ -376,7 +376,7 @@ public sealed class WaveformPlot : ChartBindableBase, IChartPlot, IDisposable, I
         }
     }
 
-    public void AddChannel(string key, string name, Color? color = null, bool isDigital = false, double? minY = null, double? maxY = null)
+    public void AddChannel(string key, string name, Rgba32? color = null, bool isDigital = false, double? minY = null, double? maxY = null)
     {
         if (channelMap.ContainsKey(key))
         {

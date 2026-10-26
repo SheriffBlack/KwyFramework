@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Kwy.UI.WPF.Charts.Abstractions;
+namespace Kwy.UI.Charts.Abstractions;
 
 public abstract class ChartBindableBase : INotifyPropertyChanged
 {

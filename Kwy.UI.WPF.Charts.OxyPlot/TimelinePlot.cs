@@ -1,5 +1,5 @@
-using System.Windows.Media;
-using Kwy.UI.WPF.Charts.Abstractions;
+using Kwy.UI.Charts.Abstractions;
+using Kwy.UI.Primitives;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Legends;
@@ -212,7 +212,7 @@ public sealed class TimelinePlot : ChartBindableBase, IChartPlot, IDisposable, I
         }
     }
 
-    public void AddChannel(string key, string name, Color? color = null)
+    public void AddChannel(string key, string name, Rgba32? color = null)
     {
         if (channelMap.ContainsKey(key))
         {
@@ -261,7 +261,7 @@ public sealed class TimelinePlot : ChartBindableBase, IChartPlot, IDisposable, I
         isDirty = true;
     }
 
-    public double AddStep(string key, double startTime, double duration, string label = "", Color? color = null)
+    public double AddStep(string key, double startTime, double duration, string label = "", Rgba32? color = null)
     {
         if (!channelMap.TryGetValue(key, out var channel))
         {
@@ -297,7 +297,7 @@ public sealed class TimelinePlot : ChartBindableBase, IChartPlot, IDisposable, I
         return end;
     }
 
-    public double AddSequentialStep(string key, double durationMs, string label = "", Color? color = null)
+    public double AddSequentialStep(string key, double durationMs, string label = "", Rgba32? color = null)
     {
         return AddStep(key, globalLastEnd, durationMs, label, color);
     }

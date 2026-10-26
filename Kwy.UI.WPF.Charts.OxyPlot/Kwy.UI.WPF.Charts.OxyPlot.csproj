@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0-windows</TargetFrameworks>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -11,7 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Kwy.UI.WPF.Charts.Abstractions\Kwy.UI.WPF.Charts.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.UI.Charts.Abstractions\Kwy.UI.Charts.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF.Charts\Kwy.UI.WPF.Charts.csproj" />
   </ItemGroup>
 
 </Project>

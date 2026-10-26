@@ -1,6 +1,6 @@
-using System.Windows.Media;
+using Kwy.UI.Primitives;
 
-namespace Kwy.UI.WPF.Charts.Abstractions;
+namespace Kwy.UI.Charts.Abstractions;
 
 public class ChartOptions
 {
@@ -8,7 +8,7 @@ public class ChartOptions
 
     public string Subtitle { get; set; } = string.Empty;
 
-    public Color? Background { get; set; }
+    public Rgba32? Background { get; set; }
 }
 
 public sealed class WaveformChartOptions : ChartOptions

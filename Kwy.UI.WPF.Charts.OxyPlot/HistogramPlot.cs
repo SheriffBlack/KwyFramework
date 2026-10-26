@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
-using System.Windows.Media;
-using Kwy.UI.WPF.Charts.Abstractions;
+using Kwy.UI.Charts.Abstractions;
+using Kwy.UI.Primitives;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
@@ -188,7 +188,7 @@ public sealed class HistogramPlot : ChartBindableBase, IChartPlot, IDisposable, 
         }
     }
 
-    public void AddChannel(string name, Color? color = null)
+    public void AddChannel(string name, Rgba32? color = null)
     {
         if (channel is not null)
         {

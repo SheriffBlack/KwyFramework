@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
-using System.Windows.Media;
+using Kwy.UI.Primitives;
 using OxyPlot;
 using OxyPlot.Axes;
 
@@ -13,9 +13,9 @@ internal static class OxyChartHelpers
 
     public static readonly OxyColor KwyTargetColor = OxyColor.FromRgb(0x00, 0x80, 0x00);
 
-    public static OxyColor ToOxyColor(Color color)
+    public static OxyColor ToOxyColor(Rgba32 color)
     {
-        return OxyColor.FromArgb(color.A, color.R, color.G, color.B);
+        return OxyColor.FromArgb(color.Alpha, color.Red, color.Green, color.Blue);
     }
 
     public static PlotController CreateTrackOnlyController()
@@ -31,8 +31,13 @@ internal static class OxyChartHelpers
         WrapperMap.Remove(model);
         WrapperMap.Add(model, wrapper);
     }
-    public static string FormatAdaptiveAxisLabel(double value, Axis axis)
+    public static string FormatAdaptiveAxisLabel(double value, Axis? axis)
     {
+        if (axis is null)
+        {
+            return value.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
+        }
+
         double step = axis.ActualMajorStep;
         if (!double.IsFinite(step) || step <= 0)
         {

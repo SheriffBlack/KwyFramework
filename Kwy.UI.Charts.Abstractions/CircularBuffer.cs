@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Kwy.UI.WPF.Charts.Abstractions;
+namespace Kwy.UI.Charts.Abstractions;
 
 public sealed class CircularBuffer<T>
 {

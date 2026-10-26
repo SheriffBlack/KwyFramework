@@ -11,4 +11,9 @@
     <PackageReference Include="ScottPlot.WPF" Version="5.1.59" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.UI.Charts.Abstractions\Kwy.UI.Charts.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF.Charts\Kwy.UI.WPF.Charts.csproj" />
+  </ItemGroup>
+
 </Project>

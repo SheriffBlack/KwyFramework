@@ -1,6 +1,6 @@
-using System.Windows.Media;
+using Kwy.UI.Primitives;
 
-namespace Kwy.UI.WPF.Charts.Abstractions;
+namespace Kwy.UI.Charts.Abstractions;
 
 public sealed class PieSliceData
 {
@@ -10,7 +10,7 @@ public sealed class PieSliceData
 
     public double Value { get; set; }
 
-    public Color Color { get; set; }
+    public Rgba32 Color { get; set; }
 
     public bool IsExploded { get; set; }
 }

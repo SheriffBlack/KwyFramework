@@ -1,4 +1,4 @@
-namespace Kwy.UI.WPF.Charts.Abstractions;
+namespace Kwy.UI.Charts.Abstractions;
 
 public enum PlotOrientation
 {
