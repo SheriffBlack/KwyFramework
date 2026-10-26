@@ -20,7 +20,7 @@ Kwy.MVVM 不试图替代 CommunityToolkit.Mvvm，而是将它的基础构件组�
 - `BindableBase`：基于 `ObservableObject` 的属性通知基类。
 - `DelegateCommand`：同步命令实现，支持 `CanExecute` 和状态刷新。
 - `AsyncDelegateCommand`：异步命令实现，内置执行中状态和防重复执行。
-- `KwyContainer`：全局服务定位入口，用于非构造注入场景下获取 DI 服务。
+- `Container`：全局服务定位入口，用于非构造注入场景下获取 DI 服务。
 
 ### 2. 全局消息总线
 
@@ -261,7 +261,7 @@ public UserViewModel(IPermissionService permissionService)
 }
 ```
 
-也可以在已经配置好 `KwyContainer.Current` 的应用中省略服务参数：
+也可以在已经配置好 `Container.Current` 的应用中省略服务参数：
 
 ```csharp
 DeleteCommand = new DelegateCommand(Delete)

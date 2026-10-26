@@ -1,33 +1,23 @@
-# Kwy.UI.WPF integration notes
+# Kwy.UI.WPF 集成说明
 
-Kwy.UI.WPF is an application-neutral WPF control library.  Application code owns business rules, localisation, navigation, dependency-injection registrations, and theme selection; controls expose only visual state and interaction contracts.
+Kwy.UI.WPF 是一个与应用业务无关的 WPF 控件库。业务规则、本地化、导航、依赖注入注册和主题选择均由应用层负责；控件库只对外提供视觉状态和交互契约。
 
-## Density
+## 主题与状态
 
-The default density is `Normal`. Select a density after application resources are available:
+应加载一套 Kwy 主题（`Light` 或 `Dark`），并通过重写语义化资源键定制颜色，不要直接替换单个控件模板中的画刷。公共资源键包括 `KwyStateSuccessBrush`、`KwyStateWarningBrush`、`KwyStateErrorBrush`、`KwyStateAlarmBrush` 及其对应的 `Background` 资源键。这样可以保证报警和验证状态在各控件中具有一致的语义。
 
-```csharp
-KwyDensityManager.Apply(KwyDensity.Touch);
-```
+如果一个应用程序同时使用多个 UI 库，应在通用框架资源字典之后合并 Kwy 资源字典，并且只在应用程序资源字典中重写名称明确的 Kwy 资源键。避免在公共的应用程序资源字典中，为 WPF 基础控件类型定义隐式样式。
 
-`Compact`, `Normal`, and `Touch` change shared height and padding resource keys. Do not set a fixed height on every individual control when a density should apply across the screen. `Touch` is appropriate for gloved or touch-first workstations; `Compact` is intended for dense monitoring views.
+## DataGrid 性能
 
-## Themes and states
+内置的 DataGrid 样式已启用行、列虚拟化与容器回收。对于实时数据，应对 `ItemsSource` 进行增量更新，保持数据项标识稳定，并在高频更新进入 UI 线程前进行批处理或合并。应避免在仅一个单元格变化时替换整个行集合，也应避免无限制地自动生成列、为每个单元格创建定时器，或在转换器中执行 I/O 和反射操作。
 
-Load one Kwy theme (`Light` or `Dark`) and then override semantic keys, not individual template brushes. The shared keys are `KwyStateSuccessBrush`, `KwyStateWarningBrush`, `KwyStateErrorBrush`, `KwyStateAlarmBrush` and their `Background` counterparts. This keeps alarm and validation meaning consistent across controls.
+使用动态列时，列集合的生命周期应由当前界面或视图模型管理，并在 DataGrid 卸载时解除关联。验证结果应通过 `CellValidationState` 发布，不要依赖某个特定业务字段。`DataGridColumnsHelper` 会合并列集合的变更通知，但它无法消除单元格内部任意高开销操作所带来的性能成本。
 
-If several UI libraries are used in one application, merge Kwy dictionaries after broad framework dictionaries and override only explicitly named Kwy resource keys in the application dictionary. Avoid implicit styles targeting base WPF types in shared application dictionaries.
+## 高 DPI 与长时间运行界面
 
-## DataGrid performance
+应在 100%、125%、150% 和 200% 缩放比例下测试生产界面，并覆盖两种主题与三种密度。重点检查标题栏裁剪、键盘弹窗、验证装饰器、消息提示堆叠以及 DataGrid 水平滚动路径。对于无人值守界面，应限制同时显示的消息提示数量；除非必须由操作人员确认，否则应设置有限的显示时长。每个视图都必须在卸载或释放时注销外部订阅。
 
-The supplied DataGrid style enables row and column virtualization with recycling. Keep `ItemsSource` incremental where data is live, use stable item identity, and batch/coalesce high-frequency updates before they reach the UI thread. Avoid replacing an entire row collection for a single cell change, unbounded auto-generated columns, per-cell timers, and converters that perform I/O or reflection.
+## 无障碍支持
 
-For dynamic columns, keep the column collection owned by the screen/view-model lifetime, detach it when the grid unloads, and publish validation through `CellValidationState` rather than a business-specific field. `DataGridColumnsHelper` coalesces collection notifications; it does not make arbitrary per-cell work free.
-
-## High DPI and long-running screens
-
-Test production screens at 100%, 125%, 150%, and 200% scaling, in both themes and all three densities. Check clipped title bars, keyboard popups, validation adorners, toast stacking, and the horizontal DataGrid scroll path. For unattended screens, cap toast count, use a finite duration unless an operator must acknowledge it, and ensure every view unregisters external subscriptions on unload or disposal.
-
-## Accessibility
-
-`KwyWindow`, `KwyRadioButtonGroup`, `KwyToastHost`, and `KwyToast` expose UI Automation peers. Set `AutomationProperties.Name` when a domain-specific accessible name is necessary; the built-in English fallbacks are intentionally generic and contain no business terminology.
+`KwyWindow`、`KwyRadioButtonGroup`、`KwyToastHost` 和 `KwyToast` 已提供 UI Automation Peer。如果需要与业务领域相关的无障碍名称，请设置 `AutomationProperties.Name`。内置的英文后备名称刻意保持通用，不包含任何业务术语。
