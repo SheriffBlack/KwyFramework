@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Kwy.UI.WPF.ThreeD.OpenGL</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.UI.ThreeD.Abstractions\Kwy.UI.ThreeD.Abstractions.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF.ThreeD\Kwy.UI.WPF.ThreeD.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,23 @@
+﻿<Window x:Class="Kwy.UI.WPF.ThreeD.Demo.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Kwy.UI.WPF.ThreeD.Demo"
+        xmlns:kwyThreeD="http://schemas.kwy.com/ui/threed"
+        xmlns:helix="clr-namespace:Kwy.UI.WPF.ThreeD.HelixToolkit.Rendering;assembly=Kwy.UI.WPF.ThreeD.HelixToolkit"
+        mc:Ignorable="d"
+        Title="Kwy 3D Facade Demo" Height="650" Width="1000">
+    <Window.DataContext>
+        <local:MainWindowViewModel />
+    </Window.DataContext>
+    <Window.Resources>
+        <helix:HelixThreeDBackend x:Key="ThreeDBackend" />
+    </Window.Resources>
+    <Grid>
+        <kwyThreeD:KwyThreeDViewport
+            Backend="{StaticResource ThreeDBackend}"
+            Camera="{Binding Camera, Mode=TwoWay}"
+            SceneSource="{Binding Scene}" />
+    </Grid>
+</Window>
