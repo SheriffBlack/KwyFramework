@@ -33,7 +33,7 @@ public static class DependencyExtensions
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"[KwyContainer] 无法解析类型 '{type.Name}'。请检查其构造函数中的依赖项是否已全部注册。\n错误详情: {ex.Message}", ex);
+            throw new InvalidOperationException($"[Container] 无法解析类型 '{type.Name}'。请检查其构造函数中的依赖项是否已全部注册。\n错误详情: {ex.Message}", ex);
         }
     }
 }

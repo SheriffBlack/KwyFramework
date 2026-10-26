@@ -156,7 +156,6 @@ public sealed class DialogService : IDialogService
         private readonly Action<IDialogResult>? completed;
         private readonly Action<Exception>? failed;
         private readonly bool isModal;
-        private IDisposable? ownerModalLease;
         private bool hasBeenShown;
         private bool isCloseRequested;
         private bool isCompleted;
@@ -190,18 +189,20 @@ public sealed class DialogService : IDialogService
                     return;
                 }
 
+                hasBeenShown = true;
                 if (isModal)
                 {
-                    ownerModalLease = DialogOwnerModalCoordinator.Acquire(window.Owner, window);
+                    using var focusGuard = DialogOwnerFocusGuard.Attach(window);
+                    _ = window.ShowDialog();
                 }
-
-                hasBeenShown = true;
-                window.Show();
-
-                if (!isCompleted && window.IsVisible)
+                else
                 {
-                    window.Activate();
-                    window.Focus();
+                    window.Show();
+                    if (!isCompleted && window.IsVisible)
+                    {
+                        window.Activate();
+                        window.Focus();
+                    }
                 }
             }
             catch (Exception exception)
@@ -269,8 +270,6 @@ public sealed class DialogService : IDialogService
             }
 
             isCompleted = true;
-            ownerModalLease?.Dispose();
-            ownerModalLease = null;
             DetachHandlers();
             try
             {
@@ -291,8 +290,6 @@ public sealed class DialogService : IDialogService
             }
 
             isCompleted = true;
-            ownerModalLease?.Dispose();
-            ownerModalLease = null;
             DetachHandlers();
             try
             {
