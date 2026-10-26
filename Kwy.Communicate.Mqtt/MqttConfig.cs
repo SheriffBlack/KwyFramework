@@ -143,29 +143,6 @@ public sealed class MqttConfig : IProtocolConfig
         return true;
     }
 
-    internal MqttConfig Snapshot()
-        => new()
-        {
-            Host = Host,
-            Port = Port,
-            ClientId = ClientId,
-            Username = Username,
-            Password = Password,
-            UseTls = UseTls,
-            SubscribeTopics = SubscribeTopics.ToArray(),
-            PublishTopic = PublishTopic,
-            KeepAlivePeriod = KeepAlivePeriod,
-            CleanSession = CleanSession,
-            Timeout = Timeout,
-            AutoReconnect = AutoReconnect,
-            MaxReconnectAttempts = MaxReconnectAttempts,
-            ReconnectInterval = ReconnectInterval,
-            QualityOfServiceLevel = QualityOfServiceLevel,
-            DangerousAcceptAnyServerCertificate = DangerousAcceptAnyServerCertificate,
-            MessageBufferCapacity = MessageBufferCapacity,
-            MessageOverflowStrategy = MessageOverflowStrategy
-        };
-
     internal static bool IsValidPublishTopic(string? topic)
         => !string.IsNullOrWhiteSpace(topic)
             && !topic.Contains('\0')

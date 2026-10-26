@@ -115,24 +115,4 @@ public sealed class MdbConfig : IProtocolConfig
         };
     }
 
-    internal MdbConfig Snapshot()
-        => new()
-        {
-            Transport = Transport,
-            UnitIdentifier = UnitIdentifier,
-            ByteOrder = ByteOrder,
-            Host = Host,
-            Port = Port,
-            SerialPort = SerialPort,
-            BaudRate = BaudRate,
-            Parity = Parity,
-            StopBits = StopBits,
-            Handshake = Handshake,
-            Timeout = Timeout,
-            ReadTimeout = ReadTimeout,
-            WriteTimeout = WriteTimeout,
-            AutoReconnect = AutoReconnect,
-            MaxReconnectAttempts = MaxReconnectAttempts,
-            ReconnectInterval = ReconnectInterval
-        };
 }

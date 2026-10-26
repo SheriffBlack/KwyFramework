@@ -27,16 +27,14 @@ public sealed class OpcUaCommunication : ProtocolClientBase, IMessageClient<OpcU
 
     /// <summary>初始化使用指定 Session Factory 的客户端，主要用于高级配置和测试。</summary>
     public OpcUaCommunication(OpcUaConfig config, ISessionFactory sessionFactory)
-        : this(CreateSnapshot(config), sessionFactory, true) { }
-
-    private OpcUaCommunication(OpcUaConfig snapshot, ISessionFactory sessionFactory, bool _) : base(snapshot)
+        : base(CloneAndValidateConfig(config))
     {
-        opcUaConfig = snapshot;
+        opcUaConfig = (OpcUaConfig)this.config;
         this.sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
-        subscriptionNodeIds = new HashSet<string>(snapshot.SubscribeNodes, StringComparer.Ordinal);
-        var options = new BoundedChannelOptions(snapshot.MessageBufferCapacity)
+        subscriptionNodeIds = new HashSet<string>(opcUaConfig.SubscribeNodes, StringComparer.Ordinal);
+        var options = new BoundedChannelOptions(opcUaConfig.MessageBufferCapacity)
         {
-            FullMode = ToChannelMode(snapshot.MessageOverflowStrategy),
+            FullMode = ToChannelMode(opcUaConfig.MessageOverflowStrategy),
             SingleReader = false,
             SingleWriter = false
         };
@@ -375,11 +373,42 @@ public sealed class OpcUaCommunication : ProtocolClientBase, IMessageClient<OpcU
             sessionSemaphore.Dispose();
     }
 
-    private static OpcUaConfig CreateSnapshot(OpcUaConfig config)
+    private static OpcUaConfig CloneAndValidateConfig(OpcUaConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        if (!config.Validate()) throw new ArgumentException("OPC UA 配置无效。", nameof(config));
-        return config.Snapshot();
+        if (!config.Validate())
+            throw new ArgumentException("OPC UA 配置无效。", nameof(config));
+
+        var clone = new OpcUaConfig
+        {
+            EndpointUrl = config.EndpointUrl.Trim(),
+            SecurityPolicy = OpcUaConfig.ResolveSecurityPolicyUri(config.SecurityPolicy),
+            SecurityMode = config.SecurityMode,
+            Username = config.Username,
+            Password = config.Password,
+            UseAnonymousIdentity = config.UseAnonymousIdentity,
+            SessionTimeout = config.SessionTimeout,
+            Timeout = config.Timeout,
+            AutoReconnect = config.AutoReconnect,
+            MaxReconnectAttempts = config.MaxReconnectAttempts,
+            ReconnectInterval = config.ReconnectInterval,
+            ApplicationName = config.ApplicationName.Trim(),
+            PkiRootPath = Path.GetFullPath(config.PkiRootPath),
+            PublishingInterval = config.PublishingInterval,
+            AutoAcceptUntrustedCertificates = config.AutoAcceptUntrustedCertificates,
+            SubscribeNodes = config.SubscribeNodes
+                .Where(static node => !string.IsNullOrWhiteSpace(node))
+                .Select(static node => node.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToList(),
+            MessageBufferCapacity = config.MessageBufferCapacity,
+            MessageOverflowStrategy = config.MessageOverflowStrategy
+        };
+
+        if (!clone.Validate())
+            throw new ArgumentException("OPC UA 配置无效。", nameof(config));
+
+        return clone;
     }
 
     private static BoundedChannelFullMode ToChannelMode(OpcUaMessageOverflowStrategy strategy)

@@ -5,14 +5,14 @@ using System.IO.Ports;
 namespace Kwy.Communicate.TcpSerial;
 
 /// <summary>
-/// Active-read serial port byte transport.
+/// 支持主动读取的串口字节流客户端。
 /// </summary>
 public sealed class SerialPortCommunication : ByteStreamClientBase
 {
     private readonly SerialPortConfig serialConfig;
     private SerialPort? serialPort;
 
-    public SerialPortCommunication(SerialPortConfig config) : base(CloneConfig(config))
+    public SerialPortCommunication(SerialPortConfig config) : base(CloneAndValidateConfig(config))
     {
         serialConfig = (SerialPortConfig)this.config;
     }
@@ -63,8 +63,8 @@ public sealed class SerialPortCommunication : ByteStreamClientBase
             port.ErrorReceived -= SerialPort_ErrorReceived;
             try
             {
-                // Directly disposing the SerialPort closes the port and releases resources.
-                // This is safer than calling Close() which can hang on faulty or unplugged USB-serial drivers.
+                // 直接释放 SerialPort 会关闭串口并释放相关资源。
+                // 故障或已拔出的 USB 转串口驱动可能使 Close() 阻塞，因此直接释放更安全。
                 port.Dispose();
             }
             catch
@@ -122,10 +122,13 @@ public sealed class SerialPortCommunication : ByteStreamClientBase
         return timeout;
     }
 
-    private static SerialPortConfig CloneConfig(SerialPortConfig config)
+    private static SerialPortConfig CloneAndValidateConfig(SerialPortConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        return new SerialPortConfig
+        if (!config.Validate())
+            throw new ArgumentException("Serial-port configuration is invalid.", nameof(config));
+
+        var clone = new SerialPortConfig
         {
             Port = config.Port,
             BaudRate = config.BaudRate,
@@ -142,5 +145,10 @@ public sealed class SerialPortCommunication : ByteStreamClientBase
             MaxReconnectAttempts = config.MaxReconnectAttempts,
             ReconnectInterval = config.ReconnectInterval
         };
+
+        if (!clone.Validate())
+            throw new ArgumentException("Serial-port configuration is invalid.", nameof(config));
+
+        return clone;
     }
 }

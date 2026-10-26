@@ -5,7 +5,7 @@ using Kwy.Communicate.TcpSerial.Configs;
 namespace Kwy.Communicate.TcpSerial;
 
 /// <summary>
-/// HTTP/HTTPS request-response client.
+/// HTTP/HTTPS 请求响应客户端。
 /// </summary>
 public sealed class HttpCommunication : ProtocolClientBase, IRequestClient<HttpRequestMessage, HttpResponseMessage>
 {
@@ -13,7 +13,7 @@ public sealed class HttpCommunication : ProtocolClientBase, IRequestClient<HttpR
     private readonly IHttpMessageHandlerFactory handlerFactory;
     private HttpClient? httpClient;
 
-    public HttpCommunication(HttpConfig config, IHttpMessageHandlerFactory? handlerFactory = null) : base(CloneConfig(config))
+    public HttpCommunication(HttpConfig config, IHttpMessageHandlerFactory? handlerFactory = null) : base(CloneAndValidateConfig(config))
     {
         httpConfig = (HttpConfig)this.config;
         this.handlerFactory = handlerFactory ?? new DefaultHttpMessageHandlerFactory();
@@ -44,7 +44,7 @@ public sealed class HttpCommunication : ProtocolClientBase, IRequestClient<HttpR
     protected override bool IsConnectionAlive() => httpClient != null;
 
     /// <summary>
-    /// Creates a request from the configured URL and method. The caller owns the returned request.
+    /// 根据已配置的 URL 和 HTTP 方法创建请求，返回的请求由调用方负责释放。
     /// </summary>
     public HttpRequestMessage CreateRequest(HttpContent? content = null)
         => new(httpConfig.Method, httpConfig.Url) { Content = content };
@@ -67,10 +67,13 @@ public sealed class HttpCommunication : ProtocolClientBase, IRequestClient<HttpR
         }
     }
 
-    private static HttpConfig CloneConfig(HttpConfig config)
+    private static HttpConfig CloneAndValidateConfig(HttpConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        return new HttpConfig
+        if (!config.Validate())
+            throw new ArgumentException("HTTP configuration is invalid.", nameof(config));
+
+        var clone = new HttpConfig
         {
             Url = config.Url,
             Method = config.Method,
@@ -81,5 +84,10 @@ public sealed class HttpCommunication : ProtocolClientBase, IRequestClient<HttpR
             MaxReconnectAttempts = config.MaxReconnectAttempts,
             ReconnectInterval = config.ReconnectInterval
         };
+
+        if (!clone.Validate())
+            throw new ArgumentException("HTTP configuration is invalid.", nameof(config));
+
+        return clone;
     }
 }

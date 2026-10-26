@@ -53,6 +53,7 @@ public sealed class OpcUaConfig : IProtocolConfig
             || MaxReconnectAttempts < 0 || ReconnectInterval < 0
             || PublishingInterval <= 0 || MessageBufferCapacity <= 0
             || string.IsNullOrWhiteSpace(ApplicationName) || string.IsNullOrWhiteSpace(PkiRootPath)
+            || SubscribeNodes is null
             || (!UseAnonymousIdentity && string.IsNullOrWhiteSpace(Username)))
             return false;
 
@@ -61,21 +62,6 @@ public sealed class OpcUaConfig : IProtocolConfig
         return !string.IsNullOrEmpty(policyUri)
             && noSecurity == string.Equals(policyUri, SecurityPolicies.None, StringComparison.Ordinal);
     }
-
-    internal OpcUaConfig Snapshot()
-        => new()
-        {
-            EndpointUrl = EndpointUrl.Trim(), SecurityPolicy = ResolveSecurityPolicyUri(SecurityPolicy),
-            SecurityMode = SecurityMode, Username = Username, Password = Password,
-            UseAnonymousIdentity = UseAnonymousIdentity, SessionTimeout = SessionTimeout, Timeout = Timeout,
-            AutoReconnect = AutoReconnect, MaxReconnectAttempts = MaxReconnectAttempts,
-            ReconnectInterval = ReconnectInterval, ApplicationName = ApplicationName.Trim(),
-            PkiRootPath = Path.GetFullPath(PkiRootPath), PublishingInterval = PublishingInterval,
-            AutoAcceptUntrustedCertificates = AutoAcceptUntrustedCertificates,
-            SubscribeNodes = SubscribeNodes.Where(static node => !string.IsNullOrWhiteSpace(node))
-                .Select(static node => node.Trim()).Distinct(StringComparer.Ordinal).ToList(),
-            MessageBufferCapacity = MessageBufferCapacity, MessageOverflowStrategy = MessageOverflowStrategy
-        };
 
     internal static string ResolveSecurityPolicyUri(string policy)
     {

@@ -64,6 +64,9 @@ public class HttpConfig : IProtocolConfig
         if (Method == null)
             return false;
 
+        if (Headers == null)
+            return false;
+
         if (Timeout <= 0)
             return false;
 

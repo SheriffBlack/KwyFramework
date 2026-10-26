@@ -29,12 +29,10 @@ public sealed class FMdbCommunication : ProtocolClientBase, ICommunicationFMdb
     /// <summary>
     /// Initializes a new instance of the <see cref="FMdbCommunication"/> class.
     /// </summary>
-    public FMdbCommunication(MdbConfig config) : this(new ConfigSnapshot(CreateSnapshot(config)))
+    public FMdbCommunication(MdbConfig config) : base(CloneAndValidateConfig(config))
     {
+        modbusConfig = (MdbConfig)this.config;
     }
-
-    private FMdbCommunication(ConfigSnapshot snapshot) : base(snapshot.Value)
-        => modbusConfig = snapshot.Value;
 
     /// <inheritdoc />
     protected override async Task ConnectCoreAsync(CancellationToken cancellationToken)
@@ -480,13 +478,35 @@ public sealed class FMdbCommunication : ProtocolClientBase, ICommunicationFMdb
             requestSemaphore.Dispose();
     }
 
-    private static MdbConfig CreateSnapshot(MdbConfig config)
+    private static MdbConfig CloneAndValidateConfig(MdbConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
         if (!config.Validate())
             throw new ArgumentException("FluentModbus configuration is invalid.", nameof(config));
-        return config.Snapshot();
-    }
 
-    private sealed record ConfigSnapshot(MdbConfig Value);
+        var clone = new MdbConfig
+        {
+            Transport = config.Transport,
+            UnitIdentifier = config.UnitIdentifier,
+            ByteOrder = config.ByteOrder,
+            Host = config.Host,
+            Port = config.Port,
+            SerialPort = config.SerialPort,
+            BaudRate = config.BaudRate,
+            Parity = config.Parity,
+            StopBits = config.StopBits,
+            Handshake = config.Handshake,
+            Timeout = config.Timeout,
+            ReadTimeout = config.ReadTimeout,
+            WriteTimeout = config.WriteTimeout,
+            AutoReconnect = config.AutoReconnect,
+            MaxReconnectAttempts = config.MaxReconnectAttempts,
+            ReconnectInterval = config.ReconnectInterval
+        };
+
+        if (!clone.Validate())
+            throw new ArgumentException("FluentModbus configuration is invalid.", nameof(config));
+
+        return clone;
+    }
 }

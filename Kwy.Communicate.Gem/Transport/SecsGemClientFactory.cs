@@ -22,15 +22,15 @@ public static class SecsGemClientFactory
         GemDiagnosticsOptions? diagnosticsOptions = null)
     {
         ArgumentNullException.ThrowIfNull(config);
-        Validate(config);
+        SecsGemClientConfig clientConfig = SecsGemClient.CloneAndValidateConfig(config);
 
-        var options = Options.Create(CreateOptions(config));
+        var options = Options.Create(CreateOptions(clientConfig));
         diagnostics ??= new TraceGemDiagnostics();
         diagnosticsOptions ??= new GemDiagnosticsOptions();
         diagnosticsOptions.Validate();
         var logger = new SecsGemLoggerAdapter(diagnostics, diagnosticsOptions);
 
-        return CreateClient(config, options, logger);
+        return CreateClient(clientConfig, options, logger);
     }
 
     /// <summary>
@@ -42,9 +42,9 @@ public static class SecsGemClientFactory
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(logger);
-        Validate(config);
+        SecsGemClientConfig clientConfig = SecsGemClient.CloneAndValidateConfig(config);
 
-        return CreateClient(config, Options.Create(CreateOptions(config)), logger);
+        return CreateClient(clientConfig, Options.Create(CreateOptions(clientConfig)), logger);
     }
 
     private static ISecsGemClient CreateClient(
@@ -81,11 +81,4 @@ public static class SecsGemClientFactory
         };
     }
 
-    internal static void Validate(SecsGemClientConfig config)
-    {
-        if (!config.Validate())
-        {
-            throw new ArgumentException("SECS/HSMS 配置无效。", nameof(config));
-        }
-    }
 }

@@ -20,7 +20,7 @@ public sealed class MqttCommunicationTests
     }
 
     [Fact]
-    public void Constructor_TakesConfigurationAndSubscriptionSnapshot()
+    public void Constructor_TakesDefensiveConfigurationAndSubscriptionCopy()
     {
         var config = CreateValidConfig();
         config.SubscribeTopics = new[] { "factory/status" };

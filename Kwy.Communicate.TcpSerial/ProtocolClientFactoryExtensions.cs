@@ -6,21 +6,21 @@ namespace Kwy.Communicate.TcpSerial;
 
 public static class ProtocolClientFactoryExtensions
 {
-    /// <summary>Registers only the TCP client creator.</summary>
+    /// <summary>仅注册 TCP 客户端创建器。</summary>
     public static ProtocolClientFactoryBuilder RegisterTcp(this ProtocolClientFactoryBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
         return builder.RegisterCreator<TcpConfig>(config => new TcpCommunication(config));
     }
 
-    /// <summary>Registers only the serial-port client creator.</summary>
+    /// <summary>仅注册串口客户端创建器。</summary>
     public static ProtocolClientFactoryBuilder RegisterSerialPort(this ProtocolClientFactoryBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
         return builder.RegisterCreator<SerialPortConfig>(config => new SerialPortCommunication(config));
     }
 
-    /// <summary>Registers only the HTTP client creator.</summary>
+    /// <summary>仅注册 HTTP 客户端创建器。</summary>
     public static ProtocolClientFactoryBuilder RegisterHttp(
         this ProtocolClientFactoryBuilder builder,
         IHttpMessageHandlerFactory? httpMessageHandlerFactory = null)
@@ -30,8 +30,8 @@ public static class ProtocolClientFactoryExtensions
     }
 
     /// <summary>
-    /// Registers TCP, serial-port, and HTTP creators as a convenience for hosts that need the whole package.
-    /// Prefer the individual registration methods when only part of the package is used.
+    /// 一次性注册 TCP、串口和 HTTP 客户端创建器，便于需要完整功能的宿主使用。
+    /// 如果仅使用部分功能，建议调用对应的单项注册方法。
     /// </summary>
     public static ProtocolClientFactoryBuilder RegisterTcpSerialClients(
         this ProtocolClientFactoryBuilder builder,

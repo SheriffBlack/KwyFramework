@@ -18,9 +18,9 @@ public sealed class GrpcCommunication : ProtocolClientBase
     private GrpcChannel? channel;
 
     public GrpcCommunication(GrpcConfig config)
-        : base(config)
+        : base(CloneAndValidateConfig(config))
     {
-        grpcConfig = config ?? throw new ArgumentNullException(nameof(config));
+        grpcConfig = (GrpcConfig)this.config;
     }
 
     /// <summary>
@@ -145,5 +145,29 @@ public sealed class GrpcCommunication : ProtocolClientBase
         {
             HttpHandler = handler
         });
+    }
+
+    private static GrpcConfig CloneAndValidateConfig(GrpcConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        if (!config.Validate())
+            throw new ArgumentException("gRPC 配置无效。", nameof(config));
+
+        var clone = new GrpcConfig
+        {
+            Transport = config.Transport,
+            Endpoint = config.Endpoint,
+            Timeout = config.Timeout,
+            AutoReconnect = config.AutoReconnect,
+            MaxReconnectAttempts = config.MaxReconnectAttempts,
+            ReconnectInterval = config.ReconnectInterval,
+            KeepAlive = config.KeepAlive,
+            KeepAliveInterval = config.KeepAliveInterval
+        };
+
+        if (!clone.Validate())
+            throw new ArgumentException("gRPC 配置无效。", nameof(config));
+
+        return clone;
     }
 }

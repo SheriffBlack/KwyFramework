@@ -2,13 +2,13 @@ using Kwy.Communicate.TcpSerial.Configs;
 
 namespace Kwy.Communicate.TcpSerial;
 
-/// <summary>Creates the HTTP transport handler used by an HTTP communication client.</summary>
+/// <summary>创建 HTTP 客户端使用的传输处理器。</summary>
 public interface IHttpMessageHandlerFactory
 {
     HttpMessageHandler CreateHandler(HttpConfig config);
 }
 
-/// <summary>Default standalone handler factory used outside dependency-injection hosts.</summary>
+/// <summary>在不使用依赖注入宿主时提供的默认独立处理器工厂。</summary>
 public sealed class DefaultHttpMessageHandlerFactory : IHttpMessageHandlerFactory
 {
     public HttpMessageHandler CreateHandler(HttpConfig config)
@@ -17,7 +17,7 @@ public sealed class DefaultHttpMessageHandlerFactory : IHttpMessageHandlerFactor
         var handler = new HttpClientHandler();
         if (!config.ValidateCertificate)
         {
-            // Explicit opt-out for isolated test/industrial networks. Never use with untrusted endpoints.
+            // 仅允许在隔离的测试或工业网络中显式关闭证书验证，不得对不可信端点使用此配置。
             handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
         }
 

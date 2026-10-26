@@ -13,11 +13,9 @@ public class VisaCommunication : ByteStreamClientBase, ITextCommandClient
     private readonly SemaphoreSlim ioSemaphore = new(1, 1);
     private IMessageBasedSession? session;
 
-    /// <summary>使用经过验证的配置快照初始化通信客户端。</summary>
-    public VisaCommunication(VisaConfig config) : this(new ConfigSnapshot(CreateSnapshot(config))) { }
-
-    private VisaCommunication(ConfigSnapshot snapshot) : base(snapshot.Value)
-        => visaConfig = snapshot.Value;
+    /// <summary>使用经过复制和验证的配置初始化通信客户端。</summary>
+    public VisaCommunication(VisaConfig config) : base(CloneAndValidateConfig(config))
+        => visaConfig = (VisaConfig)this.config;
 
     /// <inheritdoc />
     protected override async Task ConnectInternalAsync(CancellationToken cancellationToken)
@@ -239,13 +237,32 @@ public class VisaCommunication : ByteStreamClientBase, ITextCommandClient
             ioSemaphore.Dispose();
     }
 
-    private static VisaConfig CreateSnapshot(VisaConfig config)
+    private static VisaConfig CloneAndValidateConfig(VisaConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
         if (!config.Validate())
             throw new ArgumentException("NI-VISA configuration is invalid.", nameof(config));
-        return config.Snapshot();
-    }
 
-    private sealed record ConfigSnapshot(VisaConfig Value);
+        var clone = new VisaConfig
+        {
+            ResourceName = config.ResourceName.Trim(),
+            Timeout = config.Timeout,
+            AutoReconnect = config.AutoReconnect,
+            MaxReconnectAttempts = config.MaxReconnectAttempts,
+            ReconnectInterval = config.ReconnectInterval,
+            KeepAlive = config.KeepAlive,
+            KeepAliveInterval = config.KeepAliveInterval,
+            KeepAliveCommand = config.KeepAliveCommand,
+            WriteTerminator = config.WriteTerminator,
+            ReadTerminationEnabled = config.ReadTerminationEnabled,
+            ReadTerminationCharacter = config.ReadTerminationCharacter,
+            SendEndEnabled = config.SendEndEnabled,
+            QueryBufferSize = config.QueryBufferSize
+        };
+
+        if (!clone.Validate())
+            throw new ArgumentException("NI-VISA configuration is invalid.", nameof(config));
+
+        return clone;
+    }
 }

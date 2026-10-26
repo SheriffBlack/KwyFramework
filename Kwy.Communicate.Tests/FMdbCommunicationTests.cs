@@ -34,7 +34,7 @@ public sealed class FMdbCommunicationTests
     }
 
     [Fact]
-    public async Task Constructor_TakesConfigurationSnapshot()
+    public async Task Constructor_TakesDefensiveConfigurationCopy()
     {
         var config = new MdbConfig
         {

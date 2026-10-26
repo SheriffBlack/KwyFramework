@@ -26,12 +26,10 @@ public sealed class MqttCommunication : ProtocolClientBase, IMqttCommunication
     /// <inheritdoc />
     public long DroppedMessageCount => Interlocked.Read(ref droppedMessageCount);
 
-    /// <summary>根据已验证的配置快照初始化 MQTT 客户端。</summary>
-    public MqttCommunication(MqttConfig config) : this(new ConfigSnapshot(CreateSnapshot(config))) { }
-
-    private MqttCommunication(ConfigSnapshot snapshot) : base(snapshot.Value)
+    /// <summary>根据经过复制和验证的配置初始化 MQTT 客户端。</summary>
+    public MqttCommunication(MqttConfig config) : base(CloneAndValidateConfig(config))
     {
-        mqttConfig = snapshot.Value;
+        mqttConfig = (MqttConfig)this.config;
         subscribedTopics = new HashSet<string>(mqttConfig.SubscribeTopics, StringComparer.Ordinal);
         messages = Channel.CreateBounded<MqttMessage>(new BoundedChannelOptions(mqttConfig.MessageBufferCapacity)
         {
@@ -396,13 +394,37 @@ public sealed class MqttCommunication : ProtocolClientBase, IMqttCommunication
             operationSemaphore.Dispose();
     }
 
-    private static MqttConfig CreateSnapshot(MqttConfig config)
+    private static MqttConfig CloneAndValidateConfig(MqttConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
         if (!config.Validate())
             throw new ArgumentException("MQTT 配置无效。", nameof(config));
-        return config.Snapshot();
-    }
 
-    private sealed record ConfigSnapshot(MqttConfig Value);
+        var clone = new MqttConfig
+        {
+            Host = config.Host,
+            Port = config.Port,
+            ClientId = config.ClientId,
+            Username = config.Username,
+            Password = config.Password,
+            UseTls = config.UseTls,
+            SubscribeTopics = config.SubscribeTopics?.ToArray() ?? Array.Empty<string>(),
+            PublishTopic = config.PublishTopic,
+            KeepAlivePeriod = config.KeepAlivePeriod,
+            CleanSession = config.CleanSession,
+            Timeout = config.Timeout,
+            AutoReconnect = config.AutoReconnect,
+            MaxReconnectAttempts = config.MaxReconnectAttempts,
+            ReconnectInterval = config.ReconnectInterval,
+            QualityOfServiceLevel = config.QualityOfServiceLevel,
+            DangerousAcceptAnyServerCertificate = config.DangerousAcceptAnyServerCertificate,
+            MessageBufferCapacity = config.MessageBufferCapacity,
+            MessageOverflowStrategy = config.MessageOverflowStrategy
+        };
+
+        if (!clone.Validate())
+            throw new ArgumentException("MQTT 配置无效。", nameof(config));
+
+        return clone;
+    }
 }

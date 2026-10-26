@@ -54,21 +54,4 @@ public class VisaConfig : IProtocolConfig, IKeepAliveConfig
             && (!KeepAlive || KeepAliveInterval > 0)
             && QueryBufferSize > 0;
 
-    internal VisaConfig Snapshot()
-        => new()
-        {
-            ResourceName = ResourceName.Trim(),
-            Timeout = Timeout,
-            AutoReconnect = AutoReconnect,
-            MaxReconnectAttempts = MaxReconnectAttempts,
-            ReconnectInterval = ReconnectInterval,
-            KeepAlive = KeepAlive,
-            KeepAliveInterval = KeepAliveInterval,
-            KeepAliveCommand = KeepAliveCommand,
-            WriteTerminator = WriteTerminator,
-            ReadTerminationEnabled = ReadTerminationEnabled,
-            ReadTerminationCharacter = ReadTerminationCharacter,
-            SendEndEnabled = SendEndEnabled,
-            QueryBufferSize = QueryBufferSize
-        };
 }

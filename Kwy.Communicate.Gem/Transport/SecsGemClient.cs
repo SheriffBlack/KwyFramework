@@ -15,7 +15,11 @@ public sealed class SecsGemClient : ProtocolClientBase, ISecsGemClient
         ISecsGem secsGem,
         ISecsConnection hsmsConnection,
         SecsGemClientConfig config)
-        : this(secsGem, hsmsConnection, config, ownsSecs4NetDependencies: false)
+        : this(
+            secsGem,
+            hsmsConnection,
+            CloneAndValidateConfig(config),
+            ownsSecs4NetDependencies: false)
     {
     }
 
@@ -30,6 +34,37 @@ public sealed class SecsGemClient : ProtocolClientBase, ISecsGemClient
         this.hsmsConnection = hsmsConnection ?? throw new ArgumentNullException(nameof(hsmsConnection));
         secsConfig = config ?? throw new ArgumentNullException(nameof(config));
         this.ownsSecs4NetDependencies = ownsSecs4NetDependencies;
+    }
+
+    internal static SecsGemClientConfig CloneAndValidateConfig(SecsGemClientConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        if (!config.Validate())
+            throw new ArgumentException("SECS/HSMS 配置无效。", nameof(config));
+
+        var clone = new SecsGemClientConfig
+        {
+            Host = config.Host,
+            Port = config.Port,
+            IsActive = config.IsActive,
+            DeviceId = config.DeviceId,
+            Timeout = config.Timeout,
+            T3Timeout = config.T3Timeout,
+            T5Timeout = config.T5Timeout,
+            T6Timeout = config.T6Timeout,
+            T7Timeout = config.T7Timeout,
+            T8Timeout = config.T8Timeout,
+            AutoReconnect = config.AutoReconnect,
+            MaxReconnectAttempts = config.MaxReconnectAttempts,
+            ReconnectInterval = config.ReconnectInterval,
+            KeepAlive = config.KeepAlive,
+            KeepAliveInterval = config.KeepAliveInterval
+        };
+
+        if (!clone.Validate())
+            throw new ArgumentException("SECS/HSMS 配置无效。", nameof(config));
+
+        return clone;
     }
 
     public ConnectionState HsmsState => hsmsConnection.State;

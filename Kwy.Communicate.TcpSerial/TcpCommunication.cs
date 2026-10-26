@@ -5,7 +5,7 @@ using System.Net.Sockets;
 namespace Kwy.Communicate.TcpSerial;
 
 /// <summary>
-/// Active-read TCP byte transport.
+/// 支持主动读取的 TCP 字节流客户端。
 /// </summary>
 public sealed class TcpCommunication : ByteStreamClientBase
 {
@@ -13,7 +13,7 @@ public sealed class TcpCommunication : ByteStreamClientBase
     private TcpClient? tcpClient;
     private NetworkStream? stream;
 
-    public TcpCommunication(TcpConfig config) : base(CloneConfig(config))
+    public TcpCommunication(TcpConfig config) : base(CloneAndValidateConfig(config))
     {
         tcpConfig = (TcpConfig)this.config;
     }
@@ -99,10 +99,13 @@ public sealed class TcpCommunication : ByteStreamClientBase
         return timeout;
     }
 
-    private static TcpConfig CloneConfig(TcpConfig config)
+    private static TcpConfig CloneAndValidateConfig(TcpConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
-        return new TcpConfig
+        if (!config.Validate())
+            throw new ArgumentException("TCP configuration is invalid.", nameof(config));
+
+        var clone = new TcpConfig
         {
             Host = config.Host,
             Port = config.Port,
@@ -117,5 +120,10 @@ public sealed class TcpCommunication : ByteStreamClientBase
             MaxReconnectAttempts = config.MaxReconnectAttempts,
             ReconnectInterval = config.ReconnectInterval
         };
+
+        if (!clone.Validate())
+            throw new ArgumentException("TCP configuration is invalid.", nameof(config));
+
+        return clone;
     }
 }
