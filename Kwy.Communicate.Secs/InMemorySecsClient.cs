@@ -34,6 +34,26 @@ public sealed class InMemorySecsClient : ISecsClient
         return Task.CompletedTask;
     }
 
+    public async Task<bool> TryConnectAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await ConnectAsync(cancellationToken).ConfigureAwait(false);
+            return IsConnected;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            SessionState = HsmsSessionState.NotConnected;
+            SetState(ConnectionState.Error);
+            ErrorOccurred?.Invoke(this, new ErrorOccurredEventArgs(exception, exception.Message));
+            return false;
+        }
+    }
+
     public Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

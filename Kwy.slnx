@@ -97,15 +97,18 @@
   <Project Path="Kwy.MVVM.WPF/Kwy.MVVM.WPF.csproj" />
   <Project Path="Kwy.MVVM/Kwy.MVVM.csproj" />
   <Project Path="Kwy.SpiderEngine/Kwy.SpiderEngine.csproj" />
-  <Project Path="Kwy.UI.WPF.3D.Abstractions/Kwy.UI.WPF.3D.Abstractions.csproj" Id="0c263906-1ab5-46c9-a143-0abcc0675277" />
-  <Project Path="Kwy.UI.WPF.3D.HelixToolkit/Kwy.UI.WPF.3D.HelixToolkit.csproj" Id="85862fee-846c-4f7a-b0d7-faf04cd47a74" />
-  <Project Path="Kwy.UI.WPF.3D.OpenGL/Kwy.UI.WPF.3D.OpenGL.csproj" Id="7cc0cbb0-aac1-4415-b50f-3b2db19ffff7" />
-  <Project Path="Kwy.UI.WPF.Charts.Abstractions/Kwy.UI.WPF.Charts.Abstractions.csproj" Id="9d310296-bd86-470a-a852-b54200bbe798" />
+  <Project Path="Kwy.UI.Charts.Abstractions/Kwy.UI.Charts.Abstractions.csproj" />
+  <Project Path="Kwy.UI.ThreeD.Abstractions/Kwy.UI.ThreeD.Abstractions.csproj" />
   <Project Path="Kwy.UI.WPF.Charts.OxyPlot/Kwy.UI.WPF.Charts.OxyPlot.csproj" Id="38191c9d-24fd-4ae5-9abc-ce252e30d068" />
   <Project Path="Kwy.UI.WPF.Charts.ScottPlot/Kwy.UI.WPF.Charts.ScottPlot.csproj" Id="3bedcda3-cb3e-45b7-bab2-83a06a5efbcf" />
+  <Project Path="Kwy.UI.WPF.Charts/Kwy.UI.WPF.Charts.csproj" />
   <Project Path="Kwy.UI.WPF.Components/Kwy.UI.WPF.Components.csproj" Id="87b75c32-f346-451d-a853-ecd027fbd982" />
   <Project Path="Kwy.UI.WPF.FlowDesigner/Kwy.UI.WPF.FlowDesigner.csproj" />
   <Project Path="Kwy.UI.WPF.Tests/Kwy.UI.WPF.Tests.csproj" />
+  <Project Path="Kwy.UI.WPF.ThreeD.Abstractions/Kwy.UI.WPF.ThreeD.csproj" />
+  <Project Path="Kwy.UI.WPF.ThreeD.Demo/Kwy.UI.WPF.ThreeD.Demo.csproj" Id="2751c040-f5c2-469e-a4e5-8cf28637588f" />
+  <Project Path="Kwy.UI.WPF.ThreeD.HelixToolkit/Kwy.UI.WPF.ThreeD.HelixToolkit.csproj" />
+  <Project Path="Kwy.UI.WPF.ThreeD.OpenGL/Kwy.UI.WPF.ThreeD.OpenGL.csproj" />
   <Project Path="Kwy.UI.WPF/Kwy.UI.WPF.csproj" />
   <Project Path="Kwy.UI/Kwy.UI.csproj" />
   <Project Path="Kwy.Vision.Abstractions/Kwy.Vision.Abstractions.csproj" />
