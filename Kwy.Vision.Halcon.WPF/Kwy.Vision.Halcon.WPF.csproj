@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.Vision.Halcon\Kwy.Vision.Halcon.csproj" />
+    <ProjectReference Include="..\Kwy.Vision.WPF\Kwy.Vision.WPF.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,9 +1,9 @@
 using HalconDotNet;
 using Kwy.Vision.Abstractions.Images;
 using Kwy.Vision.Halcon.Images;
+using Kwy.Vision.WPF.Controls;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 namespace Kwy.Vision.Halcon.WPF.Controls;
 
@@ -21,10 +21,11 @@ public sealed class HalconSmartWindowImageViewer : ContentControl, IDisposable
             nameof(AutoFit),
             typeof(bool),
             typeof(HalconSmartWindowImageViewer),
-            new PropertyMetadata(true));
+            new PropertyMetadata(true, OnAutoFitChanged));
 
     private readonly HalconVisionImageConverter converter = new();
     private readonly object? smartWindowControl;
+    private readonly VisionImageCanvas? fallbackCanvas;
     private HalconImageLease? currentLease;
     private int renderVersion;
     private bool disposed;
@@ -32,7 +33,15 @@ public sealed class HalconSmartWindowImageViewer : ContentControl, IDisposable
     public HalconSmartWindowImageViewer()
     {
         smartWindowControl = CreateSmartWindowControl();
-        Content = smartWindowControl as UIElement ?? CreateMissingControlPlaceholder();
+        if (smartWindowControl is UIElement nativeControl)
+        {
+            Content = nativeControl;
+        }
+        else
+        {
+            fallbackCanvas = new VisionImageCanvas();
+            Content = fallbackCanvas;
+        }
     }
 
     public IVisionImage? Image
@@ -55,6 +64,7 @@ public sealed class HalconSmartWindowImageViewer : ContentControl, IDisposable
         }
 
         disposed = true;
+        fallbackCanvas?.Dispose();
         currentLease?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         currentLease = null;
     }
@@ -62,7 +72,26 @@ public sealed class HalconSmartWindowImageViewer : ContentControl, IDisposable
     private static void OnImageChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var viewer = (HalconSmartWindowImageViewer)d;
+        if (viewer.fallbackCanvas != null)
+        {
+            viewer.fallbackCanvas.Image = e.NewValue as IVisionImage;
+            return;
+        }
+
         _ = viewer.ShowImageAsync(e.NewValue as IVisionImage);
+    }
+
+    private static void OnAutoFitChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var viewer = (HalconSmartWindowImageViewer)d;
+        if (viewer.fallbackCanvas != null)
+        {
+            viewer.fallbackCanvas.AutoFit = (bool)e.NewValue;
+            if ((bool)e.NewValue)
+            {
+                viewer.fallbackCanvas.FitToView();
+            }
+        }
     }
 
     private async Task ShowImageAsync(IVisionImage? image)
@@ -164,16 +193,4 @@ public sealed class HalconSmartWindowImageViewer : ContentControl, IDisposable
         return true;
     }
 
-    private static UIElement CreateMissingControlPlaceholder()
-        => new Border
-        {
-            Background = Brushes.Transparent,
-            Child = new TextBlock
-            {
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = Brushes.Gray,
-                Text = "未找到 HALCON HSmartWindowControlWPF"
-            }
-        };
 }
