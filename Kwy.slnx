@@ -119,6 +119,7 @@
   <Project Path="Kwy.Vision.Halcon/Kwy.Vision.Halcon.csproj" />
   <Project Path="Kwy.Vision.OpenCV/Kwy.Vision.OpenCV.csproj" />
   <Project Path="Kwy.Vision.Tests/Kwy.Vision.Tests.csproj" />
+  <Project Path="Kwy.Vision.WPF.Tests/Kwy.Vision.WPF.Tests.csproj" />
   <Project Path="Kwy.Vision.WPF/Kwy.Vision.WPF.csproj" />
   <Project Path="KwyAppDemo/KwyAppDemo.csproj" />
 </Solution>

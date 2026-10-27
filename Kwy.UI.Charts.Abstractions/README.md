@@ -48,6 +48,10 @@ Kwy.UI.WPF.Charts.ScottPlot
 
     <charts:KwyScatterTrendPlotView
         Backend="{StaticResource ChartBackend}"
+        charts:ChartValuesBinding.Point="{Binding LatestPoint}"
+        charts:ChartValuesBinding.Points="{Binding Points}"
+        charts:ChartValuesBinding.Limits="{Binding Limits}"
+        charts:ChartValuesBinding.ResetKey="{Binding ParameterId}"
         Title="{Binding DisplayName}"
         SampleAxisTitle="Sample"
         ValueAxisTitle="Value" />
@@ -55,6 +59,8 @@ Kwy.UI.WPF.Charts.ScottPlot
 ```
 
 通用场景可直接使用 `KwyChartView` 并绑定 `ChartDefinition`；常用 WPF 场景使用强类型门面控件，以便在 XAML 中绑定标题和坐标轴。
+
+`ChartValuesBinding` 面向常规业务，直接接收跨平台的 `ChartValuePoint`、`ChartLimitRange` 和重置键，并转换为图表更新。`ChartUpdatesBinding` 面向高级场景，负责把已经构造好的 `ChartUpdate` 或其集合直接转发给门面控件。只有无法用这两种公共绑定表达的特殊业务，才需要在应用项目中编写专用行为。
 
 ## 更换后端
 
