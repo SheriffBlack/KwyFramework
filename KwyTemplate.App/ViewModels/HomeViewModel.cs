@@ -30,6 +30,7 @@ using System.Windows;
 using System.Windows.Threading;
 using KwyTemplate.Contracts.Navigation;
 using Kwy.UI.WPF.Components.Dialogs.Input;
+using Kwy.UI.Charts.Abstractions.Values;
 using KwyTemplate.MES.Events;
 using KwyTemplate.MES.Models;
 using KwyTemplate.MES.Services;
@@ -1864,7 +1865,7 @@ public sealed class HomeViewModel : BindableBase
                 double? targetValue = GetStandardSampleTargetValue(tab.ParameterId);
                 tab.Limits = limit == null && targetValue == null
                     ? null
-                    : new ChartLimitSet(limit?.LowerLimit, limit?.UpperLimit, targetValue);
+                    : new ChartLimitRange(limit?.LowerLimit, limit?.UpperLimit, targetValue);
             }
         });
     }
@@ -2139,7 +2140,7 @@ public sealed class HomeViewModel : BindableBase
                 continue;
             }
 
-            tab.AddSample(new ChartValueSample(++chartSampleSequence, value.TestValue, value.Judge));
+            tab.AddSample(new ChartValuePoint(++chartSampleSequence, value.TestValue, value.Judge));
         }
     }
     private void OnLanguageChanged(object? sender, LanguageType languageType)

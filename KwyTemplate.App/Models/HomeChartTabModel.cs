@@ -1,34 +1,36 @@
 ﻿using Kwy.MVVM.Core;
 
+using Kwy.UI.Charts.Abstractions.Values;
+
 namespace KwyTemplate.App.Models;
 
 public sealed class HomeChartTabModel : BindableBase
 {
     private const int MaxSampleCount = 2000;
 
-    private readonly List<ChartValueSample> samples = [];
-    private ChartValueSample? latestSample;
-    private ChartLimitSet? limits;
+    private readonly List<ChartValuePoint> samples = [];
+    private ChartValuePoint? latestSample;
+    private ChartLimitRange? limits;
 
     public string ParameterId { get; init; } = string.Empty;
 
     public string DisplayName { get; init; } = string.Empty;
 
-    public IReadOnlyList<ChartValueSample> Samples => samples;
+    public IReadOnlyList<ChartValuePoint> Samples => samples;
 
-    public ChartValueSample? LatestSample
+    public ChartValuePoint? LatestSample
     {
         get => latestSample;
         private set => SetProperty(ref latestSample, value);
     }
 
-    public ChartLimitSet? Limits
+    public ChartLimitRange? Limits
     {
         get => limits;
         set => SetProperty(ref limits, value);
     }
 
-    public void AddSample(ChartValueSample sample)
+    public void AddSample(ChartValuePoint sample)
     {
         samples.Add(sample);
         if (samples.Count > MaxSampleCount)
@@ -44,36 +46,4 @@ public sealed class HomeChartTabModel : BindableBase
         samples.Clear();
         LatestSample = null;
     }
-}
-
-public sealed class ChartValueSample
-{
-    public ChartValueSample(long sequence, double value, bool? isPass = null)
-    {
-        Sequence = sequence;
-        Value = value;
-        IsPass = isPass;
-    }
-
-    public long Sequence { get; }
-
-    public double Value { get; }
-
-    public bool? IsPass { get; }
-}
-
-public sealed class ChartLimitSet
-{
-    public ChartLimitSet(double? lowerLimit, double? upperLimit, double? targetValue = null)
-    {
-        LowerLimit = lowerLimit;
-        UpperLimit = upperLimit;
-        TargetValue = targetValue;
-    }
-
-    public double? LowerLimit { get; }
-
-    public double? UpperLimit { get; }
-
-    public double? TargetValue { get; }
 }
