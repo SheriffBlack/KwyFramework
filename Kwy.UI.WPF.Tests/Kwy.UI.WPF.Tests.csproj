@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Kwy.UI\Kwy.UI.csproj" />
+    <ProjectReference Include="..\Kwy.UI.WPF.Charts\Kwy.UI.WPF.Charts.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF\Kwy.UI.WPF.csproj" />
     <ProjectReference Include="..\Kwy.UI.ThreeD.Abstractions\Kwy.UI.ThreeD.Abstractions.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF.ThreeD.HelixToolkit\Kwy.UI.WPF.ThreeD.HelixToolkit.csproj" />

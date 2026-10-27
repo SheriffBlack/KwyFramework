@@ -16,7 +16,7 @@ public sealed class HelixThreeDBackendTests
         => RunInSta(() =>
         {
             var backend = new HelixThreeDBackend();
-            using var viewport = backend.CreateViewport();
+            using var session = backend.Create();
             var child = new MeshNodeDescriptor
             {
                 Name = "Triangle",
@@ -28,15 +28,15 @@ public sealed class HelixThreeDBackendTests
             };
             var group = new GroupNodeDescriptor { Children = [child] };
 
-            var groupNode = viewport.Scene.Add(group);
-            Assert.True(viewport.Scene.TryGetNode(child.Id, out var childNode));
+            var groupNode = session.Scene.Add(group);
+            Assert.True(session.Scene.TryGetNode(child.Id, out var childNode));
 
             var expected = Matrix4x4.CreateTranslation(10F, 20F, 30F);
             childNode!.Transform = expected;
 
             Assert.Equal(expected, childNode.Transform);
-            Assert.True(viewport.Scene.Remove(groupNode.Id));
-            Assert.Empty(viewport.Scene.Nodes);
+            Assert.True(session.Scene.Remove(groupNode.Id));
+            Assert.Empty(session.Scene.Nodes);
         });
 
     private static MeshGeometry CreateTriangle() => new(
