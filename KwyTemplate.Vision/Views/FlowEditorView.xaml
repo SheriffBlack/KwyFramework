@@ -1069,7 +1069,10 @@
                                             BorderBrush="{DynamicResource VisionPanelBorderBrush}"
                                             BorderThickness="1"
                                             CornerRadius="6">
-                                            <proxy:VisionImageViewer ImageItem="{Binding SelectedImagePanelItem}" Roi="{Binding CurrentRoi, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <proxy:VisionImageViewer ImageItem="{Binding SelectedImagePanelItem}"
+                                                                     RoiLayers="{Binding RoiRegions}"
+                                                                     SelectedRoiLayer="{Binding SelectedRoiRegion, Mode=TwoWay}"
+                                                                     RoiCreationKind="{Binding RoiCreationKind}" />
                                         </Border>
                                         <StackPanel Grid.Row="1" Margin="6,0,6,6">
                                             <StackPanel MaxHeight="132" Margin="0,0,0,6">
@@ -1168,6 +1171,16 @@
                                                                             Foreground="{DynamicResource AccentGreen}"
                                                                             Style="{StaticResource VisionToolbarButtonStyle}"
                                                                             ToolTip="启用/禁用 ROI" />
+                                                                        <Button
+                                                                            Width="22"
+                                                                            MinHeight="20"
+                                                                            Padding="0"
+                                                                            Command="{Binding Data.ToggleRoiLockCommand, Source={StaticResource Proxy}}"
+                                                                            CommandParameter="{Binding}"
+                                                                            Content="🔒"
+                                                                            Foreground="{DynamicResource FgSecondary}"
+                                                                            Style="{StaticResource VisionToolbarButtonStyle}"
+                                                                            ToolTip="锁定/解锁 ROI" />
                                                                         <Button
                                                                             Width="22"
                                                                             MinHeight="20"

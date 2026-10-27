@@ -10,6 +10,7 @@ using Kwy.UI.WPF.Services.FileDialogs;
 using Kwy.UI.WPF.FlowDesigner.Controls;
 using Kwy.UI.Flow;
 using Kwy.Vision.Abstractions.DeepLearning;
+using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Results;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -19,6 +20,8 @@ using System.Windows.Input;
 
 using KwyTemplate.Vision.Executors;
 using Kwy.Vision.WPF.Sources;
+using Kwy.Vision.WPF.Interaction;
+using Kwy.Vision.WPF.Models;
 using KwyTemplate.Vision.Batch;
 using Kwy.UI.Services.FileDialogs;
 using Kwy.UI.WPF.Components.Dialogs.Message;
@@ -85,7 +88,7 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
 
     public BulkObservableCollection<VisionImagePanelItemViewModel> SelectedNodeImages { get; } = new();
 
-    public BulkObservableCollection<RoiRegionViewModel> RoiRegions { get; } = new();
+    public BulkObservableCollection<VisionRoiLayer> RoiRegions { get; } = new();
 
     public BulkObservableCollection<VisionBatchRunRecord> BatchRunRecords { get; } = new();
 
@@ -111,11 +114,11 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
         set => SetProperty(ref selectedImagePanelItem, value);
     }
 
-    private Rect? currentRoi;
+    private IVisionRegion? currentRoi;
     private bool isLoadingRoiFromNode;
     private bool isSyncingRoiRegionSelection;
 
-    public Rect? CurrentRoi
+    public IVisionRegion? CurrentRoi
     {
         get => currentRoi;
         set
@@ -128,17 +131,47 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
         }
     }
 
-    private RoiRegionViewModel? selectedRoiRegion;
+    private VisionRoiCreationKind roiCreationKind;
 
-    public RoiRegionViewModel? SelectedRoiRegion
+    public VisionRoiCreationKind RoiCreationKind
+    {
+        get => roiCreationKind;
+        private set => SetProperty(ref roiCreationKind, value);
+    }
+
+    private VisionRoiLayer? selectedRoiRegion;
+
+    public VisionRoiLayer? SelectedRoiRegion
     {
         get => selectedRoiRegion;
         set
         {
-            if (SetProperty(ref selectedRoiRegion, value) && !isSyncingRoiRegionSelection && value != null)
+            if (ReferenceEquals(selectedRoiRegion, value))
             {
-                CurrentRoi = value.Bounds;
+                return;
             }
+
+            if (selectedRoiRegion != null)
+            {
+                selectedRoiRegion.PropertyChanged -= OnSelectedRoiLayerPropertyChanged;
+            }
+
+            if (SetProperty(ref selectedRoiRegion, value) && value != null)
+            {
+                value.PropertyChanged += OnSelectedRoiLayerPropertyChanged;
+                if (!isSyncingRoiRegionSelection)
+                {
+                    CurrentRoi = value.IsVisible ? value.Region : null;
+                }
+            }
+        }
+    }
+
+    private void OnSelectedRoiLayerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (sender is VisionRoiLayer layer && e.PropertyName is nameof(VisionRoiLayer.Region) or nameof(VisionRoiLayer.IsVisible))
+        {
+            CurrentRoi = layer.IsVisible ? layer.Region : null;
         }
     }
 
@@ -497,20 +530,25 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
 
     public DelegateCommand AddRoiRegionCommand => addRoiRegionCommand ??= new DelegateCommand(AddRoiRegion);
 
-    private DelegateCommand<RoiRegionViewModel>? duplicateRoiRegionCommand;
+    private DelegateCommand<VisionRoiLayer>? duplicateRoiRegionCommand;
 
-    public DelegateCommand<RoiRegionViewModel> DuplicateRoiRegionCommand
-        => duplicateRoiRegionCommand ??= new DelegateCommand<RoiRegionViewModel>(DuplicateRoiRegion);
+    public DelegateCommand<VisionRoiLayer> DuplicateRoiRegionCommand
+        => duplicateRoiRegionCommand ??= new DelegateCommand<VisionRoiLayer>(DuplicateRoiRegion);
 
-    private DelegateCommand<RoiRegionViewModel>? toggleRoiRegionCommand;
+    private DelegateCommand<VisionRoiLayer>? toggleRoiRegionCommand;
 
-    public DelegateCommand<RoiRegionViewModel> ToggleRoiRegionCommand
-        => toggleRoiRegionCommand ??= new DelegateCommand<RoiRegionViewModel>(ToggleRoiRegion);
+    public DelegateCommand<VisionRoiLayer> ToggleRoiRegionCommand
+        => toggleRoiRegionCommand ??= new DelegateCommand<VisionRoiLayer>(ToggleRoiRegion);
 
-    private DelegateCommand<RoiRegionViewModel>? deleteRoiRegionCommand;
+    private DelegateCommand<VisionRoiLayer>? toggleRoiLockCommand;
 
-    public DelegateCommand<RoiRegionViewModel> DeleteRoiRegionCommand
-        => deleteRoiRegionCommand ??= new DelegateCommand<RoiRegionViewModel>(DeleteRoiRegion);
+    public DelegateCommand<VisionRoiLayer> ToggleRoiLockCommand
+        => toggleRoiLockCommand ??= new DelegateCommand<VisionRoiLayer>(ToggleRoiLock);
+
+    private DelegateCommand<VisionRoiLayer>? deleteRoiRegionCommand;
+
+    public DelegateCommand<VisionRoiLayer> DeleteRoiRegionCommand
+        => deleteRoiRegionCommand ??= new DelegateCommand<VisionRoiLayer>(DeleteRoiRegion);
 
     private DelegateCommand? clearCommand;
     public DelegateCommand ClearCommand => clearCommand ??= new DelegateCommand(async () => await ClearCanvasAsync());
@@ -1222,10 +1260,18 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
 
     private void LoadCurrentRoiFromNode(FlowNodeViewModel? node)
     {
+        RoiCreationKind = node == null
+            ? VisionRoiCreationKind.Rectangle
+            : TryGetRoiKind(node) switch
+            {
+                VisionRoiKind.Circle => VisionRoiCreationKind.Circle,
+                VisionRoiKind.RotatedRectangle => VisionRoiCreationKind.RotatedRectangle,
+                _ => VisionRoiCreationKind.Rectangle
+            };
         isLoadingRoiFromNode = true;
         try
         {
-            CurrentRoi = TryReadRoi(node, out Rect roi) ? roi : null;
+            CurrentRoi = TryReadRoi(node, out IVisionRegion? roi) ? roi : null;
         }
         finally
         {
@@ -1512,20 +1558,32 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
     private void AddRoiRegion()
     {
         Rect bounds = CreateDefaultRoiBounds();
-        var item = new RoiRegionViewModel
+        IVisionRegion region = RoiCreationKind switch
+        {
+            VisionRoiCreationKind.Circle => new CircleRegion(new VisionCircle(
+                new VisionPoint(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2),
+                Math.Min(bounds.Width, bounds.Height) / 2)),
+            VisionRoiCreationKind.RotatedRectangle => new RotatedRectangleRegion(new VisionRotatedRectangle(
+                new VisionPoint(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2),
+                bounds.Width,
+                bounds.Height,
+                0)),
+            _ => ToRectangleRegion(bounds)
+        };
+        var item = new VisionRoiLayer
         {
             Name = $"ROI {RoiRegions.Count + 1}",
-            Bounds = bounds,
-            IsEnabled = true
+            Region = region,
+            IsVisible = true
         };
 
         RoiRegions.Add(item);
         SelectedRoiRegion = item;
-        CurrentRoi = bounds;
+        CurrentRoi = region;
         IsDirty = true;
     }
 
-    private void DuplicateRoiRegion(RoiRegionViewModel? source)
+    private void DuplicateRoiRegion(VisionRoiLayer? source)
     {
         source ??= SelectedRoiRegion;
         if (source == null)
@@ -1534,22 +1592,22 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
             return;
         }
 
-        Rect bounds = source.Bounds;
-        bounds.Offset(12, 12);
-        var item = new RoiRegionViewModel
+        IVisionRegion region = TranslateRegion(source.Region, 12, 12);
+        var item = new VisionRoiLayer
         {
             Name = $"{source.Name} Copy",
-            Bounds = bounds,
-            IsEnabled = source.IsEnabled
+            Region = region,
+            IsVisible = source.IsVisible,
+            IsLocked = source.IsLocked
         };
 
         RoiRegions.Add(item);
         SelectedRoiRegion = item;
-        CurrentRoi = item.IsEnabled ? bounds : null;
+        CurrentRoi = item.IsVisible ? region : null;
         IsDirty = true;
     }
 
-    private void ToggleRoiRegion(RoiRegionViewModel? item)
+    private void ToggleRoiRegion(VisionRoiLayer? item)
     {
         item ??= SelectedRoiRegion;
         if (item == null)
@@ -1557,16 +1615,28 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
             return;
         }
 
-        item.IsEnabled = !item.IsEnabled;
+        item.IsVisible = !item.IsVisible;
         if (SelectedRoiRegion == item)
         {
-            CurrentRoi = item.IsEnabled ? item.Bounds : null;
+            CurrentRoi = item.IsVisible ? item.Region : null;
         }
 
         IsDirty = true;
     }
 
-    private void DeleteRoiRegion(RoiRegionViewModel? item)
+    private void ToggleRoiLock(VisionRoiLayer? item)
+    {
+        item ??= SelectedRoiRegion;
+        if (item == null)
+        {
+            return;
+        }
+
+        item.IsLocked = !item.IsLocked;
+        IsDirty = true;
+    }
+
+    private void DeleteRoiRegion(VisionRoiLayer? item)
     {
         item ??= SelectedRoiRegion;
         if (item == null)
@@ -1577,11 +1647,11 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
         int index = RoiRegions.IndexOf(item);
         RoiRegions.Remove(item);
 
-        RoiRegionViewModel? next = RoiRegions.Count == 0
+        VisionRoiLayer? next = RoiRegions.Count == 0
             ? null
             : RoiRegions[Math.Clamp(index, 0, RoiRegions.Count - 1)];
         SelectedRoiRegion = next;
-        CurrentRoi = next?.IsEnabled == true ? next.Bounds : null;
+        CurrentRoi = next?.IsVisible == true ? next.Region : null;
         IsDirty = true;
     }
 
@@ -1604,7 +1674,7 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
             return;
         }
 
-        if (CurrentRoi is not Rect roi)
+        if (CurrentRoi == null)
         {
             bool changed = false;
             changed |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiX, 0.0);
@@ -1621,22 +1691,50 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
             return;
         }
 
-        VisionRoiKind kind = TryGetRoiKind(node);
-        bool usesCenter = kind is VisionRoiKind.Circle or VisionRoiKind.RotatedRectangle;
-        double x = usesCenter ? roi.X + roi.Width / 2.0 : roi.X;
-        double y = usesCenter ? roi.Y + roi.Height / 2.0 : roi.Y;
+        VisionRoiKind kind;
+        double x;
+        double y;
+        double width;
+        double height;
+        double angle = 0;
+        double radius = 0;
+        switch (CurrentRoi)
+        {
+            case RectangleRegion rectangle:
+                kind = VisionRoiKind.Rectangle;
+                x = rectangle.Rectangle.X;
+                y = rectangle.Rectangle.Y;
+                width = rectangle.Rectangle.Width;
+                height = rectangle.Rectangle.Height;
+                break;
+            case RotatedRectangleRegion rotated:
+                kind = VisionRoiKind.RotatedRectangle;
+                x = rotated.Rectangle.Center.X;
+                y = rotated.Rectangle.Center.Y;
+                width = rotated.Rectangle.Width;
+                height = rotated.Rectangle.Height;
+                angle = rotated.Rectangle.AngleRadians;
+                break;
+            case CircleRegion circle:
+                kind = VisionRoiKind.Circle;
+                x = circle.Circle.Center.X;
+                y = circle.Circle.Center.Y;
+                width = circle.Circle.Radius * 2;
+                height = width;
+                radius = circle.Circle.Radius;
+                break;
+            default:
+                return;
+        }
 
         bool updated = false;
+        updated |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiKind, kind);
         updated |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiX, Math.Round(x, 3));
         updated |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiY, Math.Round(y, 3));
-        updated |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiWidth, Math.Round(roi.Width, 3));
-        updated |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiHeight, Math.Round(roi.Height, 3));
-        if (kind == VisionRoiKind.Circle)
-        {
-            updated |= node.TrySetParameterValue(
-                VisionRoiParameterDefinitions.RoiRadius,
-                Math.Round(Math.Min(roi.Width, roi.Height) / 2.0, 3));
-        }
+        updated |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiWidth, Math.Round(width, 3));
+        updated |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiHeight, Math.Round(height, 3));
+        updated |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiAngle, Math.Round(angle, 6));
+        updated |= node.TrySetParameterValue(VisionRoiParameterDefinitions.RoiRadius, Math.Round(radius, 3));
         if (updated)
         {
             IsDirty = true;
@@ -1648,7 +1746,7 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
         isSyncingRoiRegionSelection = true;
         try
         {
-            if (CurrentRoi is not Rect roi || roi.Width <= 0 || roi.Height <= 0)
+            if (!TryGetRegionBounds(CurrentRoi, out Rect roi) || roi.Width <= 0 || roi.Height <= 0)
             {
                 if (SelectedRoiRegion != null)
                 {
@@ -1659,14 +1757,14 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
                 return;
             }
 
-            RoiRegionViewModel item;
+            VisionRoiLayer item;
             if (SelectedRoiRegion != null && RoiRegions.Contains(SelectedRoiRegion))
             {
                 item = SelectedRoiRegion;
             }
             else if (RoiRegions.Count == 0)
             {
-                item = new RoiRegionViewModel();
+                item = new VisionRoiLayer();
                 RoiRegions.Add(item);
             }
             else
@@ -1674,8 +1772,8 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
                 item = RoiRegions[0];
             }
 
-            item.Bounds = roi;
-            item.IsEnabled = true;
+            item.Region = CurrentRoi!;
+            item.IsVisible = true;
             SelectedRoiRegion = item;
         }
         finally
@@ -1684,9 +1782,9 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
         }
     }
 
-    private static bool TryReadRoi(FlowNodeViewModel? node, out Rect roi)
+    private static bool TryReadRoi(FlowNodeViewModel? node, out IVisionRegion? roi)
     {
-        roi = default;
+        roi = null;
         if (node == null
             || !TryGetDouble(node, VisionRoiParameterDefinitions.RoiX, out double x)
             || !TryGetDouble(node, VisionRoiParameterDefinitions.RoiY, out double y))
@@ -1712,10 +1810,70 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
             return false;
         }
 
-        roi = kind is VisionRoiKind.Circle or VisionRoiKind.RotatedRectangle
-            ? new Rect(x - width / 2.0, y - height / 2.0, width, height)
-            : new Rect(x, y, width, height);
+        roi = kind switch
+        {
+            VisionRoiKind.Circle => new CircleRegion(new VisionCircle(new VisionPoint(x, y), width / 2.0)),
+            VisionRoiKind.RotatedRectangle => new RotatedRectangleRegion(new VisionRotatedRectangle(
+                new VisionPoint(x, y),
+                width,
+                height,
+                TryGetDouble(node, VisionRoiParameterDefinitions.RoiAngle, out double angle) ? angle : 0)),
+            _ => new RectangleRegion(new VisionRectangle(x, y, width, height))
+        };
         return true;
+    }
+
+    private static RectangleRegion ToRectangleRegion(Rect rectangle)
+        => new(new VisionRectangle(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height));
+
+    private static IVisionRegion TranslateRegion(IVisionRegion region, double x, double y)
+        => region switch
+        {
+            RectangleRegion rectangle => new RectangleRegion(rectangle.Rectangle with
+            {
+                X = rectangle.Rectangle.X + x,
+                Y = rectangle.Rectangle.Y + y
+            }),
+            CircleRegion circle => new CircleRegion(circle.Circle with
+            {
+                Center = new VisionPoint(circle.Circle.Center.X + x, circle.Circle.Center.Y + y)
+            }),
+            RotatedRectangleRegion rectangle => new RotatedRectangleRegion(rectangle.Rectangle with
+            {
+                Center = new VisionPoint(rectangle.Rectangle.Center.X + x, rectangle.Rectangle.Center.Y + y)
+            }),
+            _ => region
+        };
+
+    private static bool TryGetRegionBounds(IVisionRegion? region, out Rect bounds)
+    {
+        switch (region)
+        {
+            case RectangleRegion rectangle:
+                bounds = new Rect(rectangle.Rectangle.X, rectangle.Rectangle.Y, rectangle.Rectangle.Width, rectangle.Rectangle.Height);
+                return true;
+            case CircleRegion circle:
+                bounds = new Rect(
+                    circle.Circle.Center.X - circle.Circle.Radius,
+                    circle.Circle.Center.Y - circle.Circle.Radius,
+                    circle.Circle.Radius * 2,
+                    circle.Circle.Radius * 2);
+                return true;
+            case RotatedRectangleRegion rectangle:
+                double cosine = Math.Abs(Math.Cos(rectangle.Rectangle.AngleRadians));
+                double sine = Math.Abs(Math.Sin(rectangle.Rectangle.AngleRadians));
+                double halfWidth = (rectangle.Rectangle.Width * cosine + rectangle.Rectangle.Height * sine) / 2;
+                double halfHeight = (rectangle.Rectangle.Width * sine + rectangle.Rectangle.Height * cosine) / 2;
+                bounds = new Rect(
+                    rectangle.Rectangle.Center.X - halfWidth,
+                    rectangle.Rectangle.Center.Y - halfHeight,
+                    halfWidth * 2,
+                    halfHeight * 2);
+                return true;
+            default:
+                bounds = Rect.Empty;
+                return false;
+        }
     }
 
     private static VisionRoiKind TryGetRoiKind(FlowNodeViewModel node)

@@ -1,12 +1,18 @@
 ﻿using Kwy.Vision.Abstractions.Geometry;
 using Kwy.Vision.Abstractions.Images;
 using Kwy.Vision.Abstractions.Results;
+using Kwy.Vision.WPF.Rendering;
+using Kwy.Vision.WPF.Interaction;
+using Kwy.Vision.WPF.Models;
+using Kwy.Vision.WPF.Viewport;
 using KwyTemplate.Vision.ViewModels.Items;
 using System.Globalization;
+using System.Collections;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace KwyTemplate.Vision.Controls;
 
@@ -19,30 +25,37 @@ public sealed class VisionImageViewer : FrameworkElement
             typeof(VisionImageViewer),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnImageItemChanged));
 
-    public static readonly DependencyProperty RoiProperty =
+    public static readonly DependencyProperty RoiLayersProperty =
         DependencyProperty.Register(
-            nameof(Roi),
-            typeof(Rect?),
+            nameof(RoiLayers),
+            typeof(IEnumerable),
             typeof(VisionImageViewer),
-            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault | FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnRoiLayersChanged));
 
-    private const double MinimumScale = 0.02;
-    private const double MaximumScale = 80;
-    private const double HandleSize = 8;
-    private const double MinimumRoiSize = 1;
+    public static readonly DependencyProperty SelectedRoiLayerProperty = DependencyProperty.Register(
+        nameof(SelectedRoiLayer), typeof(VisionRoiLayer), typeof(VisionImageViewer),
+        new FrameworkPropertyMetadata(null,
+            FrameworkPropertyMetadataOptions.AffectsRender | FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+
+    public static readonly DependencyProperty RoiCreationKindProperty = DependencyProperty.Register(
+        nameof(RoiCreationKind), typeof(VisionRoiCreationKind), typeof(VisionImageViewer),
+        new PropertyMetadata(VisionRoiCreationKind.Rectangle));
+
     private const string HelpText = "滚轮缩放，右键/中键平移，左键新建/编辑 ROI，Delete 删除 ROI，双击适配窗口";
 
-    private double scale = 1;
-    private Vector offset;
+    private readonly WriteableBitmapRenderer renderer = new();
+    private readonly VisionViewport viewport = new();
+    private readonly VisionRegionEditor roiEditor = new();
     private bool viewInitialized;
     private InteractionMode interactionMode;
-    private RoiHitType activeHitType = RoiHitType.None;
+    private VisionRoiHandle activeHitType = VisionRoiHandle.None;
     private Point dragStartView;
     private Point lastMouseView;
     private Point roiStartImage;
-    private Rect dragStartRoi;
+    private IVisionRegion? dragStartRoi;
+    private VisionRoiCreationKind roiCreationKind;
     private string statusText = HelpText;
-    private WriteableBitmap? renderBitmap;
+    private ImageSource? renderBitmap;
     private VisionImagePanelItemViewModel? renderBitmapSource;
     private CancellationTokenSource? imageLoadCts;
 
@@ -59,10 +72,22 @@ public sealed class VisionImageViewer : FrameworkElement
         set => SetValue(ImageItemProperty, value);
     }
 
-    public Rect? Roi
+    public IEnumerable? RoiLayers
     {
-        get => (Rect?)GetValue(RoiProperty);
-        set => SetValue(RoiProperty, value);
+        get => (IEnumerable?)GetValue(RoiLayersProperty);
+        set => SetValue(RoiLayersProperty, value);
+    }
+
+    public VisionRoiLayer? SelectedRoiLayer
+    {
+        get => (VisionRoiLayer?)GetValue(SelectedRoiLayerProperty);
+        set => SetValue(SelectedRoiLayerProperty, value);
+    }
+
+    public VisionRoiCreationKind RoiCreationKind
+    {
+        get => (VisionRoiCreationKind)GetValue(RoiCreationKindProperty);
+        set => SetValue(RoiCreationKindProperty, value);
     }
 
     protected override void OnRender(DrawingContext dc)
@@ -101,11 +126,8 @@ public sealed class VisionImageViewer : FrameworkElement
 
         Focus();
         Point mouse = e.GetPosition(this);
-        Point imageBefore = ViewToImage(mouse);
         double factor = e.Delta > 0 ? 1.15 : 1 / 1.15;
-        scale = Math.Clamp(scale * factor, MinimumScale, MaximumScale);
-        Point viewAfter = ImageToView(imageBefore);
-        offset += mouse - viewAfter;
+        viewport.ZoomAt(mouse, factor);
         UpdatePixelStatus(mouse);
         InvalidateVisual();
         e.Handled = true;
@@ -140,21 +162,22 @@ public sealed class VisionImageViewer : FrameworkElement
         }
 
         activeHitType = HitTestRoi(dragStartView);
-        if (activeHitType == RoiHitType.Body && Roi is Rect bodyRoi)
+        if (activeHitType == VisionRoiHandle.Body && ActiveRoi != null && SelectedRoiLayer?.IsLocked != true)
         {
             interactionMode = InteractionMode.MoveRoi;
-            dragStartRoi = bodyRoi;
+            dragStartRoi = ActiveRoi;
         }
-        else if (activeHitType != RoiHitType.None && Roi is Rect resizeRoi)
+        else if (activeHitType != VisionRoiHandle.None && ActiveRoi != null && SelectedRoiLayer?.IsLocked != true)
         {
             interactionMode = InteractionMode.ResizeRoi;
-            dragStartRoi = resizeRoi;
+            dragStartRoi = ActiveRoi;
         }
         else
         {
             interactionMode = InteractionMode.CreateRoi;
             roiStartImage = ClampImagePoint(ViewToImage(dragStartView));
-            Roi = new Rect(roiStartImage, roiStartImage);
+            roiCreationKind = RoiCreationKind;
+            SetActiveRoi(roiEditor.Create(roiCreationKind, roiStartImage, roiStartImage, GetImageSize()));
         }
 
         UpdateCursor(activeHitType);
@@ -169,13 +192,13 @@ public sealed class VisionImageViewer : FrameworkElement
         switch (interactionMode)
         {
             case InteractionMode.Pan:
-                offset += current - lastMouseView;
+                viewport.Pan(current - lastMouseView);
                 lastMouseView = current;
                 InvalidateVisual();
                 break;
 
             case InteractionMode.CreateRoi:
-                Roi = NormalizeAndClamp(new Rect(roiStartImage, ClampImagePoint(ViewToImage(current))));
+                SetActiveRoi(roiEditor.Create(roiCreationKind, roiStartImage, ClampImagePoint(ViewToImage(current)), GetImageSize()));
                 UpdateRoiStatus();
                 InvalidateVisual();
                 break;
@@ -206,12 +229,11 @@ public sealed class VisionImageViewer : FrameworkElement
 
         if (interactionMode is InteractionMode.CreateRoi or InteractionMode.MoveRoi or InteractionMode.ResizeRoi)
         {
-            Roi = NormalizeAndClamp(Roi);
             UpdateRoiStatus();
         }
 
         interactionMode = InteractionMode.None;
-        activeHitType = RoiHitType.None;
+        activeHitType = VisionRoiHandle.None;
         Cursor = Cursors.Cross;
         ReleaseMouseCapture();
         e.Handled = true;
@@ -232,7 +254,7 @@ public sealed class VisionImageViewer : FrameworkElement
         base.OnKeyDown(e);
         if (e.Key is Key.Delete or Key.Back)
         {
-            Roi = null;
+            RemoveSelectedRoiLayer();
             statusText = "ROI 已删除";
             InvalidateVisual();
             e.Handled = true;
@@ -263,6 +285,14 @@ public sealed class VisionImageViewer : FrameworkElement
         viewer.InvalidateVisual();
     }
 
+    private static void OnRoiLayersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var viewer = (VisionImageViewer)d;
+        viewer.UnsubscribeRoiLayers(e.OldValue as IEnumerable);
+        viewer.SubscribeRoiLayers(e.NewValue as IEnumerable);
+        viewer.InvalidateVisual();
+    }
+
     private async void BeginLoadImagePixels(VisionImagePanelItemViewModel item)
     {
         imageLoadCts = new CancellationTokenSource();
@@ -286,99 +316,37 @@ public sealed class VisionImageViewer : FrameworkElement
         Point currentImage = ViewToImage(currentView);
         Point startImage = ViewToImage(dragStartView);
         Vector delta = currentImage - startImage;
-        Roi = NormalizeAndClamp(new Rect(
-            dragStartRoi.X + delta.X,
-            dragStartRoi.Y + delta.Y,
-            dragStartRoi.Width,
-            dragStartRoi.Height));
+        if (dragStartRoi != null)
+        {
+            SetActiveRoi(roiEditor.Move(dragStartRoi, delta, GetImageSize()));
+        }
     }
 
     private void ResizeRoi(Point currentView)
     {
         Point currentImage = ClampImagePoint(ViewToImage(currentView));
-        double left = dragStartRoi.Left;
-        double top = dragStartRoi.Top;
-        double right = dragStartRoi.Right;
-        double bottom = dragStartRoi.Bottom;
-
-        if (activeHitType is RoiHitType.Left or RoiHitType.TopLeft or RoiHitType.BottomLeft)
+        if (dragStartRoi != null)
         {
-            left = currentImage.X;
+            SetActiveRoi(roiEditor.Resize(dragStartRoi, activeHitType, currentImage, GetImageSize()));
         }
-        if (activeHitType is RoiHitType.Right or RoiHitType.TopRight or RoiHitType.BottomRight)
-        {
-            right = currentImage.X;
-        }
-        if (activeHitType is RoiHitType.Top or RoiHitType.TopLeft or RoiHitType.TopRight)
-        {
-            top = currentImage.Y;
-        }
-        if (activeHitType is RoiHitType.Bottom or RoiHitType.BottomLeft or RoiHitType.BottomRight)
-        {
-            bottom = currentImage.Y;
-        }
-
-        Roi = NormalizeAndClamp(new Rect(new Point(left, top), new Point(right, bottom)));
     }
 
-    private RoiHitType HitTestRoi(Point viewPoint)
-    {
-        if (Roi is not Rect roi || roi.Width <= 0 || roi.Height <= 0)
-        {
-            return RoiHitType.None;
-        }
+    private VisionRoiHandle HitTestRoi(Point viewPoint)
+        => ActiveRoi != null && SelectedRoiLayer?.IsVisible == true
+            ? roiEditor.HitTest(ActiveRoi, viewPoint, ImageToView, ViewToImage, viewport.Scale)
+            : VisionRoiHandle.None;
 
-        Rect viewRect = ImageRectToView(new VisionRectangle(roi.X, roi.Y, roi.Width, roi.Height));
-        Rect expanded = viewRect;
-        expanded.Inflate(HandleSize, HandleSize);
-        if (!expanded.Contains(viewPoint))
-        {
-            return RoiHitType.None;
-        }
-
-        foreach ((RoiHitType type, Rect handle) in GetHandleRects(viewRect))
-        {
-            if (handle.Contains(viewPoint))
-            {
-                return type;
-            }
-        }
-
-        if (viewRect.Contains(viewPoint))
-        {
-            return RoiHitType.Body;
-        }
-
-        double tolerance = HandleSize;
-        if (Math.Abs(viewPoint.X - viewRect.Left) <= tolerance && viewPoint.Y >= viewRect.Top && viewPoint.Y <= viewRect.Bottom)
-        {
-            return RoiHitType.Left;
-        }
-        if (Math.Abs(viewPoint.X - viewRect.Right) <= tolerance && viewPoint.Y >= viewRect.Top && viewPoint.Y <= viewRect.Bottom)
-        {
-            return RoiHitType.Right;
-        }
-        if (Math.Abs(viewPoint.Y - viewRect.Top) <= tolerance && viewPoint.X >= viewRect.Left && viewPoint.X <= viewRect.Right)
-        {
-            return RoiHitType.Top;
-        }
-        if (Math.Abs(viewPoint.Y - viewRect.Bottom) <= tolerance && viewPoint.X >= viewRect.Left && viewPoint.X <= viewRect.Right)
-        {
-            return RoiHitType.Bottom;
-        }
-
-        return RoiHitType.None;
-    }
-
-    private void UpdateCursor(RoiHitType hitType)
+    private void UpdateCursor(VisionRoiHandle hitType)
     {
         Cursor = hitType switch
         {
-            RoiHitType.Body => Cursors.SizeAll,
-            RoiHitType.Left or RoiHitType.Right => Cursors.SizeWE,
-            RoiHitType.Top or RoiHitType.Bottom => Cursors.SizeNS,
-            RoiHitType.TopLeft or RoiHitType.BottomRight => Cursors.SizeNWSE,
-            RoiHitType.TopRight or RoiHitType.BottomLeft => Cursors.SizeNESW,
+            VisionRoiHandle.Body => Cursors.SizeAll,
+            VisionRoiHandle.Rotation => Cursors.Hand,
+            VisionRoiHandle.Radius => Cursors.SizeWE,
+            VisionRoiHandle.Left or VisionRoiHandle.Right => Cursors.SizeWE,
+            VisionRoiHandle.Top or VisionRoiHandle.Bottom => Cursors.SizeNS,
+            VisionRoiHandle.TopLeft or VisionRoiHandle.BottomRight => Cursors.SizeNWSE,
+            VisionRoiHandle.TopRight or VisionRoiHandle.BottomLeft => Cursors.SizeNESW,
             _ => Cursors.Cross
         };
     }
@@ -393,10 +361,9 @@ public sealed class VisionImageViewer : FrameworkElement
             return false;
         }
 
-        PixelFormat pixelFormat;
         try
         {
-            pixelFormat = ToWpfPixelFormat(item.PixelFormat);
+            _ = WriteableBitmapRenderer.ToWpfPixelFormat(item.PixelFormat);
         }
         catch (NotSupportedException)
         {
@@ -407,20 +374,6 @@ public sealed class VisionImageViewer : FrameworkElement
 
         if (!ReferenceEquals(renderBitmapSource, item))
         {
-            if (renderBitmap == null ||
-                renderBitmap.PixelWidth != item.Width ||
-                renderBitmap.PixelHeight != item.Height ||
-                renderBitmap.Format != pixelFormat)
-            {
-                renderBitmap = new WriteableBitmap(
-                    item.Width,
-                    item.Height,
-                    96,
-                    96,
-                    pixelFormat,
-                    null);
-            }
-
             int requiredLength = checked(item.Stride * item.Height);
             if (pixels.Length < requiredLength)
             {
@@ -429,26 +382,12 @@ public sealed class VisionImageViewer : FrameworkElement
                 return false;
             }
 
-            renderBitmap.WritePixels(
-                new Int32Rect(0, 0, item.Width, item.Height),
-                pixels,
-                item.Stride,
-                0);
+            renderBitmap = renderer.Render(pixels, item.Width, item.Height, item.Stride, item.PixelFormat);
             renderBitmapSource = item;
         }
 
         return renderBitmap != null;
     }
-
-    private static PixelFormat ToWpfPixelFormat(VisionPixelFormat pixelFormat)
-        => pixelFormat switch
-        {
-            VisionPixelFormat.Mono8 => PixelFormats.Gray8,
-            VisionPixelFormat.Bgr24 => PixelFormats.Bgr24,
-            VisionPixelFormat.Bgra32 => PixelFormats.Bgra32,
-            VisionPixelFormat.Rgb24 => PixelFormats.Rgb24,
-            _ => throw new NotSupportedException($"Unsupported vision pixel format: {pixelFormat}.")
-        };
 
     private void EnsureViewInitialized(VisionImagePanelItemViewModel item)
     {
@@ -474,26 +413,20 @@ public sealed class VisionImageViewer : FrameworkElement
             return;
         }
 
-        const double padding = 24;
-        double scaleX = Math.Max(0.01, (ActualWidth - padding * 2) / item.Width);
-        double scaleY = Math.Max(0.01, (ActualHeight - padding * 2) / item.Height);
-        scale = Math.Clamp(Math.Min(scaleX, scaleY), MinimumScale, MaximumScale);
-        double viewWidth = item.Width * scale;
-        double viewHeight = item.Height * scale;
-        offset = new Vector((ActualWidth - viewWidth) / 2, (ActualHeight - viewHeight) / 2);
+        viewport.Fit(new Size(item.Width, item.Height), RenderSize, 24);
         viewInitialized = true;
     }
 
     private Rect GetImageViewRect(VisionImagePanelItemViewModel item)
-        => new(offset.X, offset.Y, item.Width * scale, item.Height * scale);
+        => ImageRectToView(new VisionRectangle(0, 0, item.Width, item.Height));
 
     private Point ImageToView(VisionPoint point) => ImageToView(new Point(point.X, point.Y));
 
     private Point ImageToView(Point imagePoint)
-        => new(offset.X + imagePoint.X * scale, offset.Y + imagePoint.Y * scale);
+        => viewport.ImageToView(imagePoint);
 
     private Point ViewToImage(Point viewPoint)
-        => new((viewPoint.X - offset.X) / scale, (viewPoint.Y - offset.Y) / scale);
+        => viewport.ViewToImage(viewPoint);
 
     private Point ClampImagePoint(Point point)
     {
@@ -508,31 +441,8 @@ public sealed class VisionImageViewer : FrameworkElement
             Math.Clamp(point.Y, 0, Math.Max(0, item.Height - 1)));
     }
 
-    private Rect? NormalizeAndClamp(Rect? rect)
-        => rect.HasValue ? NormalizeAndClamp(rect.Value) : null;
-
-    private Rect NormalizeAndClamp(Rect rect)
-    {
-        VisionImagePanelItemViewModel? item = ImageItem;
-        Rect normalized = NormalizeRect(rect);
-        if (item == null)
-        {
-            return normalized;
-        }
-
-        double left = Math.Clamp(normalized.Left, 0, Math.Max(0, item.Width - MinimumRoiSize));
-        double top = Math.Clamp(normalized.Top, 0, Math.Max(0, item.Height - MinimumRoiSize));
-        double right = Math.Clamp(normalized.Right, left + MinimumRoiSize, item.Width);
-        double bottom = Math.Clamp(normalized.Bottom, top + MinimumRoiSize, item.Height);
-        return new Rect(left, top, right - left, bottom - top);
-    }
-
-    private static Rect NormalizeRect(Rect rect)
-        => new(
-            Math.Min(rect.Left, rect.Right),
-            Math.Min(rect.Top, rect.Bottom),
-            Math.Abs(rect.Width),
-            Math.Abs(rect.Height));
+    private Size GetImageSize()
+        => ImageItem is { } item ? new Size(item.Width, item.Height) : Size.Empty;
 
     private void DrawBackground(DrawingContext dc)
     {
@@ -565,7 +475,7 @@ public sealed class VisionImageViewer : FrameworkElement
                     DrawLabel(dc, line.Line.Start, overlay.Label, pen.Brush);
                     break;
                 case OverlayCircle circle:
-                    dc.DrawEllipse(null, pen, ImageToView(circle.Circle.Center), circle.Circle.Radius * scale, circle.Circle.Radius * scale);
+                    dc.DrawEllipse(null, pen, ImageToView(circle.Circle.Center), circle.Circle.Radius * viewport.Scale, circle.Circle.Radius * viewport.Scale);
                     DrawLabel(dc, circle.Circle.Center, overlay.Label, pen.Brush);
                     break;
                 case OverlayRectangle rectangle:
@@ -606,56 +516,46 @@ public sealed class VisionImageViewer : FrameworkElement
 
     private void DrawRoi(DrawingContext dc)
     {
-        if (Roi is not Rect roi || roi.Width <= 0 || roi.Height <= 0)
+        if (RoiLayers == null)
         {
             return;
         }
 
-        Rect viewRect = ImageRectToView(new VisionRectangle(roi.X, roi.Y, roi.Width, roi.Height));
-        Brush fill = new SolidColorBrush(Color.FromArgb(36, 0, 156, 255));
-        Pen pen = new(new SolidColorBrush(Color.FromRgb(0, 156, 255)), 1.5) { DashStyle = DashStyles.Dash };
-        fill.Freeze();
-        pen.Freeze();
-        dc.DrawRectangle(fill, pen, viewRect);
+        double scale = Math.Max(viewport.Scale, 0.0001);
+        foreach (object? value in RoiLayers)
+        {
+            if (value is not VisionRoiLayer { IsVisible: true } layer) continue;
+            bool selected = ReferenceEquals(layer, SelectedRoiLayer);
+            Brush fill = new SolidColorBrush(Color.FromArgb(selected ? (byte)36 : (byte)16, 0, 156, 255));
+            Pen pen = new(new SolidColorBrush(selected ? Color.FromRgb(0, 156, 255) : Color.FromRgb(80, 130, 160)),
+                (selected ? 1.5 : 1) / scale) { DashStyle = selected ? DashStyles.Dash : DashStyles.Solid };
+            fill.Freeze();
+            pen.Freeze();
+            dc.PushTransform(new MatrixTransform(viewport.Matrix));
+            dc.DrawGeometry(fill, pen, VisionRegionGeometryFactory.Create(layer.Region));
+            dc.Pop();
+        }
+
+        if (SelectedRoiLayer is not { IsVisible: true, IsLocked: false } selectedLayer)
+        {
+            return;
+        }
 
         Brush handleFill = new SolidColorBrush(Color.FromRgb(245, 250, 255));
         Pen handlePen = new(new SolidColorBrush(Color.FromRgb(0, 156, 255)), 1);
         handleFill.Freeze();
         handlePen.Freeze();
-        foreach ((_, Rect handle) in GetHandleRects(viewRect))
+        foreach ((_, Point point) in roiEditor.GetHandlePoints(selectedLayer.Region, ImageToView, viewport.Scale))
         {
-            dc.DrawRectangle(handleFill, handlePen, handle);
+            dc.DrawRectangle(handleFill, handlePen, roiEditor.GetHandleRect(point));
         }
     }
-
-    private IEnumerable<(RoiHitType Type, Rect Rect)> GetHandleRects(Rect viewRect)
-    {
-        Point topLeft = new(viewRect.Left, viewRect.Top);
-        Point top = new(viewRect.Left + viewRect.Width / 2, viewRect.Top);
-        Point topRight = new(viewRect.Right, viewRect.Top);
-        Point right = new(viewRect.Right, viewRect.Top + viewRect.Height / 2);
-        Point bottomRight = new(viewRect.Right, viewRect.Bottom);
-        Point bottom = new(viewRect.Left + viewRect.Width / 2, viewRect.Bottom);
-        Point bottomLeft = new(viewRect.Left, viewRect.Bottom);
-        Point left = new(viewRect.Left, viewRect.Top + viewRect.Height / 2);
-
-        yield return (RoiHitType.TopLeft, CreateHandle(topLeft));
-        yield return (RoiHitType.Top, CreateHandle(top));
-        yield return (RoiHitType.TopRight, CreateHandle(topRight));
-        yield return (RoiHitType.Right, CreateHandle(right));
-        yield return (RoiHitType.BottomRight, CreateHandle(bottomRight));
-        yield return (RoiHitType.Bottom, CreateHandle(bottom));
-        yield return (RoiHitType.BottomLeft, CreateHandle(bottomLeft));
-        yield return (RoiHitType.Left, CreateHandle(left));
-    }
-
-    private static Rect CreateHandle(Point center)
-        => new(center.X - HandleSize / 2, center.Y - HandleSize / 2, HandleSize, HandleSize);
 
     private Rect ImageRectToView(VisionRectangle rectangle)
     {
         Point topLeft = ImageToView(new Point(rectangle.X, rectangle.Y));
-        return new Rect(topLeft.X, topLeft.Y, rectangle.Width * scale, rectangle.Height * scale);
+        Point bottomRight = ImageToView(new Point(rectangle.X + rectangle.Width, rectangle.Y + rectangle.Height));
+        return new Rect(topLeft, bottomRight);
     }
 
     private void DrawLabel(DrawingContext dc, VisionPoint point, string label, Brush brush, double fontSize = 11)
@@ -725,17 +625,19 @@ public sealed class VisionImageViewer : FrameworkElement
         int x = (int)Math.Floor(imagePoint.X);
         int y = (int)Math.Floor(imagePoint.Y);
         string value = GetPixelValue(item, x, y);
-        statusText = $"X={x}, Y={y}, {value}, Zoom={scale * 100:F0}%";
+        statusText = $"X={x}, Y={y}, {value}, Zoom={viewport.Scale * 100:F0}%";
         InvalidateVisual();
     }
 
     private void UpdateRoiStatus()
     {
-        if (Roi is not Rect roi)
+        if (ActiveRoi is not RectangleRegion rectangle)
         {
-            statusText = HelpText;
+            statusText = ActiveRoi == null ? HelpText : $"ROI {ActiveRoi.GetType().Name}";
             return;
         }
+
+        Rect roi = new(rectangle.Rectangle.X, rectangle.Rectangle.Y, rectangle.Rectangle.Width, rectangle.Rectangle.Height);
 
         statusText = $"ROI X={roi.X:F0}, Y={roi.Y:F0}, W={roi.Width:F0}, H={roi.Height:F0}";
     }
@@ -772,6 +674,67 @@ public sealed class VisionImageViewer : FrameworkElement
         return brush;
     }
 
+    private IVisionRegion? ActiveRoi => SelectedRoiLayer?.Region;
+
+    private void SetActiveRoi(IVisionRegion region)
+    {
+        if (SelectedRoiLayer != null)
+        {
+            if (!SelectedRoiLayer.IsLocked) SelectedRoiLayer.Region = region;
+            return;
+        }
+
+        if (RoiLayers is IList list)
+        {
+            var layer = new VisionRoiLayer { Name = $"ROI {list.Count + 1}", Region = region };
+            list.Add(layer);
+            SelectedRoiLayer = layer;
+        }
+    }
+
+    private void RemoveSelectedRoiLayer()
+    {
+        if (SelectedRoiLayer == null || SelectedRoiLayer.IsLocked || RoiLayers is not IList list) return;
+        int index = list.IndexOf(SelectedRoiLayer);
+        list.Remove(SelectedRoiLayer);
+        SelectedRoiLayer = list.Count == 0 ? null : list[Math.Clamp(index, 0, list.Count - 1)] as VisionRoiLayer;
+    }
+
+    private void SubscribeRoiLayers(IEnumerable? layers)
+    {
+        if (layers is INotifyCollectionChanged collection) collection.CollectionChanged += OnRoiLayersCollectionChanged;
+        SubscribeRoiLayerItems(layers);
+    }
+
+    private void UnsubscribeRoiLayers(IEnumerable? layers)
+    {
+        if (layers is INotifyCollectionChanged collection) collection.CollectionChanged -= OnRoiLayersCollectionChanged;
+        UnsubscribeRoiLayerItems(layers);
+    }
+
+    private void OnRoiLayersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        UnsubscribeRoiLayerItems(e.OldItems);
+        SubscribeRoiLayerItems(e.NewItems);
+        InvalidateVisual();
+    }
+
+    private void SubscribeRoiLayerItems(IEnumerable? items)
+    {
+        if (items == null) return;
+        foreach (object? item in items)
+            if (item is INotifyPropertyChanged changed) changed.PropertyChanged += OnRoiLayerPropertyChanged;
+    }
+
+    private void UnsubscribeRoiLayerItems(IEnumerable? items)
+    {
+        if (items == null) return;
+        foreach (object? item in items)
+            if (item is INotifyPropertyChanged changed) changed.PropertyChanged -= OnRoiLayerPropertyChanged;
+    }
+
+    private void OnRoiLayerPropertyChanged(object? sender, PropertyChangedEventArgs e) => InvalidateVisual();
+
     private enum InteractionMode
     {
         None,
@@ -781,18 +744,5 @@ public sealed class VisionImageViewer : FrameworkElement
         ResizeRoi
     }
 
-    private enum RoiHitType
-    {
-        None,
-        Body,
-        Left,
-        Top,
-        Right,
-        Bottom,
-        TopLeft,
-        TopRight,
-        BottomRight,
-        BottomLeft
-    }
 }
 
