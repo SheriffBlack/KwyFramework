@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Kwy.UI.ThreeD\Kwy.UI.ThreeD.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF.ThreeD\Kwy.UI.WPF.ThreeD.csproj" />
   </ItemGroup>
 

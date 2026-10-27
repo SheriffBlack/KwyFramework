@@ -16,6 +16,6 @@ public sealed class HelixThreeDBackend : IThreeDBackend<FrameworkElement>
         ThreeDFeatures.ScreenSpaceLines |
         ThreeDFeatures.OffscreenRendering);
 
-    public IThreeDViewport<FrameworkElement> CreateViewport(ThreeDViewportOptions? options = null) =>
-        new HelixThreeDViewport(options ?? new ThreeDViewportOptions());
+    public IThreeDSession<FrameworkElement> Create(ThreeDViewOptions? options = null) =>
+        new HelixThreeDSession(options ?? new ThreeDViewOptions());
 }

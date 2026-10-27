@@ -1,4 +1,5 @@
 using Kwy.UI.ThreeD.Abstractions.Scene;
+using Kwy.UI.ThreeD.Abstractions.Primitives;
 
 namespace Kwy.UI.ThreeD.Abstractions.Rendering;
 
@@ -16,16 +17,25 @@ public interface IThreeDBackend
 public interface IThreeDBackend<TView> : IThreeDBackend
     where TView : class
 {
-    IThreeDViewport<TView> CreateViewport(ThreeDViewportOptions? options = null);
+    IThreeDSession<TView> Create(ThreeDViewOptions? options = null);
 }
 
-public interface IThreeDViewport : IDisposable
+/// <summary>
+/// 表示一个由具体渲染后端创建并维护的 3D 会话。
+/// </summary>
+public interface IThreeDSession : IDisposable
 {
     IThreeDScene Scene { get; }
 
     CameraState Camera { get; set; }
 
+    LinearColor BackgroundColor { get; set; }
+
+    bool IsNavigationEnabled { get; set; }
+
     event EventHandler<ThreeDHitEventArgs>? Hit;
+
+    event EventHandler? CameraChanged;
 
     void ZoomExtents(TimeSpan? animationDuration = null);
 
@@ -35,15 +45,19 @@ public interface IThreeDViewport : IDisposable
         CancellationToken cancellationToken = default);
 }
 
-public interface IThreeDViewport<out TView> : IThreeDViewport
+public interface IThreeDSession<out TView> : IThreeDSession
     where TView : class
 {
     TView View { get; }
 }
 
-public sealed record ThreeDViewportOptions
+public sealed record ThreeDViewOptions
 {
     public int? PreferredFramesPerSecond { get; init; }
+
+    public LinearColor BackgroundColor { get; init; } = LinearColor.Transparent;
+
+    public bool IsNavigationEnabled { get; init; } = true;
 }
 
 public sealed record RenderedImage(

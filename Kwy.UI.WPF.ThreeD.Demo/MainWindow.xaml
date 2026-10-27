@@ -5,19 +5,21 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Kwy.UI.WPF.ThreeD.Demo"
         xmlns:kwyThreeD="http://schemas.kwy.com/ui/threed"
-        xmlns:helix="clr-namespace:Kwy.UI.WPF.ThreeD.HelixToolkit.Rendering;assembly=Kwy.UI.WPF.ThreeD.HelixToolkit"
         mc:Ignorable="d"
         Title="Kwy 3D Facade Demo" Height="650" Width="1000">
     <Window.DataContext>
         <local:MainWindowViewModel />
     </Window.DataContext>
     <Window.Resources>
-        <helix:HelixThreeDBackend x:Key="ThreeDBackend" />
+        <kwyThreeD:HelixThreeDBackend x:Key="ThreeDBackend" />
     </Window.Resources>
     <Grid>
-        <kwyThreeD:KwyThreeDViewport
+        <kwyThreeD:KwyThreeDView
             Backend="{StaticResource ThreeDBackend}"
             Camera="{Binding Camera, Mode=TwoWay}"
-            SceneSource="{Binding Scene}" />
+            kwyThreeD:ThreeDSceneBinding.Lights="{Binding Lights}"
+            kwyThreeD:ThreeDSceneBinding.Nodes="{Binding Nodes}"
+            kwyThreeD:ThreeDSceneBinding.NodeStates="{Binding NodeStates}"
+            kwyThreeD:ThreeDSceneBinding.ResetKey="DemoScene" />
     </Grid>
 </Window>

@@ -5,7 +5,9 @@ using System.Windows.Media.Media3D;
 using HelixToolkit.SharpDX;
 using HelixToolkit.Wpf.SharpDX;
 using Kwy.UI.ThreeD.Abstractions.Rendering;
+using Kwy.UI.ThreeD.Abstractions.Primitives;
 using Kwy.UI.ThreeD.Abstractions.Scene;
+using Kwy.UI.WPF.ThreeD.HelixToolkit.Conversion;
 using Kwy.UI.WPF.ThreeD.HelixToolkit.Scene;
 using HelixCamera = HelixToolkit.Wpf.SharpDX.Camera;
 using HelixOrthographicCamera = HelixToolkit.Wpf.SharpDX.OrthographicCamera;
@@ -14,24 +16,28 @@ using HelixProjectionCamera = HelixToolkit.Wpf.SharpDX.ProjectionCamera;
 
 namespace Kwy.UI.WPF.ThreeD.HelixToolkit.Rendering;
 
-internal sealed class HelixThreeDViewport : IThreeDViewport<FrameworkElement>
+internal sealed class HelixThreeDSession : IThreeDSession<FrameworkElement>
 {
     private readonly DefaultEffectsManager effectsManager = new();
     private readonly Viewport3DX viewport;
     private readonly HelixThreeDScene scene;
     private bool disposed;
 
-    public HelixThreeDViewport(ThreeDViewportOptions options)
+    public HelixThreeDSession(ThreeDViewOptions options)
     {
         viewport = new Viewport3DX
         {
             EffectsManager = effectsManager,
-            BackgroundColor = System.Windows.Media.Colors.Transparent,
-            Camera = CreateCamera(new CameraState())
+            BackgroundColor = options.BackgroundColor.ToMediaColor(),
+            Camera = CreateCamera(new CameraState()),
+            IsPanEnabled = options.IsNavigationEnabled,
+            IsRotationEnabled = options.IsNavigationEnabled,
+            IsZoomEnabled = options.IsNavigationEnabled
         };
 
         scene = new HelixThreeDScene(viewport);
         scene.Hit += OnSceneHit;
+        viewport.CameraChanged += OnViewportCameraChanged;
     }
 
     public FrameworkElement View => viewport;
@@ -49,7 +55,30 @@ internal sealed class HelixThreeDViewport : IThreeDViewport<FrameworkElement>
         }
     }
 
+    public LinearColor BackgroundColor
+    {
+        get
+        {
+            var color = viewport.BackgroundColor;
+            return new LinearColor(color.ScR, color.ScG, color.ScB, color.ScA);
+        }
+        set => viewport.BackgroundColor = value.ToMediaColor();
+    }
+
+    public bool IsNavigationEnabled
+    {
+        get => viewport.IsPanEnabled && viewport.IsRotationEnabled && viewport.IsZoomEnabled;
+        set
+        {
+            viewport.IsPanEnabled = value;
+            viewport.IsRotationEnabled = value;
+            viewport.IsZoomEnabled = value;
+        }
+    }
+
     public event EventHandler<ThreeDHitEventArgs>? Hit;
+
+    public event EventHandler? CameraChanged;
 
     public void ZoomExtents(TimeSpan? animationDuration = null)
     {
@@ -89,12 +118,15 @@ internal sealed class HelixThreeDViewport : IThreeDViewport<FrameworkElement>
 
         disposed = true;
         scene.Hit -= OnSceneHit;
+        viewport.CameraChanged -= OnViewportCameraChanged;
         scene.Clear();
         viewport.EffectsManager = null;
         effectsManager.Dispose();
     }
 
     private void OnSceneHit(object? sender, ThreeDHitEventArgs args) => Hit?.Invoke(this, args);
+
+    private void OnViewportCameraChanged(object sender, RoutedEventArgs args) => CameraChanged?.Invoke(this, EventArgs.Empty);
 
     private static HelixCamera CreateCamera(CameraState source)
     {

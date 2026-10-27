@@ -1,33 +1,30 @@
 using System.Numerics;
+using System.Collections.ObjectModel;
 using Kwy.UI.ThreeD.Abstractions.Geometry;
 using Kwy.UI.ThreeD.Abstractions.Materials;
 using Kwy.UI.ThreeD.Abstractions.Primitives;
 using Kwy.UI.ThreeD.Abstractions.Rendering;
 using Kwy.UI.ThreeD.Abstractions.Scene;
+using Kwy.UI.ThreeD.Abstractions.State;
 
 namespace Kwy.UI.WPF.ThreeD.Demo;
 
 public sealed class MainWindowViewModel
 {
-    public IThreeDSceneSource Scene { get; } = new DemoSceneSource();
+    private readonly Guid cubeId = Guid.NewGuid();
 
-    public CameraState Camera { get; set; } = new()
+    public MainWindowViewModel()
     {
-        Position = new Vector3(4F, 3F, 5F),
-        Target = Vector3.Zero
-    };
-
-    private sealed class DemoSceneSource : IThreeDSceneSource
-    {
-        public void Populate(IThreeDScene scene)
-        {
-            scene.SetLights([
-                new AmbientLightDescriptor(new LinearColor(0.35F, 0.35F, 0.4F)),
-                new DirectionalLightDescriptor(new Vector3(-1F, -2F, -1F), LinearColor.White, 1.2F)
-            ]);
-
-            scene.Add(new MeshNodeDescriptor
+        Lights =
+        [
+            new AmbientLightDescriptor(new LinearColor(0.35F, 0.35F, 0.4F)),
+            new DirectionalLightDescriptor(new Vector3(-1F, -2F, -1F), LinearColor.White, 1.2F)
+        ];
+        Nodes =
+        [
+            new MeshNodeDescriptor
             {
+                Id = cubeId,
                 Name = "FacadeCube",
                 Geometry = CreateCube(),
                 Material = new PhongMaterialDescriptor(
@@ -35,26 +32,41 @@ public sealed class MainWindowViewModel
                     LinearColor.White,
                     LinearColor.Black,
                     48F)
-            });
-        }
+            }
+        ];
+        NodeStates.Add(new ThreeDNodeState(
+            cubeId,
+            Transform: Matrix4x4.CreateRotationY(MathF.PI / 6F)));
+    }
 
-        private static MeshGeometry CreateCube()
+    public IReadOnlyList<SceneNodeDescriptor> Nodes { get; }
+
+    public IReadOnlyList<LightDescriptor> Lights { get; }
+
+    public ObservableCollection<ThreeDNodeState> NodeStates { get; } = [];
+
+    public CameraState Camera { get; set; } = new()
+    {
+        Position = new Vector3(4F, 3F, 5F),
+        Target = Vector3.Zero
+    };
+
+    private static MeshGeometry CreateCube()
+    {
+        Vector3[] positions =
         {
-            Vector3[] positions =
-            [
-                new(-1, -1, -1), new(1, -1, -1), new(1, 1, -1), new(-1, 1, -1),
-                new(-1, -1, 1), new(1, -1, 1), new(1, 1, 1), new(-1, 1, 1)
-            ];
-            int[] triangles =
-            [
-                0, 2, 1, 0, 3, 2,
-                4, 5, 6, 4, 6, 7,
-                0, 1, 5, 0, 5, 4,
-                3, 7, 6, 3, 6, 2,
-                0, 4, 7, 0, 7, 3,
-                1, 2, 6, 1, 6, 5
-            ];
-            return new MeshGeometry(positions, triangles);
-        }
+            new(-1, -1, -1), new(1, -1, -1), new(1, 1, -1), new(-1, 1, -1),
+            new(-1, -1, 1), new(1, -1, 1), new(1, 1, 1), new(-1, 1, 1)
+        };
+        int[] triangles =
+        [
+            0, 2, 1, 0, 3, 2,
+            4, 5, 6, 4, 6, 7,
+            0, 1, 5, 0, 5, 4,
+            3, 7, 6, 3, 6, 2,
+            0, 4, 7, 0, 7, 3,
+            1, 2, 6, 1, 6, 5
+        ];
+        return new MeshGeometry(positions, triangles);
     }
 }

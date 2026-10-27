@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <PackageReference Include="HelixToolkit.Wpf.SharpDX" Version="3.1.2" />
-    <ProjectReference Include="..\Kwy.UI.ThreeD\Kwy.UI.ThreeD.csproj" />
     <ProjectReference Include="..\Kwy.UI.WPF.ThreeD\Kwy.UI.WPF.ThreeD.csproj" />
   </ItemGroup>
 
