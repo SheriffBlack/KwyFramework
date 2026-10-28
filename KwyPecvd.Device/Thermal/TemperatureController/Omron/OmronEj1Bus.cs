@@ -5,10 +5,10 @@ namespace KwyPecvd.Device.Thermal.TemperatureController.Omron;
 /// <summary>通过 Kwy TCP/Serial 字节传输执行 EJ1 Modbus RTU 请求。</summary>
 public sealed class OmronEj1Bus : IOmronEj1Bus
 {
-    private readonly IByteTransport transport;
+    private readonly IByteStreamClient transport;
     private readonly SemaphoreSlim transactionGate = new(1, 1);
 
-    public OmronEj1Bus(IByteTransport transport)
+    public OmronEj1Bus(IByteStreamClient transport)
     {
         this.transport = transport ?? throw new ArgumentNullException(nameof(transport));
     }

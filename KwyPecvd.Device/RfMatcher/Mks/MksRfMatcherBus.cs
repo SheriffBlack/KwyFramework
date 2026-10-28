@@ -5,11 +5,11 @@ namespace KwyPecvd.Device.RfMatcher.Mks;
 /// <summary>通过 Kwy TCP/Serial 字节传输执行 MKS 匹配器请求。</summary>
 public sealed class MksRfMatcherBus : IMksRfMatcherBus
 {
-    private readonly IByteTransport transport;
+    private readonly IByteStreamClient transport;
 
     private readonly SemaphoreSlim transactionGate = new(1, 1);
 
-    public MksRfMatcherBus(IByteTransport transport)
+    public MksRfMatcherBus(IByteStreamClient transport)
     {
         this.transport = transport ??
             throw new ArgumentNullException(nameof(transport));

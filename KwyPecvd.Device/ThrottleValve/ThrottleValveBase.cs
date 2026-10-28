@@ -7,6 +7,10 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
     private readonly SemaphoreSlim operationGate = new(1, 1);
     private ThrottleValveMode commandedMode;
 
+    /// <summary>
+    /// 已经发现危险状态，但安全命令尚未成功下发。
+    /// </summary>
+    private bool safeModePending;
     private double positionSetPoint;
 
     private double pressureSetPoint;
@@ -129,7 +133,26 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
                     requestedMode,
                     result);
 
-            if (!feedbackUsable && requestedMode != Definition.SafeMode)
+            lock (syncRoot)
+            {
+                if (!feedbackUsable &&
+                    requestedMode != Definition.SafeMode)
+                {
+                    safeModePending = true;
+                }
+            }
+
+            bool shouldWriteSafeMode;
+
+            lock (syncRoot)
+            {
+                shouldWriteSafeMode =
+                    safeModePending &&
+                    requestedMode !=
+                        Definition.SafeMode;
+            }
+
+            if (shouldWriteSafeMode)
             {
                 safetyCommandAttempted = true;
 
@@ -137,13 +160,14 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
                     .ConfigureAwait(false);
 
                 safetyCommandSucceeded = true;
-
                 requestedMode = Definition.SafeMode;
 
                 lock (syncRoot)
                 {
                     commandedMode =
                         Definition.SafeMode;
+
+                    safeModePending = false;
 
                     positionOutOfToleranceSince = null;
                     pressureOutOfToleranceSince = null;
@@ -269,8 +293,12 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
             lock (syncRoot)
             {
                 mode = commandedMode;
-            }
 
+                if (mode != Definition.SafeMode)
+                {
+                    safeModePending = true;
+                }
+            }
             // 如果读取反馈本身抛出异常，此前还没有机会
             // 执行安全命令，则在这里尝试一次。
             if (!safetyCommandAttempted &&
@@ -298,6 +326,8 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
                 {
                     commandedMode =
                         Definition.SafeMode;
+
+                    safeModePending = false;
                 }
 
                 positionOutOfToleranceSince = null;
@@ -448,8 +478,9 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
 
             lock (syncRoot)
             {
-                commandedMode =
-                    Definition.SafeMode;
+                commandedMode = Definition.SafeMode;
+
+                safeModePending = false;
 
                 positionOutOfToleranceSince = null;
                 pressureOutOfToleranceSince = null;
@@ -512,6 +543,15 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
         {
             lock (syncRoot)
             {
+                if (safeModePending &&
+                    mode != Definition.SafeMode)
+                {
+                    return CommandResult.Failure(
+                        ResultCodes.NotReady,
+                        $"Throttle valve '{Id}' has a " +
+                        "pending safe-mode command.");
+                }
+
                 if (requiresReadyFeedback)
                 {
                     var rejected =
@@ -539,6 +579,11 @@ public abstract class ThrottleValveBase : HardwareComponentBase, IThrottleValve
 
             lock (syncRoot)
             {
+                if (mode == Definition.SafeMode)
+                {
+                    safeModePending = false;
+                }
+
                 commandedMode = mode;
 
                 if (positionSetPoint.HasValue)

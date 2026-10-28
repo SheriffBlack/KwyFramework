@@ -6,10 +6,10 @@ namespace KwyPecvd.Device.RfPowerSupply.Mks;
 public sealed class MksRfPowerBus : IMksRfPowerBus
 {
     private const int MaximumResponseLength = 256;
-    private readonly IByteTransport transport;
+    private readonly IByteStreamClient transport;
     private readonly SemaphoreSlim transactionGate = new(1, 1);
 
-    public MksRfPowerBus(IByteTransport transport)
+    public MksRfPowerBus(IByteStreamClient transport)
     {
         this.transport = transport ?? throw new ArgumentNullException(nameof(transport));
     }

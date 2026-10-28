@@ -5,10 +5,10 @@ namespace KwyPecvd.Device.Mfc.Fujikin;
 /// <summary>基于 Kwy 字节传输抽象的 Fujikin MFC 通信总线。</summary>
 public sealed class FujikinMfcBus : IFujikinMfcBus
 {
-    private readonly IByteTransport transport;
+    private readonly IByteStreamClient transport;
     private readonly SemaphoreSlim transactionGate = new(1, 1);
 
-    public FujikinMfcBus(IByteTransport transport)
+    public FujikinMfcBus(IByteStreamClient transport)
     {
         this.transport = transport ?? throw new ArgumentNullException(nameof(transport));
     }

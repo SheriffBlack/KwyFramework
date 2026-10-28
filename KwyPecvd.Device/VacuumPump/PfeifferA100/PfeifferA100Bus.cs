@@ -6,10 +6,10 @@ namespace KwyPecvd.Device.VacuumPump.PfeifferA100;
 public sealed class PfeifferA100Bus : IPfeifferA100Bus
 {
     private const int MaximumResponseLength = 256;
-    private readonly IByteTransport transport;
+    private readonly IByteStreamClient transport;
     private readonly SemaphoreSlim transactionGate = new(1, 1);
 
-    public PfeifferA100Bus(IByteTransport transport)
+    public PfeifferA100Bus(IByteStreamClient transport)
     {
         this.transport = transport ?? throw new ArgumentNullException(nameof(transport));
     }
