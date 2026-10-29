@@ -35,6 +35,16 @@ public interface IDigitalOutputDevice : IDevice
     bool[] ReadAllDo();
 }
 
+/// <summary>
+/// 可选的物理 DO 软件定时脉冲能力。
+/// 通道号为物理通道；业务点位应优先使用 <see cref="ILogicalDigitalOutputWriter"/>。
+/// </summary>
+public interface IDigitalOutputPulseDevice : IDigitalOutputDevice
+{
+    /// <summary>输出普通 Windows 软件定时脉冲，不可用于功能安全或实时触发。</summary>
+    void WritePulse(int channel, int durationMs);
+}
+
 /// <summary>DI 快照的采集来源；用于区分轮询结果与硬件中断结果。</summary>
 public enum DigitalInputSnapshotSource
 {

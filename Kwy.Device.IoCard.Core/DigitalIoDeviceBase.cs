@@ -10,7 +10,7 @@ namespace Kwy.Device.IoCard.Core;
 /// 物理 IO 卡适配器基类。
 /// 仅封装通道校验、端口掩码写入、普通软件定时脉冲和可选硬件中断；不保存业务点位名称或工艺规则。
 /// </summary>
-public abstract class DigitalIoDeviceBase : DeviceBase, IDigitalIoDevice, IDigitalInputInterruptSource
+public abstract class DigitalIoDeviceBase : DeviceBase, IDigitalIoDevice, IDigitalOutputPulseDevice, IDigitalInputInterruptSource
 {
     protected const int DefaultIoChannelCount = DigitalIoChannelGuard.MaxChannelCount;
 
