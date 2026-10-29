@@ -1,8 +1,10 @@
 ﻿using KwyPecvd.Device;
 using KwyPecvd.Device.Mfc;
 using KwyPecvd.Device.Mfc.Simulated;
+using KwyPecvd.Device.Mfc.Ramp;
 using KwyPecvd.Process.Chamber;
 using KwyPecvd.Process.Chamber.Gas;
+using KwyPecvd.Process.Chamber.Vacuum;
 
 namespace KwyPecvd.Tests.Process;
 
@@ -58,7 +60,7 @@ public sealed class ChamberControllerTests
 
         // Assert
         Assert.True(result.Succeeded);
-        Assert.Equal(100, mfc.Snapshot.SetPoint);
+        Assert.Equal(100, mfc.Snapshot.TargetSetPoint);
         Assert.True(mfc.Snapshot.Feedback > 0);
     }
 
@@ -67,6 +69,7 @@ public sealed class ChamberControllerTests
     {
         // Arrange
         var registry = new HardwareComponentRegistry();
+        registry.Add(CreateMfc());
         var chamber = CreateChamber(registry);
 
         // Act：PM1只配置了SiH4，没有配置NH3
@@ -83,27 +86,22 @@ public sealed class ChamberControllerTests
     }
 
     [Fact]
-    public async Task SetGasFlowAsync_ReturnsNotReadyWhenMfcIsMissing()
+    public void Constructor_ThrowsWhenConfiguredMfcIsMissing()
     {
         // Arrange：Definition声明了MFC，但Registry没有实例
         var registry = new HardwareComponentRegistry();
-        var chamber = CreateChamber(registry);
 
-        // Act
-        var result = await chamber.SetGasFlowAsync(
-            "SiH4",
-            100,
-            TimeSpan.Zero);
+        var exception = Assert.Throws<
+            KeyNotFoundException>(
+            () => CreateChamber(registry));
 
-        // Assert
-        Assert.False(result.Succeeded);
-        Assert.Equal(
-            ResultCodes.NotReady,
-            result.Code);
+        Assert.Contains(
+            "MFC_SIH4",
+            exception.Message);
     }
 
     [Fact]
-    public async Task SetGasFlowAsync_ThrowsWhenMfcBelongsToAnotherChamber()
+    public void Constructor_ThrowsWhenMfcBelongsToAnotherChamber()
     {
         // Arrange：将属于PM2的MFC错误地配置给PM1
         var registry = new HardwareComponentRegistry();
@@ -113,15 +111,9 @@ public sealed class ChamberControllerTests
 
         registry.Add(wrongMfc);
 
-        var chamber = CreateChamber(registry);
-
-        // Act + Assert
-        var exception = await Assert.ThrowsAsync<
+        var exception = Assert.Throws<
             InvalidOperationException>(
-            () => chamber.SetGasFlowAsync(
-                "SiH4",
-                100,
-                TimeSpan.Zero));
+            () => CreateChamber(registry));
 
         Assert.Contains(
             "not chamber 'PM1'",
@@ -174,7 +166,7 @@ public sealed class ChamberControllerTests
 
         Assert.Equal(
             100,
-            gasFlow.Mfc.SetPoint);
+            gasFlow.Mfc.TargetSetPoint);
 
         Assert.InRange(
             gasFlow.Mfc.Feedback,
@@ -215,7 +207,7 @@ public sealed class ChamberControllerTests
 
         // Assert
         Assert.True(result.Succeeded);
-        Assert.Equal(0, mfc.Snapshot.SetPoint);
+        Assert.Equal(0, mfc.Snapshot.TargetSetPoint);
     }
 
     [Fact]
@@ -283,7 +275,7 @@ public sealed class ChamberControllerTests
 
         Assert.Equal(
             0,
-            mfc.Snapshot.SetPoint);
+            mfc.Snapshot.TargetSetPoint);
 
         // 此时反馈可能还没有归零，
         // 所以腔体仍应处于Stopping。
@@ -392,6 +384,40 @@ public sealed class ChamberControllerTests
     }
 
     [Fact]
+    public async Task
+        StartPumpDownAsync_RemainsPreparingUntilVacuumIsReady()
+    {
+        var registry = new HardwareComponentRegistry();
+        var mfc = CreateMfc();
+        registry.Add(mfc);
+
+        var chamber = CreateChamber(registry);
+
+        await mfc.InitializeAsync();
+        await mfc.ExecuteCycleAsync();
+
+        var initializeResult =
+            await chamber.InitializeAsync();
+
+        Assert.True(initializeResult.Succeeded);
+
+        var startResult =
+            await chamber.StartPumpDownAsync();
+
+        Assert.True(startResult.Succeeded);
+
+        await chamber.ExecuteCycleAsync();
+
+        Assert.Equal(
+            ChamberState.Preparing,
+            chamber.Snapshot.State);
+
+        Assert.Equal(
+            ChamberVacuumState.StartingPump,
+            chamber.Snapshot.Vacuum.State);
+    }
+
+    [Fact]
     public async Task SetGasFlowAsync_RejectsWhenChamberIsOffline()
     {
         var registry = new HardwareComponentRegistry();
@@ -411,7 +437,7 @@ public sealed class ChamberControllerTests
 
         Assert.False(result.Succeeded);
         Assert.Equal(ResultCodes.InvalidState, result.Code);
-        Assert.Equal(0, mfc.Snapshot.SetPoint);
+        Assert.Equal(0, mfc.Snapshot.TargetSetPoint);
     }
 
     [Fact]
@@ -542,7 +568,7 @@ public sealed class ChamberControllerTests
 
         Assert.Equal(
             0,
-            mfc.Snapshot.SetPoint);
+            mfc.Snapshot.TargetSetPoint);
 
         Assert.InRange(
             Math.Abs(mfc.Snapshot.Feedback),
@@ -667,14 +693,21 @@ public sealed class ChamberControllerTests
     private sealed class OfflineMfc : MfcBase
     {
         public OfflineMfc(MfcDefinition definition)
-            : base(definition)
+            : base(definition, new SoftwareRampProfile())
         {
         }
 
-        protected override ValueTask<MfcCycleResult>
-            ExchangeAsync(
-                double setPoint,
-                CancellationToken cancellationToken)
+        protected override ValueTask WriteSetPointAsync(
+            double setPoint,
+            TimeSpan rampDuration,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.CompletedTask;
+        }
+
+        protected override ValueTask<MfcCycleResult> ReadFeedbackAsync(
+            CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 

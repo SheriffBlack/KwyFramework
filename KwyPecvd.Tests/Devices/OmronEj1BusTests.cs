@@ -64,7 +64,7 @@ public sealed class OmronEj1BusTests
             () => bus.ReadHoldingRegisterAsync(0x01, 0x0600));
     }
 
-    private sealed class FakeByteTransport(byte[] response) : IByteTransport
+    private sealed class FakeByteTransport(byte[] response) : IByteStreamClient
     {
         private int readOffset;
 
@@ -93,6 +93,12 @@ public sealed class OmronEj1BusTests
         {
             State = ConnectionState.Disconnected;
             return Task.CompletedTask;
+        }
+
+        public async Task<bool> TryConnectAsync(CancellationToken cancellationToken = default)
+        {
+            await ConnectAsync(cancellationToken);
+            return IsConnected;
         }
 
         public ValueTask WriteAsync(

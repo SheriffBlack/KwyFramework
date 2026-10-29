@@ -135,7 +135,7 @@ public sealed class MksRfPowerSupplyTests
                 Frequency: 13_560_000));
     }
 
-    private sealed class FakeByteTransport(byte[] response) : IByteTransport
+    private sealed class FakeByteTransport(byte[] response) : IByteStreamClient
     {
         private int offset;
         public ConnectionState State { get; private set; } = ConnectionState.Disconnected;
@@ -163,6 +163,12 @@ public sealed class MksRfPowerSupplyTests
         {
             State = ConnectionState.Disconnected;
             return Task.CompletedTask;
+        }
+
+        public async Task<bool> TryConnectAsync(CancellationToken cancellationToken = default)
+        {
+            await ConnectAsync(cancellationToken);
+            return IsConnected;
         }
 
         public ValueTask WriteAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)

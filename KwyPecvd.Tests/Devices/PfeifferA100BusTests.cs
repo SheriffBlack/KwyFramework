@@ -54,7 +54,7 @@ public sealed class PfeifferA100BusTests
             () => bus.WriteRunningAsync("000", running: false));
     }
 
-    private sealed class FakeByteTransport(byte[] response) : IByteTransport
+    private sealed class FakeByteTransport(byte[] response) : IByteStreamClient
     {
         private int readOffset;
 
@@ -78,6 +78,12 @@ public sealed class PfeifferA100BusTests
         {
             State = ConnectionState.Connected;
             return Task.CompletedTask;
+        }
+
+        public async Task<bool> TryConnectAsync(CancellationToken cancellationToken = default)
+        {
+            await ConnectAsync(cancellationToken);
+            return IsConnected;
         }
 
         public Task DisconnectAsync(CancellationToken cancellationToken = default)

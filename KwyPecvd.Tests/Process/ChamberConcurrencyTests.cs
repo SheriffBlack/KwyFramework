@@ -143,7 +143,7 @@ public sealed class ChamberConcurrencyTests
             Current = new MfcSnapshot
             {
                 Id = Id,
-                SetPoint = 0,
+                TargetSetPoint = 0,
                 Feedback = 0,
                 Unit = "sccm",
                 FullScale = 500,
@@ -191,7 +191,7 @@ public sealed class ChamberConcurrencyTests
         {
             Current = Current with
             {
-                SetPoint = Target,
+                TargetSetPoint = Target,
                 Feedback = Target,
                 Timestamp = DateTimeOffset.UtcNow
             };

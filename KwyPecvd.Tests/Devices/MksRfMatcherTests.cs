@@ -182,7 +182,7 @@ public sealed class MksRfMatcherTests
                     IsFaulted: false));
     }
 
-    private sealed class FakeByteTransport(byte[] response) : IByteTransport
+    private sealed class FakeByteTransport(byte[] response) : IByteStreamClient
     {
         private int offset;
 
@@ -220,6 +220,13 @@ public sealed class MksRfMatcherTests
         {
             State = ConnectionState.Disconnected;
             return Task.CompletedTask;
+        }
+
+        public async Task<bool> TryConnectAsync(
+            CancellationToken cancellationToken = default)
+        {
+            await ConnectAsync(cancellationToken);
+            return IsConnected;
         }
 
         public ValueTask WriteAsync(
