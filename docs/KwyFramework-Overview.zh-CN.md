@@ -111,21 +111,21 @@ OpcUaConfig        → OpcUaCommunication
 注册发生在对应协议模块中：
 
 ```csharp
-var builder = new CommunicationFactoryBuilder();
+var builder = new ProtocolClientFactoryBuilder();
 builder.RegisterTcp();
 builder.RegisterSerialPort();
 builder.RegisterVisa();
 
-ICommunicationFactory factory = builder.Build();
+IProtocolClientFactory factory = builder.Build();
 
-ICommunicationClient client = factory.CreateClient(protocolConfig);
+IProtocolClient client = factory.CreateClient(protocolConfig);
 ```
 
 协议映射只允许在启动阶段写入；`Build()` 后的工厂是只读的。重复注册同一种配置类型会立即失败，避免运行期静默替换协议实现。
 
 这个 Builder 不是 DI 容器，注册时不会创建通信客户端或连接硬件。应用只注册实际需要的协议，不默认引入“全协议”注册。
 
-在这类配置驱动场景中，设备代码可面向 `ICommunicationClient` 或所需的能力接口，无需自行编写协议分支。
+在这类配置驱动场景中，设备代码可面向 `IProtocolClient` 或所需的能力接口，无需自行编写协议分支。
 
 这带来三个直接收益：
 
@@ -255,7 +255,7 @@ Kwy.Vision.Halcon 或 Kwy.Vision.OpenCV
 
 仓库并非所有项目都自动采用同一许可证。
 
-当前已明确以 MIT 开源发布的范围以根目录 [README](../README.md#许可证) 和 [LICENSE-MVVM.md](../LICENSE-MVVM.md) 为准，主要包括 `Kwy.MVVM` 与 `Kwy.MVVM.WPF` 相关项目。
+当前已明确以 MIT 开源发布的范围以根目录 [README](../README.md#许可证) 和 [许可证说明](../LICENSES/README.md) 为准。
 
 其他项目、厂商适配和模板代码是否可使用、修改或再分发，必须以其目录内的许可证或后续明确声明为准。使用前请先确认对应模块的授权边界。
 
