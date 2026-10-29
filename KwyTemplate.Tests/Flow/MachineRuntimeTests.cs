@@ -64,9 +64,9 @@ public sealed class MachineRuntimeTests
         Assert.Equal("WO001.txt", request.FileName);
         Assert.Equal("12.3457", request.FieldsWithoutSequence[0]);
         Assert.Equal("OK", request.FieldsWithoutSequence[1]);
-        Assert.Equal("23.4568", request.FieldsWithoutSequence[2]);
-        Assert.Equal("NG", request.FieldsWithoutSequence[3]);
-        Assert.Equal("OP01", request.FieldsWithoutSequence[4]);
+        Assert.Equal("23.4568", request.FieldsWithoutSequence[3]);
+        Assert.Equal("NG", request.FieldsWithoutSequence[4]);
+        Assert.Equal("OP01", request.FieldsWithoutSequence[7]);
     }
 
     [Fact]
@@ -81,8 +81,8 @@ public sealed class MachineRuntimeTests
         ProductionRecordWriteRequest request = Assert.Single(writer.Requests);
         Assert.Equal("9.1000", request.FieldsWithoutSequence[0]);
         Assert.Equal("NG", request.FieldsWithoutSequence[1]);
-        Assert.Equal("(NULL)", request.FieldsWithoutSequence[2]);
         Assert.Equal("(NULL)", request.FieldsWithoutSequence[3]);
+        Assert.Equal("(NULL)", request.FieldsWithoutSequence[4]);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public sealed class MachineRuntimeTests
         plc.Int32Reads["DM6502"] = 2000;
         plc.FloatReads["DM6500"] = 0.9f;
         plc.Int32Reads["DM6506"] = 200;
-        plc.Int16Reads["E9986"] = 20;
+        plc.Int16Reads["DM6534"] = 20;
         var context = new ProductionContext { WorkOrderNo = "WO-SUM" };
         var options = new TestProductionOutputOptions(directory);
         var machine = CreateMachine2A(plc, context, options);

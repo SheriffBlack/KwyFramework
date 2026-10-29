@@ -6,7 +6,7 @@ namespace KwyTemplate.Tests.Flow;
 public sealed class MeasurementUnitConverterTests
 {
     [Theory]
-    [InlineData("L_S", 0.000995d, "μH", 0.995d)]
+    [InlineData("L_S", 0.000995d, "μH", 995d)]
     [InlineData("R_S", 1.9695d, "mΩ", 1969.5d)]
     [InlineData("C_S", 0.000000047d, "nF", 47d)]
     public void FromBaseUnit_HiokiProtocolParameter_UsesEngineeringUnit(
