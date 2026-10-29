@@ -4,11 +4,7 @@ namespace KwyPecvd.RT.Simulated;
 
 public sealed class SimulatedChamberInterlockSource: IChamberInterlockSource
 {
-    public ChamberInterlockSnapshot Snapshot
-    {
-        get;
-        set;
-    } = new()
+    public ChamberInterlockSnapshot Snapshot { get; set; } = new()
     {
         IsValid = true,
         EmergencyStopHealthy = true,

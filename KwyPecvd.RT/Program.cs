@@ -265,8 +265,32 @@ var pm1Definition = new ChamberDefinition
     Vacuum =
     new ChamberVacuumDefinition
     {
-        PressureGaugeId = "PG_PM1",
-        DryPumpId = "PUMP_DRY_PM1"
+        PressureGauges =
+        [
+            new ChamberPressureGaugeDefinition
+            {
+                PressureGaugeId = "PG_PM1",
+                Roles =
+                    ChamberPressureGaugeRole.PumpDown |
+                    ChamberPressureGaugeRole.ProcessControl |
+                    ChamberPressureGaugeRole.Safety
+            }
+        ],
+
+        PumpIds =
+        [
+            "PUMP_DRY_PM1"
+        ],
+
+        ValveIds =
+        [
+            "VALVE_PM1_VACUUM_ISOLATION"
+        ],
+
+        ReadyPressure = 100,
+
+        PumpDownTimeout =
+            TimeSpan.FromMinutes(5)
     }
 };
 

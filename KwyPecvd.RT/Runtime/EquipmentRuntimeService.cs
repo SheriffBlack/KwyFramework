@@ -3,6 +3,45 @@ using KwyPecvd.Process.Equipment;
 
 namespace KwyPecvd.RT.Runtime;
 
+/*
+
+Module 使用硬件，但硬件周期的调度权统一归 EquipmentRuntimeService。
+EquipmentRuntimeService
+└─ PeriodicTimer：100ms
+   ├─ 1. 遍历 HardwareComponentRegistry
+   │    └─ component.ExecuteCycleAsync()
+   │         ├─ 写入目标
+   │         ├─ 读取真实反馈
+   │         └─ 更新 Snapshot
+   │
+   └─ 2. 遍历 EquipmentModuleRegistry
+        └─ module.ExecuteCycleAsync()
+             ├─ 读取硬件 Snapshot --> 每个子系统负责读取并解释自己所需的 Component Snapshot
+             └─ 推进 PM 状态机
+
+ChamberController
+├─ ChamberGasSystem
+│  └─ 读取 IMfc.Snapshot
+├─ ChamberVacuumSystem
+│  ├─ 读取 IPressureGauge.Snapshot
+│  ├─ 读取 IVacuumPump.Snapshot
+│  └─ 读取 IOnOffValve.Snapshot
+├─ ChamberTemperatureSystem
+│  ├─ 读取 ITemperatureSensor.Snapshot
+│  └─ 读取 ITemperatureController.Snapshot
+└─ ChamberRfSystem
+   ├─ 读取 IRfPowerSupply.Snapshot
+   └─ 读取 IRfMatcher.Snapshot
+
+
+
+腔体状态类似气缸运动： 
+    下发伸出命令
+        → 等待伸出到位传感器
+        → 到位后确认动作完成
+        → 切换到 Extended
+*/
+
 public sealed class EquipmentRuntimeService : BackgroundService
 {
     private readonly IHardwareComponentRegistry hardwareRegistry;
