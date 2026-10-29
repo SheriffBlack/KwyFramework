@@ -192,8 +192,7 @@ public sealed class DialogService : IDialogService
                 hasBeenShown = true;
                 if (isModal)
                 {
-                    using var focusGuard = DialogOwnerFocusGuard.Attach(window);
-                    _ = window.ShowDialog();
+                    ShowModal(window);
                 }
                 else
                 {
@@ -208,6 +207,32 @@ public sealed class DialogService : IDialogService
             catch (Exception exception)
             {
                 Fail(exception);
+            }
+        }
+
+        private static void ShowModal(Window window)
+        {
+            Window? owner = window.Owner;
+            if (owner == null)
+            {
+                _ = window.ShowDialog();
+                return;
+            }
+
+            // ShowDialog 会禁用所有者 HWND，但该原生状态并未反映在 WPF 的 IsEnabled 属性中。
+            // 保持两者状态一致，以确保所有者内容也能获得预期的禁用视觉状态。
+            bool ownerWasEnabled = owner.IsEnabled;
+            owner.SetCurrentValue(UIElement.IsEnabledProperty, false);
+            try
+            {
+                _ = window.ShowDialog();
+            }
+            finally
+            {
+                if (!owner.Dispatcher.HasShutdownStarted)
+                {
+                    owner.SetCurrentValue(UIElement.IsEnabledProperty, ownerWasEnabled);
+                }
             }
         }
 
