@@ -6,6 +6,8 @@
 
 - `DeviceBase`：统一设备连接、断开、状态事件、异常上报与释放资源的生命周期。
 - `DeviceRegistry`：按稳定设备 ID 或能力接口保存和查找已经创建的设备实例。
+- `DeviceEventForwarder`：将通用设备状态、异常和操作事件转换为整机事件与报警。
+- `InMemoryEquipmentAlarmService`：维护进程内整机活动报警及其触发、确认和清除生命周期。
 - `AddDeviceCore`：注册跨领域基础服务。
 
 ## 放入此项目的判断

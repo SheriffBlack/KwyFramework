@@ -1,4 +1,6 @@
 ﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Abstractions.Equipment;
+using Kwy.Device.Core.Equipment;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -15,6 +17,8 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton<IDeviceRegistry, DeviceRegistry>();
+        services.TryAddSingleton<IEquipmentAlarmService, InMemoryEquipmentAlarmService>();
+        services.TryAddSingleton<IDeviceEventForwarder, DeviceEventForwarder>();
         return services;
     }
 
