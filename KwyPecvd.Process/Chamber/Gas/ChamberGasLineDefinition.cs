@@ -12,10 +12,8 @@ public sealed record ChamberGasLineDefinition
 
     public void Validate()
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            GasName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(GasName);
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            MfcId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(MfcId);
     }
 }

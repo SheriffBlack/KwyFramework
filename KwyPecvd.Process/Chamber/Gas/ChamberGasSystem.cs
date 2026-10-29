@@ -8,10 +8,11 @@ namespace KwyPecvd.Process.Chamber.Gas;
 internal sealed class ChamberGasSystem
 {
     private readonly string chamberId;
-    private readonly IHardwareComponentRegistry registry;
 
-    /// <summary>实际配置的全部气路。</summary>
-    private readonly IReadOnlyDictionary<string, ChamberGasLineDefinition> gasLines;
+    /// <summary>
+    /// 构造时由整机 Registry 一次解析得到的当前腔体气路视图。
+    /// </summary>
+    private readonly IReadOnlyDictionary<string, ChamberGasLineBinding> gasLines;
 
     public ChamberGasSystem(
         string chamberId,
@@ -23,24 +24,25 @@ internal sealed class ChamberGasSystem
         ArgumentNullException.ThrowIfNull(registry);
 
         this.chamberId = chamberId;
-        this.registry = registry;
-        this.gasLines = gasLines.ToDictionary(
-            gasLine => gasLine.GasName,
-            StringComparer.OrdinalIgnoreCase);
+        this.gasLines = gasLines
+            .Select(gasLine => BindGasLine(
+                gasLine,
+                registry))
+            .ToDictionary(
+                binding => binding.Definition.GasName,
+                StringComparer.OrdinalIgnoreCase);
     }
 
-    public IReadOnlyCollection<ChamberGasFlowSnapshot>
-        CreateSnapshots() =>
+    public IReadOnlyCollection<ChamberGasFlowSnapshot> CreateSnapshots() =>
         gasLines.Values
             .Select(CreateSnapshot)
             .ToArray();
 
-    public bool TryValidateReady(
-        out CommandResult failure)
+    public bool TryInitialize(out CommandResult failure)
     {
         foreach (var gasLine in gasLines.Values)
         {
-            var mfc = GetRequiredMfc(gasLine);
+            var mfc = gasLine.Mfc;
             var snapshot = mfc.Snapshot;
 
             if (snapshot.IsOffline ||
@@ -59,18 +61,11 @@ internal sealed class ChamberGasSystem
         return true;
     }
 
-    public bool TryValidateSafeForReset(
-    out CommandResult failure)
+    public bool TryValidateSafeForReset(out CommandResult failure)
     {
         foreach (var gasLine in gasLines.Values)
         {
-            if (!TryResolveMfc(
-                    gasLine.GasName,
-                    out var mfc,
-                    out failure))
-            {
-                return false;
-            }
+            var mfc = gasLine.Mfc;
 
             var snapshot = mfc.Snapshot;
 
@@ -84,8 +79,8 @@ internal sealed class ChamberGasSystem
             }
 
             if (!double.IsFinite(
-                    snapshot.SetPoint) ||
-                Math.Abs(snapshot.SetPoint) > 0.001 ||
+                    snapshot.TargetSetPoint) ||
+                Math.Abs(snapshot.TargetSetPoint) > 0.001 ||
                 !double.IsFinite(
                     snapshot.Feedback) ||
                 Math.Abs(snapshot.Feedback) >
@@ -103,7 +98,7 @@ internal sealed class ChamberGasSystem
         return true;
     }
 
-    public bool TryResolveMfc(
+    public bool TryGetMfc(
         string gasName,
         out IMfc mfc,
         out CommandResult failure)
@@ -127,16 +122,7 @@ internal sealed class ChamberGasSystem
             return false;
         }
 
-        if (!registry.TryGet<IMfc>(gasLine.MfcId, out mfc))
-        {
-            failure = CommandResult.Failure(
-                ResultCodes.NotReady,
-                $"MFC '{gasLine.MfcId}' for gas " +
-                $"'{gasLine.GasName}' is not available.");
-            return false;
-        }
-
-        ValidateBinding(gasLine, mfc);
+        mfc = gasLine.Mfc;
         failure = CommandResult.Success();
         return true;
     }
@@ -150,19 +136,9 @@ internal sealed class ChamberGasSystem
         {
             try
             {
-                if (!TryResolveMfc(
-                        gasLine.GasName,
-                        out var mfc,
-                        out var failure))
-                {
-                    (failures ??= []).Add(
-                        $"{gasLine.GasName}: " +
-                        failure.Message);
-
-                    continue;
-                }
-
-                var error = await TryStopMfcAsync(mfc, cancellationToken);
+                var error = await TryStopMfcAsync(
+                    gasLine.Mfc,
+                    cancellationToken);
                 if (error is not null)
                     (failures ??= []).Add(error);
             }
@@ -175,7 +151,7 @@ internal sealed class ChamberGasSystem
             catch (Exception exception)
             {
                 (failures ??= []).Add(
-                    $"{gasLine.MfcId}: " +
+                    $"{gasLine.Definition.MfcId}: " +
                     exception.Message);
             }
         }
@@ -200,16 +176,7 @@ internal sealed class ChamberGasSystem
         var waiting = false;
         foreach (var gasLine in gasLines.Values)
         {
-            if (!TryResolveMfc(
-                    gasLine.GasName,
-                    out var mfc,
-                    out var failure))
-            {
-                return new GasStopEvaluation(
-                    GasStopStatus.Faulted,
-                    ChamberFaultCodes.GasMfcNotAvailable,
-                    failure.Message);
-            }
+            var mfc = gasLine.Mfc;
 
             var snapshot = mfc.Snapshot;
 
@@ -224,8 +191,8 @@ internal sealed class ChamberGasSystem
                 Math.Abs(snapshot.Feedback) <= mfc.Definition.Tolerance;
 
             if (snapshot.Timestamp <= commandsCompletedAt ||
-                !double.IsFinite(snapshot.SetPoint) ||
-                Math.Abs(snapshot.SetPoint) > 0.001 ||
+                !double.IsFinite(snapshot.TargetSetPoint) ||
+                Math.Abs(snapshot.TargetSetPoint) > 0.001 ||
                 snapshot.IsRamping || !isAtZero)
             {
                 waiting = true;
@@ -259,7 +226,7 @@ internal sealed class ChamberGasSystem
 
         foreach (var target in targets)
         {
-            if (!TryResolveMfc(
+            if (!TryGetMfc(
                     target.GasName,
                     out var mfc,
                     out failure))
@@ -302,7 +269,7 @@ internal sealed class ChamberGasSystem
         var waiting = false;
         foreach (var target in targets.Values)
         {
-            if (!TryResolveMfc(
+            if (!TryGetMfc(
                     target.GasName,
                     out var mfc,
                     out var failure))
@@ -381,24 +348,28 @@ internal sealed class ChamberGasSystem
         }
     }
 
-    private IMfc GetRequiredMfc(
-        ChamberGasLineDefinition gasLine)
-    {
-        var mfc = registry.GetRequired<IMfc>(gasLine.MfcId);
-        ValidateBinding(gasLine, mfc);
-        return mfc;
-    }
-
     private ChamberGasFlowSnapshot CreateSnapshot(
-        ChamberGasLineDefinition gasLine)
+        ChamberGasLineBinding gasLine)
     {
-        var mfc = GetRequiredMfc(gasLine);
-
         return new ChamberGasFlowSnapshot
         {
-            GasName = gasLine.GasName,
-            Mfc = mfc.Snapshot
+            GasName = gasLine.Definition.GasName,
+            Mfc = gasLine.Mfc.Snapshot
         };
+    }
+
+    private ChamberGasLineBinding BindGasLine(
+        ChamberGasLineDefinition gasLine,
+        IHardwareComponentRegistry registry)
+    {
+        var mfc = registry.GetRequired<IMfc>(
+            gasLine.MfcId);
+
+        ValidateBinding(gasLine, mfc);
+
+        return new ChamberGasLineBinding(
+            gasLine,
+            mfc);
     }
 
     private void ValidateBinding(
@@ -485,3 +456,7 @@ internal sealed record ChamberGasPreparationPlan(
 internal sealed record ChamberGasPreparationCommand(
     IMfc Mfc,
     ChamberGasTarget Target);
+
+internal sealed record ChamberGasLineBinding(
+    ChamberGasLineDefinition Definition,
+    IMfc Mfc);
