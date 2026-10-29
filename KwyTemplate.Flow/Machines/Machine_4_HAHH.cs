@@ -28,6 +28,7 @@ namespace KwyTemplate.Flow.Machines;
 public class Machine_4_HAHH : 
     MachineBase, 
     ICyntecReelScanMachine, 
+    ICyntecReelScanResultMachine,
     IIndustrialPcOnlineSignalMachine, 
     IMachinePlcStopSignalMachine,
     IMachineProductionCounterResetMachine,
@@ -56,6 +57,13 @@ public class Machine_4_HAHH :
     private int parameterCompareWriteGate;
     private bool? previousParameterCompareSignal;
     private int systemDataReadGate;
+    private readonly CumulativePlcCounter materialInputCounter = new();
+    private readonly CumulativePlcCounter electricalTestOkCounter = new();
+    private readonly CumulativePlcCounter dcrNgCounter = new();
+    private readonly CumulativePlcCounter dcrCeCounter = new();
+    private readonly CumulativePlcCounter lsNgCounter = new();
+    private readonly CumulativePlcCounter rsNgCounter = new();
+    private readonly CumulativePlcCounter inductanceCeCounter = new();
     private long materialInputCount;
     private long electricalTestOkCount;
     private MesWorkOrderTapeSetup? currentTapeSetup;
@@ -132,6 +140,10 @@ public class Machine_4_HAHH :
     protected override bool ShouldApplyRealtimeStatisticsToTable => false;
 
     public int ReelScanInputChannel => (int)CardToPc.Reel扫;
+
+    public int ReelScanOkOutputChannel => (int)PcToCard.Reel扫OK;
+
+    public int ReelScanNgOutputChannel => (int)PcToCard.Reel扫NG;
 
     public enum CardToPc
     {
@@ -573,20 +585,20 @@ public class Machine_4_HAHH :
                 return;
             }
 
-            uint total = await ReadUInt32PointAsync(plc, PlcPoints.测试总量).ConfigureAwait(false);
+            uint total = materialInputCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.测试总量).ConfigureAwait(false));
             UpdateMaterialInputCount(total);
-            UpdateElectricalTestOkCount(await ReadUInt32PointAsync(plc, PlcPoints.测试OK数).ConfigureAwait(false));
+            UpdateElectricalTestOkCount(electricalTestOkCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.测试OK数).ConfigureAwait(false)));
             if (total == 0)
             {
                 // 与后台工位结果消费者并发：使用原子写入，避免丢失或撕裂计数。
                 ResetMeasurementStatistics(3, 4);
             }
 
-            uint dcrNg = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_NG数).ConfigureAwait(false);
-            uint dcrCe = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_CE数).ConfigureAwait(false);
-            uint lsNg = await ReadUInt32PointAsync(plc, PlcPoints.LS_NG数).ConfigureAwait(false);
-            uint rsNg = await ReadUInt32PointAsync(plc, PlcPoints.RS_NG数).ConfigureAwait(false);
-            uint indCe = await ReadUInt32PointAsync(plc, PlcPoints.IND_CE).ConfigureAwait(false);
+            uint dcrNg = dcrNgCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.DCR1_NG数).ConfigureAwait(false));
+            uint dcrCe = dcrCeCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.DCR1_CE数).ConfigureAwait(false));
+            uint lsNg = lsNgCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.LS_NG数).ConfigureAwait(false));
+            uint rsNg = rsNgCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.RS_NG数).ConfigureAwait(false));
+            uint indCe = inductanceCeCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.IND_CE).ConfigureAwait(false));
 
             TestMeasurementStatisticsSnapshot dcrStatistics = GetMeasurementStatistics(3, "DCR1");
             uint dcrOk = dcrStatistics.OkCount;
@@ -1486,18 +1498,18 @@ public class Machine_4_HAHH :
 
         string[] lines =
         [
-            BuildSummaryLine("OutputQty", outputQty.ToString(CultureInfo.InvariantCulture)),
-            BuildSummaryLine("Yeld", FormatPercent(yield)),
-            BuildSummaryLine("NGSum", ngSum.ToString(CultureInfo.InvariantCulture)),
-            BuildSummaryLine("TCAddQty", tcAddQty.ToString(CultureInfo.InvariantCulture)),
-            BuildSummaryLine("LeaveQty", "0"),
-            BuildSummaryLine("Remark", (currentTapeSetup?.SampleQty ?? 0).ToString(CultureInfo.InvariantCulture)),
-            BuildSummaryLine("AdjustQty", "0"),
-            BuildSummaryLine("NGPOLAR1", "0"),
-            BuildSummaryLine("NGPOLAR2", "0"),
-            BuildSummaryLine("CpkDCR1", FormatNullableCpk(CalculateCpk("DCR1", dcr1Cpk))),
-            BuildSummaryLine("CpkLS", FormatNullableCpk(CalculateCpk("Ls", lsCpk))),
-            BuildSummaryLine("CpkRS", FormatNullableCpk(CalculateCpk("Rs", rsCpk)))
+            ProductionSummaryLineFormatter.AutomaticNumber("OutputQty", outputQty.ToString(CultureInfo.InvariantCulture)),
+            ProductionSummaryLineFormatter.AutomaticNumber("Yeld", FormatPercent(yield)),
+            ProductionSummaryLineFormatter.AutomaticNumber("NGSum", ngSum.ToString(CultureInfo.InvariantCulture)),
+            ProductionSummaryLineFormatter.AutomaticNumber("TCAddQty", tcAddQty.ToString(CultureInfo.InvariantCulture)),
+            ProductionSummaryLineFormatter.AutomaticNumber("LeaveQty", "0"),
+            ProductionSummaryLineFormatter.ManualText("Remark", $"抽检用料{currentTapeSetup?.SampleQty ?? 0}颗"),
+            ProductionSummaryLineFormatter.AutomaticNumber("AdjustQty", "0"),
+            ProductionSummaryLineFormatter.AutomaticNumber("NGPOLAR1", "0"),
+            ProductionSummaryLineFormatter.AutomaticNumber("NGPOLAR2", "0"),
+            ProductionSummaryLineFormatter.AutomaticNumber("CpkDCR1", FormatNullableCpk(CalculateCpk("DCR1", dcr1Cpk)), string.Empty),
+            ProductionSummaryLineFormatter.AutomaticNumber("CpkLS", FormatNullableCpk(CalculateCpk("Ls", lsCpk)), string.Empty),
+            ProductionSummaryLineFormatter.AutomaticNumber("CpkRS", FormatNullableCpk(CalculateCpk("Rs", rsCpk)), string.Empty)
         ];
 
         await TextFileHelper.WriteAsync(directory, fileName, string.Join(Environment.NewLine, lines), appendNewLine: false).ConfigureAwait(false);
@@ -1582,11 +1594,6 @@ public class Machine_4_HAHH :
             throw new InvalidOperationException($"Failed to enqueue production record: {Path.Combine(directory, fileName)}");
         }
     }
-
-    // D:\MES is an external MES interface. Keep its file payload in the
-    // original, untranslated key/value format used by the legacy machine.
-    private static string BuildSummaryLine(string code, string value)
-        => string.Join(',', code, value);
 
     private static string FormatPercent(float value)
     {
@@ -1799,7 +1806,23 @@ public class Machine_4_HAHH :
         }
 
         await WritePlcPointAsync(PlcPoints.统计计数清零, (ushort)1, cancellationToken).ConfigureAwait(false);
+        ResetProductionCountProjection();
         return true;
+    }
+
+    private void ResetProductionCountProjection()
+    {
+        materialInputCounter.Reset();
+        electricalTestOkCounter.Reset();
+        dcrNgCounter.Reset();
+        dcrCeCounter.Reset();
+        lsNgCounter.Reset();
+        rsNgCounter.Reset();
+        inductanceCeCounter.Reset();
+        Interlocked.Exchange(ref materialInputCount, 0);
+        Interlocked.Exchange(ref electricalTestOkCount, 0);
+        lastStatisticsSnapshots.Clear();
+        RaiseResultTableChanged();
     }
     protected override async Task OnTestStartedAsync(CancellationToken cancellationToken)
     {

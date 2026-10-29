@@ -998,6 +998,18 @@ public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOp
             return (TValue)(object)values[0];
         }
 
+        if (valueType == typeof(uint))
+        {
+            int[] values = await plc.ReadInt32ArrayAsync(address, 1, cancellationToken).ConfigureAwait(false);
+            return (TValue)(object)unchecked((uint)values[0]);
+        }
+
+        if (valueType == typeof(float))
+        {
+            float value = await plc.ReadFloatAsync(address, cancellationToken).ConfigureAwait(false);
+            return (TValue)(object)value;
+        }
+
         throw new NotSupportedException($"Unsupported PLC signal value type: {valueType.FullName}");
     }
     public bool IsDiOn(int channel)

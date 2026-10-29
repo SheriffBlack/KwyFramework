@@ -1,4 +1,5 @@
 using System.Windows;
+using Kwy.Device.IoCard.Abstractions;
 using KwyTemplate.App.Runtime;
 using KwyTemplate.Device;
 using KwyTemplate.Device.Devices;
@@ -16,6 +17,7 @@ namespace KwyTemplate.App.Orchestration;
 public sealed class CyntecReelScanWorkflow : ICyntecReelScanWorkflow
 {
     private static readonly TimeSpan ScanTimeout = TimeSpan.FromSeconds(3);
+    private const int ResultPulseDurationMs = 100;
 
     private readonly SemaphoreSlim scanGate = new(1, 1);
     private readonly MachineBase machine;
@@ -62,11 +64,14 @@ public sealed class CyntecReelScanWorkflow : ICyntecReelScanWorkflow
                     barcode),
                 cancellationToken).ConfigureAwait(false);
 
+            bool isSuccess = result.Exchange?.ReturnCode == 0 || result.IsSuccess;
             await ApplyMesResultAsync(result).ConfigureAwait(false);
+            PulseResultOutput(isSuccess);
         }
         catch
         {
             await UpdateUiAsync(() => productionContext.ReelScanState = ReelScanState.Failure).ConfigureAwait(false);
+            PulseResultOutput(isSuccess: false);
             throw;
         }
         finally
@@ -113,6 +118,31 @@ public sealed class CyntecReelScanWorkflow : ICyntecReelScanWorkflow
                 productionContext.ReelScanState = ReelScanState.Failure;
             }
         });
+
+    private void PulseResultOutput(bool isSuccess)
+    {
+        if (machine is not ICyntecReelScanResultMachine resultMachine
+            || !devices.TryGet(DeviceIds.MainIoCard, out IDigitalOutputPulseDevice? outputDevice)
+            || outputDevice is not { IsConnected: true })
+        {
+            return;
+        }
+
+        try
+        {
+            outputDevice.WriteDoBit(resultMachine.ReelScanOkOutputChannel, false);
+            outputDevice.WriteDoBit(resultMachine.ReelScanNgOutputChannel, false);
+            outputDevice.WritePulse(
+                isSuccess
+                    ? resultMachine.ReelScanOkOutputChannel
+                    : resultMachine.ReelScanNgOutputChannel,
+                ResultPulseDurationMs);
+        }
+        catch
+        {
+            // MES 结果已落地；硬件回执失败不应改写扫码结果。
+        }
+    }
 
     private static Task UpdateUiAsync(Action action)
     {

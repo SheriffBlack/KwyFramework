@@ -58,7 +58,7 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
         level = MapLevel(equipmentEvent.Severity);
         message = FormatMessage(equipmentEvent);
 
-        if (equipmentEvent.Code == "DeviceOperation")
+        if (equipmentEvent.Code == DeviceEventCodes.Operation)
         {
             string operationKind = GetProperty(equipmentEvent, "OperationKind");
             bool isSuccess = string.Equals(GetProperty(equipmentEvent, "IsSuccess"), bool.TrueString, StringComparison.OrdinalIgnoreCase);
@@ -71,12 +71,12 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
             return operationKind is "Read" or "Write" or "ParameterWrite" or "Trigger";
         }
 
-        if (equipmentEvent.Code == "DeviceError")
+        if (equipmentEvent.Code == DeviceEventCodes.Error)
         {
             return true;
         }
 
-        if (equipmentEvent.Code == "DeviceStateChanged")
+        if (equipmentEvent.Code == DeviceEventCodes.StateChanged)
         {
             return ShouldLogRuntimeConnectionState(equipmentEvent, out level, out message);
         }

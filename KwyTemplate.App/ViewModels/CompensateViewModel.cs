@@ -533,6 +533,7 @@ public class CompensateViewModel : BindableBase, INavigationAware
             return false;
         }
         await machine.SetCheckCompletedAsync(true, DestroyToken).ConfigureAwait(true);
+        messageBus.Publish(new CompensateCheckCompletedMessage(DateTimeOffset.Now));
         await ConfirmCheckStopSignalsCompletedAsync().ConfigureAwait(true);
         return true;
     }

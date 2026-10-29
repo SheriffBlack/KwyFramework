@@ -1,26 +1,35 @@
 using System.Globalization;
 using System.Windows;
 using KwyTemplate.App.Models;
+using KwyTemplate.App.Services;
+using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Flow.Machines;
 
 namespace KwyTemplate.App.Orchestration;
 
 /// <summary>
-/// 标准件有效期午夜检查 Feature。
-/// 每次检查后都重新计算下一次本地 00:00，避免长期运行时按 24 小时累加造成定时漂移。
+/// 标准件/确认件有效期整点检查 Feature。
+/// 每次检查后都重新计算下一个本地整点，避免按固定间隔累加产生漂移。
 /// </summary>
 public sealed class StandardSampleExpirationMonitorFeature : IMachineRuntimeFeature
 {
     private readonly StandardSampleState sampleState;
+    private readonly IAppNotificationService notificationService;
+    private readonly ILocalizationService localizationService;
     private readonly object syncRoot = new();
     private MachineBase? machine;
     private CancellationTokenSource? stopCts;
     private Task? worker;
     private bool disposed;
 
-    public StandardSampleExpirationMonitorFeature(StandardSampleState sampleState)
+    public StandardSampleExpirationMonitorFeature(
+        StandardSampleState sampleState,
+        IAppNotificationService notificationService,
+        ILocalizationService localizationService)
     {
         this.sampleState = sampleState ?? throw new ArgumentNullException(nameof(sampleState));
+        this.notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+        this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
     }
 
     public bool CanAttach(MachineBase machine) => true;
@@ -93,7 +102,7 @@ public sealed class StandardSampleExpirationMonitorFeature : IMachineRuntimeFeat
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            TimeSpan delay = GetDelayToNextMidnight(DateTimeOffset.Now);
+            TimeSpan delay = GetDelayToNextHour(DateTimeOffset.Now);
             try
             {
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
@@ -105,7 +114,7 @@ public sealed class StandardSampleExpirationMonitorFeature : IMachineRuntimeFeat
             }
             catch
             {
-                // 午夜检查失败不结束 Feature；下一轮 00:00 重新检查。
+                // 整点检查失败不结束 Feature；下一轮整点重新检查。
             }
         }
     }
@@ -123,17 +132,21 @@ public sealed class StandardSampleExpirationMonitorFeature : IMachineRuntimeFeat
             return;
         }
 
-        string expireDate = sampleState.StandardSample.ExpireDate;
-        if (string.IsNullOrWhiteSpace(expireDate) || !TryParseMesDateTime(expireDate, out DateTime expireTime))
-        {
-            return;
-        }
-
-        if (expireTime < DateTime.Now)
+        DateTime now = DateTime.Now;
+        bool standardSampleExpired = IsExpired(sampleState.StandardSample.ExpireDate, now);
+        bool confirmSampleExpired = IsExpired(sampleState.ConfirmSample.ExpireDate, now);
+        if (standardSampleExpired || confirmSampleExpired)
         {
             await currentMachine.SetStandardSampleExpiredAsync(true, cancellationToken).ConfigureAwait(false);
-            // 标准件失效后，确认件不再具备本轮点检意义；二者共用状态，统一清空。
+            string expiredSampleNames = GetExpiredSampleNames(standardSampleExpired, confirmSampleExpired);
             await RunOnUiAsync(sampleState.ClearAll).ConfigureAwait(false);
+            await notificationService.WarningAsync(
+                localizationService.TF(
+                    "Standard.Message.SampleExpired",
+                    "{0}已过期，已清空标准件与确认件数据。",
+                    expiredSampleNames),
+                localizationService.T("Standard.Title.SampleExpired", "标准件/确认件已过期"))
+                .ConfigureAwait(false);
         }
     }
 
@@ -149,15 +162,43 @@ public sealed class StandardSampleExpirationMonitorFeature : IMachineRuntimeFeat
         return dispatcher.InvokeAsync(action).Task;
     }
 
-    private static TimeSpan GetDelayToNextMidnight(DateTimeOffset now)
+    private static bool IsExpired(string expireDate, DateTime now)
+        => !string.IsNullOrWhiteSpace(expireDate)
+            && TryParseMesDateTime(expireDate, out DateTime expireTime)
+            && expireTime <= now;
+
+    private string GetExpiredSampleNames(bool standardSampleExpired, bool confirmSampleExpired)
     {
-        DateTimeOffset nextMidnight = new(now.Year, now.Month, now.Day, 0, 0, 0, now.Offset);
-        if (nextMidnight <= now)
+        var names = new List<string>(2);
+        if (standardSampleExpired)
         {
-            nextMidnight = nextMidnight.AddDays(1);
+            names.Add(localizationService.T("Standard.Header.StandardSample", "标准件"));
         }
 
-        return nextMidnight - now;
+        if (confirmSampleExpired)
+        {
+            names.Add(localizationService.T("Standard.Header.ConfirmSample", "确认件"));
+        }
+
+        return string.Join("、", names);
+    }
+
+    private static TimeSpan GetDelayToNextHour(DateTimeOffset now)
+    {
+        DateTimeOffset nextHour = new DateTimeOffset(
+            now.Year,
+            now.Month,
+            now.Day,
+            now.Hour,
+            0,
+            0,
+            now.Offset).AddHours(1);
+        if (nextHour <= now)
+        {
+            nextHour = nextHour.AddHours(1);
+        }
+
+        return nextHour - now;
     }
 
     private static bool TryParseMesDateTime(string value, out DateTime dateTime)

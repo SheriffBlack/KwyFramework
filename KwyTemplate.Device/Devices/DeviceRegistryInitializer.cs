@@ -1,4 +1,5 @@
 ﻿using Kwy.Device.Abstractions;
+using Kwy.Device.Core.Equipment;
 using KwyTemplate.Device.Profiles;
 
 namespace KwyTemplate.Device.Devices;
@@ -6,6 +7,7 @@ namespace KwyTemplate.Device.Devices;
 public sealed class DeviceRegistryInitializer : IDeviceRegistryInitializer, IDisposable, IAsyncDisposable
 {
     private readonly IDeviceRegistry deviceRegistry;
+    private readonly IDeviceEventForwarder deviceEventForwarder;
     private readonly IServiceProvider services;
     private readonly IEnumerable<IDeviceCatalog> catalogs;
     private readonly DeviceCatalogSelectionOptions selectionOptions;
@@ -15,11 +17,13 @@ public sealed class DeviceRegistryInitializer : IDeviceRegistryInitializer, IDis
 
     public DeviceRegistryInitializer(
         IDeviceRegistry deviceRegistry,
+        IDeviceEventForwarder deviceEventForwarder,
         IServiceProvider services,
         IEnumerable<IDeviceCatalog> catalogs,
         DeviceCatalogSelectionOptions selectionOptions)
     {
         this.deviceRegistry = deviceRegistry ?? throw new ArgumentNullException(nameof(deviceRegistry));
+        this.deviceEventForwarder = deviceEventForwarder ?? throw new ArgumentNullException(nameof(deviceEventForwarder));
         this.services = services ?? throw new ArgumentNullException(nameof(services));
         this.catalogs = catalogs ?? throw new ArgumentNullException(nameof(catalogs));
         this.selectionOptions = selectionOptions ?? throw new ArgumentNullException(nameof(selectionOptions));
@@ -50,8 +54,18 @@ public sealed class DeviceRegistryInitializer : IDeviceRegistryInitializer, IDis
         foreach (DeviceDefinition definition in definitions)
         {
             IDevice device = definition.CreateDevice(services);
-            deviceRegistry.Add(device);
-            ownedDevices.Add(device);
+            try
+            {
+                deviceEventForwarder.Attach(device);
+                deviceRegistry.Add(device);
+                ownedDevices.Add(device);
+            }
+            catch
+            {
+                deviceEventForwarder.Detach(device);
+                device.Dispose();
+                throw;
+            }
         }
     }
 
@@ -64,6 +78,7 @@ public sealed class DeviceRegistryInitializer : IDeviceRegistryInitializer, IDis
 
         foreach (IDevice device in ownedDevices)
         {
+            deviceEventForwarder.Detach(device);
             device.Dispose();
         }
 
@@ -79,6 +94,7 @@ public sealed class DeviceRegistryInitializer : IDeviceRegistryInitializer, IDis
 
         foreach (IDevice device in ownedDevices)
         {
+            deviceEventForwarder.Detach(device);
             await device.DisposeAsync().ConfigureAwait(false);
         }
 

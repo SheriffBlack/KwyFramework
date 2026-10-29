@@ -26,6 +26,7 @@ namespace KwyTemplate.Flow.Machines;
 public class Machine_2_A :
     MachineBase,
     ICyntecReelScanMachine,
+    ICyntecReelScanResultMachine,
     IIndustrialPcOnlineSignalMachine,
     IMachinePlcStopSignalMachine,
     IMachineProductionCounterResetMachine,
@@ -48,6 +49,12 @@ public class Machine_2_A :
     private int parameterCompareWriteGate;
     private bool? previousParameterCompareSignal;
     private int systemDataReadGate;
+    private readonly CumulativePlcCounter materialInputCounter = new();
+    private readonly CumulativePlcCounter electricalTestOkCounter = new();
+    private readonly CumulativePlcCounter dcr1NgCounter = new();
+    private readonly CumulativePlcCounter dcr1CeCounter = new();
+    private readonly CumulativePlcCounter dcr2NgCounter = new();
+    private readonly CumulativePlcCounter dcr2CeCounter = new();
     private long materialInputCount;
     private long electricalTestOkCount;
     private MesWorkOrderTapeSetup? currentTapeSetup;
@@ -112,6 +119,10 @@ public class Machine_2_A :
     protected override bool ShouldApplyRealtimeStatisticsToTable => false;
 
     public int ReelScanInputChannel => (int)CardToPc.Reel扫;
+
+    public int ReelScanOkOutputChannel => (int)PcToCard.Reel扫OK;
+
+    public int ReelScanNgOutputChannel => (int)PcToCard.Reel扫NG;
 
     public enum CardToPc
     {
@@ -345,13 +356,13 @@ public class Machine_2_A :
                 return;
             }
 
-            uint total = await ReadUInt32PointAsync(plc, PlcPoints.测试总量).ConfigureAwait(false);
+            uint total = materialInputCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.测试总量).ConfigureAwait(false));
             UpdateMaterialInputCount(total);
-            UpdateElectricalTestOkCount(await ReadUInt32PointAsync(plc, PlcPoints.测试OK数).ConfigureAwait(false));
-            uint dcr1Ng = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_NG数).ConfigureAwait(false);
-            uint dcr1Ce = await ReadUInt32PointAsync(plc, PlcPoints.DCR1_CE数).ConfigureAwait(false);
-            uint dcr2Ng = await ReadUInt32PointAsync(plc, PlcPoints.DCR2_NG数).ConfigureAwait(false);
-            uint dcr2Ce = await ReadUInt32PointAsync(plc, PlcPoints.DCR2_CE数).ConfigureAwait(false);
+            UpdateElectricalTestOkCount(electricalTestOkCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.测试OK数).ConfigureAwait(false)));
+            uint dcr1Ng = dcr1NgCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.DCR1_NG数).ConfigureAwait(false));
+            uint dcr1Ce = dcr1CeCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.DCR1_CE数).ConfigureAwait(false));
+            uint dcr2Ng = dcr2NgCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.DCR2_NG数).ConfigureAwait(false));
+            uint dcr2Ce = dcr2CeCounter.Observe(await ReadUInt32PointAsync(plc, PlcPoints.DCR2_CE数).ConfigureAwait(false));
 
             TryUpdateStationStatistics(1, "DCR1", total, dcr1Ng, dcr1Ce);
             TryUpdateStationStatistics(2, "DCR2", SubtractPrecedingNgCounts(total, dcr1Ng), dcr2Ng, dcr2Ce);
@@ -1054,22 +1065,19 @@ public class Machine_2_A :
         double? dcr2CpkValue)
         =>
         [
-            BuildSummaryLine("OutputQty", outputQty.ToString(CultureInfo.InvariantCulture)),
-            BuildSummaryLine("Yeld", FormatPercent(yield)),
-            BuildSummaryLine("NGSum", ngSum.ToString(CultureInfo.InvariantCulture)),
-            BuildSummaryLine("TCAddQty", tcAddQty.ToString(CultureInfo.InvariantCulture)),
-            BuildSummaryLine("LeaveQty", "0"),
-            BuildSummaryLine("Remark", (currentTapeSetup?.SampleQty ?? 0).ToString(CultureInfo.InvariantCulture)),
-            BuildSummaryLine("AdjustQty", "0"),
-            BuildSummaryLine("NGPOLAR1", "0"),
-            BuildSummaryLine("NGPOLAR2", "0"),
-            BuildSummaryLine("CpkDCR1", FormatNullableCpk(dcr1CpkValue)),
-            BuildSummaryLine("CpkDCR2", FormatNullableCpk(dcr2CpkValue))
+            ProductionSummaryLineFormatter.AutomaticNumber("OutputQty", outputQty.ToString(CultureInfo.InvariantCulture)),
+            ProductionSummaryLineFormatter.AutomaticNumber("Yeld", FormatPercent(yield)),
+            ProductionSummaryLineFormatter.AutomaticNumber("NGSum", ngSum.ToString(CultureInfo.InvariantCulture)),
+            ProductionSummaryLineFormatter.AutomaticNumber("TCAddQty", tcAddQty.ToString(CultureInfo.InvariantCulture)),
+            ProductionSummaryLineFormatter.AutomaticNumber("LeaveQty", "0"),
+            ProductionSummaryLineFormatter.ManualText("Remark", $"抽检用料{currentTapeSetup?.SampleQty ?? 0}颗"),
+            ProductionSummaryLineFormatter.AutomaticNumber("AdjustQty", "0"),
+            ProductionSummaryLineFormatter.AutomaticNumber("NGPOLAR1", "0"),
+            ProductionSummaryLineFormatter.AutomaticNumber("NGPOLAR2", "0"),
+            ProductionSummaryLineFormatter.AutomaticNumber("CpkDCR1", FormatNullableCpk(dcr1CpkValue), string.Empty),
+            ProductionSummaryLineFormatter.AutomaticNumber("CpkDCR2", FormatNullableCpk(dcr2CpkValue), string.Empty)
         ];
-    // D:\MES is an external MES interface. Keep its file payload in the
-    // original, untranslated key/value format used by the legacy machine.
-    private static string BuildSummaryLine(string code, string value)
-        => string.Join(',', code, value);
+
     private static string FormatPercent(float value)
     {
         double percent = Math.Abs(value) <= 1 ? value * 100 : value;
@@ -1163,7 +1171,23 @@ public class Machine_2_A :
         }
 
         await WritePlcPointAsync(PlcPoints.统计计数清零, (ushort)1, cancellationToken).ConfigureAwait(false);
+        ResetProductionCountProjection();
         return true;
+    }
+
+    private void ResetProductionCountProjection()
+    {
+        materialInputCounter.Reset();
+        electricalTestOkCounter.Reset();
+        dcr1NgCounter.Reset();
+        dcr1CeCounter.Reset();
+        dcr2NgCounter.Reset();
+        dcr2CeCounter.Reset();
+        Interlocked.Exchange(ref materialInputCount, 0);
+        Interlocked.Exchange(ref electricalTestOkCount, 0);
+        lastDcr1StatisticsSnapshot = null;
+        lastDcr2StatisticsSnapshot = null;
+        RaiseResultTableChanged();
     }
 
     private async Task FlushProductionRecordsAsync()

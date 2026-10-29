@@ -19,12 +19,14 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
     private readonly IAppNotificationService notificationService;
     private readonly ILocalizationService localizationService;
     private readonly IDisposable optionsChangedSubscription;
+    private readonly IDisposable checkCompletedSubscription;
     private readonly object syncRoot = new();
     private MachineBase? machine;
     private CancellationTokenSource? stopCts;
     private Task? worker;
     private string? activeWindowKey;
     private string? latestObservedExpiredWindowKey;
+    private DateTimeOffset? latestCheckCompletedAt;
     private bool initialized;
     private bool configurationChanged;
     private bool disposed;
@@ -42,6 +44,9 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
         optionsChangedSubscription = messageBus.Subscribe<CompensateScheduleMonitorFeature, CompensateOptionsChangedMessage>(
             this,
             static (feature, _) => feature.OnOptionsChanged());
+        checkCompletedSubscription = messageBus.Subscribe<CompensateScheduleMonitorFeature, CompensateCheckCompletedMessage>(
+            this,
+            static (feature, message) => feature.OnCheckCompleted(message));
     }
 
     public bool CanAttach(MachineBase machine) => true;
@@ -65,6 +70,7 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
             configurationChanged = false;
             activeWindowKey = null;
             latestObservedExpiredWindowKey = null;
+            latestCheckCompletedAt = null;
             stopCts = new CancellationTokenSource();
             worker = MonitorLoopAsync(stopCts.Token);
         }
@@ -85,6 +91,7 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
             initialized = false;
             configurationChanged = false;
             latestObservedExpiredWindowKey = null;
+            latestCheckCompletedAt = null;
         }
 
         if (cts == null)
@@ -115,6 +122,7 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
 
         disposed = true;
         optionsChangedSubscription.Dispose();
+        checkCompletedSubscription.Dispose();
         Stop();
     }
 
@@ -123,6 +131,14 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
         lock (syncRoot)
         {
             configurationChanged = true;
+        }
+    }
+
+    private void OnCheckCompleted(CompensateCheckCompletedMessage message)
+    {
+        lock (syncRoot)
+        {
+            latestCheckCompletedAt = message.CompletedAt;
         }
     }
 
@@ -151,11 +167,13 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
     {
         MachineBase? currentMachine;
         bool shouldResetForConfiguration;
+        DateTimeOffset? checkCompletedAt;
         lock (syncRoot)
         {
             currentMachine = machine;
             shouldResetForConfiguration = configurationChanged;
             configurationChanged = false;
+            checkCompletedAt = latestCheckCompletedAt;
         }
 
         if (currentMachine == null)
@@ -197,11 +215,9 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
             return;
         }
 
-        latestObservedExpiredWindowKey = latestExpiredWindow.Key;
-
-        bool? isCompleted = await currentMachine.ReadCheckCompletedAsync(cancellationToken).ConfigureAwait(false);
-        if (isCompleted is not false)
+        if (WasCheckCompletedDuring(latestExpiredWindow, checkCompletedAt))
         {
+            latestObservedExpiredWindowKey = latestExpiredWindow.Key;
             return;
         }
 
@@ -218,6 +234,7 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
                 start,
                 end),
             localizationService.T("Compensate.Title.CheckReminder", "点检提醒")).ConfigureAwait(false);
+        latestObservedExpiredWindowKey = latestExpiredWindow.Key;
     }
 
     private void ResetTransientState()
@@ -227,6 +244,7 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
             initialized = false;
             activeWindowKey = null;
             latestObservedExpiredWindowKey = null;
+            latestCheckCompletedAt = null;
         }
     }
 
@@ -259,6 +277,9 @@ public sealed class CompensateScheduleMonitorFeature : IMachineRuntimeFeature
             start,
             start.AddHours(durationHours));
     }
+
+    private static bool WasCheckCompletedDuring(CheckWindow window, DateTimeOffset? completedAt)
+        => completedAt is { } timestamp && window.Start <= timestamp && timestamp < window.End;
 
     private static bool TryParseHour(string? value, out int hour)
         => int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out hour)

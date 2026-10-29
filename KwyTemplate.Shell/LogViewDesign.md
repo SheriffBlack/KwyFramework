@@ -57,7 +57,7 @@ DeviceStartupConnector
 ```text
 DeviceBase / HslPlcDevice / InstrumentBase / SerialBarcodeScannerDevice
     -> RaiseOperationOccurred(...)
-    -> DeviceRegistry.PublishDeviceOperationAsync(...)
+    -> DeviceEventForwarder.PublishDeviceOperationAsync(...)
     -> IEquipmentEventSink.PublishAsync(...)
     -> LogEquipmentEventSink
     -> KwyLogService.Add(...)
@@ -68,7 +68,7 @@ DeviceBase / HslPlcDevice / InstrumentBase / SerialBarcodeScannerDevice
 
 ```text
 DeviceBase.RaiseStateChanged(...)
-    -> DeviceRegistry.PublishStateChangedAsync(...)
+    -> DeviceEventForwarder.PublishStateChangedAsync(...)
     -> IEquipmentEventSink.PublishAsync(...)
     -> LogEquipmentEventSink
     -> KwyLogService.Add(...)
@@ -218,7 +218,7 @@ Logs/Developer/yyyyMMdd.txt
 - StartupProgressService：记录启动项目、百分比，并提供 IsCompleted。
 - KwyLogService：保存 UI 实时日志集合，为 LogView 提供数据源。
 - LogEquipmentEventSink：筛选设备事件，格式化为用户可读日志，并做去重。
-- DeviceRegistry：订阅设备事件，并发布到 IEquipmentEventSink。
+- DeviceEventForwarder：订阅设备事件，并发布到 IEquipmentEventSink，同时维护设备连接和错误报警。
 - DeviceBase：统一设备生命周期和操作事件上报。
 
 ## 9. 为什么设备层不直接写 LogView
@@ -276,7 +276,7 @@ Logs/Developer/yyyyMMdd.json
 ## 11. 开发注意事项
 
 1. 不要在 ViewModel、Feature、Orchestrator 中到处直接调用 KwyLogService.Add 记录硬件日志。
-2. 设备相关日志优先通过 OperationOccurred、DeviceRegistry、IEquipmentEventSink 链路。
+2. 设备相关日志优先通过 OperationOccurred、DeviceEventForwarder、IEquipmentEventSink 链路。
 3. 启动进度继续走 StartupProgressService。
 4. 不要在设备连接策略里再写一套启动日志。
 5. PLC 高频读取不要记录成功日志。
