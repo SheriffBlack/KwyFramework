@@ -5,6 +5,8 @@ public static class ChamberFaultCodes
 {
     public const string InitializeFailed = "CHAMBER_INITIALIZE_FAILED";
 
+    public const string InvalidPreparationContext = "CHAMBER_INVALID_PREPARATION_CONTEXT";
+
     public const string GasMfcNotAvailable = "CHAMBER_GAS_MFC_NOT_AVAILABLE";
 
     public const string GasMfcOffline = "CHAMBER_GAS_MFC_OFFLINE";

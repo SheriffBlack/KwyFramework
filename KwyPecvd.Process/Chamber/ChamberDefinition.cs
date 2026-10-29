@@ -1,12 +1,19 @@
 ﻿using KwyPecvd.Process.Chamber.Gas;
+using KwyPecvd.Process.Chamber.Thermal;
 using KwyPecvd.Process.Chamber.Vacuum;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KwyPecvd.Process.Chamber;
+
+/*
+ 
+ ChamberDefinition
+├─ GasLines[]
+├─ Vacuum
+└─ Thermal
+   └─ Zones[]
+      ├─ ControllerId
+      └─ MonitoringSensorIds[]
+*/
 
 /// <summary>
 /// 一套PECVD工艺腔室的静态组成。
@@ -21,6 +28,8 @@ public sealed record ChamberDefinition
 
     public required ChamberVacuumDefinition Vacuum { get; init; }
 
+    public required ChamberThermalDefinition Thermal { get; init; }
+
     public void Validate()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(Id);
@@ -28,8 +37,10 @@ public sealed record ChamberDefinition
         ArgumentException.ThrowIfNullOrWhiteSpace(DisplayName);
 
         ArgumentNullException.ThrowIfNull(Vacuum);
+        ArgumentNullException.ThrowIfNull(Thermal);
 
         Vacuum.Validate();
+        Thermal.Validate();
 
         foreach (var gasLine in GasLines)
         {

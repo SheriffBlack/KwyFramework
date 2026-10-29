@@ -8,9 +8,8 @@ namespace KwyPecvd.Process.Chamber;
 
 /// <summary>
 /// 负责腔体状态和高层操作编排。
-/// 状态转换
-///     → 调用气路系统
-///     → 处理操作结果
+/// 
+/// 整个 PM 的业务状态机
 /// </summary>
 public sealed class ChamberController : IChamberController
 {
@@ -89,6 +88,9 @@ public sealed class ChamberController : IChamberController
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(() => StartGasPreparationCoreAsync(targets, cancellationToken), cancellationToken);
 
+    public Task<CommandResult> StartPumpDownAsync(CancellationToken cancellationToken = default) =>
+        ExecuteCommandAsync(() => StartPumpDownCoreAsync(cancellationToken),cancellationToken);
+
     public Task<CommandResult> StopProcessAsync(CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(() => StopProcessCoreAsync(cancellationToken), cancellationToken);
 
@@ -119,13 +121,13 @@ public sealed class ChamberController : IChamberController
 
         try
         {
-            if (!gasSystem.TryValidateReady(out failure))
+            if (!gasSystem.TryInitialize(out failure))
             {
                 ChangeState(ChamberState.Offline);
                 return Task.FromResult(failure);
             }
 
-            if (!vacuumSystem.TryValidateReady(out failure))
+            if (!vacuumSystem.TryInitialize(out failure))
             {
                 ChangeState(ChamberState.Offline);
                 return Task.FromResult(failure);
@@ -157,7 +159,7 @@ public sealed class ChamberController : IChamberController
         TimeSpan rampDuration,
         CancellationToken cancellationToken = default)
     {
-        if (!gasSystem.TryResolveMfc(
+        if (!gasSystem.TryGetMfc(
                 gasName,
                 out var mfc,
                 out var failure))
@@ -180,7 +182,7 @@ public sealed class ChamberController : IChamberController
         string gasName,
         CancellationToken cancellationToken = default)
     {
-        if (!gasSystem.TryResolveMfc(
+        if (!gasSystem.TryGetMfc(
                 gasName,
                 out var mfc,
                 out var failure))
@@ -347,6 +349,31 @@ public sealed class ChamberController : IChamberController
             $"Chamber '{Id}' started gas preparation.");
     }
 
+    private async Task<CommandResult> StartPumpDownCoreAsync(CancellationToken cancellationToken)
+    {
+        var current = GetRuntimeState();
+
+        if (current.State != ChamberState.Idle)
+        {
+            return CommandResult.Failure(
+                ResultCodes.InvalidState,
+                $"Chamber '{Id}' must be Idle before pump-down.");
+        }
+
+        var result =
+            await vacuumSystem.StartPumpDownAsync(
+                cancellationToken);
+
+        if (!result.Succeeded)
+        {
+            return result;
+        }
+
+        BeginVacuumPreparation();
+
+        return result;
+    }
+
     private Task<CommandResult> ResetFaultCoreAsync(
         CancellationToken cancellationToken)
     {
@@ -365,7 +392,7 @@ public sealed class ChamberController : IChamberController
             }
         }
 
-        if (!gasSystem.TryValidateReady(
+        if (!gasSystem.TryInitialize(
                 out var failure))
         {
             return Task.FromResult(failure);
@@ -388,6 +415,21 @@ public sealed class ChamberController : IChamberController
 
         try
         {
+            await vacuumSystem.ExecuteCycleAsync(cancellationToken);
+
+            var vacuum = vacuumSystem.CreateSnapshot();
+
+            if (vacuum.State == ChamberVacuumState.Faulted)
+            {
+                TryTransition(
+                    ChamberState.Preparing,
+                    ChamberState.Faulted,
+                    vacuum.FaultCode,
+                    vacuum.FaultMessage);
+
+                return;
+            }
+
             var current = GetRuntimeState();
 
             switch (current.State)
@@ -412,31 +454,74 @@ public sealed class ChamberController : IChamberController
         }
     }
 
+    /// <summary>
+    /// 状态机 Preparing → Processing
+    /// </summary>
+    /// <param name="current"></param>
     private void EvaluatePreparation(ChamberRuntimeState current)
     {
-        var evaluation =
-            gasSystem.EvaluatePreparation(
-                current.ActiveGasTargets);
+        var preparation = current.Preparation;
 
-        switch (evaluation.Status)
+        // preparation is null表示腔体进入了 Preparing，因为仅在 Preparing 状态中存在。
+        if (preparation is null ||
+            preparation.Requirements ==
+                ChamberPreparationRequirement.None)
         {
-            case GasPreparationStatus.Waiting:
-                break;
+            // 只有当前状态仍然是 Preparing，才允许切换到 Faulted。
+            TryTransition(
+                ChamberState.Preparing,
+                ChamberState.Faulted,
+                ChamberFaultCodes.InvalidPreparationContext,
+                "Chamber preparation context is missing.");
+            return;
+        }
 
-            case GasPreparationStatus.Ready:
-                TryTransition(
-                    ChamberState.Preparing,
-                    ChamberState.Processing);
-                break;
+        if (preparation.Requirements.HasFlag(
+                ChamberPreparationRequirement.Vacuum))
+        {
+            var vacuum = vacuumSystem.CreateSnapshot();
 
-            case GasPreparationStatus.Faulted:
+            if (vacuum.State == ChamberVacuumState.Faulted)
+            {
                 TryTransition(
                     ChamberState.Preparing,
                     ChamberState.Faulted,
-                    evaluation.FaultCode,
-                    evaluation.FaultMessage);
-                break;
+                    vacuum.FaultCode,
+                    vacuum.FaultMessage);
+                return;
+            }
+
+            if (vacuum.State != ChamberVacuumState.Ready)
+            {
+                return;
+            }
         }
+
+        if (preparation.Requirements.HasFlag(
+                ChamberPreparationRequirement.Gas))
+        {
+            var gas = gasSystem.EvaluatePreparation(
+                preparation.GasTargets);
+
+            if (gas.Status == GasPreparationStatus.Faulted)
+            {
+                TryTransition(
+                    ChamberState.Preparing,
+                    ChamberState.Faulted,
+                    gas.FaultCode,
+                    gas.FaultMessage);
+                return;
+            }
+
+            if (gas.Status != GasPreparationStatus.Ready)
+            {
+                return;
+            }
+        }
+
+        TryTransition(
+            ChamberState.Preparing,
+            ChamberState.Processing);
     }
 
     private void EvaluateStopping(ChamberRuntimeState current)
@@ -474,6 +559,14 @@ public sealed class ChamberController : IChamberController
         }
     }
 
+    /// <summary>
+    /// 只有状态机仍处于我预期的旧状态时，才允许切换到新状态。
+    /// </summary>
+    /// <param name="expectedState">期望的当前状态</param>
+    /// <param name="newState">准备进入的新状态</param>
+    /// <param name="faultCode">可选故障码</param>
+    /// <param name="faultMessage">可选故障描述</param>
+    /// <returns></returns>
     private bool TryTransition(
         ChamberState expectedState,
         ChamberState newState,
@@ -511,11 +604,7 @@ public sealed class ChamberController : IChamberController
                 return false;
             }
 
-            runtime = runtime with
-            {
-                ActiveGasTargets =
-                    ChamberRuntimeState.EmptyGasTargets
-            };
+            runtime = runtime with { Preparation = null };
 
             SetStateUnsafe(ChamberState.Initializing);
             failure = CommandResult.Success();
@@ -541,12 +630,34 @@ public sealed class ChamberController : IChamberController
 
             runtime = runtime with
             {
-                ActiveGasTargets = targets
+                Preparation = new ChamberPreparationContext
+                {
+                    Requirements =
+                        ChamberPreparationRequirement.Gas,
+                    GasTargets = targets
+                }
             };
 
             SetStateUnsafe(ChamberState.Preparing);
             failure = CommandResult.Success();
             return true;
+        }
+    }
+
+    private void BeginVacuumPreparation()
+    {
+        lock (syncRoot)
+        {
+            runtime = runtime with
+            {
+                Preparation = new ChamberPreparationContext
+                {
+                    Requirements =
+                        ChamberPreparationRequirement.Vacuum
+                }
+            };
+
+            SetStateUnsafe(ChamberState.Preparing);
         }
     }
 
@@ -630,11 +741,18 @@ public sealed class ChamberController : IChamberController
         }
     }
 
+    /// <summary>
+    /// 这个方法自己不加锁，调用者必须已经持有 syncRoot 锁。
+    /// </summary>
+    /// <param name="newState"></param>
+    /// <param name="newFaultCode"></param>
+    /// <param name="newFaultMessage"></param>
     private void SetStateUnsafe(
         ChamberState newState,
         string? newFaultCode = null,
         string? newFaultMessage = null)
     {
+        // 如果状态没有变化，就不更新 StateChangedAt 时间戳。防止每个 100ms 周期都刷新 StateChangedAt。
         if (runtime.State == newState &&
             runtime.FaultCode == newFaultCode &&
             runtime.FaultMessage == newFaultMessage)
@@ -648,8 +766,9 @@ public sealed class ChamberController : IChamberController
             StateChangedAt = DateTimeOffset.UtcNow,
             FaultCode = newFaultCode,
             FaultMessage = newFaultMessage,
-            ActiveGasTargets = newState is ChamberState.Idle or ChamberState.Faulted or ChamberState.Offline
-                ? ChamberRuntimeState.EmptyGasTargets : runtime.ActiveGasTargets,
+            Preparation = newState == ChamberState.Preparing        // Preparing → 保留本轮准备任务
+                ? runtime.Preparation                               // Processing/Idle/Faulted → 清空准备任务
+                : null,
             StopCommandsCompletedAt = newState == ChamberState.Stopping
                 ? runtime.StopCommandsCompletedAt : null
         };

@@ -42,6 +42,13 @@ public interface IChamberController : IEquipmentModuleController, ICyclicEquipme
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 启动腔体抽气。
+    /// 命令成功仅表示真空系统已接受抽气请求。
+    /// </summary>
+    Task<CommandResult> StartPumpDownAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 确认故障原因已经消失，清除锁存故障。
     /// </summary>
     Task<CommandResult> ResetFaultAsync(

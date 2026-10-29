@@ -27,26 +27,31 @@ public enum ChamberState
 /// <summary>一条“可反复运行”的正常业务链路</summary>
 
 /*
-初始化
-Offline → Initializing → Idle
+                   初始化命令
+Offline ──────────────────────────→ Initializing
+                                         │
+                             硬件检查成功│
+                                         ▼
+                                        Idle
+                                         │
+                         接受准备命令    │
+                                         ▼
+                                     Preparing
+                                         │
+                Gas/Vacuum Actual全部满足│
+                                         ▼
+                                     Processing
+                                         │
+                          接受停止命令   │
+                                         ▼
+                                      Stopping
+                                         │
+                     Actual确认安全停止  │
+                                         ▼
+                                        Idle
 
-启动气体准备
-Idle → Preparing
+任意关键故障 ───────────────────────────→ Faulted
 
-MFC执行
-目标流量 → SetPoint斜坡 → Feedback跟随
-
-准备完成
-Preparing → Processing
-
-停止工艺
-Processing → Stopping
-
-安全归零
-SetPoint归零 → Feedback进入零点容差
-
-停止完成
-Stopping → Idle
 
 完整调用链:
     外部命令
