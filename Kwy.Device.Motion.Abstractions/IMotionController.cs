@@ -84,6 +84,8 @@ public interface IMotionStateProvider
 /// <summary>后台状态监视器；负责刷新、事件发布与故障检测，不负责下发运动命令。</summary>
 public interface IMotionStateMonitor : IMotionStateProvider, IDisposable, IAsyncDisposable
 {
+    MotionStateAcquisitionMode AcquisitionMode { get; }
+
     bool IsRunning { get; }
 
     Task StartAsync(CancellationToken cancellationToken = default);

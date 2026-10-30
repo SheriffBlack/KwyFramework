@@ -17,7 +17,8 @@ public static class MotionRuntimeFactory
         MotionStateMonitorOptions stateMonitorOptions,
         MotionAdmissionOptions? admissionOptions = null,
         IAxisHomeLifecycle? homeLifecycle = null,
-        IAxisBrakeCoordinator? brakeCoordinator = null)
+        IAxisBrakeCoordinator? brakeCoordinator = null,
+        IMotionStateSource? stateSource = null)
     {
         ArgumentNullException.ThrowIfNull(card);
         ArgumentNullException.ThrowIfNull(stateMonitorOptions);
@@ -25,13 +26,25 @@ public static class MotionRuntimeFactory
         admissionOptions ??= new MotionAdmissionOptions();
 
         if (card is not IAxisMotionController controller
-            || card is not IMotionProfileController profileController
-            || card is not IAxisSnapshotReader snapshotReader)
+            || card is not IMotionProfileController profileController)
         {
-            throw new NotSupportedException($"Motion card '{card.DeviceId}' does not provide the physical single-axis and state-snapshot capabilities required by the default Core runtime.");
+            throw new NotSupportedException($"Motion controller '{card.DeviceId}' does not provide the physical single-axis capabilities required by the Core runtime.");
         }
 
-        var monitor = new MotionStateMonitor(snapshotReader, stateMonitorOptions);
+        MotionStateMonitor monitor;
+        if (stateSource is not null)
+        {
+            monitor = new MotionStateMonitor(stateSource, stateMonitorOptions);
+        }
+        else if (card is IAxisSnapshotReader snapshotReader)
+        {
+            monitor = new MotionStateMonitor(snapshotReader, stateMonitorOptions);
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"Motion controller '{card.DeviceId}' must provide IAxisSnapshotReader or an explicit IMotionStateSource.");
+        }
         var admission = new MotionAdmissionGuard(card, monitor, admissionOptions, homeLifecycle);
         var executor = new AxisMotionExecutor(controller, profileController, monitor, admission, brakeCoordinator);
         return new MotionDeviceRuntime(card, monitor, executor, homeLifecycle);

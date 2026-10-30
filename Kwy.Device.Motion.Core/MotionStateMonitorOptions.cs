@@ -5,6 +5,12 @@ namespace Kwy.Device.Motion.Core;
 /// <summary>运动状态监视器配置，定义采样周期、受监视轴和首帧事件行为。</summary>
 public sealed class MotionStateMonitorOptions
 {
+    /// <summary>
+    /// Core 默认创建的拉取式状态源。
+    /// 回调、PDO 和混合模式应由厂商适配器显式提供 <see cref="IMotionStateSource"/>。
+    /// </summary>
+    public MotionStateAcquisitionMode AcquisitionMode { get; set; } = MotionStateAcquisitionMode.Polling;
+
     /// <summary>非实时状态轮询周期；仅用于监视、诊断与动作完成判断。</summary>
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromMilliseconds(50);
 

@@ -2,34 +2,45 @@ using System.Collections.Concurrent;
 using Kwy.Communicate.Abstractions.Events;
 using Kwy.Device.Motion.Abstractions;
 using Kwy.Device.Motion.Abstractions.Axes;
+using Kwy.Device.Motion.Core.StateSources;
 
 namespace Kwy.Device.Motion.Core;
 
 /// <summary>
-/// 从运动控制卡轮询各轴快照数据，并对外暴露缓存后的轴状态。
+/// 缓存运动状态源产生的轴快照，并对外发布统一的采集与变化事件。
+/// 本类不关心数据来自 SDK 轮询、专用线程、厂商回调、EtherCAT PDO 还是 PLC 状态区。
 /// </summary>
 public sealed class MotionStateMonitor : IMotionStateMonitor
 {
-    private readonly IAxisSnapshotReader snapshotReader;
+    private readonly IMotionStateSource stateSource;
     private readonly MotionStateMonitorOptions options;
     private readonly short[] monitoredAxes;
-    private readonly MotionAxisSnapshot[] captureBuffer;
+    private readonly HashSet<short> monitoredAxisSet;
     private readonly ConcurrentDictionary<short, MotionAxisSnapshot> snapshots = new();
-    private readonly SemaphoreSlim lifecycleSemaphore = new(1, 1);
-    private CancellationTokenSource? monitorCts;
-    private Task? monitorTask;
+    private readonly object snapshotSync = new();
     private bool disposed;
 
+    /// <summary>使用 Core 内置的轮询或专用线程状态源。</summary>
     public MotionStateMonitor(IAxisSnapshotReader snapshotReader, MotionStateMonitorOptions options)
+        : this(CreateDefaultSource(snapshotReader, options), options)
     {
-        this.snapshotReader = snapshotReader ?? throw new ArgumentNullException(nameof(snapshotReader));
-        this.options = options ?? throw new ArgumentNullException(nameof(options));
-        this.options.Validate();
-        monitoredAxes = this.options.GetAxes().ToArray();
-        captureBuffer = new MotionAxisSnapshot[monitoredAxes.Length];
     }
 
-    public bool IsRunning => monitorTask is { IsCompleted: false };
+    /// <summary>使用厂商适配器提供的回调、PDO、PLC 或混合状态源。</summary>
+    public MotionStateMonitor(IMotionStateSource stateSource, MotionStateMonitorOptions options)
+    {
+        this.stateSource = stateSource ?? throw new ArgumentNullException(nameof(stateSource));
+        this.options = options ?? throw new ArgumentNullException(nameof(options));
+        ValidateMonitorOptions(this.options);
+        monitoredAxes = this.options.GetAxes().ToArray();
+        monitoredAxisSet = monitoredAxes.ToHashSet();
+        this.stateSource.SnapshotCaptured += OnSnapshotCaptured;
+        this.stateSource.SourceErrorOccurred += OnSourceErrorOccurred;
+    }
+
+    public bool IsRunning => stateSource.IsRunning;
+
+    public MotionStateAcquisitionMode AcquisitionMode => stateSource.AcquisitionMode;
 
     public event Action<MotionAxisSnapshot>? AxisSnapshotCaptured;
 
@@ -40,77 +51,35 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
     public MotionAxisSnapshot GetAxisSnapshot(short axis)
     {
         ThrowIfDisposed();
-
-        if (snapshots.TryGetValue(axis, out var snapshot))
-        {
-            return snapshot;
-        }
-
-        throw new KeyNotFoundException($"Axis {axis} snapshot has not been captured yet.");
+        return snapshots.TryGetValue(axis, out MotionAxisSnapshot snapshot)
+            ? snapshot
+            : throw new KeyNotFoundException($"Axis {axis} snapshot has not been captured yet.");
     }
 
     public IReadOnlyDictionary<short, MotionAxisSnapshot> GetAllAxisSnapshots()
     {
         ThrowIfDisposed();
-        return snapshots.ToDictionary(pair => pair.Key, pair => pair.Value);
+        return snapshots.ToDictionary(static pair => pair.Key, static pair => pair.Value);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
-        await lifecycleSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (IsRunning)
-            {
-                return;
-            }
+        await stateSource.StartAsync(cancellationToken).ConfigureAwait(false);
 
-            cancellationToken.ThrowIfCancellationRequested();
-            // 自动模式前必须先成功取得首帧，不能仅启动后台任务后立即允许动作。
-            // 首帧读取失败会直接让初始化流程失败；运行期的临时读取错误仍由循环安全上报。
-            CaptureAll();
-            // 监视循环拥有独立生命周期；StartAsync 的取消令牌仅控制启动阶段。
-            monitorCts = new CancellationTokenSource();
-            monitorTask = RunAsync(monitorCts.Token);
-        }
-        finally
+        short[] missingAxes = monitoredAxes.Where(axis => !snapshots.ContainsKey(axis)).ToArray();
+        if (missingAxes.Length == 0)
         {
-            lifecycleSemaphore.Release();
+            return;
         }
+
+        await stateSource.StopAsync(CancellationToken.None).ConfigureAwait(false);
+        throw new InvalidOperationException(
+            $"Motion state source '{stateSource.GetType().Name}' did not publish an initial snapshot for axes: {string.Join(", ", missingAxes)}.");
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken = default)
-    {
-        await lifecycleSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (monitorTask is null)
-            {
-                return;
-            }
-
-            monitorCts?.Cancel();
-
-            try
-            {
-                await monitorTask.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            finally
-            {
-                monitorCts?.Dispose();
-                monitorCts = null;
-                monitorTask = null;
-            }
-        }
-        finally
-        {
-            lifecycleSemaphore.Release();
-        }
-    }
+    public Task StopAsync(CancellationToken cancellationToken = default)
+        => stateSource.StopAsync(cancellationToken);
 
     public void Dispose()
     {
@@ -124,68 +93,29 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
             return;
         }
 
-        await StopAsync().ConfigureAwait(false);
+        stateSource.SnapshotCaptured -= OnSnapshotCaptured;
+        stateSource.SourceErrorOccurred -= OnSourceErrorOccurred;
+        await stateSource.DisposeAsync().ConfigureAwait(false);
         disposed = true;
-        lifecycleSemaphore.Dispose();
     }
 
-    private async Task RunAsync(CancellationToken cancellationToken)
+    private void OnSnapshotCaptured(MotionAxisSnapshot snapshot)
     {
-        using var timer = new PeriodicTimer(options.PollInterval);
-        while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+        if (!monitoredAxisSet.Contains(snapshot.Axis))
         {
-            CaptureAllSafely(cancellationToken);
-        }
-    }
-
-    private void CaptureAllSafely(CancellationToken cancellationToken)
-    {
-        try
-        {
-            CaptureAll();
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            PublishMonitorError(ex, $"Motion state capture failed: {ex.Message}");
-        }
-    }
-
-    private void CaptureAll()
-    {
-        if (snapshotReader is IBufferedAxisSnapshotReader bufferedReader)
-        {
-            bufferedReader.GetMultipleAxisSnapshots(monitoredAxes, captureBuffer);
-        }
-        else if (snapshotReader is IBulkAxisSnapshotReader bulkReader)
-        {
-            MotionAxisSnapshot[] captured = bulkReader.GetMultipleAxisSnapshots(monitoredAxes);
-            if (captured.Length != monitoredAxes.Length)
-                throw new InvalidOperationException($"Snapshot reader returned {captured.Length} axes; expected {monitoredAxes.Length}.");
-            captured.CopyTo(captureBuffer, 0);
-        }
-        else
-        {
-            for (int i = 0; i < monitoredAxes.Length; i++)
-            {
-                captureBuffer[i] = snapshotReader.GetAxisSnapshot(monitoredAxes[i]);
-            }
+            PublishMonitorError(
+                new InvalidOperationException($"State source published unconfigured axis {snapshot.Axis}."),
+                $"Motion state source published unconfigured axis {snapshot.Axis}.");
+            return;
         }
 
-        for (int i = 0; i < monitoredAxes.Length; i++)
+        lock (snapshotSync)
         {
-            short axis = monitoredAxes[i];
-            var snapshot = captureBuffer[i];
-            if (snapshot.Axis != axis)
-                throw new InvalidOperationException($"Snapshot index {i} returned axis {snapshot.Axis}; expected axis {axis}.");
-            var previousSnapshot = snapshots.TryGetValue(axis, out var previous)
+            MotionAxisSnapshot? previousSnapshot = snapshots.TryGetValue(snapshot.Axis, out MotionAxisSnapshot previous)
                 ? previous
-                : (MotionAxisSnapshot?)null;
+                : null;
 
-            snapshots[axis] = snapshot;
+            snapshots[snapshot.Axis] = snapshot;
             PublishSnapshotCaptured(snapshot);
 
             if (previousSnapshot is null)
@@ -195,7 +125,7 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
                     PublishSnapshotChanged(new MotionAxisSnapshotChangedEventArgs(snapshot, null));
                 }
 
-                continue;
+                return;
             }
 
             if (!snapshot.HasSameState(previousSnapshot.Value))
@@ -205,12 +135,18 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
         }
     }
 
+    private void OnSourceErrorOccurred(object? sender, ErrorOccurredEventArgs args)
+        => PublishMonitorError(args.Exception, args.Message);
+
     private void PublishSnapshotCaptured(MotionAxisSnapshot snapshot)
     {
-        Delegate[] subscribers = AxisSnapshotCaptured?.GetInvocationList() ?? Array.Empty<Delegate>();
+        Delegate[] subscribers = AxisSnapshotCaptured?.GetInvocationList() ?? [];
         foreach (Action<MotionAxisSnapshot> subscriber in subscribers.Cast<Action<MotionAxisSnapshot>>())
         {
-            try { subscriber(snapshot); }
+            try
+            {
+                subscriber(snapshot);
+            }
             catch (Exception exception)
             {
                 PublishMonitorError(exception, $"Axis {snapshot.Axis} snapshot subscriber failed: {exception.Message}");
@@ -220,10 +156,13 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
 
     private void PublishSnapshotChanged(MotionAxisSnapshotChangedEventArgs args)
     {
-        Delegate[] subscribers = AxisSnapshotChanged?.GetInvocationList() ?? Array.Empty<Delegate>();
+        Delegate[] subscribers = AxisSnapshotChanged?.GetInvocationList() ?? [];
         foreach (EventHandler<MotionAxisSnapshotChangedEventArgs> subscriber in subscribers.Cast<EventHandler<MotionAxisSnapshotChangedEventArgs>>())
         {
-            try { subscriber(this, args); }
+            try
+            {
+                subscriber(this, args);
+            }
             catch (Exception exception)
             {
                 PublishMonitorError(exception, $"Axis {args.Snapshot.Axis} change subscriber failed: {exception.Message}");
@@ -234,19 +173,57 @@ public sealed class MotionStateMonitor : IMotionStateMonitor
     private void PublishMonitorError(Exception exception, string message)
     {
         var args = new ErrorOccurredEventArgs(exception, message);
-        Delegate[] subscribers = MonitorErrorOccurred?.GetInvocationList() ?? Array.Empty<Delegate>();
+        Delegate[] subscribers = MonitorErrorOccurred?.GetInvocationList() ?? [];
         foreach (EventHandler<ErrorOccurredEventArgs> subscriber in subscribers.Cast<EventHandler<ErrorOccurredEventArgs>>())
         {
-            try { subscriber(this, args); }
-            catch { }
+            try
+            {
+                subscriber(this, args);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static IMotionStateSource CreateDefaultSource(
+        IAxisSnapshotReader snapshotReader,
+        MotionStateMonitorOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(snapshotReader);
+        ArgumentNullException.ThrowIfNull(options);
+        options.Validate();
+
+        return options.AcquisitionMode switch
+        {
+            MotionStateAcquisitionMode.Polling => new PollingMotionStateSource(snapshotReader, options),
+            MotionStateAcquisitionMode.DedicatedThread => new DedicatedThreadMotionStateSource(snapshotReader, options),
+            _ => throw new InvalidOperationException(
+                $"Acquisition mode '{options.AcquisitionMode}' requires an explicit vendor IMotionStateSource.")
+        };
+    }
+
+    private static void ValidateMonitorOptions(MotionStateMonitorOptions options)
+    {
+        if (options.PollInterval <= TimeSpan.Zero)
+        {
+            throw new InvalidOperationException("PollInterval must be greater than zero.");
+        }
+
+        IReadOnlyCollection<short> axes = options.GetAxes();
+        if (axes.Any(static axis => axis < 1))
+        {
+            throw new InvalidOperationException("Monitored axes must be greater than or equal to 1.");
+        }
+
+        if (axes.Distinct().Count() != axes.Count)
+        {
+            throw new InvalidOperationException("Monitored axes cannot contain duplicates.");
         }
     }
 
     private void ThrowIfDisposed()
     {
-        if (disposed)
-        {
-            throw new ObjectDisposedException(GetType().Name);
-        }
+        ObjectDisposedException.ThrowIf(disposed, this);
     }
 }

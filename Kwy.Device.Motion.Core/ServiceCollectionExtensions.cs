@@ -40,7 +40,13 @@ public static class ServiceCollectionExtensions
         options.Validate();
 
         services.TryAddSingleton(options);
-        services.TryAddSingleton<IMotionStateMonitor, MotionStateMonitor>();
+        services.TryAddSingleton<IMotionStateMonitor>(provider =>
+        {
+            IMotionStateSource? stateSource = provider.GetService<IMotionStateSource>();
+            return stateSource is not null
+                ? new MotionStateMonitor(stateSource, options)
+                : new MotionStateMonitor(provider.GetRequiredService<IAxisSnapshotReader>(), options);
+        });
         services.TryAddSingleton<IMotionStateProvider>(provider => provider.GetRequiredService<IMotionStateMonitor>());
 
         return services;
