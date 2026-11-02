@@ -1,4 +1,5 @@
 using Kwy.Communicate.Gem;
+using Kwy.Communicate.Gem.Testing;
 using Secs4Net;
 
 namespace Kwy.Communicate.Tests;
@@ -9,9 +10,9 @@ public sealed class GemProcessProgramRepositoryTests
     public async Task UnsupportedRepository_RejectsMutations()
     {
         var repository = new UnsupportedGemProcessProgramRepository();
+        using var processProgram = new GemProcessProgram("RCP-01", Item.A("body"));
 
-        GemProcessProgramSaveResult save = await repository.SaveAsync(
-            new GemProcessProgram("RCP-01", Item.A("body")));
+        GemProcessProgramSaveResult save = await repository.SaveAsync(processProgram);
         GemProcessProgramDeleteResult delete = await repository.DeleteAsync("RCP-01");
 
         Assert.Equal(GemProcessProgramSaveStatus.Rejected, save.Status);

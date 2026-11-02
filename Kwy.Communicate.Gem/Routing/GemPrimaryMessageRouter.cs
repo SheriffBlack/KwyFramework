@@ -48,7 +48,7 @@ public sealed class GemPrimaryMessageRouter
     public async Task RunAsync(ISecsGemClient client, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(client);
-        await foreach (PrimaryMessageWrapper primary in client.GetPrimaryMessagesAsync(cancellationToken).ConfigureAwait(false))
+        await foreach (PrimaryMessageWrapper primary in client.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             await RouteAsync(primary, cancellationToken).ConfigureAwait(false);
     }
 }

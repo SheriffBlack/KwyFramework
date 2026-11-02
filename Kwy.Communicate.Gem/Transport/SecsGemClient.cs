@@ -69,7 +69,7 @@ public sealed class SecsGemClient : ProtocolClientBase, ISecsGemClient
 
     public ConnectionState HsmsState => hsmsConnection.State;
 
-    public IAsyncEnumerable<PrimaryMessageWrapper> GetPrimaryMessagesAsync(
+    public IAsyncEnumerable<PrimaryMessageWrapper> ReadAllAsync(
         CancellationToken cancellationToken = default)
         => secsGem.GetPrimaryMessageAsync(cancellationToken);
 

@@ -2,14 +2,12 @@ using System.Collections.ObjectModel;
 
 namespace Kwy.Communicate.Gem;
 
-/*
-Variables   → VID   定义   变量 ID
-Constants   → ECID  定义   Equipment Constant ID，设备常量 ID
-Alarms      → ALID  定义   Alarm ID，报警 ID
-*/
-
 /// <summary>保存当前 GEM 会话需要读取的运行时数据快照。</summary>
-/// <remarks>该快照服务于协议报文构造，不应作为设备业务状态的唯一数据源。</remarks>
+/// <remarks>
+/// 该快照服务于协议报文构造，不应作为设备业务状态的唯一数据源。
+/// 传入的 <c>Item</c> 由调用方继续管理生命周期；在快照不再使用前不得释放。
+/// 报文工厂会克隆这些值，释放已发送报文不会破坏快照数据。
+/// </remarks>
 public sealed class GemDataSnapshot
 {
     private readonly object syncRoot = new();

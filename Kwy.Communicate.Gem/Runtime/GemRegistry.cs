@@ -24,18 +24,21 @@ public sealed class GemRegistry
         GemCommandRegistry? commands = null,
         GemRegistryOptions? options = null)
     {
-        Catalog = catalog ?? new GemInterfaceCatalog();
+        Catalog = catalog ?? GemInterfaceCatalog.Empty;
         Data = data ?? new GemDataSnapshot();
         Commands = commands ?? new GemCommandRegistry();
         this.options = options ?? new GemRegistryOptions();
         ValidateOptions(this.options);
     }
 
-    public GemInterfaceCatalog Catalog { get; }
+    public GemInterfaceCatalog Catalog { get; private set; }
 
     public GemDataSnapshot Data { get; }
 
     public GemCommandRegistry Commands { get; }
+
+    /// <summary>指示启动配置是否已校验并封闭。</summary>
+    public bool IsConfigurationSealed => Commands.IsSealed;
 
     /// <summary>当前已应用的客户接口合同身份，用于发布审计和现场问题追溯。</summary>
     public GemInterfaceProfileDescriptor? AppliedProfile { get; private set; }
@@ -44,12 +47,17 @@ public sealed class GemRegistry
     public void ApplyProfile(IGemInterfaceProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        if (Catalog.IsSealed)
-            throw new InvalidOperationException("The GEM interface catalog is already sealed.");
+        if (IsConfigurationSealed)
+            throw new InvalidOperationException("The GEM registry configuration is sealed.");
         if (AppliedProfile is not null)
             throw new InvalidOperationException($"GEM interface profile '{AppliedProfile.ProfileId}' is already applied.");
+        if (Catalog.Variables.Count > 0 || Catalog.Constants.Count > 0 || Catalog.Reports.Count > 0 ||
+            Catalog.Events.Count > 0 || Catalog.Alarms.Count > 0 || Catalog.RemoteCommands.Count > 0)
+            throw new InvalidOperationException("A GEM interface catalog was supplied and cannot be replaced by a profile.");
 
-        profile.ApplyTo(Catalog);
+        var builder = new GemInterfaceCatalogBuilder();
+        profile.ApplyTo(builder);
+        Catalog = builder.Build();
         AppliedProfile = profile.Descriptor;
     }
 
@@ -62,34 +70,6 @@ public sealed class GemRegistry
 
         return new GemInterfaceReleaseManifest(softwareVersion, AppliedProfile, DateTimeOffset.UtcNow);
     }
-
-    // 兼容现有调用方的只读入口；新代码优先通过 Catalog/Data/Commands 表达职责。
-    public IReadOnlyDictionary<uint, GemVariable> Variables => Data.Variables;
-
-    public IReadOnlyDictionary<uint, GemEquipmentConstant> Constants => Data.Constants;
-
-    public IReadOnlyDictionary<uint, GemAlarm> Alarms => Data.Alarms;
-
-    public IReadOnlyDictionary<uint, GemVariableDefinition> VariableDefinitions => Catalog.Variables;
-
-    public IReadOnlyDictionary<uint, GemEquipmentConstantDefinition> ConstantDefinitions => Catalog.Constants;
-
-    public IReadOnlyDictionary<uint, GemReportDefinition> ReportDefinitions => Catalog.Reports;
-
-    public IReadOnlyDictionary<uint, GemCollectionEventDefinition> EventDefinitions => Catalog.Events;
-
-    public IReadOnlyDictionary<uint, GemAlarmDefinition> AlarmDefinitions => Catalog.Alarms;
-
-    public IReadOnlyDictionary<uint, GemReport> Reports => Catalog.Reports.ToDictionary(
-        pair => pair.Key,
-        pair => new GemReport(pair.Key, pair.Value.VariableIds.Select(x => x.Value).ToArray()));
-
-    public IReadOnlyDictionary<uint, GemCollectionEvent> Events => Catalog.Events.ToDictionary(
-        pair => pair.Key,
-        pair => new GemCollectionEvent(
-            pair.Key,
-            pair.Value.Name,
-            pair.Value.LinkedReports.Select(x => x.Value).ToArray()));
 
     public IReadOnlyList<GemAlarmHistoryItem> AlarmHistory
     {
@@ -126,55 +106,20 @@ public sealed class GemRegistry
         }
     }
 
-    public void ValidateAndSeal()
+    /// <summary>校验 Remote Command 定义与业务 Handler 的绑定关系，然后封闭启动配置。</summary>
+    public void SealConfiguration()
     {
-        GemCatalogValidationResult catalogResult = Catalog.Validate();
-        var issues = catalogResult.Issues.ToList();
-
-        foreach (GemRemoteCommandDefinition command in Catalog.RemoteCommands.Values)
-        {
-            if (!Commands.CommandNames.Contains(command.EffectiveHandlerKey, StringComparer.OrdinalIgnoreCase))
-            {
-                issues.Add(new GemCatalogValidationIssue(
-                    "GEM010",
-                    $"Remote command '{command.Name}' requires handler '{command.EffectiveHandlerKey}', but it is not registered."));
-            }
-        }
-
-        HashSet<string> requiredHandlerKeys = Catalog.RemoteCommands.Values
-            .Select(command => command.EffectiveHandlerKey)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (string handlerKey in Commands.CommandNames)
-        {
-            if (!requiredHandlerKeys.Contains(handlerKey))
-            {
-                issues.Add(new GemCatalogValidationIssue(
-                    "GEM011",
-                    $"Remote command handler '{handlerKey}' is not referenced by any interface definition."));
-            }
-        }
-
-        if (issues.Count > 0)
-        {
-            throw new GemCatalogValidationException(new GemCatalogValidationResult(issues));
-        }
-
-        Catalog.ValidateAndSeal();
-        Commands.Seal();
+        GemCatalogValidationResult result = Commands.ValidateBindingsAndSeal(Catalog.RemoteCommands);
+        if (!result.IsValid)
+            throw new GemCatalogValidationException(result);
     }
 
     public void RegisterVariable(GemVariable variable)
     {
         ArgumentNullException.ThrowIfNull(variable);
         if (!Catalog.Variables.TryGetValue(variable.Id, out GemVariableDefinition? definition))
-        {
-            Catalog.RegisterVariable(new GemVariableDefinition(
-                new GemVid(variable.Id),
-                variable.Name,
-                GemVariableKind.DataVariable,
-                variable.Unit));
-        }
-        else if (!string.Equals(definition.Name, variable.Name, StringComparison.Ordinal))
+            throw new InvalidOperationException($"VID {variable.Id} is not defined in the GEM interface catalog.");
+        if (!string.Equals(definition.Name, variable.Name, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
                 $"VID {variable.Id} is defined as '{definition.Name}', but runtime value uses '{variable.Name}'.");
@@ -183,19 +128,12 @@ public sealed class GemRegistry
         Data.SetVariable(variable);
     }
 
-    public void RegisterVariableDefinition(GemVariableDefinition variable) => Catalog.RegisterVariable(variable);
-
     public void RegisterConstant(GemEquipmentConstant constant)
     {
         ArgumentNullException.ThrowIfNull(constant);
         if (!Catalog.Constants.TryGetValue(constant.Id, out GemEquipmentConstantDefinition? definition))
-        {
-            Catalog.RegisterConstant(new GemEquipmentConstantDefinition(
-                new GemEcid(constant.Id),
-                constant.Name,
-                constant.Unit));
-        }
-        else if (!string.Equals(definition.Name, constant.Name, StringComparison.Ordinal))
+            throw new InvalidOperationException($"ECID {constant.Id} is not defined in the GEM interface catalog.");
+        if (!string.Equals(definition.Name, constant.Name, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
                 $"ECID {constant.Id} is defined as '{definition.Name}', but runtime value uses '{constant.Name}'.");
@@ -203,25 +141,6 @@ public sealed class GemRegistry
 
         Data.SetConstant(constant);
     }
-
-    public void RegisterConstantDefinition(GemEquipmentConstantDefinition constant) => Catalog.RegisterConstant(constant);
-
-    public void RegisterReport(GemReport report)
-        => Catalog.RegisterReport(new GemReportDefinition(
-            new GemRptid(report.ReportId),
-            report.VariableIds.Select(x => new GemVid(x)).ToArray()));
-
-    public void RegisterReportDefinition(GemReportDefinition report) => Catalog.RegisterReport(report);
-
-    public void RegisterEvent(GemCollectionEvent collectionEvent)
-        => Catalog.RegisterEvent(new GemCollectionEventDefinition(
-            new GemCeid(collectionEvent.EventId),
-            collectionEvent.Name,
-            collectionEvent.LinkedReportIds.Select(x => new GemRptid(x)).ToArray()));
-
-    public void RegisterEventDefinition(GemCollectionEventDefinition collectionEvent) => Catalog.RegisterEvent(collectionEvent);
-
-    public void RegisterAlarmDefinition(GemAlarmDefinition alarm) => Catalog.RegisterAlarm(alarm);
 
     public void SetAlarm(GemAlarm alarm)
     {

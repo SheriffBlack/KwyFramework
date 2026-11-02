@@ -84,7 +84,7 @@ public sealed class GemAcceptancePlanTests
         public Task<SecsMessage?> SendAsync(SecsMessage message, CancellationToken cancellationToken = default)
             => Task.FromResult(Reply);
 
-        public async IAsyncEnumerable<PrimaryMessageWrapper> GetPrimaryMessagesAsync(
+        public async IAsyncEnumerable<PrimaryMessageWrapper> ReadAllAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;

@@ -49,6 +49,32 @@ public sealed class GemRoutingTests
     }
 
     [Fact]
+    public void S1F3Parser_WithMultipleValuesInOneSvid_ReturnsFailure()
+    {
+        using var message = new SecsMessage(1, 3, true)
+        {
+            SecsItem = L(U4(1001, 1002))
+        };
+
+        GemParseResult<IReadOnlyList<GemVid>> result = new S1F3Parser().Parse(message);
+
+        Assert.False(result.IsSuccess);
+    }
+
+    [Fact]
+    public void S5F3Parser_WithEmptyAled_ReturnsFailureWithoutThrowing()
+    {
+        using var message = new SecsMessage(5, 3, true)
+        {
+            SecsItem = L(B(), U4(1))
+        };
+
+        GemParseResult<GemAlarmEnableRequest> result = new S5F3Parser().Parse(message);
+
+        Assert.False(result.IsSuccess);
+    }
+
+    [Fact]
     public void S2F23Parser_ParsesTraceDefinition()
     {
         using var message = new SecsMessage(2, 23, true)
@@ -66,11 +92,15 @@ public sealed class GemRoutingTests
     [Fact]
     public async Task S1F3Handler_ReturnsValuesInRequestedOrder()
     {
-        var registry = new GemRegistry();
-        registry.RegisterVariableDefinition(new(new GemVid(1001), "LotId", GemVariableKind.DataVariable));
-        registry.RegisterVariableDefinition(new(new GemVid(1002), "State", GemVariableKind.StatusVariable));
-        registry.Data.SetVariable(new GemVariable(1001, "LotId", A("LOT-01")));
-        registry.Data.SetVariable(new GemVariable(1002, "State", A("IDLE")));
+        GemInterfaceCatalog catalog = new GemInterfaceCatalogBuilder()
+            .AddVariable(new(new GemVid(1001), "LotId", GemVariableKind.DataVariable))
+            .AddVariable(new(new GemVid(1002), "State", GemVariableKind.StatusVariable))
+            .Build();
+        var registry = new GemRegistry(catalog);
+        using Item lotId = A("LOT-01");
+        using Item state = A("IDLE");
+        registry.Data.SetVariable(new GemVariable(1001, "LotId", lotId));
+        registry.Data.SetVariable(new GemVariable(1002, "State", state));
         using var request = new SecsMessage(1, 3, true) { SecsItem = L(U4(1002), U4(1001)) };
 
         using SecsMessage? reply = await new S1F3Handler(registry).HandleAsync(request);
@@ -92,18 +122,37 @@ public sealed class GemRoutingTests
     }
 
     [Fact]
-    public void EquipmentConstantValidator_RejectsWrongSecsFormat()
+    public void EquipmentConstantChangeValidator_RejectsWrongSecsFormat()
     {
-        var catalog = new GemInterfaceCatalog();
-        catalog.RegisterConstant(new GemEquipmentConstantDefinition(
-            new GemEcid(5001),
-            "Speed",
-            Format: SecsFormat.U4));
+        GemInterfaceCatalog catalog = new GemInterfaceCatalogBuilder()
+            .AddConstant(new GemEquipmentConstantDefinition(
+                new GemEcid(5001),
+                "Speed",
+                Format: SecsFormat.U4))
+            .Build();
 
-        GemValidationResult result = new GemEquipmentConstantValidator(catalog).Validate(
+        GemValidationResult result = new GemEquipmentConstantChangeValidator(catalog).Validate(
             new[] { new GemEquipmentConstantChange(new GemEcid(5001), A("FAST")) });
 
         Assert.False(result.IsValid);
         Assert.Contains("expects U4", result.Error);
+    }
+
+    [Fact]
+    public void EquipmentConstantChangeValidator_RejectsDuplicateEcid()
+    {
+        GemInterfaceCatalog catalog = new GemInterfaceCatalogBuilder()
+            .AddConstant(new GemEquipmentConstantDefinition(new GemEcid(5001), "Speed", Format: SecsFormat.U4))
+            .Build();
+        var validator = new GemEquipmentConstantChangeValidator(catalog);
+
+        GemValidationResult result = validator.Validate(
+        [
+            new GemEquipmentConstantChange(new GemEcid(5001), U4(10)),
+            new GemEquipmentConstantChange(new GemEcid(5001), U4(20))
+        ]);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("more than once", result.Error);
     }
 }

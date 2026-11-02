@@ -2,29 +2,13 @@ using System.Collections.Concurrent;
 
 namespace Kwy.Communicate.Gem;
 
-/*
-1. 创建设备 GEM 接口目录
-2. 注册 START Definition
-3. 注册 START Handler
-4. ValidateAndSeal()
-5. 建立 HSMS/GEM 通信
-6. 收到 S2F41 START
-7. 根据 Definition 校验
-8. 调用 Handler 执行 
-*/
-
-/*
-new GemRemoteCommandDefinition(...) 是创建命令合同；
-RegisterRemoteCommand(definition) 才是注册命令定义；
-Commands.Register(...) 则是注册命令的实际处理器。 
-*/
-
 /// <summary>
-/// 注册 Host 可以调用的 Remote Command
+/// 处理一条已通过接口合同校验的 Remote Command。
 /// </summary>
-/// <param name="command"></param>
-/// <param name="cancellationToken"></param>
-/// <returns></returns>
+/// <remarks>
+/// 该委托的完成时间直接影响 S2F42 回复时间，实现必须在 Host T3 内返回。
+/// 耗时设备动作应转换为应用层自有的命令快照并入队，不应长期持有收到的 SECS Item。
+/// </remarks>
 public delegate Task<GemRemoteCommandResult> GemRemoteCommandHandler(
     GemRemoteCommand command,
     CancellationToken cancellationToken);
@@ -69,11 +53,44 @@ public sealed class GemCommandRegistry
         return handlers.TryGetValue(commandName, out handler!);
     }
 
-    internal void Seal()
+    internal GemCatalogValidationResult ValidateBindingsAndSeal(
+        IReadOnlyDictionary<string, GemRemoteCommandDefinition> definitions)
     {
+        ArgumentNullException.ThrowIfNull(definitions);
         lock (syncRoot)
         {
+            if (IsSealed)
+                return new GemCatalogValidationResult([]);
+
+            var issues = new List<GemCatalogValidationIssue>();
+            foreach (GemRemoteCommandDefinition command in definitions.Values)
+            {
+                if (!handlers.ContainsKey(command.EffectiveHandlerKey))
+                {
+                    issues.Add(new(
+                        "GEM010",
+                        $"Remote command '{command.Name}' requires handler '{command.EffectiveHandlerKey}', but it is not registered."));
+                }
+            }
+
+            HashSet<string> requiredHandlerKeys = definitions.Values
+                .Select(command => command.EffectiveHandlerKey)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (string handlerKey in handlers.Keys)
+            {
+                if (!requiredHandlerKeys.Contains(handlerKey))
+                {
+                    issues.Add(new(
+                        "GEM011",
+                        $"Remote command handler '{handlerKey}' is not referenced by any interface definition."));
+                }
+            }
+
+            if (issues.Count > 0)
+                return new GemCatalogValidationResult(issues);
+
             IsSealed = true;
+            return new GemCatalogValidationResult([]);
         }
     }
 }

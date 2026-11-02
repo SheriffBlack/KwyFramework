@@ -1,4 +1,5 @@
 using Kwy.Communicate.Gem;
+using Kwy.Communicate.Gem.Testing;
 using Secs4Net;
 
 namespace Kwy.Communicate.Tests;
@@ -168,12 +169,18 @@ public sealed class GemSessionStateMachineTests
     [Fact]
     public void AcceptedRemoteCommand_IsNotInferredAsCompleted()
     {
-        var accepted = new GemRemoteCommandResult(GemAckCode.Accepted);
+        var accepted = new GemRemoteCommandResult(GemHostCommandAckCode.Accepted);
 
         GemRemoteCommandResult normalized = accepted.WithInferredCompletionStatus();
 
+        Assert.Equal(4, (byte)GemHostCommandAckCode.Accepted);
         Assert.Equal(GemRemoteCommandCompletionStatus.Accepted, normalized.CompletionStatus);
         Assert.False(normalized.IsCompleted);
+
+        GemRemoteCommandResult completed = new GemRemoteCommandResult(
+            GemHostCommandAckCode.Completed).WithInferredCompletionStatus();
+        Assert.Equal(GemRemoteCommandCompletionStatus.Completed, completed.CompletionStatus);
+        Assert.True(completed.IsCompleted);
     }
 
     private sealed class TestEquipmentSession : IGemEquipmentSession, IDisposable

@@ -52,7 +52,6 @@ public static class SecsGemClientFactory
         IOptions<SecsGemOptions> options,
         ISecsGemLogger logger)
     {
-
         var connection = new HsmsConnection(options, logger)
         {
             LinkTestEnabled = config.KeepAlive
@@ -80,5 +79,4 @@ public static class SecsGemClientFactory
             LinkTestInterval = config.KeepAliveInterval
         };
     }
-
 }

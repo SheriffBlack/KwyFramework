@@ -36,8 +36,8 @@ public sealed class GemRegistryTests
 
         registry.ApplyProfile(profile);
         registry.RegisterCommand("machine.start", (_, _) => Task.FromResult(
-            new GemRemoteCommandResult(GemAckCode.Accepted)));
-        registry.ValidateAndSeal();
+            new GemRemoteCommandResult(GemHostCommandAckCode.Accepted)));
+        registry.SealConfiguration();
         GemInterfaceReleaseManifest manifest = registry.CreateReleaseManifest("2.3.4");
 
         Assert.Equal("fab-a-aoi-01", registry.AppliedProfile?.ProfileId);
@@ -67,58 +67,48 @@ public sealed class GemRegistryTests
     }
 
     [Fact]
-    public void ValidateAndSeal_WithValidCatalog_SealsDefinitionsButAllowsValueUpdates()
+    public void ImmutableCatalog_AllowsRuntimeValueUpdates()
     {
-        var registry = new GemRegistry();
-        registry.RegisterVariableDefinition(new GemVariableDefinition(
-            new GemVid(1001),
-            "LotId",
-            GemVariableKind.DataVariable,
-            Format: SecsFormat.ASCII));
-        registry.RegisterReportDefinition(new GemReportDefinition(
-            new GemRptid(2001),
-            new[] { new GemVid(1001) }));
-        registry.RegisterEventDefinition(new GemCollectionEventDefinition(
-            new GemCeid(3001),
-            "LotStarted",
-            new[] { new GemRptid(2001) }));
-
-        registry.ValidateAndSeal();
+        GemInterfaceCatalog catalog = new GemInterfaceCatalogBuilder()
+            .AddVariable(new GemVariableDefinition(
+                new GemVid(1001), "LotId", GemVariableKind.DataVariable, Format: SecsFormat.ASCII))
+            .AddReport(new GemReportDefinition(new GemRptid(2001), [new GemVid(1001)]))
+            .AddEvent(new GemCollectionEventDefinition(new GemCeid(3001), "LotStarted", [new GemRptid(2001)]))
+            .Build();
+        var registry = new GemRegistry(catalog);
+        registry.SealConfiguration();
         registry.RegisterVariable(new GemVariable(1001, "LotId", Item.A("LOT-001")));
 
-        Assert.True(registry.Catalog.IsSealed);
         Assert.Equal("LOT-001", registry.Data.GetRequiredVariable(new GemVid(1001)).Value.GetString());
-        Assert.Throws<InvalidOperationException>(() => registry.RegisterEventDefinition(
-            new GemCollectionEventDefinition(new GemCeid(3002), "LotEnded", Array.Empty<GemRptid>())));
+        Assert.DoesNotContain((uint)3002, registry.Catalog.Events.Keys);
     }
 
     [Fact]
-    public void ValidateAndSeal_WhenReportReferencesUndefinedVid_ThrowsValidationException()
+    public void BuildCatalog_WhenReportReferencesUndefinedVid_ThrowsValidationException()
     {
-        var catalog = new GemInterfaceCatalog();
-        catalog.RegisterReport(new GemReportDefinition(
+        var builder = new GemInterfaceCatalogBuilder();
+        builder.AddReport(new GemReportDefinition(
             new GemRptid(2001),
             new[] { new GemVid(9999) }));
 
         GemCatalogValidationException exception = Assert.Throws<GemCatalogValidationException>(
-            catalog.ValidateAndSeal);
+            builder.Build);
 
         Assert.Contains(exception.Result.Issues, issue => issue.Code == "GEM003");
-        Assert.False(catalog.IsSealed);
     }
 
     [Fact]
     public void RegisterVariable_WhenVidOrNameIsDuplicated_Throws()
     {
-        var catalog = new GemInterfaceCatalog();
-        catalog.RegisterVariable(new GemVariableDefinition(
+        var builder = new GemInterfaceCatalogBuilder();
+        builder.AddVariable(new GemVariableDefinition(
             new GemVid(1001),
             "LotId",
             GemVariableKind.DataVariable));
 
-        Assert.Throws<InvalidOperationException>(() => catalog.RegisterVariable(
+        Assert.Throws<InvalidOperationException>(() => builder.AddVariable(
             new GemVariableDefinition(new GemVid(1001), "Other", GemVariableKind.DataVariable)));
-        Assert.Throws<InvalidOperationException>(() => catalog.RegisterVariable(
+        Assert.Throws<InvalidOperationException>(() => builder.AddVariable(
             new GemVariableDefinition(new GemVid(1002), "lotid", GemVariableKind.DataVariable)));
     }
 
@@ -155,12 +145,10 @@ public sealed class GemRegistryTests
     [Fact]
     public void CatalogExporter_ProducesReviewableMarkdown()
     {
-        var catalog = new GemInterfaceCatalog();
-        catalog.RegisterVariable(new GemVariableDefinition(
-            new GemVid(1001),
-            "LotId",
-            GemVariableKind.DataVariable,
-            Format: SecsFormat.ASCII));
+        GemInterfaceCatalog catalog = new GemInterfaceCatalogBuilder()
+            .AddVariable(new GemVariableDefinition(
+                new GemVid(1001), "LotId", GemVariableKind.DataVariable, Format: SecsFormat.ASCII))
+            .Build();
 
         string document = GemInterfaceCatalogExporter.ToMarkdown(catalog, "AOI-01");
 
@@ -169,17 +157,65 @@ public sealed class GemRegistryTests
     }
 
     [Fact]
-    public void ValidateAndSeal_WhenCommandDefinitionHasNoHandler_Throws()
+    public void SealConfiguration_WhenCommandDefinitionHasNoHandler_Throws()
     {
-        var registry = new GemRegistry();
-        registry.Catalog.RegisterRemoteCommand(new GemRemoteCommandDefinition(
-            "START",
-            Array.Empty<GemRemoteCommandParameterDefinition>()));
+        GemInterfaceCatalog catalog = new GemInterfaceCatalogBuilder()
+            .AddRemoteCommand(new GemRemoteCommandDefinition(
+                "START", Array.Empty<GemRemoteCommandParameterDefinition>()))
+            .Build();
+        var registry = new GemRegistry(catalog);
 
         GemCatalogValidationException exception = Assert.Throws<GemCatalogValidationException>(
-            registry.ValidateAndSeal);
+            registry.SealConfiguration);
 
         Assert.Contains(exception.Result.Issues, issue => issue.Code == "GEM010");
+        Assert.False(registry.IsConfigurationSealed);
+
+        registry.RegisterCommand("START", (_, _) => Task.FromResult(
+            new GemRemoteCommandResult(GemHostCommandAckCode.Accepted)));
+        registry.SealConfiguration();
+
+        Assert.True(registry.IsConfigurationSealed);
+    }
+
+    [Fact]
+    public void MessageFactories_CloneBorrowedItems()
+    {
+        using Item variableValue = Item.A("LOT-001");
+        using (SecsMessage message = GemMessageFactory.SelectedEquipmentStatusData(
+                   [new GemVariable(1001, "LotId", variableValue)]))
+        {
+        }
+
+        using Item commandValue = Item.A("PP-001");
+        using (SecsMessage message = GemMessageFactory.RemoteCommand(
+                   new GemRemoteCommand("START", new Dictionary<string, Item> { ["PPID"] = commandValue })))
+        {
+        }
+
+        using var processProgram = new GemProcessProgram("PP-001", Item.A("BODY"));
+        using (SecsMessage message = GemMessageFactory.ProcessProgramSend(processProgram))
+        {
+        }
+
+        Assert.Equal("LOT-001", variableValue.GetString());
+        Assert.Equal("PP-001", commandValue.GetString());
+        Assert.Equal("BODY", processProgram.Body.GetString());
+    }
+
+    [Fact]
+    public void S7F3Parser_ReturnsBodyIndependentFromIncomingMessage()
+    {
+        using var source = new GemProcessProgram("PP-001", Item.A("BODY"));
+        GemParseResult<GemProcessProgram> parsed;
+        using (SecsMessage message = GemMessageFactory.ProcessProgramSend(source))
+        {
+            parsed = new S7F3Parser().Parse(message);
+        }
+
+        Assert.True(parsed.IsSuccess);
+        using GemProcessProgram result = parsed.Value!;
+        Assert.Equal("BODY", result.Body.GetString());
     }
 
     [Fact]
@@ -210,9 +246,9 @@ public sealed class GemRegistryTests
             new GemRemoteCommand("START", new Dictionary<string, Item> { ["ppid"] = Item.A("RCP-01") }),
             GemControlState.OnlineRemote);
 
-        Assert.Equal(GemAckCode.InvalidState, invalidState.AckCode);
-        Assert.Equal(GemAckCode.InvalidParameter, missingParameter.AckCode);
-        Assert.Equal(GemAckCode.InvalidParameter, invalidFormat.AckCode);
+        Assert.Equal(GemHostCommandAckCode.CannotPerformNow, invalidState.AckCode);
+        Assert.Equal(GemHostCommandAckCode.InvalidParameter, missingParameter.AckCode);
+        Assert.Equal(GemHostCommandAckCode.InvalidParameter, invalidFormat.AckCode);
         Assert.True(valid.IsValid);
     }
 }
