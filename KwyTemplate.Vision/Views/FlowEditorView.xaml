@@ -282,9 +282,9 @@
                         AllowDrop="True"
                         Background="{StaticResource GridBackground}"
                         ConnectionCompletedCommand="{Binding Data.ConnectCompletedCommand, Source={StaticResource Proxy}}"
-                        ConnectionValidator="{Binding Data.ConnectionValidator, Source={StaticResource Proxy}}"
                         ConnectionStartedCommand="{Binding Data.ConnectStartedCommand, Source={StaticResource Proxy}}"
                         ConnectionTemplate="{StaticResource ConnectionTemplate}"
+                        ConnectionValidator="{Binding Data.ConnectionValidator, Source={StaticResource Proxy}}"
                         Connections="{Binding Connections}"
                         DisconnectConnectorCommand="{Binding Data.DisconnectConnectorCommand, Source={StaticResource Proxy}}"
                         ItemTemplate="{StaticResource NodeTemplate}"
@@ -1069,10 +1069,11 @@
                                             BorderBrush="{DynamicResource VisionPanelBorderBrush}"
                                             BorderThickness="1"
                                             CornerRadius="6">
-                                            <proxy:VisionImageViewer ImageItem="{Binding SelectedImagePanelItem}"
-                                                                     RoiLayers="{Binding RoiRegions}"
-                                                                     SelectedRoiLayer="{Binding SelectedRoiRegion, Mode=TwoWay}"
-                                                                     RoiCreationKind="{Binding RoiCreationKind}" />
+                                            <proxy:VisionImageViewer
+                                                ImageItem="{Binding SelectedImagePanelItem}"
+                                                RoiCreationKind="{Binding RoiCreationKind}"
+                                                RoiLayers="{Binding RoiRegions}"
+                                                SelectedRoiLayer="{Binding SelectedRoiRegion, Mode=TwoWay}" />
                                         </Border>
                                         <StackPanel Grid.Row="1" Margin="6,0,6,6">
                                             <StackPanel MaxHeight="132" Margin="0,0,0,6">
