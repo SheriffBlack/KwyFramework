@@ -1,5 +1,5 @@
 using Kwy.Communicate.Core;
-using Kwy.Communicate.TcpSerial.Configs;
+using Kwy.Communicate.TcpSerial.Configuration;
 using System.Net.Sockets;
 
 namespace Kwy.Communicate.TcpSerial;

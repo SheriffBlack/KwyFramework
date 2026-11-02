@@ -23,7 +23,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton(options);
         services.AddLogging(builder => builder.AddSerilog(
-            LoggingConfig.CreateLogger(options),
+            SerilogLoggerFactory.CreateLogger(options),
             dispose: true));
 
         return services;

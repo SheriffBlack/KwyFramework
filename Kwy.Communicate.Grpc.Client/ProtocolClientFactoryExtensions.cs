@@ -1,6 +1,6 @@
 using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Core;
-using Kwy.Communicate.Grpc.Client.Configs;
+using Kwy.Communicate.Grpc.Client.Configuration;
 
 namespace Kwy.Communicate.Grpc.Client;
 

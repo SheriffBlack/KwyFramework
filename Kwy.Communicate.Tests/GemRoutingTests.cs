@@ -22,6 +22,33 @@ public sealed class GemRoutingTests
     }
 
     [Fact]
+    public void S1F3Parser_WithListInsteadOfNumericSvid_ReturnsFailureWithoutThrowing()
+    {
+        using var message = new SecsMessage(1, 3, true)
+        {
+            SecsItem = L(L(U4(1001)))
+        };
+
+        GemParseResult<IReadOnlyList<GemVid>> result = new S1F3Parser().Parse(message);
+
+        Assert.False(result.IsSuccess);
+        Assert.Contains("invalid SVID", result.Error);
+    }
+
+    [Fact]
+    public void S1F3Parser_WithOverflowingSignedSvid_ReturnsFailureWithoutThrowing()
+    {
+        using var message = new SecsMessage(1, 3, true)
+        {
+            SecsItem = L(I4(-1))
+        };
+
+        GemParseResult<IReadOnlyList<GemVid>> result = new S1F3Parser().Parse(message);
+
+        Assert.False(result.IsSuccess);
+    }
+
+    [Fact]
     public void S2F23Parser_ParsesTraceDefinition()
     {
         using var message = new SecsMessage(2, 23, true)

@@ -1,6 +1,6 @@
 using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Core;
-using Kwy.Communicate.TcpSerial.Configs;
+using Kwy.Communicate.TcpSerial.Configuration;
 
 namespace Kwy.Communicate.TcpSerial;
 

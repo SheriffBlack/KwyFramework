@@ -21,9 +21,9 @@ public sealed class GemProcessProgramRepositoryTests
     [Fact]
     public async Task SaveAsync_RequiresExplicitOverwriteForExistingPpid()
     {
-        var repository = new InMemoryGemProcessProgramRepository();
-        var original = new GemProcessProgram("RCP-01", Item.A("v1"), "1");
-        var updated = new GemProcessProgram("RCP-01", Item.A("v2"), "2");
+        using var repository = new InMemoryGemProcessProgramRepository();
+        using var original = new GemProcessProgram("RCP-01", Item.A("v1"), "1");
+        using var updated = new GemProcessProgram("RCP-01", Item.A("v2"), "2");
 
         GemProcessProgramSaveResult first = await repository.SaveAsync(original);
         GemProcessProgramSaveResult duplicate = await repository.SaveAsync(updated);
@@ -34,15 +34,18 @@ public sealed class GemProcessProgramRepositoryTests
         Assert.True(first.Succeeded);
         Assert.Equal(GemProcessProgramSaveStatus.AlreadyExists, duplicate.Status);
         Assert.True(overwrite.Succeeded);
-        Assert.Equal("2", (await repository.FindAsync("RCP-01"))?.Version);
+        using GemProcessProgram? stored = await repository.FindAsync("RCP-01");
+        Assert.Equal("2", stored?.Version);
     }
 
     [Fact]
     public async Task Repository_ListsAndDeletesProcessPrograms()
     {
-        var repository = new InMemoryGemProcessProgramRepository();
-        await repository.SaveAsync(new GemProcessProgram("B", Item.A("b")));
-        await repository.SaveAsync(new GemProcessProgram("A", Item.A("a")));
+        using var repository = new InMemoryGemProcessProgramRepository();
+        using var b = new GemProcessProgram("B", Item.A("b"));
+        using var a = new GemProcessProgram("A", Item.A("a"));
+        await repository.SaveAsync(b);
+        await repository.SaveAsync(a);
 
         IReadOnlyList<string> ppids = await repository.ListPpidsAsync();
         GemProcessProgramDeleteResult deleted = await repository.DeleteAsync("A");

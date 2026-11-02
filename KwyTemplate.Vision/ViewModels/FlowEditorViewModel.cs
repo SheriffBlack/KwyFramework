@@ -2016,10 +2016,10 @@ public class FlowEditorViewModel : BindableBase, INavigationAware, IFlowConnecti
     /// <returns>连接结果，包含是否成功和错误信息</returns>
     private (bool Success, string? ErrorMessage) TryConnect(PortViewModel src, PortViewModel tgt)
     {
-        var validation = ValidateConnection(src, tgt);
-        if (!validation.Success)
+        var validate = ValidateConnection(src, tgt);
+        if (!validate.Success)
         {
-            return validation;
+            return validate;
         }
 
         if (src.Direction == PortDirection.Input)

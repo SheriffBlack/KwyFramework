@@ -1,7 +1,7 @@
 using Grpc.Core;
 using Grpc.Net.Client;
 using Kwy.Communicate.Core;
-using Kwy.Communicate.Grpc.Client.Configs;
+using Kwy.Communicate.Grpc.Client.Configuration;
 using Kwy.Communicate.Grpc.Client.Enums;
 using Kwy.Communicate.Grpc.Contracts.V1;
 using System.IO.Pipes;

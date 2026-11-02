@@ -5,7 +5,7 @@ using Serilog.Events;
 namespace Kwy.Logging.Serilog;
 
 /// <summary>构建 Serilog 日志管道。</summary>
-internal static class LoggingConfig
+internal static class SerilogLoggerFactory
 {
     /// <summary>根据日志选项创建 Serilog 日志器。</summary>
     internal static global::Serilog.ILogger CreateLogger(LoggingOptions options)

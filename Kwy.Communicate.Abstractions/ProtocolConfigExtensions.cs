@@ -2,12 +2,12 @@ namespace Kwy.Communicate.Abstractions;
 
 public static class ProtocolConfigExtensions
 {
-    public static ConfigValidateResult ValidateDetailed(this IProtocolConfig config)
+    public static ConfigValidationResult ValidateDetailed(this IProtocolConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
         return config.Validate()
-            ? ConfigValidateResult.Success
-            : new ConfigValidateResult(new[] { $"{config.GetType().Name} configuration is invalid." });
+            ? ConfigValidationResult.Success
+            : new ConfigValidationResult(new[] { $"{config.GetType().Name} configuration is invalid." });
     }
 
     public static void ValidateAndThrow(this IProtocolConfig config)

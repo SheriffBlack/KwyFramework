@@ -2,7 +2,7 @@ using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Abstractions.Enums;
 using Kwy.Communicate.Grpc.Client.Enums;
 
-namespace Kwy.Communicate.Grpc.Client.Configs;
+namespace Kwy.Communicate.Grpc.Client.Configuration;
 
 /// <summary>
 /// gRPC 端点的配置

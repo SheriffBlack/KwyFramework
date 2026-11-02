@@ -2,7 +2,7 @@
 
 using Kwy.Communicate.Abstractions;
 
-namespace Kwy.Communicate.TcpSerial.Configs;
+namespace Kwy.Communicate.TcpSerial.Configuration;
 
 /// <summary>
 /// TCP/IP协议配置

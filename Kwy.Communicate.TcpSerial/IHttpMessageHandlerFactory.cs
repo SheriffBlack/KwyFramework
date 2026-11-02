@@ -1,4 +1,4 @@
-using Kwy.Communicate.TcpSerial.Configs;
+using Kwy.Communicate.TcpSerial.Configuration;
 
 namespace Kwy.Communicate.TcpSerial;
 

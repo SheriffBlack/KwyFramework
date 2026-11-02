@@ -1,6 +1,6 @@
 using Kwy.Communicate.Abstractions;
 using Kwy.Communicate.Visa;
-using Kwy.Communicate.TcpSerial.Configs;
+using Kwy.Communicate.TcpSerial.Configuration;
 using Kwy.Device.Abstractions;
 using Kwy.Device.Instruments.Lcr;
 using Kwy.Device.Instruments.Dcr;

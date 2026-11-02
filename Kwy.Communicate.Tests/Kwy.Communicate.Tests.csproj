@@ -19,6 +19,7 @@
     <ProjectReference Include="..\Kwy.Communicate.Core\Kwy.Communicate.Core.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.FMdb\Kwy.Communicate.FMdb.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.Gem\Kwy.Communicate.Gem.csproj" />
+    <ProjectReference Include="..\Kwy.Communicate.Gem.Testing\Kwy.Communicate.Gem.Testing.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.Gem300\Kwy.Communicate.Gem300.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.Mqtt\Kwy.Communicate.Mqtt.csproj" />
     <ProjectReference Include="..\Kwy.Communicate.OpcUa\Kwy.Communicate.OpcUa.csproj" />

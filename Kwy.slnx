@@ -31,6 +31,7 @@
   <Project Path="Kwy.Communicate.Core/Kwy.Communicate.Core.csproj" Id="4eb51155-2c16-43f9-b153-9c7387f422b6" />
   <Project Path="Kwy.Communicate.FMdb/Kwy.Communicate.FMdb.csproj" Id="95926aed-0f23-4270-b873-111680c46484" />
   <Project Path="Kwy.Communicate.Gem/Kwy.Communicate.Gem.csproj" />
+  <Project Path="Kwy.Communicate.Gem.Testing/Kwy.Communicate.Gem.Testing.csproj" />
   <Project Path="Kwy.Communicate.Gem300/Kwy.Communicate.Gem300.csproj" Id="728a621c-edc6-4753-b390-4303366e3d30" />
   <Project Path="Kwy.Communicate.Grpc.Client/Kwy.Communicate.Grpc.Client.csproj" Id="cc3eddbe-b699-4932-8fe7-29d2c45ec8e8" />
   <Project Path="Kwy.Communicate.Grpc.Contracts/Kwy.Communicate.Grpc.Contracts.csproj" Id="aaac4559-7d1f-4047-9a4f-84171ab1bd32" />

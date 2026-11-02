@@ -1,5 +1,5 @@
 using Kwy.Communicate.Abstractions.Enums;
-using Kwy.Communicate.TcpSerial.Configs;
+using Kwy.Communicate.TcpSerial.Configuration;
 using Kwy.Device.Abstractions;
 
 namespace KwyTemplate.Device.Scanners;
