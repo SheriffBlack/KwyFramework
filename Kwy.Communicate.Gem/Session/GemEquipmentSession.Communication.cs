@@ -6,15 +6,21 @@ namespace Kwy.Communicate.Gem;
 
 public sealed partial class GemEquipmentSession
 {
+    /// <summary>本地 Equipment 主动建立通信，发送S1F14 </summary>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public async Task EstablishCommunicationAsync(CancellationToken cancellationToken = default)
     {
         registry.SealConfiguration();
-        if (!secsClient.IsConnected)
-            await secsClient.ConnectAsync(cancellationToken).ConfigureAwait(false);
+        if (!secsClient.IsConnected)    // 建立底层连接
+            await secsClient.ConnectAsync(cancellationToken).ConfigureAwait(false);     // Secs4Net 负责：TCP Connect→ HSMS Select
 
-        using SecsMessage request = GemMessageFactory.EstablishCommunicationsRequest(
+        using SecsMessage request = GemMessageFactory.EstablishCommunicationsRequest(       // 发送 S1F13
             LocalEndpoint.Model ?? "KWY", LocalEndpoint.SoftwareRevision ?? "1.0");
         using SecsMessage? reply = await secsClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        //验证S1F14
         if (reply is null || reply.S != 1 || reply.F != 14)
             throw new InvalidOperationException("Expected an S1F14 Establish Communications Acknowledge response.");
         if (!GemItemReader.TryList(reply.SecsItem, 2, out IReadOnlyList<Item> fields, out string? error) ||
@@ -27,7 +33,7 @@ public sealed partial class GemEquipmentSession
         byte communicationAck = fields[0].FirstValue<byte>();
         if (communicationAck != 0)
             throw new InvalidOperationException($"Host rejected Establish Communications with COMMACK={communicationAck}.");
-        StateMachine.MarkCommunicating();
+        StateMachine.MarkCommunicating();   // 更新状态
     }
 
     public Task AcceptCommunicationAsync(CancellationToken cancellationToken = default)

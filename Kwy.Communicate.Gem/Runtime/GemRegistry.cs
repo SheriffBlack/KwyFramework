@@ -107,6 +107,14 @@ public sealed class GemRegistry
     }
 
     /// <summary>校验 Remote Command 定义与业务 Handler 的绑定关系，然后封闭启动配置。</summary>
+    /// <remarks>
+    /// 通信开始后，不再允许随意修改：
+    ///     VID
+    ///     CEID
+    ///     ALID
+    ///     ECID
+    ///     Remote Command
+    /// </remarks>
     public void SealConfiguration()
     {
         GemCatalogValidationResult result = Commands.ValidateBindingsAndSeal(Catalog.RemoteCommands);

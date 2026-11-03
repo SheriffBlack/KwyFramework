@@ -15,7 +15,7 @@
 
 - 目标框架：.NET 8
 - 协议引擎：Secs4Net 3.0.1
-- 创建方式：Factory-only，不强制使用 DI
+- 客户端创建：Factory，不强制使用 DI
 - 默认角色：Equipment
 
 ## 核心能力
@@ -27,6 +27,168 @@
 - Primary Message Router、Parser、Validator 和可组合 Handler。
 - Event、Alarm、Equipment Constant、Remote Command、Process Program 和 Trace 基础行为。
 - 可替换诊断、Process Program Repository、Spool Store 和安全补传流程。
+
+## 架构设计
+
+### 设计原则
+
+- `Secs4Net` 负责 HSMS 连接、SECS-II 编解码和 Primary/Secondary 事务关联。
+- 本库负责 Equipment 侧 GEM 状态、接口合同、消息路由和基础行为编排。
+- 设备项目负责工艺、PLC/运动控制、安全互锁、Recipe 持久化和客户接口定义。
+- 静态接口定义与运行时数据分离，避免设备运行期间接口编号漂移。
+- 核心库不强制 DI：小型程序可直接使用 Factory，宿主项目可自行注册对象。
+
+### 总体分层
+
+```text
+设备应用 / Recipe Service / Machine State / PLC
+                    ↑ 业务回调与扩展接口
+┌───────────────────────────────────────────────────────┐
+│ GemEquipmentSession                                  │  GEM 行为编排
+│ GemRegistry = Catalog + Data + Commands              │  合同与运行时数据
+├───────────────────────────────────────────────────────┤
+│ GemPrimaryMessageRouter + Parser/Validator/Handler   │  入站消息处理
+│ GemMessageDefinitions + GemMessageFactory            │  出站消息构造
+├───────────────────────────────────────────────────────┤
+│ ISecsGemClient / SecsGemClient                       │  Kwy 客户端生命周期
+├───────────────────────────────────────────────────────┤
+│ Secs4Net                                             │  HSMS + SECS-II 事务引擎
+└───────────────────────────────────────────────────────┘
+                    ↕ TCP/IP
+                 Fab Host / EAP
+```
+
+依赖方向始终向下。`Kwy.Communicate.Gem` 可以调用设备项目注入的接口或委托，
+但不引用具体设备、UI 或业务项目。
+
+生产运行时依赖：
+
+```text
+Equipment 项目 ─→ Kwy.Communicate.Gem ─→ Kwy.Communicate.Core ─→ Kwy.Communicate.Abstractions
+                                      └─→ Secs4Net
+Kwy.Communicate.Gem300 ───────────↗
+```
+
+测试与验收依赖：
+
+```text
+Equipment.Tests / Host Simulator 项目 ─→ Kwy.Communicate.Gem.Testing ─→ Kwy.Communicate.Gem
+```
+
+`Kwy.Communicate.Gem.Testing` 只供测试、冒烟和 Host 侧自动验收项目引用；
+生产 Equipment 项目不引用它。核心 GEM 库也不反向依赖 `Gem.Testing` 或 `Gem300`，
+且不依赖任何 `Kwy.Device.*` 项目。
+
+### 模块职责
+
+| 模块 | 职责 | 主要入口 |
+|---|---|---|
+| `Transport` | 配置和管理 Secs4Net、接入 `Kwy.Communicate` 客户端生命周期 | `ISecsGemClient`、`SecsGemClientFactory` |
+| `InterfaceCatalog` | 定义并校验 VID、ECID、RPTID、CEID、ALID 和 RCMD | `GemInterfaceCatalogBuilder`、`IGemInterfaceProfile` |
+| `Runtime` | 组合静态合同、运行时快照和命令 Handler | `GemRegistry`、`GemDataSnapshot`、`GemCommandRegistry` |
+| `Session` | 编排 Communication/Control State 及 Equipment 侧常用行为 | `IGemEquipmentSession`、`GemEquipmentSession` |
+| `Protocol/Common` | 定义 S/F 值对象、解析合同和 `Item` 复制等协议基础能力 | `SecsMessageId`、`IGemMessageParser<T>` |
+| `Protocol/Messages` | 集中定义 SxFy 语义并构造报文 | `GemMessageDefinitions`、`GemMessageFactory` |
+| `Protocol/Streams` | 按 Stream 组织 Parser 和标准 Handler | `S1F3Parser`、`S2F41Handler` 等 |
+| `Routing` | 按 S/F 路由 Host Primary Message，保证单次回复和释放 | `GemPrimaryMessageRouter` |
+| `RemoteCommands` | 定义、校验和执行 S2F41 命令 | `GemRemoteCommandDefinition`、`GemRemoteCommandValidator` |
+| `ProcessPrograms` | 将 Stream 7 PPID/PPBODY 适配到项目 Recipe Service | `IGemProcessProgramRepository` |
+| `Reporting` / `Trace` | 事件、报警、运行值和 Trace 采集模型 | `GemVariable`、`GemTraceService` |
+| `EquipmentConstants` | 校验 Host 请求的 ECID 变更 | `GemEquipmentConstantChangeValidator` |
+| `Spooling` | 有界、按序、成功后删除的断线补传 | `GemSpoolingService`、`IGemSpoolStore` |
+| `Diagnostics` | 将 Secs4Net 日志和报文转为宿主可接入的诊断事件 | `IGemDiagnostics` |
+| `Validation` | 放置跨能力的通用验证合同和会话策略 | `IGemValidator<T>`、`GemSessionPolicy` |
+
+`Kwy.Communicate.Gem.Testing` 是独立验收与 Simulator 辅助库，不在 Equipment 生产运行时依赖链中。
+具体 SxFy Parser 与对应 Handler 同目录放置在 `Protocol/Streams/StreamXX`；
+`Protocol/Common` 只保留通用解析合同与 `Item` 读取工具，因此不再保留独立的 `Protocol/Parsing` 目录。
+具体能力的 Validator 与所属模块同级放置，例如 `RemoteCommands/GemRemoteCommandValidator`；
+`Validation` 只保留跨模块通用类型。
+
+### 核心运行时模型
+
+`GemRegistry` 只是三类对象的组合根，不是数据库或设备业务状态机：
+
+| 对象 | 内容 | 变更时机 |
+|---|---|---|
+| `Catalog` | 客户接口合同：VID/ECID/RPTID/CEID/ALID/RCMD 定义 | 启动阶段构建，生成后不可变 |
+| `Data` | 构造报文所需的当前值和报警快照 | 运行期由设备应用更新 |
+| `Commands` | RCMD Handler Key 与编译后 C# Handler 的绑定 | 启动阶段注册，封闭后不可变 |
+
+推荐的启动顺序：
+
+```text
+加载 JSON/C# Profile 或使用 Builder
+    → Build() 校验引用关系并生成不可变 Catalog
+    → 创建 GemRegistry
+    → RegisterCommand() 绑定业务 Handler
+    → SealConfiguration() 校验 RCMD 定义与 Handler
+    → 创建 GemEquipmentSession 和 Router
+    → 建立 HSMS / GEM Communication
+```
+
+`EstablishCommunicationAsync()` 和 `AcceptCommunicationAsync()` 会自动调用
+`SealConfiguration()`；也可在启动自检阶段主动调用，以便更早发现缺失或多余的 Handler。
+
+### 消息处理链路
+
+Host 主动发送 Primary Message 时：
+
+```text
+Secs4Net PrimaryMessageWrapper
+    → ISecsGemClient.ReadAllAsync()
+    → GemPrimaryMessageRouter
+    → IGemMessageParser<T>
+    → GemSessionPolicy / IGemValidator<T>
+    → IGemPrimaryMessageHandler
+    → GemEquipmentSession 或设备项目回调
+    → Secondary Reply
+```
+
+设备应用主动上报时：
+
+```text
+设备业务事件
+    → GemEquipmentSession
+    → Catalog 定义与 Data 快照校验
+    → GemMessageFactory
+    → ISecsGemClient.SendAsync()
+    → W-Bit 为 true 时等待 Host Secondary Reply
+
+断线且报文允许补传
+    → GemSpoolingService
+    → 恢复 GEM Communication 后按 Sequence 重放
+```
+
+Parser 只处理报文结构，Validator 只处理合同和会话条件，Handler 负责流程编排。
+业务动作的最终授权仍由设备项目负责。
+
+### 扩展方式
+
+| 需求 | 扩展方式 |
+|---|---|
+| 增加客户专用 SxFy | 定义 `SecsMessageDefinition`，实现 Parser/Handler 并注册到 Router |
+| 增加或变更客户 RCMD | 在 Profile/Catalog 中定义，在设备项目中注册 C# Handler |
+| 接入生产 Recipe 存储 | 实现 `IGemProcessProgramRepository` |
+| 持久化 Spool | 实现 `IGemSpoolStore` |
+| 接入 Serilog/NLog/Microsoft Logging | 实现 `IGemDiagnostics` |
+| 执行 ECID 变更、报警启停和 Online 授权 | 向 `GemStandardHandlerSet` 传入设备项目委托 |
+
+不需要为每个客户派生 `GemEquipmentSession`；优先通过 Profile、Repository、Handler 和委托组合。
+
+### 所有权与生命周期
+
+| 对象 | 所有权约定 |
+|---|---|
+| `ISecsGemClient` | Factory 返回后由调用方 `await using` 释放 |
+| `IGemEquipmentSession` | 由调用方 `using` 释放；不会代替调用方释放 Client |
+| `GemSpoolingService` | Session 内部创建时由 Session 释放；外部注入时由注入方释放 |
+| `GemDataSnapshot` 中的 `Item` | 由调用方保持有效；构造出站报文时会复制 |
+| `GemProcessProgram` | 拥有 PPBODY `Item`，调用方必须释放 |
+| Repository `FindAsync()` 返回值 | 所有权转移给调用方 |
+| `GemMessageFactory` 返回的 `SecsMessage` | 由直接调用 Factory 的一方释放 |
+
+Session 和 Router 已负责释放其内部创建的报文；业务层不应重复释放这些对象。
 
 ## 最小接入
 
@@ -82,7 +244,7 @@ using IGemEquipmentSession equipment = new GemEquipmentSession(
 `SecsGemClient` 实现 `IAsyncDisposable`，必须使用 `await using` 或 `DisposeAsync()` 释放。
 `IsActive = true` 表示本端主动建立 HSMS 连接。
 
-### 2. 定义接口合同
+### 2. 建立 GEM 通信并进入 Online
 
 ```csharp
 await equipment.EstablishCommunicationAsync(cancellationToken);

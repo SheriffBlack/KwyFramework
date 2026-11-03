@@ -2,6 +2,7 @@ using Secs4Net;
 
 namespace Kwy.Communicate.Gem;
 
+/// <summary>Host主动发送S1F13，Equipment接收 </summary>
 public sealed class S1F13Handler : IGemPrimaryMessageHandler
 {
     private readonly IGemEquipmentSession session;
