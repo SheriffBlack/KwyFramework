@@ -42,7 +42,7 @@ internal sealed class SecsGemLoggerAdapter : ISecsGemLogger
 
     public void MessageIn(SecsMessage message, int systemBytes)
     {
-        if (options.LogMessages)
+        if (options.IncludeMessages)
         {
             diagnostics.MessageReceived(CreateEntry(message, systemBytes, GemMessageDirection.Received));
         }
@@ -50,7 +50,7 @@ internal sealed class SecsGemLoggerAdapter : ISecsGemLogger
 
     public void MessageOut(SecsMessage message, int systemBytes)
     {
-        if (options.LogMessages)
+        if (options.IncludeMessages)
         {
             diagnostics.MessageSent(CreateEntry(message, systemBytes, GemMessageDirection.Sent));
         }
@@ -72,18 +72,18 @@ internal sealed class SecsGemLoggerAdapter : ISecsGemLogger
 
     private string? GetContent(SecsMessage message)
     {
-        if (!options.LogMessageContent || message.SecsItem is null)
+        if (!options.IncludeMessageContent || message.SecsItem is null)
         {
             return null;
         }
 
         var content = message.SecsItem.ToString() ?? string.Empty;
-        if (content.Length <= options.MaxMessageContentLength)
+        if (content.Length <= options.MaximumMessageContentLength)
         {
             return content;
         }
 
-        return string.Concat(content.AsSpan(0, options.MaxMessageContentLength), "…");
+        return string.Concat(content.AsSpan(0, options.MaximumMessageContentLength), "…");
     }
 
     private static string Describe(SecsMessage message)
