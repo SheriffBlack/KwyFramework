@@ -293,7 +293,7 @@ await router.RunAsync(client, cancellationToken);
 ```
 
 Router 按 `(Stream, Function)` 分发消息，并统一处理 System Bytes 关联、一次回复和
-回复对象释放。标准集合当前包含 S1F13、S1F17、S1F3、S2F15、S2F23、S2F41、S5F3、
+回复对象释放。标准集合当前包含 S1F11、S1F13、S1F15、S1F17、S1F3、S2F15、S2F23、S2F41、S5F3、
 S7F1、S7F3、S7F5、S7F17 和 S7F19。S1F17 的授权委托应检查设备安全状态、操作员权限和生产策略；默认进入
 Online Local，只有项目明确授权时才应配置为直接进入 Online Remote。未注册的 W-Bit
 消息由 Secs4Net 按未知报文处理。
@@ -505,12 +505,18 @@ Diagnostics 输出连接、会话、异常和报文收发信息，不负责日�
 Secs4Net → SecsGemLoggerAdapter（内部）→ IGemDiagnostics → 项目日志系统
 ```
 
-- `TraceGemDiagnostics`：默认实现，适合开发联调。
+`ISecsGemLogger` 是 Secs4Net 的底层回调合同，由库内部的 `SecsGemLoggerAdapter`
+适配，不作为业务层的日志扩展点。项目代码只需实现并传入
+`IGemDiagnostics`，不需要依赖或实现 `ISecsGemLogger`。
+
+- `TraceGemDiagnostics`：`SecsGemClientFactory.Create(config)` 使用的开发默认实现，适合学习和临时联调。
 - `NullGemDiagnostics.Instance`：关闭所有诊断。
-- `GemDiagnosticsOptions`：控制是否记录报文、正文和正文最大长度。
+- `GemDiagnosticsOptions`：控制是否发送报文诊断事件、是否包含正文及正文最大长度。
 - `GemMessageLogEntry`：包含方向、S/F、W-Bit、System Bytes、名称和可选正文。
 
-生产项目实现 `IGemDiagnostics` 适配已有日志系统。例如 `Microsoft.Extensions.Logging`：
+无 DI 工厂不会从容器中查找 `IGemDiagnostics`。生产项目应实现
+`IGemDiagnostics` 适配已有日志系统，并在组合入口解析后显式传给工厂。
+例如 `Microsoft.Extensions.Logging`：
 
 ```csharp
 public sealed class ApplicationGemDiagnostics : IGemDiagnostics
@@ -546,14 +552,14 @@ await using ISecsGemClient client = SecsGemClientFactory.Create(
     diagnostics,
     new GemDiagnosticsOptions
     {
-        LogMessages = true,
-        LogMessageContent = false,
-        MaxMessageContentLength = 4096
+        IncludeMessages = true,
+        IncludeMessageContent = false,
+        MaximumMessageContentLength = 4096
     });
 ```
 
 日志文件、滚动和保留策略由宿主配置。生产环境应默认关闭
-`LogMessageContent`；自定义实现应线程安全、快速且不抛出异常。
+`IncludeMessageContent`；自定义实现应线程安全、快速且不抛出异常。
 
 ## 生产边界
 
