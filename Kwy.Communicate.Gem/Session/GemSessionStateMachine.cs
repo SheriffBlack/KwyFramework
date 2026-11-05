@@ -60,6 +60,18 @@ public sealed class GemSessionStateMachine
     public void RejectOnline(string reason = "Online transition rejected")
         => Transition(null, GemControlState.HostOffline, reason);
 
+    public void AcceptHostOfflineRequest(string reason = "Host S1F15 Request OFF-LINE accepted")
+    {
+        if (CommunicationState != GemCommunicationState.Communicating)
+            throw new InvalidOperationException("GEM communication must be established before accepting a Host OFF-LINE request.");
+
+        // Equipment Offline 已经满足 Host 的下线请求，不应改写为 Host Offline。
+        if (ControlState == GemControlState.Offline)
+            return;
+
+        Transition(null, GemControlState.HostOffline, reason);
+    }
+
     public void SetOffline(string reason = "Offline requested")
         => Transition(null, GemControlState.Offline, reason);
 

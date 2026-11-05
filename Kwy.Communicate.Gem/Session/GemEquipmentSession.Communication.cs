@@ -87,6 +87,13 @@ public sealed partial class GemEquipmentSession
         finally { controlStateLock.Release(); }
     }
 
+    public async Task AcceptHostOfflineRequestAsync(CancellationToken cancellationToken = default)
+    {
+        await controlStateLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { StateMachine.AcceptHostOfflineRequest(); }
+        finally { controlStateLock.Release(); }
+    }
+
     public async Task SetOfflineAsync(CancellationToken cancellationToken = default)
     {
         await controlStateLock.WaitAsync(cancellationToken).ConfigureAwait(false);

@@ -38,6 +38,10 @@ public interface IGemEquipmentSession : IDisposable
     /// <summary>在业务授权通过后，接受 Host 发起的 S1F17 Request ON-LINE。</summary>
     Task AcceptHostOnlineRequestAsync(bool remote, CancellationToken cancellationToken = default);
 
+    /// <summary>接受 Host 发起的 S1F15 Request OFF-LINE，并进入 Host Offline。</summary>
+    Task AcceptHostOfflineRequestAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>由设备项目在本地将会话设为 Offline，不代替 S1F15/S1F16 交互。</summary>
     Task SetOfflineAsync(CancellationToken cancellationToken = default);
 
     Task ReportAlarmAsync(GemAlarm alarm, CancellationToken cancellationToken = default);
