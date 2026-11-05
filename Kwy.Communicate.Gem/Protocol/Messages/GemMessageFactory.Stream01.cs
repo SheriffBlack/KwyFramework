@@ -13,6 +13,22 @@ public static partial class GemMessageFactory
     public static SecsMessage AreYouThereResponse()
         => Create(GemMessageDefinitions.AreYouThereResponse);
 
+    /// <summary>S1F11；空列表表示请求全部 SVID。</summary>
+    public static SecsMessage StatusVariableNamelistRequest(params GemVid[] svids)
+        => Create(
+            GemMessageDefinitions.StatusVariableNamelistRequest,
+            L(svids.Select(id => U4(id.Value)).ToArray()));
+
+    /// <summary>S1F12 </summary>
+    public static SecsMessage StatusVariableNamelistReply(
+        IEnumerable<GemStatusVariableNameEntry> entries)
+        => Create(
+            GemMessageDefinitions.StatusVariableNamelistReply,
+            L(entries.Select(entry => L(
+                U4(entry.Svid.Value),
+                A(entry.Name),
+                A(entry.Unit ?? string.Empty))).ToArray()));
+
     /// <summary>S1F13 </summary>
     public static SecsMessage EstablishCommunicationsRequest(string model, string softwareRevision)
         => Create(GemMessageDefinitions.EstablishCommunicationsRequest, L(A(model), A(softwareRevision)));
@@ -25,6 +41,15 @@ public static partial class GemMessageFactory
         => Create(
             GemMessageDefinitions.EstablishCommunicationsAcknowledge,
             L(B(accepted ? (byte)0 : (byte)1), L(A(model), A(softwareRevision))));
+
+    /// <summary>S1F15 </summary>
+    public static SecsMessage RequestOffline()
+        => Create(GemMessageDefinitions.RequestOffline);
+
+    /// <summary>S1F16 </summary>
+    public static SecsMessage OfflineAcknowledge(
+        GemOfflineAcknowledgeCode acknowledgeCode = GemOfflineAcknowledgeCode.Acknowledged)
+        => Create(GemMessageDefinitions.OfflineAcknowledge, B((byte)acknowledgeCode));
 
     /// <summary>S1F17 </summary>
     public static SecsMessage RequestOnline()

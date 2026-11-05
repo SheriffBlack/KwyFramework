@@ -18,6 +18,14 @@ public static partial class GemMessageDefinitions
     public static SecsMessageDefinition SelectedEquipmentStatusData { get; } =
         new(new SecsMessageId(1, 4), nameof(SelectedEquipmentStatusData), false);
 
+    /// <summary>1,11 </summary>
+    public static SecsMessageDefinition StatusVariableNamelistRequest { get; } =
+        new(new SecsMessageId(1, 11), nameof(StatusVariableNamelistRequest), true);
+
+    /// <summary>1,12 </summary>
+    public static SecsMessageDefinition StatusVariableNamelistReply { get; } =
+        new(new SecsMessageId(1, 12), nameof(StatusVariableNamelistReply), false);
+
     /// <summary>1,13 </summary>
     public static SecsMessageDefinition EstablishCommunicationsRequest { get; } =
         new(new SecsMessageId(1, 13), nameof(EstablishCommunicationsRequest), true);
@@ -25,6 +33,14 @@ public static partial class GemMessageDefinitions
     /// <summary>1,14 </summary>
     public static SecsMessageDefinition EstablishCommunicationsAcknowledge { get; } =
         new(new SecsMessageId(1, 14), nameof(EstablishCommunicationsAcknowledge), false);
+
+    /// <summary>1,15 </summary>
+    public static SecsMessageDefinition RequestOffline { get; } =
+        new(new SecsMessageId(1, 15), nameof(RequestOffline), true);
+
+    /// <summary>1,16 </summary>
+    public static SecsMessageDefinition OfflineAcknowledge { get; } =
+        new(new SecsMessageId(1, 16), nameof(OfflineAcknowledge), false);
 
     /// <summary>1,17 </summary>
     public static SecsMessageDefinition RequestOnline { get; } =
