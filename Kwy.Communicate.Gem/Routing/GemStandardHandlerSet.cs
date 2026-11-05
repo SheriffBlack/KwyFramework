@@ -23,7 +23,9 @@ public static class GemStandardHandlerSet
         processProgramLoadPolicy ??= new RejectGemProcessProgramLoadPolicy();
 
         return router
+            .Register(new S1F11Handler(registry, session))
             .Register(new S1F13Handler(session))
+            .Register(new S1F15Handler(session))
             .Register(new S1F17Handler(session, onlineRequestAuthorizer, hostOnlineEntersRemote))
             .Register(new S1F3Handler(registry))
             .Register(new S2F15Handler(registry, session, equipmentConstantWriter))
