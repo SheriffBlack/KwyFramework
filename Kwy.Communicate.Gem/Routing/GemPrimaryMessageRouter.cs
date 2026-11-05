@@ -15,11 +15,16 @@ public sealed class GemPrimaryMessageRouter
         return this;
     }
 
+    /// <summary>
+    /// 消费并路由一条入站 Primary Message。方法返回前始终释放
+    /// <see cref="PrimaryMessageWrapper.PrimaryMessage"/>，Handler 不得在返回后继续持有其 Item。
+    /// </summary>
     public async Task<bool> RouteAsync(PrimaryMessageWrapper primary, CancellationToken cancellationToken = default)
     {
-        SecsMessage message = primary.PrimaryMessage;
+        ArgumentNullException.ThrowIfNull(primary);
+        using SecsMessage message = primary.PrimaryMessage;
         var id = new SecsMessageId(message.S, message.F);
-        if (!handlers.TryGetValue(id, out IGemPrimaryMessageHandler? handler))
+        if (!handlers.TryGetValue(id, out IGemPrimaryMessageHandler? handler))  // 如果没有注册对应的 Handler，则直接回复 S9F7（底层Secs4net 实现）
         {
             if (message.ReplyExpected)
                 await primary.TryReplyAsync(null, cancellationToken).ConfigureAwait(false);
