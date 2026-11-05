@@ -9,23 +9,35 @@ namespace Kwy.Communicate.Gem;
 public static class SecsGemClientFactory
 {
     /// <summary>
-    /// 根据指定配置创建 SECS/GEM 客户端。
+    /// 根据指定配置创建 SECS/GEM 客户端，并将诊断信息输出到
+    /// <see cref="System.Diagnostics.Trace"/>。
     /// </summary>
     /// <param name="config">SECS/GEM 客户端配置。</param>
-    /// <param name="diagnostics">GEM 诊断接收器；为空时输出到 <see cref="System.Diagnostics.Trace"/>。</param>
+    /// <returns>由调用方负责释放的 SECS/GEM 客户端。</returns>
+    /// <exception cref="ArgumentException">配置无效。</exception>
+    /// <remarks>适合学习、控制台工具和临时联调；生产项目应显式传入 <see cref="IGemDiagnostics"/>。</remarks>
+    public static ISecsGemClient Create(SecsGemClientConfig config)
+        => Create(config, new TraceGemDiagnostics());
+
+    /// <summary>
+    /// 根据指定配置和业务诊断接收器创建 SECS/GEM 客户端。
+    /// </summary>
+    /// <param name="config">SECS/GEM 客户端配置。</param>
+    /// <param name="diagnostics">GEM 诊断接收器。</param>
     /// <param name="diagnosticsOptions">诊断选项；为空时使用安全的默认值。</param>
     /// <returns>由调用方负责释放的 SECS/GEM 客户端。</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="config"/> 或 <paramref name="diagnostics"/> 为空。</exception>
     /// <exception cref="ArgumentException">配置无效。</exception>
     public static ISecsGemClient Create(
         SecsGemClientConfig config,
-        IGemDiagnostics? diagnostics = null,
+        IGemDiagnostics diagnostics,
         GemDiagnosticsOptions? diagnosticsOptions = null)
     {
         ArgumentNullException.ThrowIfNull(config);
+        ArgumentNullException.ThrowIfNull(diagnostics);
         SecsGemClientConfig clientConfig = SecsGemClient.CloneAndValidateConfig(config);
 
         var options = Options.Create(CreateOptions(clientConfig));
-        diagnostics ??= new TraceGemDiagnostics();
         diagnosticsOptions ??= new GemDiagnosticsOptions();
         diagnosticsOptions.Validate();
         var logger = new SecsGemLoggerAdapter(diagnostics, diagnosticsOptions);
@@ -33,10 +45,7 @@ public static class SecsGemClientFactory
         return CreateClient(clientConfig, options, logger);
     }
 
-    /// <summary>
-    /// 使用自定义 Secs4Net 日志记录器创建客户端，供需要直接控制第三方接口的高级场景使用。
-    /// </summary>
-    public static ISecsGemClient CreateWithLogger(
+    internal static ISecsGemClient CreateWithLogger(
         SecsGemClientConfig config,
         ISecsGemLogger logger)
     {
