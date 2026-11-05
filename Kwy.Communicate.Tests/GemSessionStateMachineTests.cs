@@ -105,6 +105,97 @@ public sealed class GemSessionStateMachineTests
     }
 
     [Fact]
+    public async Task S1F15Handler_WhenOnline_EntersHostOfflineAndReturnsS1F16()
+    {
+        var session = new TestEquipmentSession();
+        await session.AcceptCommunicationAsync();
+        await session.AcceptHostOnlineRequestAsync(remote: true);
+        using var request = new SecsMessage(1, 15, true);
+
+        using SecsMessage? reply = await new S1F15Handler(session).HandleAsync(request);
+
+        Assert.NotNull(reply);
+        Assert.Equal((byte)1, reply.S);
+        Assert.Equal((byte)16, reply.F);
+        Assert.Equal((byte)GemOfflineAcknowledgeCode.Acknowledged, reply.SecsItem!.FirstValue<byte>());
+        Assert.Equal(GemCommunicationState.Communicating, session.CommunicationState);
+        Assert.Equal(GemControlState.HostOffline, session.ControlState);
+    }
+
+    [Fact]
+    public void AcceptHostOfflineRequest_WithoutCommunication_Throws()
+    {
+        var stateMachine = new GemSessionStateMachine();
+
+        Assert.Throws<InvalidOperationException>(() => stateMachine.AcceptHostOfflineRequest());
+        Assert.Equal(GemControlState.Offline, stateMachine.ControlState);
+    }
+
+    [Fact]
+    public void AcceptHostOfflineRequest_WhenAlreadyEquipmentOffline_RemainsOffline()
+    {
+        var stateMachine = new GemSessionStateMachine();
+        stateMachine.MarkCommunicating();
+
+        stateMachine.AcceptHostOfflineRequest();
+
+        Assert.Equal(GemCommunicationState.Communicating, stateMachine.CommunicationState);
+        Assert.Equal(GemControlState.Offline, stateMachine.ControlState);
+    }
+
+    [Fact]
+    public async Task S1F11Handler_ReturnsRequestedStatusVariablesAndUnknownPlaceholderInOrder()
+    {
+        GemInterfaceCatalog catalog = new GemInterfaceCatalogBuilder()
+            .AddVariable(new(new GemVid(1001), "LotId", GemVariableKind.DataVariable))
+            .AddVariable(new(new GemVid(1002), "ControlState", GemVariableKind.StatusVariable))
+            .AddVariable(new(new GemVid(1003), "Temperature", GemVariableKind.StatusVariable, "degC"))
+            .Build();
+        var registry = new GemRegistry(catalog);
+        var session = new TestEquipmentSession();
+        await session.AcceptCommunicationAsync();
+        using var request = new SecsMessage(1, 11, true)
+        {
+            SecsItem = Item.L(Item.U4(1003), Item.U4(9999), Item.U4(1001))
+        };
+
+        using SecsMessage? reply = await new S1F11Handler(registry, session).HandleAsync(request);
+
+        Assert.NotNull(reply);
+        Assert.Equal((byte)12, reply.F);
+        Assert.Equal(3, reply.SecsItem!.Count);
+        Assert.Equal((uint)1003, reply.SecsItem[0][0].FirstValue<uint>());
+        Assert.Equal("Temperature", reply.SecsItem[0][1].GetString());
+        Assert.Equal("degC", reply.SecsItem[0][2].GetString());
+        Assert.Equal((uint)9999, reply.SecsItem[1][0].FirstValue<uint>());
+        Assert.Equal(string.Empty, reply.SecsItem[1][1].GetString());
+        Assert.Equal(string.Empty, reply.SecsItem[1][2].GetString());
+        Assert.Equal((uint)1001, reply.SecsItem[2][0].FirstValue<uint>());
+        Assert.Equal(string.Empty, reply.SecsItem[2][1].GetString());
+    }
+
+    [Fact]
+    public async Task S1F11Handler_WithEmptyList_ReturnsAllStatusVariablesSortedBySvid()
+    {
+        GemInterfaceCatalog catalog = new GemInterfaceCatalogBuilder()
+            .AddVariable(new(new GemVid(1003), "Temperature", GemVariableKind.StatusVariable, "degC"))
+            .AddVariable(new(new GemVid(1001), "LotId", GemVariableKind.DataVariable))
+            .AddVariable(new(new GemVid(1002), "ControlState", GemVariableKind.StatusVariable))
+            .Build();
+        var registry = new GemRegistry(catalog);
+        var session = new TestEquipmentSession();
+        await session.AcceptCommunicationAsync();
+        using var request = GemMessageFactory.StatusVariableNamelistRequest();
+
+        using SecsMessage? reply = await new S1F11Handler(registry, session).HandleAsync(request);
+
+        Assert.NotNull(reply);
+        Assert.Equal(2, reply.SecsItem!.Count);
+        Assert.Equal((uint)1002, reply.SecsItem[0][0].FirstValue<uint>());
+        Assert.Equal((uint)1003, reply.SecsItem[1][0].FirstValue<uint>());
+    }
+
+    [Fact]
     public async Task Stream7Handlers_ProvideReadDirectoryAndDeleteRoundTrip()
     {
         using var session = new TestEquipmentSession();
@@ -212,6 +303,12 @@ public sealed class GemSessionStateMachineTests
         {
             StateMachine.BeginAttemptOnline();
             StateMachine.CompleteOnline(remote);
+            return Task.CompletedTask;
+        }
+
+        public Task AcceptHostOfflineRequestAsync(CancellationToken cancellationToken = default)
+        {
+            StateMachine.AcceptHostOfflineRequest();
             return Task.CompletedTask;
         }
 
