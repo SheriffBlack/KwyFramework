@@ -1,7 +1,7 @@
 using Kwy.UI.WPF.Components.Dialogs.Message;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Services;
-using KwyTemplate.Flow.Machines;
+using KwyTemplate.Process.Machines;
 
 namespace KwyTemplate.App.Services;
 

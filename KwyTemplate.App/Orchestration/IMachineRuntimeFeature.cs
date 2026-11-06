@@ -1,4 +1,4 @@
-using KwyTemplate.Flow.Machines;
+using KwyTemplate.Process.Machines;
 
 namespace KwyTemplate.App.Orchestration;
 

@@ -14,9 +14,9 @@ using KwyTemplate.App.Models;
 using KwyTemplate.App.Messages;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Navigation;
-using KwyTemplate.Flow.DataDeals;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.DataDeals;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
 using KwyTemplate.MES.Models;
 using KwyTemplate.MES.Services;
 

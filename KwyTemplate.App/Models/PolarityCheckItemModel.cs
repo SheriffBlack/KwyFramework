@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using Kwy.MVVM.Core;
 using KwyTemplate.Contracts.Localization;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.Models;
 
 namespace KwyTemplate.App.Models;
 

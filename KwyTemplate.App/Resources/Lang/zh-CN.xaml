@@ -291,6 +291,7 @@
     <sys:String x:Key="Home.Message.MarkPrintFailed">编带字符写入打印机失败！</sys:String>
     <sys:String x:Key="Home.Title.WorkOrderImport">工单导入</sys:String>
     <sys:String x:Key="Home.Message.StopFailed">停止失败：&#x0a;{0}</sys:String>
+    <sys:String x:Key="Home.Message.StopDenied">整机当前不允许停止。</sys:String>
     <sys:String x:Key="Home.Message.MesDisconnectException">MES断开异常！&#x0a;{0}</sys:String>
     <sys:String x:Key="Home.Title.MesTrackIn">MES进站</sys:String>
     <sys:String x:Key="Home.Message.CoverOrPaperMismatch">上盖或台纸信息错误，与MES不同！</sys:String>
@@ -317,6 +318,7 @@
     <sys:String x:Key="Home.Title.MaterialError">物料错误</sys:String>
     <sys:String x:Key="Home.Title.ProductionDataSave">生产数据保存</sys:String>
     <sys:String x:Key="Home.Message.StartFailed">启动失败：&#x0a;{0}</sys:String>
+    <sys:String x:Key="Home.Message.StartDenied">整机当前不允许启动。</sys:String>
     <sys:String x:Key="Home.Message.MesConnecting">MES 正在连接中，请稍候。</sys:String>
     <sys:String x:Key="Home.MesStatus.Offline">MES离线</sys:String>
     <sys:String x:Key="Home.MesStatus.Connecting">MES连接中</sys:String>
@@ -342,13 +344,13 @@
     <sys:String x:Key="Compensate.Title.CheckSuccess">点检成功</sys:String>
     <sys:String x:Key="Compensate.Message.StepSuccess">{{{0}}}{{{1}}}点检成功！</sys:String>
     <sys:String x:Key="Correction.Message.InvalidNumber">{0}{1}不是有效数字：{2}</sys:String>
-    <sys:String x:Key="Flow.Grid.Ok">OK数</sys:String>
-    <sys:String x:Key="Flow.Grid.Total">总数</sys:String>
-    <sys:String x:Key="Flow.Grid.TestValue">测试值</sys:String>
-    <sys:String x:Key="Flow.Grid.Project">项目</sys:String>
-    <sys:String x:Key="Flow.Grid.Limits">上下限</sys:String>
-    <sys:String x:Key="Flow.Grid.Ng">NG数</sys:String>
-    <sys:String x:Key="Flow.Grid.Yield">良率</sys:String>
+    <sys:String x:Key="Process.Grid.Ok">OK数</sys:String>
+    <sys:String x:Key="Process.Grid.Total">总数</sys:String>
+    <sys:String x:Key="Process.Grid.TestValue">测试值</sys:String>
+    <sys:String x:Key="Process.Grid.Project">项目</sys:String>
+    <sys:String x:Key="Process.Grid.Limits">上下限</sys:String>
+    <sys:String x:Key="Process.Grid.Ng">NG数</sys:String>
+    <sys:String x:Key="Process.Grid.Yield">良率</sys:String>
     <sys:String x:Key="Station.State.Disabled">关闭</sys:String>
     <sys:String x:Key="Station.State.Enabled">开启</sys:String>
     <sys:String x:Key="Instrument.Category.Basic">基础设置</sys:String>

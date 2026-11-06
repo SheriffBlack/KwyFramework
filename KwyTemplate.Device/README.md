@@ -1,6 +1,6 @@
 # KwyTemplate.Device 设计说明
 
-`KwyTemplate.Device` 是模板项目的设备装配层。它负责读取设备配置、创建设备实例，并注册到 `IDeviceRegistry`，供 `KwyTemplate.Flow` 按 `DeviceId` 使用。
+`KwyTemplate.Device` 是模板项目的设备装配层。它负责读取设备配置、创建设备实例，并注册到 `IDeviceRegistry`，供 `KwyTemplate.Process` 按 `DeviceId` 使用。
 
 这一层只回答：
 
@@ -89,13 +89,13 @@ Config/{CatalogKey}/PLC.Main.json
 - 同一客户同一机型下的小设备差异：不要拆多个 `Catalog`，使用 `DeviceSelectionConfig`。
 - 组合变化多：一个 `Catalog` + `Selection` 配置 + `DeviceDefinitionFactory`。
 
-例如四工位测试机里，只有 DCR 工位可选 ADEX 或 HIOKI，不建议拆成两套 Flow，也不建议复制两套 Catalog。保持设备角色 ID 稳定即可：
+例如四工位测试机里，只有 DCR 工位可选 ADEX 或 HIOKI，不建议拆成两套 Process，也不建议复制两套 Catalog。保持设备角色 ID 稳定即可：
 
 ```csharp
 DeviceIds.Instrument("Dcr", 1) // Instrument.Dcr.01
 ```
 
-Flow/Machine 只关心 `Instrument.Dcr.01` 是一个 DCR 工位仪表，不关心具体品牌。
+Process/Machine 只关心 `Instrument.Dcr.01` 是一个 DCR 工位仪表，不关心具体品牌。
 
 ## 手动选择仪表
 
@@ -190,15 +190,15 @@ Config/Default/Instrument.Dcr.01.AdexDcr.json
 Config/Default/Instrument.Dcr.01.HiokiLcr.json
 ```
 
-## Flow 如何使用设备
+## Process 如何使用设备
 
-`KwyTemplate.Flow` 不直接 new 设备，也不判断品牌。它通过 `IMachineDeviceContext` 或 `IDeviceRegistry` 获取稳定角色 ID 对应的设备：
+`KwyTemplate.Process` 不直接 new 设备，也不判断品牌。它通过 `IMachineDeviceContext` 或 `IDeviceRegistry` 获取稳定角色 ID 对应的设备：
 
 ```csharp
 var dcr = Devices.GetRequired<IDevice>(DeviceIds.Instrument("Dcr", 1));
 ```
 
-更推荐后续为 DCR 抽出统一能力接口，例如 `IDcrMeter`。这样 Flow 可以直接消费 DCR 能力，而不需要关心 ADEX/HIOKI 的具体类型。
+更推荐后续为 DCR 抽出统一能力接口，例如 `IDcrMeter`。这样 Process 可以直接消费 DCR 能力，而不需要关心 ADEX/HIOKI 的具体类型。
 
 ## 新增设备建议
 

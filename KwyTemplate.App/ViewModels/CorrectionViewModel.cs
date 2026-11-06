@@ -11,8 +11,8 @@ using KwyTemplate.App.Services;
 using KwyTemplate.App.Models;
 using KwyTemplate.Contracts.Navigation;
 using KwyTemplate.Device.Devices;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
 
 using KwyTemplate.Contracts.Localization;
 using Kwy.MVVM.Messaging;

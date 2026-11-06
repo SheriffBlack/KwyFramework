@@ -1,7 +1,7 @@
 using System.Globalization;
 using Kwy.Device.Instrument.Abstractions;
 using Kwy.MVVM.Core;
-using KwyTemplate.Flow.DataDeals;
+using KwyTemplate.Process.DataDeals;
 
 namespace KwyTemplate.App.Models;
 

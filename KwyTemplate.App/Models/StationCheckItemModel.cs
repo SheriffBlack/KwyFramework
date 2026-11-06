@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using Kwy.MVVM.Core;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.Models;
 
 namespace KwyTemplate.App.Models;
 

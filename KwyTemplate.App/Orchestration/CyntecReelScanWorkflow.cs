@@ -4,7 +4,7 @@ using KwyTemplate.App.Runtime;
 using KwyTemplate.Device;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Scanners;
-using KwyTemplate.Flow.Machines;
+using KwyTemplate.Process.Machines;
 using KwyTemplate.MES.Models;
 using KwyTemplate.MES.Services;
 

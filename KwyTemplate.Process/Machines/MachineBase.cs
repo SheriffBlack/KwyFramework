@@ -1,0 +1,1814 @@
+using System.Globalization;
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
+using Kwy.Device.Abstractions;
+using Kwy.Device.IoCard.Abstractions;
+using Kwy.Device.Instrument.Abstractions;
+using Kwy.Device.PLC.Core;
+using KwyTemplate.Contracts.Localization;
+using KwyTemplate.Device;
+using KwyTemplate.Device.Devices;
+using KwyTemplate.Process.Common;
+using KwyTemplate.Process.DataDeals;
+using KwyTemplate.Process.Models;
+using Kwy.ComponentModel.Metadata;
+using Kwy.Device.PLC.Abstractions;
+using KwyTemplate.MES.Models;
+
+namespace KwyTemplate.Process.Machines;
+
+/// <summary>
+/// 机台基类，统一管理设备绑定、工位调度、IO 快照、PLC 点位和生产数据推送。
+/// 子类只需补充具体机型的设备、点位和特殊业务逻辑。
+/// </summary>
+public abstract class MachineBase : IMachine, IMachineResultProvider, IStationOperationMachine
+{
+    private const int MaxIoChannelCount = 64;
+    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(3);
+    private readonly ConcurrentDictionary<int, CompositeDataDeal> orchestrators = new();
+    private readonly List<Task> stationLifecycleTasks = [];
+    private StationResultDispatchQueue? stationResultDispatchQueue;
+    private Task? stationResultDispatchTask;
+    private IPlcPointDefinitionProvider plcPointDefinitions = new PlcPointDefinitionProvider([]);
+    private readonly Dictionary<int, string> legacyPlcPointIds = new();
+    private readonly Dictionary<string, MachineResultRow> resultRowMap = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<MachineResultColumn> resultColumns = [];
+    private readonly List<MachineResultRow> resultRows = [];
+    private readonly ILocalizationService? localizationService;
+    private readonly object ioSnapshotSync = new();
+    private CancellationTokenSource? runningCts;
+    private Task? machinePollingTask;
+    private Task? ioSnapshotTask;
+    private ulong currentDiMask;
+    private ulong previousDiMask;
+    private ulong latchedRisingDiMask;
+    private ulong latchedFallingDiMask;
+    private bool isRunning;
+    private MachineProductionState productionState = MachineProductionState.Stopped;
+
+    private volatile bool runtimeStopping;
+    private long resultGeneration;
+    private bool disposed;
+
+    protected MachineBase(IMachineDeviceContext devices, ILocalizationService? localizationService = null)
+    {
+        Devices = devices ?? throw new ArgumentNullException(nameof(devices));
+        this.localizationService = localizationService;
+        if (this.localizationService != null)
+        {
+            this.localizationService.LanguageChanged += OnLanguageChanged;
+        }
+    }
+
+    protected IMachineDeviceContext Devices { get; }
+
+    protected IPlcDevice? Plc { get; private set; }
+
+    protected IDigitalIoDevice? IoCard { get; private set; }
+
+    public virtual string MachineId => GetType().Name;
+
+    public virtual string MachineName => GetType().Name;
+
+    protected static IReadOnlySet<HomeWorkOrderField> CreateDefaultHomeWorkOrderFields()
+        => new HashSet<HomeWorkOrderField>
+        {
+            HomeWorkOrderField.WorkOrderNo,
+            HomeWorkOrderField.TablePaperCode,
+            HomeWorkOrderField.TopCoverCode,
+            HomeWorkOrderField.OperatorNo,
+            HomeWorkOrderField.EquipmentNo,
+            HomeWorkOrderField.MachineType,
+            HomeWorkOrderField.BarcodeContent,
+            HomeWorkOrderField.ReelTpNo,
+            HomeWorkOrderField.ReelWorkOrderNo,
+            HomeWorkOrderField.ReelId
+        };
+
+    public virtual IReadOnlySet<HomeWorkOrderField> HomeWorkOrderFields { get; } = CreateDefaultHomeWorkOrderFields();
+
+    public virtual int MachinePollingIntervalMs { get; set; } = 1;
+
+    public virtual int IoSnapshotPollingIntervalMs { get; set; } = 1;
+
+    public virtual int SystemDataPollingIntervalMs { get; set; } = 100;
+
+    public abstract TriggerMode StationTriggerMode { get; }
+
+    public List<TestStationModel> TestStations { get; protected set; } = [];
+
+    public IReadOnlyList<TestStationModel> Stations => TestStations;
+
+    public IReadOnlyList<MachineResultColumn> ResultColumns => resultColumns;
+
+    public IReadOnlyList<MachineResultRow> ResultRows => resultRows;
+
+    public ObservableCollection<PlcPointDefinition> PlcPointDefinitions { get; } = [];
+
+    public bool IsRunning => isRunning;
+
+    public MachineProductionState ProductionState => productionState;
+
+    public event EventHandler? RunningStateChanged;
+
+    /// <summary>
+    /// 外部人机通过参数对比请求启动时通知应用层。仅用于提示等非阻断业务。
+    /// </summary>
+    public event Func<CancellationToken, Task>? ExternalStartRequested;
+
+    public event EventHandler? ResultTableChanged;
+
+    public event EventHandler<StationResultPublishedEventArgs>? StationResultPublished;
+
+    /// <summary>
+    /// 后台处理单颗工位结果失败时通知应用层。该失败不会中断后续工位结果消费。
+    /// </summary>
+    public event EventHandler<StationResultProcessingFailedEventArgs>? StationResultProcessingFailed;
+
+    public event EventHandler<StationEnabledChangedEventArgs>? StationEnabledChanged;
+
+    public abstract void InitTestStations();
+
+    public void BindPlc(IPlcDevice? plc)
+    {
+        Plc = plc;
+        RebuildPlcPointDefinitionProvider();
+    }
+
+
+    protected static string GetDescription(Enum value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        var field = value.GetType().GetField(value.ToString());
+        return field?.GetCustomAttributes(typeof(DescriptionAttribute), false)
+            .OfType<DescriptionAttribute>()
+            .FirstOrDefault()?.Description ?? value.ToString();
+    }
+
+    protected void BindIoCard(IDigitalIoDevice? card)
+    {
+        IoCard = card;
+        ResetIoSnapshot();
+    }
+
+    /// <summary>
+    /// 绑定当前机型所需的设备实例。
+    /// 设备由 KwyTemplate.Device 创建和统一连接，机台只拿已注册的实例使用。
+    /// </summary>
+    public virtual void BindDevices()
+    {
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        await StartRuntimeAsync(cancellationToken).ConfigureAwait(false);
+        if (isRunning)
+        {
+            return;
+        }
+
+        await OnTestStartedAsync(cancellationToken).ConfigureAwait(false);
+        isRunning = true;
+        productionState = MachineProductionState.Running;
+        RaiseRunningStateChanged();
+    }
+
+    public Task StopAsync()
+        => StopProductionCoreAsync(OnTestStoppedAsync);
+
+    public async Task StartRuntimeAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        if (runningCts != null)
+        {
+            return;
+        }
+
+        runtimeStopping = false;
+        runningCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        CancellationToken runtimeToken = runningCts.Token;
+        await RefreshStationEnabledStatesAsync(runtimeToken).ConfigureAwait(false);
+        var dispatchQueue = new StationResultDispatchQueue();
+        stationResultDispatchQueue = dispatchQueue;
+        stationResultDispatchTask = Task.Run(() => dispatchQueue.RunAsync(this, runtimeToken), CancellationToken.None);
+        ioSnapshotTask = StartIoSnapshotThread(runtimeToken);
+        machinePollingTask = Task.Run(() => RunMachinePollingAsync(runtimeToken), CancellationToken.None);
+
+        foreach (TestStationModel station in TestStations)
+        {
+            // Display-only stations can still be shown and switched by PLC, but they must not poll default IO 0.
+            if (station.StationDataDeals.Count == 0)
+            {
+                continue;
+            }
+            var orchestrator = new CompositeDataDeal(this, station.StationDataDeals, dispatchQueue)
+            {
+                TriggerMode = StationTriggerMode
+            };
+            orchestrators[station.StationId] = orchestrator;
+            stationLifecycleTasks.Add(StartStationLifecycleThread(orchestrator, station, runtimeToken));
+        }
+    }
+
+    private static Task StartStationLifecycleThread(
+        CompositeDataDeal orchestrator,
+        TestStationModel station,
+        CancellationToken cancellationToken)
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                orchestrator.RunLifecycleBlocking(station, cancellationToken);
+                completion.TrySetResult();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                completion.TrySetCanceled(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                completion.TrySetException(ex);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = $"StationRealtime-{station.StationId}"
+        };
+
+        thread.Start();
+        return completion.Task;
+    }
+
+    private Task StartIoSnapshotThread(CancellationToken cancellationToken)
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
+                RunIoSnapshotLoop(cancellationToken);
+                completion.TrySetResult();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                completion.TrySetCanceled(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                completion.TrySetException(ex);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "MachineIoSnapshot"
+        };
+
+        thread.Start();
+        return completion.Task;
+    }
+
+    public async Task RefreshStationEnabledStatesAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (TestStationModel station in TestStations)
+        {
+            try
+            {
+                bool? isEnabled = await ReadStationEnabledAsync(station, cancellationToken).ConfigureAwait(false);
+                if (isEnabled.HasValue)
+                {
+                    SetStationEnabledState(station, isEnabled.Value);
+                }
+            }
+            catch
+            {
+                // Station switch read failure must not block runtime startup.
+            }
+        }
+    }
+
+    public async Task StopRuntimeAsync()
+    {
+        if (runningCts == null)
+        {
+            return;
+        }
+
+        runtimeStopping = true;
+        CancellationTokenSource cts = runningCts;
+        runningCts = null;
+        cts.Cancel();
+
+        if (ioSnapshotTask != null)
+        {
+            try
+            {
+                await ioSnapshotTask.WaitAsync(StopTimeout).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (TimeoutException)
+            {
+            }
+            catch
+            {
+            }
+
+            ioSnapshotTask = null;
+        }
+        if (machinePollingTask != null)
+        {
+            try
+            {
+                await machinePollingTask.WaitAsync(StopTimeout).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (TimeoutException)
+            {
+            }
+
+            machinePollingTask = null;
+        }
+
+        if (stationLifecycleTasks.Count > 0)
+        {
+            Task[] tasks = stationLifecycleTasks.ToArray();
+            stationLifecycleTasks.Clear();
+            try
+            {
+                await Task.WhenAll(tasks).WaitAsync(StopTimeout).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (TimeoutException)
+            {
+            }
+            catch
+            {
+            }
+        }
+        stationResultDispatchQueue?.Complete();
+        if (stationResultDispatchTask != null)
+        {
+            try
+            {
+                await stationResultDispatchTask.WaitAsync(StopTimeout).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (TimeoutException)
+            {
+            }
+            catch
+            {
+            }
+
+            stationResultDispatchTask = null;
+        }
+
+        stationResultDispatchQueue = null;
+        cts.Dispose();
+        orchestrators.Clear();
+        ResetIoSnapshot();
+    }
+
+    private async Task StopProductionCoreAsync(Func<CancellationToken, Task> stateChanged)
+    {
+        if (!isRunning)
+        {
+            return;
+        }
+
+        isRunning = false;
+        productionState = MachineProductionState.Stopped;
+        try
+        {
+            await stateChanged(CancellationToken.None).ConfigureAwait(false);
+        }
+        finally
+        {
+            RaiseRunningStateChanged();
+        }
+    }
+
+    protected async Task NotifyExternalStartAsync(CancellationToken cancellationToken = default)
+    {
+        Func<CancellationToken, Task>? handlers = ExternalStartRequested;
+        if (handlers == null)
+        {
+            return;
+        }
+
+        foreach (Func<CancellationToken, Task> handler in handlers.GetInvocationList().Cast<Func<CancellationToken, Task>>())
+        {
+            try
+            {
+                await handler(cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // 外部启动提示属于附加体验，不应影响既有参数重写和启动握手。
+            }
+        }
+    }
+    private void RaiseRunningStateChanged()
+        => RunningStateChanged?.Invoke(this, EventArgs.Empty);
+
+    public async Task ExecuteStationAsync(int stationId, bool triggerResult = true, CancellationToken cancellationToken = default)
+    {
+        TestStationModel station = TestStations.First(item => item.StationId == stationId);
+        var orchestrator = new CompositeDataDeal(this, station.StationDataDeals)
+        {
+            TriggerMode = TriggerMode.Programmatic
+        };
+        await orchestrator.ExecuteMeasurementAsync(triggerResult, station, cancellationToken).ConfigureAwait(false);
+    }
+
+    public IReadOnlyList<StationOperationDescriptor> GetStationOperations(TestStationModel station)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+        return station.Operations;
+    }
+
+    /// <summary>
+    /// 设置工位启用状态。默认只修改内存状态，具体机型可覆盖并写入 PLC 工位开关点位。
+    /// </summary>
+    public virtual Task SetStationEnabledAsync(TestStationModel station, bool isEnabled, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+        SetStationEnabledState(station, isEnabled);
+        return Task.CompletedTask;
+    }
+
+    public virtual Task<bool?> ReadStationEnabledAsync(TestStationModel station, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+        return Task.FromResult<bool?>(station.IsEnabled);
+    }
+
+    public void SetStationEnabledState(TestStationModel station, bool isEnabled)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+        if (station.IsEnabled == isEnabled)
+        {
+            return;
+        }
+
+        station.IsEnabled = isEnabled;
+        StationEnabledChanged?.Invoke(this, new StationEnabledChangedEventArgs(station, isEnabled));
+    }
+
+    public virtual Task<bool> ExecuteStationOperationAsync(
+        TestStationModel station,
+        string operationCode,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationCode);
+        return Task.FromResult(false);
+    }
+
+    /// <summary>
+    /// 将测试上下限写入工位模型，供 PC 判定和结果消费端共用。
+    /// </summary>
+    /// <summary>
+    /// 当 MES 或本地配置更新参数时，子类可调用该方法同步软件判定上下限。
+    /// </summary>
+    protected void SetStationTestLimit(string testName, double? lowerLimit, double? upperLimit, string? unit = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(testName);
+
+        foreach (TestStationModel station in TestStations)
+        {
+            if (station.OrderedTestNames.Any(item => string.Equals(item, testName, StringComparison.OrdinalIgnoreCase)))
+            {
+                station.SetTestLimit(testName, lowerLimit, upperLimit, unit);
+            }
+        }
+    }
+    public bool TryResolveStationTest(string parameterId, out TestStationModel? station, out string testName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parameterId);
+
+        foreach (TestStationModel candidate in TestStations)
+        {
+            foreach (string candidateTestName in candidate.OrderedTestNames)
+            {
+                if (string.Equals(parameterId, candidateTestName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(parameterId, CreateCellKey(candidate.StationId, candidateTestName), StringComparison.OrdinalIgnoreCase))
+                {
+                    station = candidate;
+                    testName = candidateTestName;
+                    return true;
+                }
+            }
+        }
+
+        station = null;
+        testName = string.Empty;
+        return false;
+    }
+
+    public void RefreshStationLimitsFromInstrumentConfigs()
+    {
+        foreach (TestStationModel station in TestStations)
+        {
+            foreach (string deviceId in station.InstrumentDeviceIds.Where(static id => !string.IsNullOrWhiteSpace(id)))
+            {
+                if (Devices.TryGet(deviceId, out IMeasurementLimitSetProvider? limitSetProvider)
+                    && limitSetProvider != null
+                    && limitSetProvider.TryGetMeasurementLimits(out IReadOnlyDictionary<string, InstrumentMeasurementLimit>? limits))
+                {
+                    foreach (string testName in station.OrderedTestNames)
+                    {
+                        if (limits.TryGetValue(testName, out InstrumentMeasurementLimit? limit))
+                        {
+                            station.SetTestLimit(testName, limit.LowerLimit, limit.UpperLimit, limit.Unit);
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (!Devices.TryGet(deviceId, out IMeasurementLimitProvider? limitProvider)
+                    || limitProvider == null
+                    || !limitProvider.TryGetMeasurementLimit(out InstrumentMeasurementLimit? sharedLimit))
+                {
+                    continue;
+                }
+
+                foreach (string testName in station.OrderedTestNames)
+                {
+                    station.SetTestLimit(testName, sharedLimit.LowerLimit, sharedLimit.UpperLimit, sharedLimit.Unit);
+                }
+            }
+        }
+
+        UpdateLimitRows();
+        RaiseResultTableChanged();
+    }
+
+    /// <summary>
+    /// Reapplies the current configuration of every instrument bound to a test
+    /// station. Used by parameter-compare handshakes and offline PC startup.
+    /// </summary>
+    public async Task ApplyStationInstrumentConfigsAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (string deviceId in TestStations
+            .SelectMany(static station => station.InstrumentDeviceIds)
+            .Where(static deviceId => !string.IsNullOrWhiteSpace(deviceId))
+            .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (Devices.TryGet<IConfigurableDevice>(deviceId, out IConfigurableDevice? device) && device != null)
+            {
+                await device.ApplyConfigAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    protected void UpdateLimitRows()
+    {
+        MachineResultRow row = GetResultRow("Limits");
+        foreach (TestStationModel station in TestStations)
+        {
+            foreach (string testName in station.OrderedTestNames)
+            {
+                string key = CreateCellKey(station.StationId, testName);
+                if (station.TestLimits.TryGetValue(testName, out StationMeasurementLimit? limit))
+                {
+                    SetResultCellValue(row, key, FormatLimitText(limit));
+                }
+            }
+        }
+    }
+
+    private static string? FormatLimitText(StationMeasurementLimit limit)
+    {
+        if (!limit.LowerLimit.HasValue && !limit.UpperLimit.HasValue)
+        {
+            return null;
+        }
+
+        string lower = FormatLimitNumber(limit.LowerLimit);
+        string upper = FormatLimitNumber(limit.UpperLimit);
+        return string.IsNullOrWhiteSpace(limit.Unit)
+            ? $"{lower}~{upper}"
+            : $"{lower}~{upper} {limit.Unit}";
+    }
+    private static string FormatLimitNumber(double? value)
+        => value?.ToString("0.##########", CultureInfo.InvariantCulture) ?? string.Empty;
+
+    /// <summary>Apply parsed work-order values to the live configuration and station models only.</summary>
+    public virtual Task ApplyWorkOrderRuntimeSetupAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(setup);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Write an already prepared work-order configuration to physical devices.</summary>
+    public virtual Task<WorkOrderHardwareWriteResult> WriteWorkOrderSetupToHardwareAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+        => Task.FromResult(new WorkOrderHardwareWriteResult());
+
+    /// <summary>
+    /// Compatibility entry point for callers which do not need to separate UI refresh from hardware I/O.
+    /// New work-order flows should call the two explicit phases above.
+    /// </summary>
+    public virtual async Task ApplyWorkOrderSetupAsync(MesWorkOrderSetup setup, CancellationToken cancellationToken = default)
+    {
+        await ApplyWorkOrderRuntimeSetupAsync(setup, cancellationToken).ConfigureAwait(false);
+        await WriteWorkOrderSetupToHardwareAsync(setup, cancellationToken).ConfigureAwait(false);
+    }
+
+    protected static async Task TryApplyWorkOrderConfigAsync(
+        string target,
+        IMeasurementInstrument? instrument,
+        WorkOrderHardwareWriteResult result,
+        CancellationToken cancellationToken)
+    {
+        if (instrument is not IConfigurableDevice configurable)
+        {
+            return;
+        }
+
+        await TryWriteWorkOrderHardwareAsync(target, () => configurable.ApplyConfigAsync(cancellationToken), result).ConfigureAwait(false);
+    }
+
+    protected static async Task TryWriteWorkOrderHardwareAsync(
+        string target,
+        Func<Task> writeAsync,
+        WorkOrderHardwareWriteResult result)
+    {
+        try
+        {
+            await writeAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            result.AddFailure(target, ex);
+        }
+    }
+    /// <summary>
+    /// 设置点检界面进入状态。默认机型不需要写 PLC。
+    /// </summary>
+    public virtual Task SetCheckViewActiveAsync(bool isActive, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    /// <summary>
+    /// 点检页面进入后的机型专属处理。默认机型无需额外处理。
+    /// </summary>
+    public virtual Task OnCheckViewEnteredAsync(CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    /// <summary>
+    /// 设置 PLC 点检完成信号。默认机型不需要该信号。
+    /// </summary>
+    public virtual Task SetCheckCompletedAsync(bool isCompleted, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    /// <summary>
+    /// 读取 PLC 点检完成信号。返回 null 表示当前机型未配置该点位或 PLC 不可用，调用方不应将其误判为未完成。
+    /// </summary>
+    public virtual Task<bool?> ReadCheckCompletedAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<bool?>(null);
+
+    /// <summary>
+    /// 设置 PLC 标准件过期信号。默认机型不需要该信号。
+    /// </summary>
+    public virtual Task SetStandardSampleExpiredAsync(bool isExpired, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    /// <summary>
+    /// 自动点检时间窗口超时且未点检成功时触发。默认机型只弹窗提醒，不执行硬件动作。
+    /// </summary>
+    public virtual Task<MachineExamineResult> ExecuteExamineAsync(string flowCode, IProgress<MachineExamineMeasurement>? progress = null, CancellationToken cancellationToken = default)
+        => Task.FromResult(MachineExamineResult.Failed($"Machine does not support examine flow: {flowCode}."));
+
+    public virtual Task<MachineExamineResult> ExecuteExamineStandardAsync(IProgress<MachineExamineMeasurement>? progress = null, CancellationToken cancellationToken = default)
+        => ExecuteExamineAsync("Standard", progress, cancellationToken);
+
+    /// <summary>
+    /// 执行确认件点检。默认机型不支持，由具体机型实现。
+    /// </summary>
+    public virtual Task<MachineExamineResult> ExecuteExamineConfirmAsync(IProgress<MachineExamineMeasurement>? progress = null, CancellationToken cancellationToken = default)
+        => ExecuteExamineAsync("Confirm", progress, cancellationToken);
+
+    protected async Task<MachineExamineResult> ExecuteExamineFlowAsync(MachineExamineFlowDescriptor flow, IProgress<MachineExamineMeasurement>? progress, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(flow);
+
+        IPlcDevice? plc = Plc;
+        var measurements = new List<MachineExamineMeasurement>();
+        if (plc == null || !plc.IsConnected)
+        {
+            return MachineExamineResult.Failed("PLC is not connected.", measurements);
+        }
+
+        await WritePlcPointByKeyAsync(flow.SamplePointKey, (ushort)1, cancellationToken).ConfigureAwait(false);
+        await WritePlcPointByKeyAsync(flow.StartPointKey, (ushort)1, cancellationToken).ConfigureAwait(false);
+
+        int repeatCount = Math.Max(1, flow.RepeatCount);
+        for (int repeatIndex = 0; repeatIndex < repeatCount; repeatIndex++)
+        {
+            foreach (MachineExamineStepDescriptor step in flow.Steps)
+            {
+                bool ready = await WaitPlcPointByKeyAsync(step.TriggerPointKey, (ushort)1, timeoutMs: step.TimeoutMs, cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (!ready)
+                {
+                    return MachineExamineResult.Failed(measurements: measurements);
+                }
+
+                MachineExamineMeasurement? measurement = await ReadStationMeasurementAsync(step.StationId, step.TestName, cancellationToken).ConfigureAwait(false);
+                if (measurement == null)
+                {
+                    return MachineExamineResult.Failed(measurements: measurements);
+                }
+
+                measurements.Add(measurement);
+                progress?.Report(measurement);
+                await WritePlcPointByKeyAsync(step.ReadCompletedPointKey, (ushort)1, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        await WritePlcPointByKeyAsync(flow.CompletedPointKey, (ushort)1, cancellationToken).ConfigureAwait(false);
+        return MachineExamineResult.Completed(measurements);
+    }
+
+    protected async Task<MachineExamineMeasurement?> ReadStationMeasurementAsync(int stationId, string testName, CancellationToken cancellationToken)
+    {
+        IStationInstrumentOperation? operation = GetStationInstrument(stationId, testName);
+        if (operation == null)
+        {
+            return null;
+        }
+
+        InstrumentMeasurementResult value = await operation.MeasureBySoftwareTriggerAsync(cancellationToken).ConfigureAwait(false);
+        return new MachineExamineMeasurement(stationId, TestStations.FirstOrDefault(station => station.StationId == stationId)?.StationName ?? stationId.ToString(CultureInfo.InvariantCulture), testName, value);
+    }
+
+    protected IStationInstrumentOperation? GetStationInstrument(int stationId, string testName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(testName);
+
+        TestStationModel? station = TestStations.FirstOrDefault(item => item.StationId == stationId);
+        return GetStationInstrument(station, testName);
+    }
+
+    protected IStationInstrumentOperation? GetStationInstrument(TestStationModel? station, string testName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(testName);
+
+        return station?.StationDataDeals
+            .OfType<IStationInstrumentOperation>()
+            .FirstOrDefault(operation => IsInstrumentOperationMatch(operation.TestName, testName));
+    }
+
+    private static bool IsInstrumentOperationMatch(string operationTestName, string requestedTestName)
+    {
+        if (string.Equals(operationTestName, requestedTestName, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return operationTestName
+            .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(item => string.Equals(item, requestedTestName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public PlcPointDefinition GetPlcPoint(string key)
+    {
+        return plcPointDefinitions.GetRequired(key);
+    }
+
+    /// <summary>按照稳定点位 ID 读取当前机台 PLC 点位。</summary>
+    protected async Task<TValue> ReadPlcPointAsync<TValue>(
+        string pointId,
+        CancellationToken cancellationToken = default)
+    {
+        IPlcDevice plc = GetConnectedPlc();
+        PlcPointDefinition point = GetPlcPointForDevice(pointId, plc);
+        if (point.Access == PlcPointAccess.WriteOnly)
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”为只写点位。");
+        if (point.ClrType != typeof(TValue))
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”的数据类型为 {point.DataType}，与请求类型 {typeof(TValue).Name} 不一致。");
+
+        return await ReadPlcSignalValueAsync<TValue>(plc, point.Address, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>按照枚举名称形成的稳定点位 ID 读取当前机台 PLC 点位。</summary>
+    protected Task<TValue> ReadPlcPointAsync<TPoint, TValue>(
+        TPoint point,
+        CancellationToken cancellationToken = default)
+        where TPoint : struct, Enum
+        => ReadPlcPointAsync<TValue>(point.ToString(), cancellationToken);
+
+    /// <summary>按照稳定点位 ID 写入当前机台 PLC 点位。</summary>
+    protected async Task WritePlcPointAsync<TValue>(
+        string pointId,
+        TValue value,
+        CancellationToken cancellationToken = default)
+    {
+        IPlcDevice plc = GetConnectedPlc();
+        PlcPointDefinition point = GetPlcPointForDevice(pointId, plc);
+        if (point.Access == PlcPointAccess.ReadOnly)
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”为只读点位。");
+        if (point.ClrType != typeof(TValue))
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”的数据类型为 {point.DataType}，与写入类型 {typeof(TValue).Name} 不一致。");
+
+        switch (value)
+        {
+            case bool actual: await plc.WriteBoolAsync(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            case short actual: await plc.WriteInt16Async(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            case ushort actual: await plc.WriteInt16Async(point.Address, unchecked((short)actual), cancellationToken).ConfigureAwait(false); break;
+            case int actual: await plc.WriteInt32Async(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            case uint actual: await plc.WriteInt32Async(point.Address, unchecked((int)actual), cancellationToken).ConfigureAwait(false); break;
+            case float actual: await plc.WriteFloatAsync(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            case byte[] actual: await plc.WriteBytesAsync(point.Address, actual, cancellationToken).ConfigureAwait(false); break;
+            default: throw new NotSupportedException($"不支持写入 PLC 的值类型：{typeof(TValue).FullName}。");
+        }
+    }
+
+    /// <summary>按照枚举名称形成的稳定点位 ID 写入当前机台 PLC 点位。</summary>
+    protected Task WritePlcPointAsync<TPoint, TValue>(
+        TPoint point,
+        TValue value,
+        CancellationToken cancellationToken = default)
+        where TPoint : struct, Enum
+        => WritePlcPointAsync(point.ToString(), value, cancellationToken);
+
+    /// <summary>等待指定业务点位达到期望值。</summary>
+    protected Task<bool> WaitPlcPointAsync<TPoint, TValue>(
+        TPoint point,
+        TValue expectedValue,
+        int timeoutMs = 5000,
+        int intervalMs = 1,
+        CancellationToken cancellationToken = default)
+        where TPoint : struct, Enum
+    {
+        PlcPointDefinition definition = GetPlcPoint(point.ToString());
+        return WaitPlcSignalAsync(Plc, definition.Address, expectedValue, timeoutMs, intervalMs, cancellationToken);
+    }
+
+    private IPlcDevice GetConnectedPlc()
+        => Plc is { IsConnected: true } plc
+            ? plc
+            : throw new InvalidOperationException("PLC 未连接。");
+
+    private PlcPointDefinition GetPlcPointForDevice(string pointId, IPlcDevice plc)
+    {
+        PlcPointDefinition point = GetPlcPoint(pointId);
+        if (!string.Equals(point.DeviceId, plc.DeviceId, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"PLC 点位“{point.Id}”属于设备“{point.DeviceId}”，当前绑定设备为“{plc.DeviceId}”。");
+        return point;
+    }
+
+    public string GetPlcAddress(int pointKey)
+    {
+        return GetPlcPoint(pointKey).Address;
+    }
+
+    /// <summary>按照旧枚举整数键获取统一目录中的点位定义。</summary>
+    protected PlcPointDefinition GetPlcPoint(int pointKey)
+        => TryGetPlcPoint(pointKey, out PlcPointDefinition? point)
+            ? point
+            : throw new KeyNotFoundException($"未找到 PLC 点位枚举键：{pointKey}。");
+
+    /// <summary>尝试按照旧枚举整数键获取统一目录中的点位定义。</summary>
+    protected bool TryGetPlcPoint(int pointKey, [NotNullWhen(true)] out PlcPointDefinition? point)
+    {
+        if (legacyPlcPointIds.TryGetValue(pointKey, out string? pointId)
+            && plcPointDefinitions.TryGet(pointId, out PlcPointDefinition found))
+        {
+            point = found;
+            return true;
+        }
+
+        point = null;
+        return false;
+    }
+
+    /// <summary>按照旧枚举整数键写入点位；仅作为配置迁移期间的兼容入口。</summary>
+    protected Task WritePlcPointByKeyAsync<TValue>(int pointKey, TValue value, CancellationToken cancellationToken = default)
+        => WritePlcPointAsync(GetPlcPoint(pointKey).Id, value, cancellationToken);
+
+    /// <summary>按照旧枚举整数键读取点位；仅作为配置迁移期间的兼容入口。</summary>
+    protected Task<TValue> ReadPlcPointByKeyAsync<TValue>(int pointKey, CancellationToken cancellationToken = default)
+        => ReadPlcPointAsync<TValue>(GetPlcPoint(pointKey).Id, cancellationToken);
+
+    /// <summary>按照旧枚举整数键等待点位达到期望值。</summary>
+    protected Task<bool> WaitPlcPointByKeyAsync<TValue>(
+        int pointKey,
+        TValue expectedValue,
+        int timeoutMs = 5000,
+        int intervalMs = 1,
+        CancellationToken cancellationToken = default)
+    {
+        PlcPointDefinition point = GetPlcPoint(pointKey);
+        return WaitPlcSignalAsync(Plc, point.Address, expectedValue, timeoutMs, intervalMs, cancellationToken);
+    }
+
+    public Task<bool> WaitPlcSignalAsync(
+        IPlcDevice? plc,
+        string address,
+        bool expectedState = true,
+        int timeoutMs = 5000,
+        int intervalMs = 1,
+        CancellationToken cancellationToken = default)
+        => WaitPlcSignalAsync<bool>(plc, address, expectedState, timeoutMs, intervalMs, cancellationToken);
+
+    public async Task<bool> WaitPlcSignalAsync<TValue>(
+        IPlcDevice? plc,
+        string address,
+        TValue expectedValue,
+        int timeoutMs = 5000,
+        int intervalMs = 1,
+        CancellationToken cancellationToken = default)
+    {
+        if (plc == null || !plc.IsConnected || string.IsNullOrWhiteSpace(address))
+        {
+            return false;
+        }
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(timeoutMs);
+
+        try
+        {
+            while (!timeoutCts.IsCancellationRequested)
+            {
+                TValue actualValue = await ReadPlcSignalValueAsync<TValue>(plc, address, timeoutCts.Token).ConfigureAwait(false);
+                if (EqualityComparer<TValue>.Default.Equals(actualValue, expectedValue))
+                {
+                    return true;
+                }
+
+                await Task.Delay(intervalMs, timeoutCts.Token).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        return false;
+    }
+
+    private static async Task<TValue> ReadPlcSignalValueAsync<TValue>(
+        IPlcDevice plc,
+        string address,
+        CancellationToken cancellationToken)
+    {
+        Type valueType = typeof(TValue);
+
+        if (valueType == typeof(bool))
+        {
+            bool value = await plc.ReadBoolAsync(address, cancellationToken).ConfigureAwait(false);
+            return (TValue)(object)value;
+        }
+
+        if (valueType == typeof(short))
+        {
+            short value = await plc.ReadInt16Async(address, cancellationToken).ConfigureAwait(false);
+            return (TValue)(object)value;
+        }
+
+        if (valueType == typeof(ushort))
+        {
+            short value = await plc.ReadInt16Async(address, cancellationToken).ConfigureAwait(false);
+            return (TValue)(object)unchecked((ushort)value);
+        }
+
+        if (valueType == typeof(int))
+        {
+            int[] values = await plc.ReadInt32ArrayAsync(address, 1, cancellationToken).ConfigureAwait(false);
+            return (TValue)(object)values[0];
+        }
+
+        if (valueType == typeof(uint))
+        {
+            int[] values = await plc.ReadInt32ArrayAsync(address, 1, cancellationToken).ConfigureAwait(false);
+            return (TValue)(object)unchecked((uint)values[0]);
+        }
+
+        if (valueType == typeof(float))
+        {
+            float value = await plc.ReadFloatAsync(address, cancellationToken).ConfigureAwait(false);
+            return (TValue)(object)value;
+        }
+
+        throw new NotSupportedException($"Unsupported PLC signal value type: {valueType.FullName}");
+    }
+    public bool IsDiOn(int channel)
+    {
+        ValidateIoChannel(channel);
+        ulong bit = 1UL << channel;
+        lock (ioSnapshotSync)
+        {
+            return (currentDiMask & bit) != 0;
+        }
+    }
+
+    public bool IsRisingEdge(int channel)
+    {
+        ValidateIoChannel(channel);
+        ulong bit = 1UL << channel;
+        lock (ioSnapshotSync)
+        {
+            if ((latchedRisingDiMask & bit) == 0)
+            {
+                return false;
+            }
+
+            latchedRisingDiMask &= ~bit;
+            return true;
+        }
+    }
+
+    public bool IsFallingEdge(int channel)
+    {
+        ValidateIoChannel(channel);
+        ulong bit = 1UL << channel;
+        lock (ioSnapshotSync)
+        {
+            if ((latchedFallingDiMask & bit) == 0)
+            {
+                return false;
+            }
+
+            latchedFallingDiMask &= ~bit;
+            return true;
+        }
+    }
+
+    protected void RegisterAndCachePlcPoints<TEnum>()
+        where TEnum : struct, Enum
+    {
+        foreach (PlcPointMetadataItem item in PropertyMetadataReader.GetPlcPoints<TEnum>())
+        {
+            int numericKey = Convert.ToInt32(item.Value);
+            var definition = CreatePlcPointDefinition(item.Name, item.Address, item.DisplayName, item.DataType, item.IsReadOnly);
+
+            legacyPlcPointIds[numericKey] = item.Name;
+
+            int existingIndex = -1;
+            for (int i = 0; i < PlcPointDefinitions.Count; i++)
+            {
+                if (string.Equals(PlcPointDefinitions[i].Id, item.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    existingIndex = i;
+                    break;
+                }
+            }
+
+            if (existingIndex >= 0)
+            {
+                PlcPointDefinitions[existingIndex] = definition;
+            }
+            else
+            {
+                PlcPointDefinitions.Add(definition);
+            }
+
+        }
+
+        RebuildPlcPointDefinitionProvider();
+    }
+
+    protected void RegisterPlcPoint<TPoint>(TPoint point, string address, string displayName, Type dataType, bool isReadOnly = false)
+        where TPoint : struct, Enum
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(address);
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        ArgumentNullException.ThrowIfNull(dataType);
+
+        int numericKey = Convert.ToInt32(point);
+        string key = point.ToString();
+        var definition = CreatePlcPointDefinition(key, address, displayName, dataType, isReadOnly);
+
+        legacyPlcPointIds[numericKey] = key;
+
+        int existingIndex = -1;
+        for (int i = 0; i < PlcPointDefinitions.Count; i++)
+        {
+            if (string.Equals(PlcPointDefinitions[i].Id, key, StringComparison.OrdinalIgnoreCase))
+            {
+                existingIndex = i;
+                break;
+            }
+        }
+
+        if (existingIndex >= 0)
+        {
+            PlcPointDefinitions[existingIndex] = definition;
+        }
+        else
+        {
+            PlcPointDefinitions.Add(definition);
+        }
+
+        RebuildPlcPointDefinitionProvider();
+    }
+
+    protected IEnumerable<PlcPointDefinition> GetPlcPoints<TPoint>(params TPoint[] points)
+        where TPoint : struct, Enum
+    {
+        foreach (TPoint point in points)
+        {
+            yield return GetPlcPoint(point.ToString());
+        }
+    }
+
+    protected void BuildResultTable()
+    {
+        RefreshResultTableTestNames();
+
+        resultColumns.Clear();
+        resultRows.Clear();
+        resultRowMap.Clear();
+
+        resultColumns.Add(new MachineResultColumn("RowName", T("Process.Grid.Project", "项目")));
+        foreach (TestStationModel station in TestStations)
+        {
+            foreach (string testName in station.OrderedTestNames)
+            {
+                string key = CreateCellKey(station.StationId, testName);
+                resultColumns.Add(new MachineResultColumn(key, testName));
+            }
+        }
+
+        AddResultRow("Limits", T("Process.Grid.Limits", "上下限"), null);
+        AddResultRow("TestValue", T("Process.Grid.TestValue", "测试值"), null);
+        AddResultRow("Total", T("Process.Grid.Total", "总数"), null);
+        AddResultRow("Ok", T("Process.Grid.Ok", "OK数"), null);
+        AddResultRow("Ng", T("Process.Grid.Ng", "NG数"), null);
+        AddResultRow("Yield", T("Process.Grid.Yield", "良率"), null);
+        RaiseResultTableChanged();
+    }
+
+    private void RefreshResultTableTestNames()
+    {
+        foreach (TestStationModel station in TestStations)
+        {
+            if (!station.IncludeInResultSummary)
+            {
+                station.OrderedTestNames = [];
+                continue;
+            }
+
+            if (!station.UseInstrumentConfigTestNames)
+            {
+                continue;
+            }
+
+            IMeasurementInstrument? meter = ResolveStationInstrument(station);
+            IReadOnlyList<string> testNames = InstrumentMeasurementNameHelper.CreateTestNames(meter);
+            station.OrderedTestNames = testNames.Where(static name => !string.IsNullOrWhiteSpace(name)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+    }
+
+    private IMeasurementInstrument? ResolveStationInstrument(TestStationModel station)
+    {
+        foreach (string deviceId in station.InstrumentDeviceIds.Where(static id => !string.IsNullOrWhiteSpace(id)))
+        {
+            if (Devices.TryGet<IMeasurementInstrument>(deviceId, out IMeasurementInstrument? meter) && meter != null)
+            {
+                return meter;
+            }
+        }
+
+        return null;
+    }
+    public void UpdateTestValues(TestStationModel station)
+    {
+        MachineResultRow row = GetResultRow("TestValue");
+        foreach (string testName in station.OrderedTestNames)
+        {
+            string key = CreateCellKey(station.StationId, testName);
+            SetResultCellValue(row, key, station.TestValues.TryGetValue(testName, out double value) ? value.ToString("F4") : null);
+        }
+
+        RaiseResultTableChanged();
+    }
+
+    public void UpdateTestResults(TestStationModel station)
+    {
+        MachineResultRow row = GetResultRow("TestValue");
+        foreach (string testName in station.OrderedTestNames)
+        {
+            string key = CreateCellKey(station.StationId, testName);
+            row.GetOrAddCell(key).State = ToMachineResultCellState(station.TestJudges.TryGetValue(testName, out bool ok) ? ok : null);
+        }
+
+        RaiseResultTableChanged();
+    }
+
+    public void UpdateStatistics(TestStationModel station, bool isPass)
+    {
+        station.AccumulateResult(isPass);
+
+        foreach (string testName in station.OrderedTestNames)
+        {
+            string key = CreateCellKey(station.StationId, testName);
+            SetResultCellValue(GetResultRow("Total"), key, station.TotalCount.ToString());
+            SetResultCellValue(GetResultRow("Ok"), key, station.OkCount.ToString());
+            SetResultCellValue(GetResultRow("Ng"), key, station.NgCount.ToString());
+            SetResultCellValue(GetResultRow("Yield"), key, station.YieldRate.ToString("P2"));
+        }
+
+        RaiseResultTableChanged();
+    }
+
+    protected void UpdateStatisticsRows(TestStationModel station, string testName, uint totalCount, uint okCount, uint ngCount, double yieldRate)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+        ArgumentException.ThrowIfNullOrWhiteSpace(testName);
+
+        string key = CreateCellKey(station.StationId, testName);
+
+        SetResultCellValue(GetResultRow("Total"), key, totalCount.ToString(CultureInfo.InvariantCulture));
+        SetResultCellValue(GetResultRow("Ok"), key, okCount.ToString(CultureInfo.InvariantCulture));
+        SetResultCellValue(GetResultRow("Ng"), key, ngCount.ToString(CultureInfo.InvariantCulture));
+        SetResultCellValue(GetResultRow("Yield"), key, yieldRate.ToString("P2", CultureInfo.InvariantCulture));
+        RaiseResultTableChanged();
+    }
+    public void ClearResultData()
+    {
+        // 使已经进入后台队列、但尚未消费的旧工位结果失效。
+        Interlocked.Increment(ref resultGeneration);
+        foreach (TestStationModel station in TestStations)
+        {
+            station.TestValues.Clear();
+            station.TestJudges.Clear();
+            station.ResetStatistics();
+        }
+
+        foreach (MachineResultRow row in ResultRows)
+        {
+            foreach (MachineResultCell cell in row.Cells.Values)
+            {
+                cell.Value = null;
+                cell.State = MachineResultCellState.None;
+            }
+        }
+
+        RaiseResultTableChanged();
+    }
+
+    protected virtual void ReadSystemData()
+    {
+    }
+
+    protected virtual Task ProcessTestRecordAsync(TestResultPayload record, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    /// <summary>
+    /// 读取工位测试完成信号的上升沿。
+    /// 默认从 IO 快照读取 StationIo.TestFinishedInput，子类可覆盖特殊触发来源。
+    /// </summary>
+    public virtual bool ReadStationTrigger(TestStationModel station)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+        return station.StationIo.TestFinishedInput >= 0 && IsRisingEdge(station.StationIo.TestFinishedInput);
+    }
+
+    /// <summary>
+    /// 读取工位判定结果。Hardware 模式从 ResultOkInput/ResultNgInput 读 IO，Software 模式由 DataDeal 判定。
+    /// </summary>
+    public virtual bool ReadStationResult(TestStationModel station)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+
+        StationIoBinding io = station.StationIo;
+        if (io.ResultSource == StationResultSource.Software)
+        {
+            return true;
+        }
+
+        if (io.ResultNgInput >= 0 && IsDiOn(io.ResultNgInput))
+        {
+            return false;
+        }
+
+        if (io.ResultOkInput >= 0)
+        {
+            return IsDiOn(io.ResultOkInput);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 工位完成上升沿已被确认，且本次硬件 OK/NG 已读取。
+    /// 用于必须与实时握手同步的机型级统计；UI、保存等仍走结果队列。
+    /// </summary>
+    internal virtual void OnStationTestTriggered(TestStationModel station, bool triggerResult)
+    {
+    }
+
+    public bool TryReadDiSnapshotBit(int channel, out bool state)
+    {
+        state = false;
+        if (channel < 0 || channel >= MaxIoChannelCount)
+        {
+            return false;
+        }
+
+        lock (ioSnapshotSync)
+        {
+            ulong bit = 1UL << channel;
+            state = (currentDiMask & bit) != 0;
+            return true;
+        }
+    }
+    /// <summary>
+    /// 向 StationIo.ResultReadCompletedOutput 输出 5ms 读取完成脉冲。
+    /// </summary>
+    public virtual Task CompleteStationHandshakeAsync(TestStationModel station, bool isPass, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(station);
+        if (runtimeStopping || IoCard == null || !IoCard.IsConnected)
+        {
+            return Task.CompletedTask;
+        }
+
+        StationIoBinding io = station.StationIo;
+        WriteResultOutputs(io, isPass);
+
+        if (io.ResultReadCompletedOutput < 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        try
+        {
+            if (!runtimeStopping && IoCard is { IsConnected: true })
+            {
+                IoCard.WriteDoBit(io.ResultReadCompletedOutput, true);
+            }
+
+            DelayRuntimeLoop(5, cancellationToken);
+        }
+        finally
+        {
+            if (!runtimeStopping && IoCard is { IsConnected: true })
+            {
+                try
+                {
+                    IoCard.WriteDoBit(io.ResultReadCompletedOutput, false);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 完成软件判定工位的实时握手。
+    /// <paramref name="message"/> 是本次测试的不可变结果快照；不能从可能已恢复的工位状态读取本次判定。
+    /// </summary>
+    internal virtual Task CompleteSoftwareStationHandshakeAsync(
+        TestStationModel station,
+        StationResultMessage message,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        return CompleteStationHandshakeAsync(station, message.IsPass, cancellationToken);
+    }
+
+    private void WriteResultOutputs(StationIoBinding io, bool isPass)
+    {
+        if (runtimeStopping || IoCard == null || !IoCard.IsConnected)
+        {
+            return;
+        }
+
+        if (io.ResultOkOutput >= 0)
+        {
+            IoCard.WriteDoBit(io.ResultOkOutput, isPass);
+        }
+
+        if (io.ResultNgOutput >= 0)
+        {
+            IoCard.WriteDoBit(io.ResultNgOutput, !isPass);
+        }
+    }
+
+    internal Task ProcessTestRecordCoreAsync(TestResultPayload record, CancellationToken cancellationToken)
+        => ProcessTestRecordAsync(record, cancellationToken);
+
+    /// <summary>当前生产结果代次；清空生产界面时递增，用于拒绝旧的异步结果。</summary>
+    public long CurrentResultGeneration => Volatile.Read(ref resultGeneration);
+
+    internal async Task ProcessStationResultAsync(StationResultMessage message, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        if (message.ResultGeneration != CurrentResultGeneration)
+        {
+            return;
+        }
+
+        message.ApplyToStation();
+        if (message.ResultGeneration != CurrentResultGeneration)
+        {
+            return;
+        }
+
+        ApplyStationResultToReadModel(message);
+        RaiseStationResultPublished(message);
+
+        foreach (StationResultValue value in message.Values)
+        {
+            await ProcessTestRecordCoreAsync(
+                new TestResultPayload(RecordType.Numeric, value.TestName, value.Value, value.Judge),
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    internal void ReportStationResultProcessingFailed(StationResultMessage message, Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(exception);
+
+        StationResultProcessingFailed?.Invoke(
+            this,
+            new StationResultProcessingFailedEventArgs(message.Station, exception));
+    }
+
+    protected virtual bool ShouldApplyRealtimeStatisticsToTable => true;
+
+    private void ApplyStationResultToReadModel(StationResultMessage message)
+    {
+        TestStationModel station = message.Station;
+        bool applyRealtimeStatistics = ShouldApplyRealtimeStatisticsToTable;
+        if (applyRealtimeStatistics)
+        {
+            station.AccumulateResult(message.IsPass);
+        }
+
+        MachineResultRow testValueRow = GetResultRow("TestValue");
+        MachineResultRow? totalRow = applyRealtimeStatistics ? GetResultRow("Total") : null;
+        MachineResultRow? okRow = applyRealtimeStatistics ? GetResultRow("Ok") : null;
+        MachineResultRow? ngRow = applyRealtimeStatistics ? GetResultRow("Ng") : null;
+        MachineResultRow? yieldRow = applyRealtimeStatistics ? GetResultRow("Yield") : null;
+
+        foreach (StationResultValue value in message.Values)
+        {
+            string key = CreateCellKey(station.StationId, value.TestName);
+            SetResultCellValue(testValueRow, key, value.Value.ToString("F4", CultureInfo.InvariantCulture));
+            testValueRow.GetOrAddCell(key).State = ToMachineResultCellState(value.Judge);
+
+            if (applyRealtimeStatistics)
+            {
+                SetResultCellValue(totalRow!, key, station.TotalCount.ToString(CultureInfo.InvariantCulture));
+                SetResultCellValue(okRow!, key, station.OkCount.ToString(CultureInfo.InvariantCulture));
+                SetResultCellValue(ngRow!, key, station.NgCount.ToString(CultureInfo.InvariantCulture));
+                SetResultCellValue(yieldRow!, key, station.YieldRate.ToString("P2", CultureInfo.InvariantCulture));
+            }
+        }
+
+        RaiseResultTableChanged();
+    }
+    protected virtual Task OnTestStartedAsync(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    protected virtual Task OnTestStoppedAsync(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    protected static string CreateCellKey(int stationId, string testName)
+        => $"S{stationId}_{testName}";
+
+    protected void RaiseResultTableChanged()
+        => ResultTableChanged?.Invoke(this, EventArgs.Empty);
+
+    private void RaiseStationResultPublished(StationResultMessage message)
+    {
+        var values = message.Values
+            .Select(static value => new TestResultPayload(RecordType.Numeric, value.TestName, value.Value, value.Judge))
+            .ToArray();
+        StationResultPublished?.Invoke(this, new StationResultPublishedEventArgs(message.Station, values, message.IsPass, message.ResultGeneration));
+    }
+
+    private async Task RunMachinePollingAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            ReadSystemData();
+            await DelayRuntimeLoopAsync(SystemDataPollingIntervalMs, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private void RunIoSnapshotLoop(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            RefreshIoSnapshot();
+            DelayRuntimeLoop(IoSnapshotPollingIntervalMs, cancellationToken);
+        }
+    }
+
+    public void RefreshIoSnapshot()
+    {
+        if (runtimeStopping)
+        {
+            return;
+        }
+
+        IDigitalIoDevice? card = IoCard;
+        if (card == null || !card.IsConnected)
+        {
+            return;
+        }
+
+        ulong mask = card.ReadDiPortMask();
+        lock (ioSnapshotSync)
+        {
+            ulong oldMask = currentDiMask;
+            previousDiMask = oldMask;
+            currentDiMask = mask;
+            latchedRisingDiMask |= mask & ~oldMask;
+            latchedFallingDiMask |= ~mask & oldMask;
+        }
+    }
+
+    private static async Task DelayRuntimeLoopAsync(int delayMs, CancellationToken cancellationToken)
+    {
+        if (delayMs <= 0)
+        {
+            await Task.Yield();
+            return;
+        }
+
+        await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void DelayRuntimeLoop(int delayMs, CancellationToken cancellationToken)
+    {
+        if (delayMs <= 0)
+        {
+            Thread.Yield();
+            return;
+        }
+
+        if (cancellationToken.WaitHandle.WaitOne(delayMs))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+
+    private void ResetIoSnapshot()
+    {
+        lock (ioSnapshotSync)
+        {
+            previousDiMask = 0;
+            currentDiMask = 0;
+            latchedRisingDiMask = 0;
+            latchedFallingDiMask = 0;
+        }
+    }
+
+    private void AddResultRow(string key, string name, object? defaultValue)
+    {
+        var row = new MachineResultRow(key, name);
+        resultRowMap[key] = row;
+        foreach (MachineResultColumn column in ResultColumns.Skip(1))
+        {
+            SetResultCellValue(row, column.Key, defaultValue);
+        }
+
+        resultRows.Add(row);
+    }
+
+    private static PlcPointDefinition CreatePlcPointDefinition(
+        string id,
+        string address,
+        string name,
+        Type dataType,
+        bool isReadOnly)
+        => new()
+        {
+            Id = id,
+            Name = name,
+            DeviceId = DeviceIds.MainPlc,
+            Address = address,
+            DataType = PlcPointDefinition.FromClrType(dataType),
+            Access = isReadOnly ? PlcPointAccess.ReadOnly : PlcPointAccess.ReadWrite
+        };
+
+    private void RebuildPlcPointDefinitionProvider()
+    {
+        plcPointDefinitions = new PlcPointDefinitionProvider(PlcPointDefinitions);
+    }
+
+
+    private MachineResultRow GetResultRow(string key)
+    {
+        if (resultRowMap.TryGetValue(key, out MachineResultRow? row))
+        {
+            return row;
+        }
+
+        return ResultRows.First(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void SetResultCellValue(MachineResultRow row, string key, object? value)
+        => row.GetOrAddCell(key).Value = value;
+
+    private static MachineResultCellState ToMachineResultCellState(bool? result)
+        => result switch
+        {
+            true => MachineResultCellState.Success,
+            false => MachineResultCellState.Error,
+            null => MachineResultCellState.None
+        };
+
+    private string ToRowDisplayName(string key)
+        => key switch
+        {
+            "Limits" => T("Process.Grid.Limits", "上下限"),
+            "TestValue" => T("Process.Grid.TestValue", "测试值"),
+            "Total" => T("Process.Grid.Total", "总数"),
+            "Ok" => T("Process.Grid.Ok", "OK数"),
+            "Ng" => T("Process.Grid.Ng", "NG数"),
+            "Yield" => T("Process.Grid.Yield", "良率"),
+            _ => key
+        };
+
+    private void OnLanguageChanged(object? sender, LanguageType languageType)
+        => RefreshResultTableLocalization();
+
+    private void RefreshResultTableLocalization()
+    {
+        MachineResultColumn? rowNameColumn = ResultColumns.FirstOrDefault(static column =>
+            string.Equals(column.Key, "RowName", StringComparison.OrdinalIgnoreCase));
+        if (rowNameColumn != null)
+        {
+            rowNameColumn.Header = T("Process.Grid.Project", "项目");
+        }
+
+        foreach ((string key, MachineResultRow row) in resultRowMap)
+        {
+            row.DisplayName = ToRowDisplayName(key);
+        }
+
+        RaiseResultTableChanged();
+    }
+
+    public void RefreshResultTable()
+    {
+        BuildResultTable();
+        UpdateLimitRows();
+        RaiseResultTableChanged();
+    }
+
+    /// <summary>
+    /// 刷新工单参数后，仅在测试列结构发生变化时重建结果表。
+    /// 这样同一机种的参数更新不会替换“测试值/统计”行，避免 UI 闪烁。
+    /// </summary>
+    /// <returns>是否因测试列结构变化而重建了结果表。</returns>
+    public bool RefreshResultTableIfStructureChanged()
+    {
+        RefreshResultTableTestNames();
+        string[] expectedColumnIds =
+        [
+            "RowName",
+            .. TestStations.SelectMany(station => station.OrderedTestNames.Select(testName => CreateCellKey(station.StationId, testName)))
+        ];
+        bool structureChanged = !ResultColumns
+            .Select(static column => column.Key)
+            .SequenceEqual(expectedColumnIds, StringComparer.OrdinalIgnoreCase);
+
+        if (structureChanged)
+        {
+            BuildResultTable();
+        }
+
+        UpdateLimitRows();
+        RaiseResultTableChanged();
+        return structureChanged;
+    }
+
+    private string T(string key, string fallback)
+    {
+        string? text = localizationService?.GetString(key);
+        return string.IsNullOrWhiteSpace(text) || string.Equals(text, key, StringComparison.Ordinal) ? fallback : text;
+    }
+
+    private static void ValidateIoChannel(int channel)
+    {
+        if (channel is < 0 or >= MaxIoChannelCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(channel), channel, $"IO channel must be between 0 and {MaxIoChannelCount - 1}.");
+        }
+    }
+
+    private void ThrowIfDisposed()
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+    }
+
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+        if (localizationService != null)
+        {
+            localizationService.LanguageChanged -= OnLanguageChanged;
+        }
+
+        StopRuntimeAsync().GetAwaiter().GetResult();
+        GC.SuppressFinalize(this);
+    }
+}
+
+public sealed class StationEnabledChangedEventArgs : EventArgs
+{
+    public StationEnabledChangedEventArgs(TestStationModel station, bool isEnabled)
+    {
+        Station = station ?? throw new ArgumentNullException(nameof(station));
+        IsEnabled = isEnabled;
+    }
+
+    public TestStationModel Station { get; }
+
+    public bool IsEnabled { get; }
+}
+
+public sealed class StationResultPublishedEventArgs : EventArgs
+{
+    public StationResultPublishedEventArgs(TestStationModel station, IReadOnlyList<TestResultPayload> values, bool isPass, long resultGeneration)
+    {
+        Station = station ?? throw new ArgumentNullException(nameof(station));
+        Values = values ?? throw new ArgumentNullException(nameof(values));
+        IsPass = isPass;
+        ResultGeneration = resultGeneration;
+    }
+
+    public TestStationModel Station { get; }
+
+    public IReadOnlyList<TestResultPayload> Values { get; }
+
+    public bool IsPass { get; }
+
+    public long ResultGeneration { get; }
+}
+
+public sealed class StationResultProcessingFailedEventArgs : EventArgs
+{
+    public StationResultProcessingFailedEventArgs(TestStationModel station, Exception exception)
+    {
+        Station = station ?? throw new ArgumentNullException(nameof(station));
+        Exception = exception ?? throw new ArgumentNullException(nameof(exception));
+    }
+
+    public TestStationModel Station { get; }
+
+    public Exception Exception { get; }
+}
+
+public enum RecordType
+{
+    Numeric,
+    Text,
+    Boolean,
+    Unknown
+}
+
+public sealed record TestResultPayload(RecordType Type, string Name, double TestValue, bool? Judge = null);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

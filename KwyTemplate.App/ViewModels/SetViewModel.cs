@@ -14,8 +14,8 @@ using KwyTemplate.Contracts.Navigation;
 using KwyTemplate.Contracts.Security;
 using KwyTemplate.Device.Devices;
 using KwyTemplate.Device.Profiles;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
 using KwyTemplate.MES.Models;
 
 namespace KwyTemplate.App.ViewModels;

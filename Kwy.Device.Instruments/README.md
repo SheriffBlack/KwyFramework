@@ -5,7 +5,7 @@
 这一层的目标是：
 
 - 每个品牌仪表保留自己的通信命令、参数模型和原始结果模型。
-- 对上层 Flow/DataDeal 暴露统一能力接口，避免业务流程直接判断品牌。
+- 对上层 Process/DataDeal 暴露统一能力接口，避免业务流程直接判断品牌。
 - 让同一工位可以替换不同品牌仪表，而不需要修改流程逻辑。
 
 ## 分层关系
@@ -37,7 +37,7 @@ Kwy.Device.Instruments
 引用方向是：
 
 ```text
-KwyTemplate.Flow
+KwyTemplate.Process
     -> Kwy.Device.Abstractions
     -> IMeasurementInstrument
 
@@ -46,7 +46,7 @@ Kwy.Device.Instruments
     -> Kwy.Device.Core
 ```
 
-Flow 层不应该直接依赖 `AdexDcrResult`、`HiokiLcrResult` 这类品牌结果模型。
+Process 层不应该直接依赖 `AdexDcrResult`、`HiokiLcrResult` 这类品牌结果模型。
 
 ## 为什么保留品牌 Result
 
@@ -73,7 +73,7 @@ public sealed record HiokiLcrResult(IReadOnlyList<HiokiLcrValue> Values, string 
 
 ## 为什么还需要通用测量结果
 
-如果 Flow/DataDeal 直接写：
+如果 Process/DataDeal 直接写：
 
 ```csharp
 switch (meter)
@@ -114,7 +114,7 @@ public sealed record InstrumentMeasurementValue(
     string? Unit = null);
 ```
 
-这样 Flow/DataDeal 只依赖 `IMeasurementInstrument`，不关心当前仪表到底是 ADEX、HIOKI 还是后续其他品牌。
+这样 Process/DataDeal 只依赖 `IMeasurementInstrument`，不关心当前仪表到底是 ADEX、HIOKI 还是后续其他品牌。
 
 ## 当前实现方式
 
@@ -159,7 +159,7 @@ public async ValueTask<InstrumentMeasurementResult> ReadMeasurementAsync(...)
 }
 ```
 
-## Flow/DataDeal 应该怎么使用
+## Process/DataDeal 应该怎么使用
 
 推荐：
 
@@ -203,7 +203,7 @@ Instrument.Dcr.01 -> AdexDcr
 Instrument.Dcr.01 -> HiokiLcr
 ```
 
-但 Flow 层只取稳定角色 ID 对应的通用能力：
+但 Process 层只取稳定角色 ID 对应的通用能力：
 
 ```csharp
 Devices.TryGet<IMeasurementInstrument>(DeviceIds.Instrument("Dcr", 1), out var dcr)
@@ -220,7 +220,7 @@ Devices.TryGet<IMeasurementInstrument>(DeviceIds.Instrument("Dcr", 1), out var d
 3. 保留品牌专属配置类和品牌专属 Result。
 4. 实现合适的通用能力接口，例如 `IMeasurementInstrument`。
 5. 在 `ReadMeasurementAsync()` 中把品牌 Result 转为 `InstrumentMeasurementResult`。
-6. 业务 Flow/DataDeal 继续依赖通用接口。
+6. 业务 Process/DataDeal 继续依赖通用接口。
 
 如果后续出现更明确的能力，可以继续扩展抽象接口，例如：
 
@@ -239,7 +239,7 @@ ISaturationInstrument
 
 ```text
 品牌 Result：保留完整厂商语义，便于驱动调试和高级扩展。
-通用 Result：提供 Flow/DataDeal 所需的稳定测量语义。
+通用 Result：提供 Process/DataDeal 所需的稳定测量语义。
 ```
 
 这样可以同时保证：

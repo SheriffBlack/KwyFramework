@@ -1,4 +1,4 @@
-﻿# KwyTemplate.MES 设计说明
+# KwyTemplate.MES 设计说明
 
 `KwyTemplate.MES` 是模板设备项目的 MES 业务契约层。它只定义设备侧稳定可依赖的 MES 能力与数据模型，不关心客户 DLL、TCP/HTTP 报文、字段名和错误码。
 
@@ -6,7 +6,7 @@
 
 ## 设计目标
 
-- 设备 App、Flow 不直接依赖客户 MES DLL 或客户报文字段。
+- 设备 App、Process 不直接依赖客户 MES DLL 或客户报文字段。
 - MES 按“设备业务能力”拆分，而不是做一个巨大的客户 API。
 - 不同客户可以只实现自己支持的能力。
 - 设备必须理解的数据使用强类型模型，例如测试上下限、标准值、测试结果。
@@ -46,7 +46,7 @@ MajieMesService
 ## 推荐依赖方向
 
 ```text
-KwyTemplate.App / KwyTemplate.Flow
+KwyTemplate.App / KwyTemplate.Process
           |
           v
 KwyTemplate.MES
@@ -55,7 +55,7 @@ KwyTemplate.MES
 KwyTemplate.MES.Cyntec / KwyTemplate.MES.Xxx
 ```
 
-App 和 Flow 只依赖 Abstract。客户项目只负责实现和注册能力接口。
+App 和 Process 只依赖 Abstract。客户项目只负责实现和注册能力接口。
 
 ## 工单拉参主流程
 
@@ -112,7 +112,7 @@ ReturnMessage 表示 MES 返回说明
 真实参数随后从约定路径读取，例如 D:\MES\Setup\{工单}.txt 或 D:\MES\Stdpart\{标准件号}.txt
 ```
 
-这种模式不应该泄漏到 App 或 Flow。客户实现层应该完成两步：
+这种模式不应该泄漏到 App 或 Process。客户实现层应该完成两步：
 
 1. 调用客户 MES API，判断 `ReturnCode == 0`。
 2. 成功后读取约定文件，解析成 `MesWorkOrderSetup` 或 `MesStandardSampleSetup`。
@@ -156,7 +156,7 @@ UI 图表可以使用：
 - `LowerLimit` / `UpperLimit`：红色上下限线
 - `StandardValue`：绿色标准值线
 
-测试判定和标准件点检也可以使用同一份模型，避免 UI、Flow、MES 各维护一套限值。
+测试判定和标准件点检也可以使用同一份模型，避免 UI、Process、MES 各维护一套限值。
 
 ## 客户实现边界
 
@@ -173,7 +173,7 @@ UI 图表可以使用：
 
 - WPF
 - PLC
-- Flow
+- Process
 - Device
 - 客户 DLL
 - 具体通信库
@@ -209,7 +209,7 @@ Services/
 
 ## 使用建议
 
-- App 或 Flow 按需依赖能力接口，而不是依赖具体客户实现类。
+- App 或 Process 按需依赖能力接口，而不是依赖具体客户实现类。
 - Machine 负责解释 `MesParameterBag` 中的工艺参数，并应用到 PLC、仪表或 UI。
 - 测试上下限和标准值尽量走 `MesMeasurementLimit`，不要散落在多个 ViewModel 中。
 - 客户原始报文、ReturnCode、文件路径保留在 `MesResult.Exchange`，用于日志和排查。

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Kwy.MVVM\Kwy.MVVM.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Contracts\KwyTemplate.Contracts.csproj" />
+    <ProjectReference Include="..\KwyTemplate.Process\KwyTemplate.Process.csproj" />
+  </ItemGroup>
+</Project>

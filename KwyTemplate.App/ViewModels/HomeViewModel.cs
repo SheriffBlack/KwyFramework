@@ -1,4 +1,4 @@
-﻿using Kwy.MVVM.Core;
+using Kwy.MVVM.Core;
 using Kwy.MVVM.Messaging;
 using Kwy.Device.Instrument.Abstractions;
 using Kwy.UI.DataGrids;
@@ -16,9 +16,10 @@ using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Security;
 using KwyTemplate.Contracts.Services;
 using KwyTemplate.Device.Devices;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
-using KwyTemplate.Flow.Services;
+using KwyTemplate.Equipment;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
+using KwyTemplate.Process.Services;
 using KwyTemplate.Security.Licensing;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -40,6 +41,7 @@ namespace KwyTemplate.App.ViewModels;
 public sealed class HomeViewModel : BindableBase
 {
     private readonly MachineBase machine;
+    private readonly IEquipmentController equipmentController;
     private readonly IProductionContext productionContext;
     private readonly IPrimaryNavigationState primaryNavigationState;
     private readonly ICyntecReelScanWorkflow reelScanWorkflow;
@@ -99,6 +101,7 @@ public sealed class HomeViewModel : BindableBase
 
     public HomeViewModel(
         MachineBase machine,
+        IEquipmentController equipmentController,
         IMachineDeviceContext devices,
         IProductionContext productionContext,
         IPrimaryNavigationState primaryNavigationState,
@@ -129,6 +132,7 @@ public sealed class HomeViewModel : BindableBase
         ICorrectionParameterProvider correctionParameterProvider)
     {
         this.machine = machine ?? throw new ArgumentNullException(nameof(machine));
+        this.equipmentController = equipmentController ?? throw new ArgumentNullException(nameof(equipmentController));
         this.devices = devices ?? throw new ArgumentNullException(nameof(devices));
         this.productionContext = productionContext ?? throw new ArgumentNullException(nameof(productionContext));
         this.primaryNavigationState = primaryNavigationState ?? throw new ArgumentNullException(nameof(primaryNavigationState));
@@ -170,7 +174,7 @@ public sealed class HomeViewModel : BindableBase
 
         machine.StationResultPublished += OnStationResultPublished;
         machine.StationResultProcessingFailed += OnStationResultProcessingFailed;
-        machine.RunningStateChanged += OnMachineRunningStateChanged;
+        this.equipmentController.StateChanged += OnEquipmentStateChanged;
         this.productionContext.PropertyChanged += OnProductionContextPropertyChanged;
         this.rawInputBarcodeReceiver.BarcodeReceived += OnRawInputBarcodeReceived;
         this.mesConnection.StateChanged += OnMesConnectionStateChanged;
@@ -248,7 +252,7 @@ public sealed class HomeViewModel : BindableBase
 
     public ReelScanState ReelScanState => productionContext.ReelScanState;
 
-    public bool IsMachineRunning => machine.IsRunning;
+    public bool IsMachineRunning => equipmentController.IsProductionRunning;
 
     public bool ShowReelMatNo
         => machine.HomeWorkOrderFields.Contains(HomeWorkOrderField.ReelMatNo);
@@ -371,9 +375,11 @@ public sealed class HomeViewModel : BindableBase
         }
     }
 
-    private bool CanExecuteStart() => !machine.IsRunning;
+    private bool CanExecuteStart()
+        => equipmentController.Evaluate(EquipmentCommand.StartProduction).IsAllowed;
 
-    private bool CanExecuteStop() => machine.IsRunning;
+    private bool CanExecuteStop()
+        => equipmentController.Evaluate(EquipmentCommand.StopProduction).IsAllowed;
 
     private IReadOnlyList<string> GetMissingStartupFields()
     {
@@ -404,7 +410,7 @@ public sealed class HomeViewModel : BindableBase
     {
         try
         {
-            if (machine.IsRunning)
+            if (equipmentController.IsProductionRunning)
             {
                 return;
             }
@@ -518,7 +524,15 @@ public sealed class HomeViewModel : BindableBase
                 workOrderStartSignalMachine.SetCurrentWorkOrder(WorkOrderNo);
             }
 
-            await machine.StartAsync(DestroyToken).ConfigureAwait(false);
+            EquipmentCommandResult result = await equipmentController
+                .StartProductionAsync(DestroyToken)
+                .ConfigureAwait(false);
+            if (!result.Succeeded)
+            {
+                await ShowWarningOnUiAsync(
+                    result.Message ?? localizationService.T("Home.Message.StartDenied", "整机当前不允许启动。"),
+                    localizationService.T("Home.Action.Start", "Start")).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -533,7 +547,7 @@ public sealed class HomeViewModel : BindableBase
     {
         try
         {
-            if (!machine.IsRunning)
+            if (!equipmentController.IsProductionRunning)
             {
                 return;
             }
@@ -547,7 +561,16 @@ public sealed class HomeViewModel : BindableBase
                     ? localizationService.T("Home.Title.MesTrackOut", "MES Track Out")
                     : localizationService.T("Home.Title.OfflineEndWorkOrder", "End Work Order")).ConfigureAwait(false);
 
-            await machine.StopAsync().ConfigureAwait(false);
+            EquipmentCommandResult result = await equipmentController
+                .StopProductionAsync(DestroyToken)
+                .ConfigureAwait(false);
+            if (!result.Succeeded)
+            {
+                await ShowWarningOnUiAsync(
+                    result.Message ?? localizationService.T("Home.Message.StopDenied", "整机当前不允许停止。"),
+                    localizationService.T("Home.Action.Stop", "Stop")).ConfigureAwait(false);
+                return;
+            }
             if (machine is IMachineWorkOrderStartSignalMachine workOrderStartSignalMachine)
             {
                 await workOrderStartSignalMachine.ResetWorkOrderStartSignalsAsync(DestroyToken).ConfigureAwait(false);
@@ -826,7 +849,7 @@ public sealed class HomeViewModel : BindableBase
 
     private async Task ApplyRawBarcodeAsync(string value)
     {
-        if (machine.ProductionState != MachineProductionState.Stopped)
+        if (equipmentController.State != EquipmentState.Stopped)
         {
             await ShowWarningOnUiAsync(
                 localizationService.T("Home.Message.BlindScanRequiresStopped", "机台非停止状态，禁止盲扫修改生产信息。"),
@@ -2028,7 +2051,7 @@ public sealed class HomeViewModel : BindableBase
                 BlankQty = FormatNullableInt(tapeSetup.BlankQty)
             });
         });
-    private void OnMachineRunningStateChanged(object? sender, EventArgs e)
+    private void OnEquipmentStateChanged(object? sender, EventArgs e)
         => RunOnUi(RefreshMachineRunningState);
 
     private void RefreshMachineRunningState()
@@ -2283,7 +2306,7 @@ public sealed class HomeViewModel : BindableBase
             machine.ResultTableChanged -= OnMachineResultTableChanged;
             machine.StationResultPublished -= OnStationResultPublished;
             machine.StationResultProcessingFailed -= OnStationResultProcessingFailed;
-            machine.RunningStateChanged -= OnMachineRunningStateChanged;
+            equipmentController.StateChanged -= OnEquipmentStateChanged;
             productionContext.PropertyChanged -= OnProductionContextPropertyChanged;
             rawInputBarcodeReceiver.BarcodeReceived -= OnRawInputBarcodeReceived;
             mesConnection.StateChanged -= OnMesConnectionStateChanged;

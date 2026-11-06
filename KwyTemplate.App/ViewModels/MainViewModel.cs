@@ -1,4 +1,4 @@
-﻿using Kwy.MVVM.Core;
+using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using Kwy.MVVM.WPF.Regions;
 using Kwy.UI;
@@ -8,8 +8,9 @@ using KwyTemplate.App.Services;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Contracts.Navigation;
 using KwyTemplate.Contracts.Security;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Equipment;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
 using System.Windows.Threading;
 
 namespace KwyTemplate.App.ViewModels;
@@ -18,6 +19,7 @@ public class MainViewModel : BindableBase, INavigationAware
 {
     private readonly IRegionManager regionManager;
     private readonly MachineBase machine;
+    private readonly IEquipmentController equipmentController;
     private readonly IPermissionService? permissionService;
     private readonly IAppNotificationService? notificationService;
     private readonly ILocalizationService localizationService;
@@ -32,6 +34,7 @@ public class MainViewModel : BindableBase, INavigationAware
     public MainViewModel(
         IRegionManager regionManager,
         MachineBase machine,
+        IEquipmentController equipmentController,
         ILocalizationService localizationService,
         IProductionContext productionContext,
         IPrimaryNavigationState primaryNavigationState,
@@ -40,6 +43,7 @@ public class MainViewModel : BindableBase, INavigationAware
     {
         this.regionManager = regionManager ?? throw new ArgumentNullException(nameof(regionManager));
         this.machine = machine ?? throw new ArgumentNullException(nameof(machine));
+        this.equipmentController = equipmentController ?? throw new ArgumentNullException(nameof(equipmentController));
         this.localizationService = localizationService ?? throw new ArgumentNullException(nameof(localizationService));
         this.productionContext = productionContext ?? throw new ArgumentNullException(nameof(productionContext));
         this.primaryNavigationState = primaryNavigationState ?? throw new ArgumentNullException(nameof(primaryNavigationState));
@@ -51,7 +55,7 @@ public class MainViewModel : BindableBase, INavigationAware
             this.permissionService.PermissionsChanged += OnPermissionsChanged;
         }
         this.localizationService.LanguageChanged += OnLanguageChanged;
-        machine.RunningStateChanged += OnMachineRunningStateChanged;
+        this.equipmentController.StateChanged += OnEquipmentStateChanged;
         InitializeNavigationItems();
     }
 
@@ -110,7 +114,7 @@ public class MainViewModel : BindableBase, INavigationAware
         RefreshNavigationAvailability();
     }
 
-    private void OnMachineRunningStateChanged(object? sender, EventArgs e)
+    private void OnEquipmentStateChanged(object? sender, EventArgs e)
     {
         if (dispatcher.CheckAccess())
         {
@@ -148,7 +152,7 @@ public class MainViewModel : BindableBase, INavigationAware
 
     private void RefreshNavigationAvailability()
     {
-        bool isProductionRunning = machine.ProductionState == MachineProductionState.Running;
+        bool isProductionRunning = equipmentController.IsProductionRunning;
         foreach (NavigationItemModel item in NavigationItems)
         {
             bool isAllowedWhileRunning = !isProductionRunning

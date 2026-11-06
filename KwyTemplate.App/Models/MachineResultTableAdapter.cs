@@ -1,7 +1,7 @@
 using Kwy.UI.DataGrids;
 using Kwy.UI.WPF.Controls.Helpers;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
 using System.Collections.ObjectModel;
 
 namespace KwyTemplate.App.Models;

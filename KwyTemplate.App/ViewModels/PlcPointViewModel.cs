@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows.Threading;
 using Kwy.Device.Abstractions;
@@ -10,8 +10,8 @@ using KwyTemplate.App.Models;
 using KwyTemplate.App.Services;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
 using System.Windows.Controls;
 using Kwy.UI.Enums;
 using Kwy.Device.PLC.Abstractions;

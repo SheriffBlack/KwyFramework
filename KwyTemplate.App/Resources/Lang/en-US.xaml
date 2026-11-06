@@ -1,4 +1,4 @@
-﻿<ResourceDictionary
+<ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:sys="clr-namespace:System;assembly=mscorlib">
@@ -282,6 +282,7 @@
     <sys:String x:Key="Home.Message.MarkPrintFailed">Failed to write mark print text to printer.</sys:String>
     <sys:String x:Key="Home.Title.WorkOrderImport">Work Order Import</sys:String>
     <sys:String x:Key="Home.Message.StopFailed">Stop failed:&#x0a;{0}</sys:String>
+    <sys:String x:Key="Home.Message.StopDenied">The equipment does not currently allow production to stop.</sys:String>
     <sys:String x:Key="Home.Message.MesDisconnectException">MES disconnect exception!&#x0a;{0}</sys:String>
     <sys:String x:Key="Home.Title.MesTrackIn">MES Track In</sys:String>
     <sys:String x:Key="Home.Message.CoverOrPaperMismatch">Top cover or table paper does not match MES!</sys:String>
@@ -308,6 +309,7 @@
     <sys:String x:Key="Home.Title.MaterialError">Material Error</sys:String>
     <sys:String x:Key="Home.Title.ProductionDataSave">Production Data Save</sys:String>
     <sys:String x:Key="Home.Message.StartFailed">Start failed:&#x0a;{0}</sys:String>
+    <sys:String x:Key="Home.Message.StartDenied">The equipment does not currently allow production to start.</sys:String>
     <sys:String x:Key="Home.Message.MesConnecting">MES is connecting. Please wait.</sys:String>
     <sys:String x:Key="Home.MesStatus.Offline">MES Offline</sys:String>
     <sys:String x:Key="Home.MesStatus.Connecting">MES Connecting</sys:String>
@@ -333,13 +335,13 @@
     <sys:String x:Key="Compensate.Title.CheckSuccess">Check Succeeded</sys:String>
     <sys:String x:Key="Compensate.Message.StepSuccess">{{{0}}}{{{1}}} check succeeded!</sys:String>
     <sys:String x:Key="Correction.Message.InvalidNumber">{0} {1} is not a valid number: {2}</sys:String>
-    <sys:String x:Key="Flow.Grid.Ok">OK</sys:String>
-    <sys:String x:Key="Flow.Grid.Total">Total</sys:String>
-    <sys:String x:Key="Flow.Grid.TestValue">Measured</sys:String>
-    <sys:String x:Key="Flow.Grid.Project">Item</sys:String>
-    <sys:String x:Key="Flow.Grid.Limits">Limits</sys:String>
-    <sys:String x:Key="Flow.Grid.Ng">NG</sys:String>
-    <sys:String x:Key="Flow.Grid.Yield">Yield</sys:String>
+    <sys:String x:Key="Process.Grid.Ok">OK</sys:String>
+    <sys:String x:Key="Process.Grid.Total">Total</sys:String>
+    <sys:String x:Key="Process.Grid.TestValue">Measured</sys:String>
+    <sys:String x:Key="Process.Grid.Project">Item</sys:String>
+    <sys:String x:Key="Process.Grid.Limits">Limits</sys:String>
+    <sys:String x:Key="Process.Grid.Ng">NG</sys:String>
+    <sys:String x:Key="Process.Grid.Yield">Yield</sys:String>
     <sys:String x:Key="Station.State.Disabled">OFF</sys:String>
     <sys:String x:Key="Station.State.Enabled">ON</sys:String>
     <sys:String x:Key="Instrument.Category.Basic">Basic Settings</sys:String>

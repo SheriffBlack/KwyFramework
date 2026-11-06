@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using Kwy.Communicate.Visa;
 using Kwy.Communicate.TcpSerial.Configuration;
@@ -15,8 +15,8 @@ using KwyTemplate.Device.MarkPrinters;
 using KwyTemplate.Device.Plcs.Editors;
 using KwyTemplate.Device.Profiles;
 using KwyTemplate.Device.Scanners;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
 
 namespace KwyTemplate.App.ViewModels;
 

@@ -52,7 +52,7 @@ Z1 / PHASE1
 Z2 / PHASE2
 ```
 
-这样客户 B 即使把极性字段定义为 `NeedPolarity=1`，也只需增加客户适配映射，不影响 SetView、Flow 或仪表驱动。
+这样客户 B 即使把极性字段定义为 `NeedPolarity=1`，也只需增加客户适配映射，不影响 SetView、Process 或仪表驱动。
 
 ### 2.3 配方与设备能力分离
 
@@ -86,7 +86,7 @@ Z2 / PHASE2
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
-│ 机型执行层：KwyTemplate.Flow                                  │
+│ 机型执行层：KwyTemplate.Process                                  │
 │ Machine_2_A / Machine_4_HAHH.ApplyWorkOrderSetupAsync         │
 └───────────────────────────┬──────────────────────────────────┘
                             │
@@ -99,10 +99,10 @@ Z2 / PHASE2
 依赖方向必须保持从上到下：
 
 ```text
-App 可以引用 MES.Abstract、Flow、Device
+App 可以引用 MES.Abstract、Process、Device
 MES.Cyntec 只能引用 MES.Abstract
-Flow 不引用 MES.Cyntec，也不引用 WPF/App
-Device 不引用 Flow、App、MES
+Process 不引用 MES.Cyntec，也不引用 WPF/App
+Device 不引用 Process、App、MES
 ```
 
 ## 4. ISA-88 的轻量映射

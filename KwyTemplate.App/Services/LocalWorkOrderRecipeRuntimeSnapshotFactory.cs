@@ -1,7 +1,7 @@
 using Kwy.Device.Abstractions;
 using KwyTemplate.App.Models;
 using KwyTemplate.Device.Devices;
-using KwyTemplate.Flow.Machines;
+using KwyTemplate.Process.Machines;
 
 namespace KwyTemplate.App.Services;
 

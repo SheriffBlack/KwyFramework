@@ -1,7 +1,7 @@
 using Kwy.Device.Instrument.Abstractions;
-using KwyTemplate.Flow.DataDeals;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.DataDeals;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
 
 namespace KwyTemplate.App.Orchestration;
 

@@ -1,4 +1,4 @@
-﻿# KwyTemplate.MES.Cyntec 设计说明
+# KwyTemplate.MES.Cyntec 设计说明
 
 `KwyTemplate.MES.Cyntec` 是 Cyntec 客户 MES 适配项目。它实现 `KwyTemplate.MES` 中的能力接口，并负责调用 Cyntec 客户 DLL、判断 `returncode`、读取客户约定的 D 盘文件，再转换成 Abstract 的统一模型。
 
@@ -207,4 +207,4 @@ var mes = new MesCyntecService(options);
 - 当前实现只负责 MES 适配，不直接写 PLC、不直接改仪表参数。
 - Machine 或参数应用器应消费 `MesWorkOrderSetup`，再把参数应用到设备。
 - 如果客户 DLL 后续升级为 64 位，可以移除 `PlatformTarget=x86`。
-- 如果客户文件格式变化，只需要修改 `CyntecMesFileParser`，不影响 App / Flow。
+- 如果客户文件格式变化，只需要修改 `CyntecMesFileParser`，不影响 App / Process。

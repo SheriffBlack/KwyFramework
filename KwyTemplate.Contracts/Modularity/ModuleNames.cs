@@ -1,12 +1,14 @@
-﻿namespace KwyTemplate.Contracts.Modularity;
+namespace KwyTemplate.Contracts.Modularity;
 
-public class ModuleNames
+public static class ModuleNames
 {
     public const string AppModule = nameof(AppModule);
 
     public const string DeviceModule = nameof(DeviceModule);
 
-    public const string FlowModule = nameof(FlowModule);
+    public const string ProcessModule = nameof(ProcessModule);
+
+    public const string EquipmentModule = nameof(EquipmentModule);
 
     public const string VisionModule = nameof(VisionModule);
 }

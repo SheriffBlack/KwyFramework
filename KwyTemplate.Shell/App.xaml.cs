@@ -1,4 +1,4 @@
-﻿using Kwy.MVVM.Modularity;
+using Kwy.MVVM.Modularity;
 using Kwy.Device.Abstractions.Equipment;
 using Kwy.Logging.Serilog;
 using Kwy.MVVM.WPF;
@@ -15,7 +15,8 @@ using KwyTemplate.App.Views;
 using KwyTemplate.Contracts.Services;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device;
-using KwyTemplate.Flow;
+using KwyTemplate.Equipment;
+using KwyTemplate.Process;
 using KwyTemplate.MES.Cyntec;
 using KwyTemplate.Security;
 using KwyTemplate.Security.Options;
@@ -292,7 +293,8 @@ public partial class App : Kwy.MVVM.WPF.Application
         moduleCatalog.AddModule<SecurityModule>();
         moduleCatalog.AddModule<SuperDogSecurityModule>();
         moduleCatalog.AddModule<DeviceModule>();
-        moduleCatalog.AddModule<FlowModule>();
+        moduleCatalog.AddModule<ProcessModule>();
+        moduleCatalog.AddModule<EquipmentModule>();
         moduleCatalog.AddModule<MesCyntecModule>();
         moduleCatalog.AddModule<AppModule>();
     }

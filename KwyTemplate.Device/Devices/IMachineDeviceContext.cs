@@ -4,7 +4,7 @@ namespace KwyTemplate.Device.Devices;
 
 /// <summary>
 /// 通过设备ID为机器流提供对设备的类型化访问。
-/// Flow 代码使用此上下文，而不是直接创建设备。
+/// Process 代码使用此上下文，而不是直接创建设备。
 /// </summary>
 public interface IMachineDeviceContext
 {

@@ -8,7 +8,7 @@ using Kwy.MVVM.Core;
 using Kwy.MVVM.Regions;
 using KwyTemplate.App.Models;
 using KwyTemplate.Device;
-using KwyTemplate.Flow.Machines;
+using KwyTemplate.Process.Machines;
 
 using KwyTemplate.Contracts.Localization;
 namespace KwyTemplate.App.ViewModels;

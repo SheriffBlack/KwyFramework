@@ -8,8 +8,8 @@ using KwyTemplate.App.Models;
 using KwyTemplate.Contracts.Localization;
 using KwyTemplate.Device;
 using KwyTemplate.Device.Devices;
-using KwyTemplate.Flow.Machines;
-using KwyTemplate.Flow.Models;
+using KwyTemplate.Process.Machines;
+using KwyTemplate.Process.Models;
 
 namespace KwyTemplate.App.Services;
 

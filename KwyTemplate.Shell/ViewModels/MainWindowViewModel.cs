@@ -10,7 +10,7 @@ using KwyTemplate.Contracts.Navigation;
 using KwyTemplate.Security.Authentication;
 using KwyTemplate.Security.Identity;
 using KwyTemplate.Shell.Models;
-using System.Diagnostics;
+using DiagnosticsProcess = System.Diagnostics.Process;
 using System.Windows.Media;
 using Kwy.Device.PLC.Abstractions;
 using Kwy.UI.WPF.Components.Dialogs.Message;
@@ -62,7 +62,7 @@ public class MainWindowViewModel : BindableBase
 
         InitializeSelectedLanguage();
 
-        using (var process = Process.GetCurrentProcess())
+        using (var process = DiagnosticsProcess.GetCurrentProcess())
         {
             lastTotalProcessorTime = process.TotalProcessorTime;
             lastCpuCheckTime = DateTime.UtcNow;
@@ -237,7 +237,7 @@ public class MainWindowViewModel : BindableBase
 
     private StatusSnapshot CaptureStatusSnapshot()
     {
-        using var process = Process.GetCurrentProcess();
+        using var process = DiagnosticsProcess.GetCurrentProcess();
 
         var memoryMB = process.PrivateMemorySize64 / (1024f * 1024f);
         var currentMemory = (float)Math.Round(memoryMB, 2);
@@ -248,7 +248,7 @@ public class MainWindowViewModel : BindableBase
             currentCpu);
     }
 
-    private float CaptureCpuPercent(Process process)
+    private float CaptureCpuPercent(DiagnosticsProcess process)
     {
         var currentTotalProcessorTime = process.TotalProcessorTime;
         var currentCpuCheckTime = DateTime.UtcNow;

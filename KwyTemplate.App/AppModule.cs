@@ -18,6 +18,7 @@ using System.Windows;
 namespace KwyTemplate.App;
 
 [Module(ModuleName = ModuleNames.AppModule)]
+[ModuleDependency(ModuleNames.EquipmentModule)]
 public class AppModule : IModule
 {
     public void OnInitialized(IServiceProvider containerProvider)
