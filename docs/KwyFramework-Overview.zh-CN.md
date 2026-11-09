@@ -41,7 +41,7 @@ Kwy 不试图替代完整的 MES、ERP 或云端平台；它更关注设备侧�
 │  机台流程 / 产品工艺 / 客户需求 / 页面与业务规则       │
 ├──────────────────────────────────────────────────────┤
 │                  KwyTemplate 模板层                   │
-│ Shell / App / Device / Flow / Security / Vision       │
+│ Shell / App / Device / Process / Equipment / Security / Vision │
 ├──────────────────────────────────────────────────────┤
 │                    Kwy 框架基础层                     │
 │ MVVM / UI.WPF / Device.Core / Communicate.Core        │
@@ -168,7 +168,8 @@ Kwy.UI.WPF
 KwyTemplate.Shell      主窗口、标题栏、状态栏、模块承载
 KwyTemplate.App        主业务界面、导航与系统配置
 KwyTemplate.Device     设备配置、连接初始化、设备目录
-KwyTemplate.Flow       机台流程、设备角色与编排
+KwyTemplate.Process     工位、测试流程与结果判定
+KwyTemplate.Equipment   整机状态、生产命令准入与协调
 KwyTemplate.Security   本地用户、角色和权限
 KwyTemplate.Vision     视觉流程编辑与图像检测 UI
 ```

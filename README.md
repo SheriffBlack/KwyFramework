@@ -20,7 +20,7 @@ KwyFramework 是一套面向工业设备软件的模块化 .NET 框架，用于�
 | 文件 | `Kwy.Files.*` | JSON、INI 和 Excel 文件处理 |
 | 授权 | `Kwy.Licensing.*` | 软件授权与商业加密设备抽象 |
 | 视觉 | `Kwy.Vision.*` | 视觉抽象、几何模型和 HALCON 等实现 |
-| 应用模板 | `KwyTemplate.*` | Shell、App、Device、Flow、Security、MES 和 Vision 示例结构 |
+| 应用模板 | `KwyTemplate.*` | Shell、App、Device、Process、Equipment、Security、MES 和 Vision 示例结构 |
 
 各项目遵循“抽象与实现分离”的组织方式。通用代码优先依赖抽象包，最终应用再选择具体的设备、通信、数据库、日志或视觉实现。
 
@@ -42,7 +42,8 @@ KwyFramework 是一套面向工业设备软件的模块化 .NET 框架，用于�
 - [Serilog 日志](Kwy.Logging.Serilog/README.md)
 - [视觉抽象](Kwy.Vision.Abstractions/README.md)
 - [模板设备层](KwyTemplate.Device/README.md)
-- [模板流程层](KwyTemplate.Flow/README.md)
+- [模板流程层](KwyTemplate.Process/README.md)
+- [模板整机协调层](KwyTemplate.Equipment/README.md)
 - [模板视觉层](KwyTemplate.Vision/README.md)
 
 其余模块请直接查看对应项目目录中的 `README.md`。

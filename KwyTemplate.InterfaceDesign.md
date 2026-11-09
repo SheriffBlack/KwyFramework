@@ -1,4 +1,4 @@
-﻿# KwyTemplate 接口设计与现场修改指南
+# KwyTemplate 接口设计与现场修改指南
 
 本文档整理 `KwyTemplate.*` 项目中的主要接口：它们解决什么问题、由谁实现、谁来调用，以及上机验证发现行为不符合预期时，应该优先修改哪一层。
 
@@ -155,11 +155,11 @@ flowchart LR
 - 串口扫码枪无日志/未连接：查 Catalog 是否包含 Reel 扫码枪设备定义，查启动连接是否遍历到它。
 - 扫码内容显示错误：业务处理在 `CyntecReelScanWorkflow`，不要改底层串口读取。
 
-## Flow 层接口
+## Process 层接口
 
 ### IMachine
 
-位置：`KwyTemplate.Flow.Machines.IMachine`
+位置：`KwyTemplate.Process.Machines.IMachine`
 
 目的：机型的最小运行抽象。
 
@@ -192,7 +192,7 @@ flowchart LR
 
 ### IMachineResultProvider
 
-位置：`KwyTemplate.Flow.Machines.IMachineResultProvider`
+位置：`KwyTemplate.Process.Machines.IMachineResultProvider`
 
 目的：给 HomeView DataGrid 提供动态列和行。
 
@@ -213,7 +213,7 @@ flowchart LR
 
 ### IStationOperationMachine
 
-位置：`KwyTemplate.Flow.Machines.IStationOperationMachine`
+位置：`KwyTemplate.Process.Machines.IStationOperationMachine`
 
 目的：描述并执行某工站支持的操作，比如点检、校正。
 
@@ -235,7 +235,7 @@ flowchart LR
 
 ### IStationDataDeal
 
-位置：`KwyTemplate.Flow.DataDeals.IStationDataDeal`
+位置：`KwyTemplate.Process.DataDeals.IStationDataDeal`
 
 目的：一次工站数据采集。实现类负责读仪表或 IO，并更新 `TestStationModel.TestValues/TestJudges`。
 
@@ -257,7 +257,7 @@ flowchart LR
 
 ### IStationInstrumentOperation
 
-位置：`KwyTemplate.Flow.DataDeals.IStationInstrumentOperation`
+位置：`KwyTemplate.Process.DataDeals.IStationInstrumentOperation`
 
 目的：把工站中的仪表抽象成可触发、可读取测量值的对象。
 
@@ -280,7 +280,7 @@ flowchart LR
 
 ### IMeasurementJudgeService
 
-位置：`KwyTemplate.Flow.DataDeals.IMeasurementJudgeService`
+位置：`KwyTemplate.Process.DataDeals.IMeasurementJudgeService`
 
 目的：PC 软件判定服务。根据 `TestStationModel.TestLimits` 判断测量值是否 OK。
 
@@ -297,7 +297,7 @@ flowchart LR
 
 ### IMachineBraidSetupMachine
 
-位置：`KwyTemplate.Flow.Machines.IMachineBraidSetupMachine`
+位置：`KwyTemplate.Process.Machines.IMachineBraidSetupMachine`
 
 目的：机型支持把编带参数写入 PLC。App 只传通用 `MesWorkOrderTapeSetup`，具体 DM 点位由 Machine 内部决定。
 
@@ -318,7 +318,7 @@ flowchart LR
 
 ### IMachineProductionCounterResetMachine
 
-位置：`KwyTemplate.Flow.Machines.IMachineProductionCounterResetMachine`
+位置：`KwyTemplate.Process.Machines.IMachineProductionCounterResetMachine`
 
 目的：生产结束保存后，清 PLC 统计计数。
 
@@ -333,7 +333,7 @@ flowchart LR
 
 ### IMachineProductionSummaryMachine
 
-位置：`KwyTemplate.Flow.Machines.IMachineProductionSummaryMachine`
+位置：`KwyTemplate.Process.Machines.IMachineProductionSummaryMachine`
 
 目的：生产结束时保存 `D:\MES\Summary\{WorkOrderNo}.txt` 汇总文件。
 
@@ -348,7 +348,7 @@ flowchart LR
 
 ### IMachinePlcStopSignalMachine
 
-位置：`KwyTemplate.Flow.Machines.IMachinePlcStopSignalMachine`
+位置：`KwyTemplate.Process.Machines.IMachinePlcStopSignalMachine`
 
 目的：机型声明 PLC 哪些点位会触发停止/暂停/复位业务。
 
@@ -369,7 +369,7 @@ flowchart LR
 
 ### IIndustrialPcOnlineSignalMachine
 
-位置：`KwyTemplate.Flow.Machines.IIndustrialPcOnlineSignalMachine`
+位置：`KwyTemplate.Process.Machines.IIndustrialPcOnlineSignalMachine`
 
 目的：机型支持写入“工控机在线”信号。
 
@@ -384,7 +384,7 @@ flowchart LR
 
 ### ICyntecReelScanMachine
 
-位置：`KwyTemplate.Flow.Machines.ICyntecReelScanMachine`
+位置：`KwyTemplate.Process.Machines.ICyntecReelScanMachine`
 
 目的：机型声明支持 Cyntec Reel 扫码，并暴露触发扫码的 IO 输入通道。
 
@@ -404,7 +404,7 @@ flowchart LR
 
 ### IProductionRecordWriter
 
-位置：`KwyTemplate.Flow.Services.IProductionRecordWriter`
+位置：`KwyTemplate.Process.Services.IProductionRecordWriter`
 
 目的：生产数据文件后台写入器。生产线程只入队，后台单写入器顺序落盘。
 
@@ -797,7 +797,7 @@ Cyntec 当前行为：
 | 新功能 | 推荐位置 | 不推荐位置 |
 | --- | --- | --- |
 | 新机型设备清单 | `KwyTemplate.Device.Profiles.Machine_xxx_DeviceCatalog` | ViewModel |
-| 新机型 PLC 点位/工站 | `KwyTemplate.Flow.Machines.Machine_xxx` | XAML |
+| 新机型 PLC 点位/工站 | `KwyTemplate.Process.Machines.Machine_xxx` | XAML |
 | 新客户 MES | `KwyTemplate.MES.CustomerX` 实现 `MES.Abstract` 接口 | `MES.Abstract` 写客户逻辑 |
 | 新常驻轮询 | `KwyTemplate.App.Orchestration.IMachineRuntimeFeature` | HomeViewModel 构造函数 |
 | 新扫码规则 | 条码分类/Workflow/HomeViewModel 输入入口 | TextBox 绑定 |
