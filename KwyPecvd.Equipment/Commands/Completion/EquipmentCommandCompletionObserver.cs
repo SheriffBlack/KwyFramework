@@ -23,9 +23,7 @@ public sealed class EquipmentCommandCompletionObserver : IEquipmentCommandComple
         this.eventPublisher = eventPublisher;
     }
 
-    public Task ObserveAsync(
-        IEquipmentModuleController module,
-        CancellationToken cancellationToken = default)
+    public Task ObserveAsync(IEquipmentModuleController module, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(module);
 
@@ -94,26 +92,16 @@ public sealed class EquipmentCommandCompletionObserver : IEquipmentCommandComple
         {
             var equipmentEvent =
                 new EquipmentEvent(
-                    EventId:
-                        Guid.NewGuid().ToString("N"),
-                    Code:
-                        eventCode,
-                    OccurredAt:
-                        DateTimeOffset.UtcNow,
-                    EquipmentModuleId:
-                        equipmentModuleId,
-                    CommandContext:
-                        pending!.Context,
-                    CommandStatus:
-                        status,
-                    ResultCode:
-                        resultCode,
-                    Message:
-                        message);
+                    EventId: Guid.NewGuid().ToString("N"),
+                    Code: eventCode,
+                    OccurredAt: DateTimeOffset.UtcNow,
+                    EquipmentModuleId: equipmentModuleId,
+                    CommandContext: pending!.Context,
+                    CommandStatus: status,
+                    ResultCode: resultCode,
+                    Message: message);
 
-            await eventPublisher.PublishAsync(
-                equipmentEvent,
-                cancellationToken);
+            await eventPublisher.PublishAsync(equipmentEvent, cancellationToken);
         }
         catch
         {

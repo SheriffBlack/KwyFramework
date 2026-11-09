@@ -13,20 +13,17 @@ public interface IHardwareComponent
 {
     string Id { get; }
 
-    Task InitializeAsync(
-        CancellationToken cancellationToken = default);
+    Task InitializeAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 由RT设备循环周期调用。
     /// 推进斜坡、写入输出、读取反馈并刷新状态。
     /// </summary>
-    Task ExecuteCycleAsync(
-        CancellationToken cancellationToken = default);
+    Task ExecuteCycleAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 结束软件对该硬件组件的管理
     /// </summary>
     /// <returns></returns>
-    Task ShutdownAsync(
-        CancellationToken cancellationToken = default);
+    Task ShutdownAsync(CancellationToken cancellationToken = default);
 }

@@ -7,7 +7,5 @@ namespace KwyPecvd.Equipment.Commands;
 /// </summary>
 public interface IEquipmentCommandCompletionObserver
 {
-    Task ObserveAsync(
-        IEquipmentModuleController module,
-        CancellationToken cancellationToken = default);
+    Task ObserveAsync(IEquipmentModuleController module, CancellationToken cancellationToken = default);
 }

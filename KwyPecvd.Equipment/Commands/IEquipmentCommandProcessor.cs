@@ -5,7 +5,5 @@
 /// </summary>
 public interface IEquipmentCommandProcessor
 {
-    Task<EquipmentCommandResult> ExecuteAsync(
-        EquipmentCommandEnvelope envelope,
-        CancellationToken cancellationToken = default);
+    Task<EquipmentCommandResult> ExecuteAsync(EquipmentCommandEnvelope envelope, CancellationToken cancellationToken = default);
 }

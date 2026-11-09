@@ -1,4 +1,4 @@
-﻿using KwyPecvd.Device;
+using KwyPecvd.Device;
 using KwyPecvd.Device.Mfc;
 using KwyPecvd.Device.Mfc.Simulated;
 using KwyPecvd.Device.OnOffValve;
@@ -16,10 +16,12 @@ using KwyPecvd.Device.Thermal.TemperatureSensor;
 using KwyPecvd.Device.Thermal.TemperatureSensor.Simulated;
 using KwyPecvd.Device.VacuumPump;
 using KwyPecvd.Device.VacuumPump.Simulated;
+using KwyPecvd.Equipment.Commands;
+using KwyPecvd.Equipment.Events;
 using KwyPecvd.Process.Chamber;
 using KwyPecvd.Process.Chamber.Gas;
 using KwyPecvd.Process.Chamber.Vacuum;
-using KwyPecvd.Process.Equipment;
+using KwyPecvd.Process.Modules;
 using KwyPecvd.RT.Requests;
 using KwyPecvd.RT.Runtime;
 using KwyPecvd.RT.Simulated;
@@ -46,6 +48,23 @@ builder.Services.AddSingleton<
 builder.Services.AddSingleton<
     IEquipmentModuleRegistry,
     EquipmentModuleRegistry>();
+
+
+builder.Services.AddSingleton<
+    IPendingEquipmentCommandStore,
+    InMemoryPendingEquipmentCommandStore>();
+
+builder.Services.AddSingleton<
+    IEquipmentCommandProcessor,
+    EquipmentCommandProcessor>();
+
+builder.Services.AddSingleton<
+    IEquipmentEventPublisher,
+    LoggingEquipmentEventPublisher>();
+
+builder.Services.AddSingleton<
+    IEquipmentCommandCompletionObserver,
+    EquipmentCommandCompletionObserver>();
 
 //
 // 2. 注册RT后台周期服务
@@ -484,35 +503,66 @@ app.MapPost(
     "/commands/chambers/initialize",
     async (
         InitializeChamberRequest request,
-        IEquipmentModuleRegistry registry,
+        HttpContext httpContext,
+        IEquipmentCommandProcessor commandProcessor,
         CancellationToken cancellationToken) =>
     {
-        if (string.IsNullOrWhiteSpace(
-                request.ChamberId))
-        {
-            return Results.BadRequest(
-                CommandResult.Failure(
-                    ResultCodes.InvalidArgument,
-                    "Chamber id is required."));
-        }
+        var envelope =
+            CreateDiagnosticCommandEnvelope(
+                httpContext,
+                new InitializeEquipmentCommand(
+                    request.ChamberId));
 
-        if (!registry.TryGet<IChamberController>(
-                request.ChamberId,
-                out var chamber))
-        {
-            return Results.NotFound(
-                CommandResult.Failure(
-                    ResultCodes.NotReady,
-                    $"Chamber '{request.ChamberId}' " +
-                    "was not found."));
-        }
+        var result =
+            await commandProcessor.ExecuteAsync(
+                envelope,
+                cancellationToken);
 
-        var result = await chamber.InitializeAsync(
-            cancellationToken);
+        return ToHttpResult(result);
+    });
 
-        return result.Succeeded
-            ? Results.Ok(result)
-            : Results.BadRequest(result);
+app.MapPost(
+    "/commands/chambers/reset-fault",
+    async (
+        ResetChamberFaultRequest request,
+        HttpContext httpContext,
+        IEquipmentCommandProcessor commandProcessor,
+        CancellationToken cancellationToken) =>
+    {
+        var envelope =
+            CreateDiagnosticCommandEnvelope(
+                httpContext,
+                new ResetEquipmentFaultCommand(
+                    request.ChamberId));
+
+        var result =
+            await commandProcessor.ExecuteAsync(
+                envelope,
+                cancellationToken);
+
+        return ToHttpResult(result);
+    });
+
+app.MapPost(
+    "/commands/chambers/stop-process",
+    async (
+        StopChamberProcessRequest request,
+        HttpContext httpContext,
+        IEquipmentCommandProcessor commandProcessor,
+        CancellationToken cancellationToken) =>
+    {
+        var envelope =
+            CreateDiagnosticCommandEnvelope(
+                httpContext,
+                new StopProcessCommand(
+                    request.ChamberId));
+
+        var result =
+            await commandProcessor.ExecuteAsync(
+                envelope,
+                cancellationToken);
+
+        return ToHttpResult(result);
     });
 
 app.MapPost(
@@ -931,6 +981,66 @@ app.MapPost(
     });
 
 await app.RunAsync();
+
+static EquipmentCommandEnvelope CreateDiagnosticCommandEnvelope(
+    HttpContext httpContext,
+    IEquipmentCommand command)
+{
+    string requestId =
+        httpContext.Request.Headers
+            .TryGetValue(
+                "Idempotency-Key",
+                out var idempotencyKey) &&
+        !string.IsNullOrWhiteSpace(
+            idempotencyKey)
+            ? idempotencyKey.ToString()
+            : httpContext.TraceIdentifier;
+
+    string requester =
+        httpContext.User.Identity?.Name
+        ?? httpContext.Connection
+            .RemoteIpAddress?
+            .ToString()
+        ?? "anonymous";
+
+    return new EquipmentCommandEnvelope(
+        Context:
+            new EquipmentCommandContext(
+                RequestId: requestId,
+                Source: EquipmentCommandSource.Diagnostic,
+                Requester: requester,
+                RequestedAt: DateTimeOffset.UtcNow),
+        Command: command);
+}
+
+static IResult ToHttpResult(EquipmentCommandResult result)
+{
+    return result.Status switch
+    {
+        EquipmentCommandStatus.Accepted =>
+            Results.Accepted(value: result),
+
+        EquipmentCommandStatus.Completed =>
+            Results.Ok(result),
+
+        EquipmentCommandStatus.Rejected =>
+            Results.BadRequest(result),
+
+        EquipmentCommandStatus.Failed =>
+            Results.Json(
+                result,
+                statusCode:
+                    StatusCodes
+                        .Status500InternalServerError),
+
+        _ => Results.Json(
+            result,
+            statusCode:
+                StatusCodes
+                    .Status500InternalServerError)
+    };
+}
+
 
 /*
 

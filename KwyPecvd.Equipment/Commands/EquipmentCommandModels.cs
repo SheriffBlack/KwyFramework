@@ -43,9 +43,7 @@ public sealed record EquipmentCommandContext(
 /// <summary>
 /// 包装命令调用上下文和业务命令。
 /// </summary>
-public sealed record EquipmentCommandEnvelope(
-    EquipmentCommandContext Context,
-    IEquipmentCommand Command);
+public sealed record EquipmentCommandEnvelope(EquipmentCommandContext Context, IEquipmentCommand Command);
 
 /// <summary>
 /// 表示设备命令的业务处理状态。

@@ -31,8 +31,8 @@ SECS/GEM 优先作为 `KwyPecvd.RT` 内部模块，不增加第三个进程。
 ### 2.2 只有一套设备控制核心
 
 ```text
-Local UI Command ─┐
-                  ├→ EquipmentCommandProcessor → Equipment State Machine → Process → Device
+Local UI Command  ─┐
+                   ├→ EquipmentCommandProcessor → Equipment State Machine → Process → Device
 Factory Host RCMD ─┘
 ```
 

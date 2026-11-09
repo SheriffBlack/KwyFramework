@@ -5,6 +5,5 @@ namespace KwyPecvd.Device;
 /// </summary>
 public interface IResettableHardwareComponent
 {
-    Task<CommandResult> ResetAsync(
-        CancellationToken cancellationToken = default);
+    Task<CommandResult> ResetAsync(CancellationToken cancellationToken = default);
 }

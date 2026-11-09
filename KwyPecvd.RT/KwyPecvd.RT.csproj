@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\KwyPecvd.Contracts.Grpc\KwyPecvd.Contracts.Grpc.csproj" />
     <ProjectReference Include="..\KwyPecvd.Device\KwyPecvd.Device.csproj" />
+    <ProjectReference Include="..\KwyPecvd.Equipment\KwyPecvd.Equipment.csproj" />
     <ProjectReference Include="..\KwyPecvd.Process\KwyPecvd.Process.csproj" />
   </ItemGroup>
 

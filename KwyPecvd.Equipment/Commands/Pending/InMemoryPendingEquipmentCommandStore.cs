@@ -9,14 +9,11 @@ public sealed class InMemoryPendingEquipmentCommandStore : IPendingEquipmentComm
 {
     private readonly ConcurrentDictionary< CommandKey,PendingEquipmentCommand> commands = new();
 
-    public bool TryAdd(
-        PendingEquipmentCommand command)
+    public bool TryAdd(PendingEquipmentCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var key = new CommandKey(
-            command.EquipmentModuleId,
-            command.CommandTypeCode);
+        var key = new CommandKey(command.EquipmentModuleId, command.CommandTypeCode);
 
         return commands.TryAdd(key, command);
     }
@@ -26,21 +23,14 @@ public sealed class InMemoryPendingEquipmentCommandStore : IPendingEquipmentComm
         string commandTypeCode,
         string requestId)
     {
-        var key = new CommandKey(
-            equipmentModuleId,
-            commandTypeCode);
+        var key = new CommandKey(equipmentModuleId, commandTypeCode);
 
-        if (!commands.TryGetValue(
-                key,
-                out var current))
+        if (!commands.TryGetValue(key,out var current))
         {
             return false;
         }
 
-        if (!string.Equals(
-                current.RequestId,
-                requestId,
-                StringComparison.Ordinal))
+        if (!string.Equals(current.RequestId, requestId, StringComparison.Ordinal))
         {
             return false;
         }
@@ -58,13 +48,9 @@ public sealed class InMemoryPendingEquipmentCommandStore : IPendingEquipmentComm
         string commandTypeCode,
         out PendingEquipmentCommand? command)
     {
-        var key = new CommandKey(
-            equipmentModuleId,
-            commandTypeCode);
+        var key = new CommandKey(equipmentModuleId, commandTypeCode);
 
-        return commands.TryRemove(
-            key,
-            out command);
+        return commands.TryRemove(key, out command);
     }
 
     private readonly record struct CommandKey(

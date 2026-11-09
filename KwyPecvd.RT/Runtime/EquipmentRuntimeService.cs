@@ -1,5 +1,6 @@
-﻿using KwyPecvd.Device;
-using KwyPecvd.Process.Equipment;
+using KwyPecvd.Device;
+using KwyPecvd.Equipment.Commands;
+using KwyPecvd.Process.Modules;
 
 namespace KwyPecvd.RT.Runtime;
 
@@ -15,9 +16,14 @@ EquipmentRuntimeService
    │         └─ 更新 Snapshot
    │
    └─ 2. 遍历 EquipmentModuleRegistry
-        └─ module.ExecuteCycleAsync()
-             ├─ 读取硬件 Snapshot --> 每个子系统负责读取并解释自己所需的 Component Snapshot
-             └─ 推进 PM 状态机
+         ├─ module.ExecuteCycleAsync()
+         │    ├─ 读取硬件 Snapshot
+         │    └─ 推进 Process 状态机
+         │
+         └─ commandCompletionObserver.ObserveAsync()
+              ├─ 读取模块最终状态
+              ├─ 完成 Pending Command
+              └─ 发布 Equipment Event
 
 ChamberController
 ├─ ChamberGasSystem
@@ -44,6 +50,7 @@ ChamberController
 
 public sealed class EquipmentRuntimeService : BackgroundService
 {
+    private readonly IEquipmentCommandCompletionObserver commandCompletionObserver;
     private readonly IHardwareComponentRegistry hardwareRegistry;
 
     private readonly IEquipmentModuleRegistry moduleRegistry;
@@ -53,11 +60,16 @@ public sealed class EquipmentRuntimeService : BackgroundService
     public EquipmentRuntimeService(
         IHardwareComponentRegistry hardwareRegistry,
         IEquipmentModuleRegistry moduleRegistry,
+        IEquipmentCommandCompletionObserver commandCompletionObserver,
         ILogger<EquipmentRuntimeService> logger)
     {
-        this.hardwareRegistry = hardwareRegistry;
-        this.moduleRegistry = moduleRegistry;
-        this.logger = logger;
+        this.hardwareRegistry = hardwareRegistry ?? throw new ArgumentNullException( nameof(hardwareRegistry));
+
+        this.moduleRegistry = moduleRegistry ?? throw new ArgumentNullException(nameof(moduleRegistry));
+
+        this.commandCompletionObserver = commandCompletionObserver ?? throw new ArgumentNullException(nameof(commandCompletionObserver));
+
+        this.logger = logger ?? throw new ArgumentNullException( nameof(logger));
     }
 
     public override async Task StartAsync(CancellationToken cancellationToken)
@@ -122,6 +134,8 @@ public sealed class EquipmentRuntimeService : BackgroundService
 
         foreach (var component in components)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
                 await component.ExecuteCycleAsync(
@@ -147,20 +161,18 @@ public sealed class EquipmentRuntimeService : BackgroundService
     /// <summary>模块周期 </summary>
     private async Task ExecuteModuleCycleAsync(CancellationToken cancellationToken)
     {
-        var modules = moduleRegistry
-            .GetAll<ICyclicEquipmentModuleController>()
-            .ToArray();
+        var modules = moduleRegistry.GetAll<ICyclicEquipmentModuleController>().ToArray();
 
         foreach (var module in modules)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
-                await module.ExecuteCycleAsync(
-                    cancellationToken);
+                // Process 根据硬件反馈推进模块状态机。
+                await module.ExecuteCycleAsync(cancellationToken);
             }
-            catch (OperationCanceledException)
-                when (cancellationToken
-                    .IsCancellationRequested)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 throw;
             }
@@ -168,8 +180,33 @@ public sealed class EquipmentRuntimeService : BackgroundService
             {
                 logger.LogError(
                     exception,
-                    "Equipment module {ModuleId} " +
-                    "cycle failed.",
+                    "Equipment module {ModuleId} cycle failed.",
+                    module.Id);
+
+                // 本周期状态推进失败，不能观察旧 Snapshot。
+                continue;
+            }
+
+            // 模块周期完成期间，也可能刚刚发生取消。
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                // Equipment 根据推进后的最终状态完成异步命令。
+                await commandCompletionObserver.ObserveAsync(
+                    module,
+                    cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(
+                    exception,
+                    "Equipment command completion observation " +
+                    "failed for module {ModuleId}.",
                     module.Id);
             }
         }

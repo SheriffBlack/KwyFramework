@@ -6,30 +6,23 @@ namespace KwyPecvd.Equipment.Commands;
 /// <summary>
 /// 设备业务命令的默认处理器。
 /// </summary>
-public sealed class EquipmentCommandProcessor
-    : IEquipmentCommandProcessor
+public sealed class EquipmentCommandProcessor : IEquipmentCommandProcessor
 {
     private readonly IEquipmentModuleRegistry moduleRegistry;
 
     private readonly IPendingEquipmentCommandStore pendingCommandStore;
 
-    public EquipmentCommandProcessor(
-        IEquipmentModuleRegistry moduleRegistry,
-        IPendingEquipmentCommandStore pendingCommandStore)
+    public EquipmentCommandProcessor(IEquipmentModuleRegistry moduleRegistry, IPendingEquipmentCommandStore pendingCommandStore)
     {
-        ArgumentNullException.ThrowIfNull(
-            moduleRegistry);
+        ArgumentNullException.ThrowIfNull(moduleRegistry);
 
-        ArgumentNullException.ThrowIfNull(
-            pendingCommandStore);
+        ArgumentNullException.ThrowIfNull(pendingCommandStore);
 
         this.moduleRegistry = moduleRegistry;
         this.pendingCommandStore = pendingCommandStore;
     }
 
-    public Task<EquipmentCommandResult> ExecuteAsync(
-        EquipmentCommandEnvelope envelope,
-        CancellationToken cancellationToken = default)
+    public Task<EquipmentCommandResult> ExecuteAsync(EquipmentCommandEnvelope envelope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
@@ -80,8 +73,7 @@ public sealed class EquipmentCommandProcessor
             return failure;
         }
 
-        var result = await chamber!.InitializeAsync(
-            cancellationToken);
+        var result = await chamber!.InitializeAsync(cancellationToken);
 
         return ToEquipmentCommandResult(
             envelope.Context.RequestId,
@@ -105,8 +97,7 @@ public sealed class EquipmentCommandProcessor
             return failure;
         }
 
-        var result = await chamber!.ResetFaultAsync(
-            cancellationToken);
+        var result = await chamber!.ResetFaultAsync(cancellationToken);
 
         return ToEquipmentCommandResult(
             envelope.Context.RequestId,
@@ -132,10 +123,8 @@ public sealed class EquipmentCommandProcessor
         var pending =
             new PendingEquipmentCommand(
                 Context: envelope.Context,
-                CommandTypeCode:
-                    EquipmentCommandTypeCodes.StopProcess,
-                EquipmentModuleId:
-                    command.EquipmentModuleId,
+                CommandTypeCode: EquipmentCommandTypeCodes.StopProcess,
+                EquipmentModuleId: command.EquipmentModuleId,
                 TrackedAt: DateTimeOffset.UtcNow);
 
         if (!pendingCommandStore.TryAdd(pending))
@@ -143,8 +132,7 @@ public sealed class EquipmentCommandProcessor
             return new EquipmentCommandResult(
                 envelope.Context.RequestId,
                 EquipmentCommandStatus.Rejected,
-                EquipmentCommandResultCodes
-                    .AlreadyPending,
+                EquipmentCommandResultCodes.AlreadyPending,
                 $"Equipment module " +
                 $"'{command.EquipmentModuleId}' " +
                 "already has a pending stop command.");
@@ -152,16 +140,13 @@ public sealed class EquipmentCommandProcessor
 
         try
         {
-            var result =
-                await chamber!.StopProcessAsync(
-                    cancellationToken);
+            var result = await chamber!.StopProcessAsync(cancellationToken);
 
             if (!result.Succeeded)
             {
                 pendingCommandStore.TryRemove(
                     command.EquipmentModuleId,
-                    EquipmentCommandTypeCodes
-                        .StopProcess,
+                    EquipmentCommandTypeCodes.StopProcess,
                     envelope.Context.RequestId);
 
                 return ToEquipmentCommandResult(
@@ -195,8 +180,7 @@ public sealed class EquipmentCommandProcessor
     {
         chamber = null;
 
-        if (string.IsNullOrWhiteSpace(
-                equipmentModuleId))
+        if (string.IsNullOrWhiteSpace(equipmentModuleId))
         {
             return new EquipmentCommandResult(
                 requestId,
@@ -205,9 +189,7 @@ public sealed class EquipmentCommandProcessor
                 "Equipment module id is required.");
         }
 
-        if (!moduleRegistry.TryGet<IChamberController>(
-                equipmentModuleId,
-                out chamber))
+        if (!moduleRegistry.TryGet<IChamberController>(equipmentModuleId, out chamber))
         {
             return new EquipmentCommandResult(
                 requestId,
