@@ -1,7 +1,7 @@
 using Kwy.UI.WPF.Controls;
-using Kwy.UI.WPF.Components.Logging;
 using KwyTemplate.App.Input;
 using KwyTemplate.Contracts.Services;
+using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Windows.Interop;
 
@@ -24,7 +24,7 @@ public partial class MainWindow : KwyWindow
     private const int SysCommandMask = 0xFFF0;
     private readonly IRawInputBarcodeReceiver rawInputBarcodeReceiver;
     private readonly IApplicationCloseGuard applicationCloseGuard;
-    private readonly KwyLogService logService;
+    private readonly ILogger<MainWindow> developerLog;
     private HwndSource? hwndSource;
     private bool isCloseApproved;
     private bool isCloseValidationInProgress;
@@ -32,11 +32,11 @@ public partial class MainWindow : KwyWindow
     public MainWindow(
         IRawInputBarcodeReceiver rawInputBarcodeReceiver,
         IApplicationCloseGuard applicationCloseGuard,
-        KwyLogService logService)
+        ILogger<MainWindow> developerLog)
     {
         this.rawInputBarcodeReceiver = rawInputBarcodeReceiver ?? throw new ArgumentNullException(nameof(rawInputBarcodeReceiver));
         this.applicationCloseGuard = applicationCloseGuard ?? throw new ArgumentNullException(nameof(applicationCloseGuard));
-        this.logService = logService ?? throw new ArgumentNullException(nameof(logService));
+        this.developerLog = developerLog ?? throw new ArgumentNullException(nameof(developerLog));
         InitializeComponent();
 
         SourceInitialized += MainWindow_SourceInitialized;
@@ -63,7 +63,10 @@ public partial class MainWindow : KwyWindow
             message is WmKeyDown or WmKeyUp or WmChar or WmSysKeyDown or WmSysKeyUp)
         {
             handled = true;
-            logService.Warn($"Blocked MainWindow keyboard message during raw barcode scan: Message=0x{message:X4}, VirtualKey=0x{wParam.ToInt64() & 0xFFFF:X2}.");
+            developerLog.LogWarning(
+                "Blocked MainWindow keyboard message during raw barcode scan: Message={Message}, VirtualKey={VirtualKey}",
+                message,
+                wParam.ToInt64() & 0xFFFF);
             return IntPtr.Zero;
         }
 
@@ -82,18 +85,26 @@ public partial class MainWindow : KwyWindow
                 (command == ScMinimize || command == ScMaximize || command == ScRestore))
             {
                 handled = true;
-                logService.Warn($"Blocked MainWindow WM_SYSCOMMAND during raw barcode scan: 0x{command:X4} ({commandName}).");
+                developerLog.LogWarning(
+                    "Blocked MainWindow WM_SYSCOMMAND during raw barcode scan: Command={Command}, CommandName={CommandName}",
+                    command,
+                    commandName);
                 return IntPtr.Zero;
             }
 
-            logService.Info($"MainWindow WM_SYSCOMMAND: 0x{command:X4}" + (string.IsNullOrEmpty(commandName) ? string.Empty : $" ({commandName})"));
+            developerLog.LogDebug(
+                "MainWindow WM_SYSCOMMAND: Command={Command}, CommandName={CommandName}",
+                command,
+                commandName);
         }
 
         return IntPtr.Zero;
     }
 
     private void MainWindow_StateChanged(object? sender, EventArgs e)
-        => logService.Info($"MainWindow.StateChanged: WindowState={WindowState}");
+        => developerLog.LogDebug(
+            "MainWindow state changed: WindowState={WindowState}",
+            WindowState);
 
     private void RawInputBarcodeReceiver_DiagnosticOccurred(object? sender, RawInputBarcodeDiagnosticEventArgs e)
     {
@@ -105,7 +116,7 @@ public partial class MainWindow : KwyWindow
             _ => "Raw barcode diagnostic event received."
         };
 
-        logService.Info(message);
+        developerLog.LogDebug("{Message}", message);
     }
 
     private void MainWindow_Closed(object? sender, EventArgs e)

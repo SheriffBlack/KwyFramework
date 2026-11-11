@@ -1,8 +1,8 @@
-﻿using Kwy.UI.WPF.Components.Logging;
+using Kwy.UI.WPF.Components.ActivityLog;
 
 namespace KwyTemplate.Vision.ViewModels;
 
-public sealed class FlowRunLogEntry : IKwyLogEntry
+public sealed class FlowRunLogEntry : IKwyActivityLogEntry
 {
     public DateTime Time { get; init; } = DateTime.Now;
 

@@ -25,7 +25,7 @@ LogView 不建议直接显示完整异常堆栈。
 
 | 层级 | 面向对象 | 职责 | 持久化 |
 | --- | --- | --- | --- |
-| LogView / KwyLogService | 用户、现场人员 | 实时显示关键事件摘要 | 当前为内存日志 |
+| LogView / KwyActivityLogService | 用户、现场人员 | 实时显示关键事件摘要 | 当前为内存活动摘要 |
 | Serilog / ILogger<T> | 开发者、售后工程师 | 记录完整异常和上下文 | 已写入文件 |
 
 LogView 关注清晰、低噪声、可理解。
@@ -42,7 +42,7 @@ LoadView 本身不直接向 LogView 写日志。
 DeviceStartupConnector
     -> StartupProgressService.Report(...)
     -> App.xaml.cs / WireStartupProgressLog(...)
-    -> KwyLogService.AddStartupProgress(...)
+    -> KwyActivityLogService.AddStartupProgress(...)
     -> LogView 显示
 ```
 
@@ -60,7 +60,7 @@ DeviceBase / HslPlcDevice / InstrumentBase / SerialBarcodeScannerDevice
     -> DeviceEventForwarder.PublishDeviceOperationAsync(...)
     -> IEquipmentEventSink.PublishAsync(...)
     -> LogEquipmentEventSink
-    -> KwyLogService.Add(...)
+    -> KwyActivityLogService.Add(...)
     -> LogView 显示
 ```
 
@@ -71,7 +71,7 @@ DeviceBase.RaiseStateChanged(...)
     -> DeviceEventForwarder.PublishStateChangedAsync(...)
     -> IEquipmentEventSink.PublishAsync(...)
     -> LogEquipmentEventSink
-    -> KwyLogService.Add(...)
+    -> KwyActivityLogService.Add(...)
     -> LogView 显示
 ```
 
@@ -187,11 +187,11 @@ private static readonly TimeSpan DuplicateSuppressWindow = TimeSpan.FromSeconds(
 
 LogView 是实时观察窗口，不承担 7*24 小时历史追溯职责。
 如果 UI 集合无限追加，长时间运行后会持续占用内存，并且会增加界面刷新、滚动、虚拟化维护的压力。
-因此当前将内存缓存上限收敛在 KwyLogService 内部，而不是分散到 View、ViewModel 或业务模块。
+因此当前将内存缓存上限收敛在 KwyActivityLogService 内部，而不是分散到 View、ViewModel 或业务模块。
 
 当前规则：
 
-- KwyLogService 默认最多保留最近 2000 条日志。
+- KwyActivityLogService 默认最多保留最近 2000 条活动摘要。
 - MaxCount 可配置，但最小值保护为 1，避免误配置导致集合异常。
 - 新日志加入后会自动裁剪，删除 Sequence 最小的最旧日志。
 - 裁剪按日志产生顺序处理，不按界面显示索引处理。
@@ -201,14 +201,14 @@ LogView 是实时观察窗口，不承担 7*24 小时历史追溯职责。
 对应代码：
 
 ```text
-Kwy.UI.WPF.Components/Logging/KwyLogService.cs
+Kwy.UI.WPF.Components/ActivityLog/KwyActivityLogService.cs
 ```
 
-长期追溯继续交给文件日志：
+长期追溯继续交给 Serilog 开发诊断日志：
 
 ```text
-Logs/yyyyMMdd.txt
 Logs/Developer/yyyyMMdd.txt
+Logs/Developer/yyyyMMdd.json
 ```
 
 这样设计后，7*24 小时运行时，LogView 的内存占用是有上限的；完整历史仍可通过文件日志查询。
@@ -216,14 +216,14 @@ Logs/Developer/yyyyMMdd.txt
 ## 8. 关键类职责
 
 - StartupProgressService：记录启动项目、百分比，并提供 IsCompleted。
-- KwyLogService：保存 UI 实时日志集合，为 LogView 提供数据源。
+- KwyActivityLogService：保存 UI 活动摘要集合，为 LogView 提供数据源。
 - LogEquipmentEventSink：筛选设备事件，格式化为用户可读日志，并做去重。
 - DeviceEventForwarder：订阅设备事件，并发布到 IEquipmentEventSink，同时维护设备连接和错误报警。
 - DeviceBase：统一设备生命周期和操作事件上报。
 
 ## 9. 为什么设备层不直接写 LogView
 
-不建议设备直接依赖 KwyLogService 或 LogView。
+不建议设备直接依赖 KwyActivityLogService 或 LogView。
 
 原因：
 
@@ -248,7 +248,7 @@ UI 层只负责展示
 当前 LogEquipmentEventSink 已同时写两条链路：
 
 ```text
-用户摘要日志 -> KwyLogService -> LogView
+用户活动摘要 -> KwyActivityLogService -> LogView
 开发者完整日志 -> ILogger<T> / Serilog -> 文件
 ```
 
@@ -266,16 +266,15 @@ UI 层只负责展示
 当前落地文件路径：
 
 ```text
-Logs/yyyyMMdd.txt
 Logs/Developer/yyyyMMdd.txt
 Logs/Developer/yyyyMMdd.json
 ```
 
-其中 `Logs/yyyyMMdd.txt` 面向用户和现场人员，记录摘要信息；`Logs/Developer/yyyyMMdd.txt` 和 `.json` 面向开发者，记录完整异常和上下文。
+LogView 面向用户和现场人员，仅保存有上限的内存活动摘要；`Logs/Developer/yyyyMMdd.txt` 和 `.json` 面向开发者，负责长期追溯。原始异常在仍持有 `Exception` 的发生源通过 `ILogger<T>` 写入，EquipmentEvent 继续保持可序列化。
 
 ## 11. 开发注意事项
 
-1. 不要在 ViewModel、Feature、Orchestrator 中到处直接调用 KwyLogService.Add 记录硬件日志。
+1. 不要在 ViewModel、Feature、Orchestrator 中到处直接调用 KwyActivityLogService.Add 记录硬件日志。
 2. 设备相关日志优先通过 OperationOccurred、DeviceEventForwarder、IEquipmentEventSink 链路。
 3. 启动进度继续走 StartupProgressService。
 4. 不要在设备连接策略里再写一套启动日志。
@@ -284,7 +283,7 @@ Logs/Developer/yyyyMMdd.json
 7. LogView 显示用户可读摘要。
 8. 完整异常后续进入 Serilog。
 9. 运行期后台重连不弹 LoadView，只进入 LogView。
-10. KwyLogService 只作为实时 UI 缓冲区使用，不要依赖它保存历史日志。
+10. KwyActivityLogService 只作为实时 UI 活动摘要缓冲区使用，不要依赖它保存历史日志。
 11. 中文文档和源码统一使用 UTF-8 保存。
 
 ## 12. 总结
@@ -301,9 +300,7 @@ Shell 层通过 LogEquipmentEventSink 统一筛选和格式化日志。
 ## 13. 当前落地配置
 
 - Shell 通过 AddSerilogLogging 把 Serilog 注册为 Microsoft.Extensions.Logging Provider。
-- 普通用户摘要日志：Logs/yyyyMMdd.txt。
 - 开发者日志：Logs/Developer/yyyyMMdd.txt 与 Logs/Developer/yyyyMMdd.json。
-- 普通用户摘要日志保留 31 天。
 - 开发者日志保留文件数量：31。
-- 设备事件中的完整异常通过 Exception 属性写入 Serilog。
+- 设备原始异常由 DeviceEventForwarder 在发生源通过 ILogger 写入 Serilog；EquipmentEvent 中的异常文本只作为可序列化上下文。
 - App.xaml.cs 已记录 UI 未处理异常、未观察 Task 异常、AppDomain 未处理异常。

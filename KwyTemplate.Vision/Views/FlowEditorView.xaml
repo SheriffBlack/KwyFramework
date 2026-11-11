@@ -907,7 +907,7 @@
                                     CanClose="False"
                                     CanFloat="True"
                                     ContentId="RunLog">
-                                    <kwyc:KwyLogListView Background="{DynamicResource VisionPanelBrush}" ItemsSource="{Binding ExecutionLogs}" />
+                                    <kwyc:KwyActivityLogListView Background="{DynamicResource VisionPanelBrush}" ItemsSource="{Binding ExecutionLogs}" />
                                 </xclayout:LayoutAnchorable>
                                 <xclayout:LayoutAnchorable
                                     Title="运行结果 (Result)"

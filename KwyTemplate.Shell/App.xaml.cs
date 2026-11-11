@@ -6,7 +6,7 @@ using Kwy.MVVM.WPF.Dialogs;
 using Kwy.MVVM.WPF.Mvvm;
 using Kwy.MVVM.WPF.Regions;
 using Kwy.UI.WPF.Components;
-using Kwy.UI.WPF.Components.Logging;
+using Kwy.UI.WPF.Components.ActivityLog;
 using Kwy.UI.Services.FileDialogs;
 using Kwy.UI.WPF.Services.FileDialogs;
 using KwyTemplate.App;
@@ -112,8 +112,7 @@ public partial class App : Kwy.MVVM.WPF.Application
         }
 
         var startupProgress = serviceProvider.GetRequiredService<StartupProgressService>();
-        var logService = serviceProvider.GetRequiredService<KwyLogService>();
-        var userLogFile = serviceProvider.GetRequiredService<UserVisibleLogFileService>();
+        var activityLog = serviceProvider.GetRequiredService<KwyActivityLogService>();
         var developerLog = serviceProvider.GetRequiredService<ILogger<App>>();
         startupProgress.ProgressChanged += (_, args) =>
         {
@@ -128,8 +127,7 @@ public partial class App : Kwy.MVVM.WPF.Application
                 level = "Error";
             }
 
-            logService.AddStartupProgress(level, message, args.ProgressValue);
-            userLogFile.Add(level, message);
+            activityLog.AddStartupProgress(level, message, args.ProgressValue);
             WriteStartupDeveloperLog(developerLog, level, message);
         };
         startupProgressLogWired = true;
@@ -167,7 +165,6 @@ public partial class App : Kwy.MVVM.WPF.Application
         services.AddSingleton<ProgramSettingsStore>();
         services.AddSingleton<ILocalizationService, ResourceDictionaryLocalizationService>();
         services.AddSingleton<StartupProgressService>();
-        services.AddSingleton<UserVisibleLogFileService>();
         services.AddSingleton<IEquipmentEventSink, LogEquipmentEventSink>();
 
         services.AddSingleton(new SecuritySessionOptions
@@ -225,31 +222,27 @@ public partial class App : Kwy.MVVM.WPF.Application
         cacheManager.DefaultCacheExpiration = TimeSpan.FromHours(4);
         cacheManager.CleanupInterval = TimeSpan.FromHours(1);
 
-        var logService = serviceProvider.GetRequiredService<KwyLogService>();
-        var userLogFile = serviceProvider.GetRequiredService<UserVisibleLogFileService>();
+        var activityLog = serviceProvider.GetRequiredService<KwyActivityLogService>();
         var developerLog = serviceProvider.GetRequiredService<ILogger<App>>();
 
         cacheManager.ViewCached += item =>
         {
             string message = string.Concat("[Cache] ", item.ViewName);
-            logService.Info(message);
-            userLogFile.Add("Info", message);
+            activityLog.Info(message);
             developerLog.LogInformation("[Cache] View cached: {View}", item.ViewName);
         };
 
         cacheManager.ViewRestored += item =>
         {
             string message = string.Concat("[Cache] ", item.ViewName);
-            logService.Info(message);
-            userLogFile.Add("Info", message);
+            activityLog.Info(message);
             developerLog.LogInformation("[Cache] View restored: {View}", item.ViewName);
         };
 
         cacheManager.ViewDestroyed += item =>
         {
             string message = string.Concat("[Cache] ", item.ViewName);
-            logService.Warn(message);
-            userLogFile.Add("Warn", message);
+            activityLog.Warn(message);
             developerLog.LogWarning("[Cache] View destroyed: {View}", item.ViewName);
         };
 

@@ -710,12 +710,12 @@ Cyntec 当前行为：
 
 位置：当前实现为 `LogEquipmentEventSink`
 
-目的：接收设备连接、参数写入、异常等事件，写入 LogView 和持久化日志。
+目的：接收设备连接、参数写入、异常等事件，写入 LogView 活动摘要和开发诊断日志。
 
 现场不符合预期时怎么改：
 
 - 设备读取频繁刷日志：不要在读取成功时发事件；只记录读取失败、写入失败、参数写入成功/失败等约定事件。
-- 用户日志和开发者日志分离：用户日志走 LogView/`Logs/yyyyMMdd.txt`，开发者异常走 `Logs/Developer/yyyyMMdd.txt`。
+- 用户活动摘要和开发者日志分离：用户摘要只进入 LogView 内存缓冲，开发者异常进入 `Logs/Developer/yyyyMMdd.txt` 和 `.json`。
 
 ## 上机验证不符合预期时的修改路径
 
