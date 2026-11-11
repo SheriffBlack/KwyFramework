@@ -1,47 +1,47 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Windows;
 using System.Windows.Controls;
 
-namespace Kwy.UI.WPF.Components.Logging;
+namespace Kwy.UI.WPF.Components.ActivityLog;
 
-public partial class KwyLogListView : UserControl
+public partial class KwyActivityLogListView : UserControl
 {
     public static readonly DependencyProperty ItemsSourceProperty =
         DependencyProperty.Register(
             nameof(ItemsSource),
             typeof(IEnumerable),
-            typeof(KwyLogListView),
+            typeof(KwyActivityLogListView),
             new PropertyMetadata(null));
 
     public static readonly DependencyProperty AutoScrollProperty =
         DependencyProperty.Register(
             nameof(AutoScroll),
             typeof(bool),
-            typeof(KwyLogListView),
+            typeof(KwyActivityLogListView),
             new PropertyMetadata(true));
 
     public static readonly DependencyProperty ShowTimeProperty =
         DependencyProperty.Register(
             nameof(ShowTime),
             typeof(bool),
-            typeof(KwyLogListView),
+            typeof(KwyActivityLogListView),
             new PropertyMetadata(true));
 
     public static readonly DependencyProperty ShowLevelProperty =
         DependencyProperty.Register(
             nameof(ShowLevel),
             typeof(bool),
-            typeof(KwyLogListView),
+            typeof(KwyActivityLogListView),
             new PropertyMetadata(true));
 
     public static readonly DependencyProperty MessageTextWrappingProperty =
         DependencyProperty.Register(
             nameof(MessageTextWrapping),
             typeof(TextWrapping),
-            typeof(KwyLogListView),
+            typeof(KwyActivityLogListView),
             new PropertyMetadata(TextWrapping.NoWrap));
 
-    public KwyLogListView()
+    public KwyActivityLogListView()
     {
         InitializeComponent();
     }
@@ -76,3 +76,4 @@ public partial class KwyLogListView : UserControl
         set => SetValue(MessageTextWrappingProperty, value);
     }
 }
+

@@ -1,9 +1,9 @@
-﻿namespace Kwy.UI.WPF.Components.Logging;
+namespace Kwy.UI.WPF.Components.ActivityLog;
 
 /// <summary>
-/// Kwy UI 通用日志项。
+/// Kwy UI 通用活动日志项。
 /// </summary>
-public sealed class KwyLogEntry : IKwyLogEntry
+public sealed class KwyActivityLogEntry : IKwyActivityLogEntry
 {
     public DateTime Time { get; init; } = DateTime.Now;
 
@@ -17,3 +17,4 @@ public sealed class KwyLogEntry : IKwyLogEntry
 
     public string TimeText => Time.ToString("HH:mm:ss.fff");
 }
+

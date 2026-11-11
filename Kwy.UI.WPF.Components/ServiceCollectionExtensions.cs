@@ -3,7 +3,7 @@ using Kwy.MVVM.WPF.Mvvm;
 using Kwy.UI.WPF.Components.Dialogs;
 using Kwy.UI.WPF.Components.Dialogs.Input;
 using Kwy.UI.WPF.Components.Dialogs.Message;
-using Kwy.UI.WPF.Components.Logging;
+using Kwy.UI.WPF.Components.ActivityLog;
 using Kwy.UI.WPF.Components.Toasts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,7 +21,7 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddSingleton<KwyLogService>();
+        services.AddSingleton<KwyActivityLogService>();
         services.AddSingleton<IDialogMessageService, DialogMessageService>();
         services.AddSingleton<IInputDialogService, InputDialogService>();
         services.AddSingleton<IToastMessageService, ToastMessageService>();

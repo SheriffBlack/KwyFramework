@@ -5,7 +5,7 @@ using Kwy.MVVM.Core;
 namespace Kwy.UI.WPF.Components.PropertyGrid;
 
 /// <summary>
-/// Dynamic property group used by <see cref="KwyPropertyGrid"/>.
+/// <see cref="KwyPropertyGrid"/> 使用的动态属性分组模型。
 /// </summary>
 public sealed class PropertyGroupModel : BindableBase
 {

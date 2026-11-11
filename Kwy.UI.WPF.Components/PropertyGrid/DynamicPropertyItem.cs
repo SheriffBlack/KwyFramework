@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Globalization;
-using System.Linq.Expressions;
 using System.Reflection;
 using Application = System.Windows.Application;
 using Kwy.ComponentModel;
@@ -11,7 +10,7 @@ using Kwy.ComponentModel.Metadata;
 namespace Kwy.UI.WPF.Components.PropertyGrid;
 
 /// <summary>
-/// UI binding model for one reflected property.
+/// 单个反射属性对应的 UI 绑定模型。
 /// </summary>
 public sealed class DynamicPropertyItem : BindableBase
 {
@@ -38,15 +37,19 @@ public sealed class DynamicPropertyItem : BindableBase
         ArgumentNullException.ThrowIfNull(metadata);
 
         propertyInfo = metadata.Property;
-        getter = BuildGetter(propertyInfo);
-        setter = metadata.IsReadOnly ? null : BuildSetter(propertyInfo);
+        getter = PropertyAccessorCache.GetGetter(propertyInfo);
+        setter = metadata.IsReadOnly
+            ? null
+            : PropertyAccessorCache.GetSetter(propertyInfo);
         disableWhen = propertyInfo.GetCustomAttribute<DisableWhenAttribute>();
 
         unitPropertyInfo = source.GetType().GetProperty(propertyInfo.Name + "Unit", BindingFlags.Instance | BindingFlags.Public);
         if (unitPropertyInfo is { CanRead: true })
         {
-            unitGetter = BuildGetter(unitPropertyInfo);
-            unitSetter = unitPropertyInfo.CanWrite ? BuildSetter(unitPropertyInfo) : null;
+            unitGetter = PropertyAccessorCache.GetGetter(unitPropertyInfo);
+            unitSetter = unitPropertyInfo.CanWrite
+                ? PropertyAccessorCache.GetSetter(unitPropertyInfo)
+                : null;
         }
         displayNameFallback = metadata.DisplayName;
         displayNameKey = metadata.DisplayNameKey;
@@ -54,7 +57,9 @@ public sealed class DynamicPropertyItem : BindableBase
         groupNameKey = metadata.CategoryKey;
         InputType = metadata.InputType;
         staticItemsSource = metadata.ItemsSource;
-        itemsSourceProviderGetter = BuildItemsSourceProviderGetter(source, metadata.ItemsSourceProviderName);
+        itemsSourceProviderGetter = ResolveItemsSourceProviderGetter(
+            source.GetType(),
+            metadata.ItemsSourceProviderName);
         GroupWidth = metadata.GroupWidth;
         InlineGroup = metadata.InlineGroup;
         EditorWidth = metadata.EditorWidth is > 0 ? metadata.EditorWidth.Value : 180.0;
@@ -219,31 +224,20 @@ public sealed class DynamicPropertyItem : BindableBase
         }
     }
 
-    private static Func<object, object?>? BuildItemsSourceProviderGetter(object source, string? providerName)
+    private static Func<object, object?>? ResolveItemsSourceProviderGetter(
+        Type sourceType,
+        string? providerName)
     {
         if (string.IsNullOrWhiteSpace(providerName))
         {
             return null;
         }
 
-        Type sourceType = source.GetType();
-        PropertyInfo? providerProperty = sourceType.GetProperty(providerName, BindingFlags.Instance | BindingFlags.Public);
-        if (providerProperty is { CanRead: true } && providerProperty.GetIndexParameters().Length == 0)
-        {
-            Func<object, object?> getter = BuildGetter(providerProperty);
-            return instance => getter(instance);
-        }
-
-        MethodInfo? providerMethod = sourceType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
-            .FirstOrDefault(method => string.Equals(method.Name, providerName, StringComparison.Ordinal)
-                && method.GetParameters().Length == 0);
-        if (providerMethod != null)
-        {
-            return instance => providerMethod.Invoke(instance, null);
-        }
-
-        throw new InvalidOperationException($"Cannot find items source provider '{providerName}' on {sourceType.FullName}.");
+        return ItemsSourceProviderAccessorCache.GetAccessor(
+            sourceType,
+            providerName);
     }
+
     private static object? ConvertValue(object? value, Type targetType)
     {
         Type effectiveType = Nullable.GetUnderlyingType(targetType) ?? targetType;
@@ -312,25 +306,4 @@ public sealed class DynamicPropertyItem : BindableBase
             .First(item => string.Equals(item.Property.Name, propertyInfo.Name, StringComparison.Ordinal));
     }
 
-    private static Func<object, object?> BuildGetter(PropertyInfo propertyInfo)
-    {
-        var instance = Expression.Parameter(typeof(object), "instance");
-        var typedInstance = Expression.Convert(instance, propertyInfo.DeclaringType!);
-        var property = Expression.Property(typedInstance, propertyInfo);
-        var result = Expression.Convert(property, typeof(object));
-
-        return Expression.Lambda<Func<object, object?>>(result, instance).Compile();
-    }
-
-    private static Action<object, object?> BuildSetter(PropertyInfo propertyInfo)
-    {
-        var instance = Expression.Parameter(typeof(object), "instance");
-        var value = Expression.Parameter(typeof(object), "value");
-        var typedInstance = Expression.Convert(instance, propertyInfo.DeclaringType!);
-        var typedValue = Expression.Convert(value, propertyInfo.PropertyType);
-        var property = Expression.Property(typedInstance, propertyInfo);
-        var assign = Expression.Assign(property, typedValue);
-
-        return Expression.Lambda<Action<object, object?>>(assign, instance, value).Compile();
-    }
 }
