@@ -33,6 +33,22 @@ public sealed class LoggingOptions
     /// <summary>获取或设置写入结构化日志的应用名称。</summary>
     public string? ApplicationName { get; set; } = AppDomain.CurrentDomain.FriendlyName;
 
+    /// <summary>获取或设置是否输出经过脱敏的操作员活动日志。</summary>
+    public bool EnableOperatorTextFile { get; set; }
+
+    /// <summary>获取或设置操作员活动日志目录；相对路径以应用程序基目录为起点。</summary>
+    public string OperatorLogDirectory { get; set; } = Path.Combine("Logs", "Operator");
+
+    /// <summary>获取或设置操作员活动日志文件名前缀。</summary>
+    public string OperatorFileNamePrefix { get; set; } = string.Empty;
+
+    /// <summary>获取或设置允许写入操作员日志的 ILogger 类别。</summary>
+    public string? OperatorSourceContext { get; set; }
+
+    /// <summary>获取或设置操作员活动日志输出模板。</summary>
+    public string OperatorTextOutputTemplate { get; set; }
+        = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u4}] {Message:lj}{NewLine}";
+
     /// <summary>验证当前配置是否有效。</summary>
     internal void Validate()
     {
@@ -44,6 +60,24 @@ public sealed class LoggingOptions
         if (EnableTextFile && string.IsNullOrWhiteSpace(TextOutputTemplate))
         {
             throw new ArgumentException("启用文本日志时，输出模板不能为空。", nameof(TextOutputTemplate));
+        }
+
+        if (EnableOperatorTextFile)
+        {
+            if (string.IsNullOrWhiteSpace(OperatorLogDirectory))
+            {
+                throw new ArgumentException("操作员日志目录不能为空。", nameof(OperatorLogDirectory));
+            }
+
+            if (string.IsNullOrWhiteSpace(OperatorSourceContext))
+            {
+                throw new ArgumentException("启用操作员日志时必须指定 ILogger 类别。", nameof(OperatorSourceContext));
+            }
+
+            if (string.IsNullOrWhiteSpace(OperatorTextOutputTemplate))
+            {
+                throw new ArgumentException("操作员日志输出模板不能为空。", nameof(OperatorTextOutputTemplate));
+            }
         }
     }
 }

@@ -33,6 +33,7 @@ internal static class SerilogLoggerFactory
 
         ConfigureTextFile(configuration, options, logFolder);
         ConfigureJsonFile(configuration, options, logFolder);
+        ConfigureOperatorTextFile(configuration, options);
         return configuration.CreateLogger();
     }
 
@@ -65,6 +66,44 @@ internal static class SerilogLoggerFactory
             rollingInterval: RollingInterval.Day,
             retainedFileCountLimit: options.RetainedFileCountLimit);
     }
+
+    private static void ConfigureOperatorTextFile(
+        LoggerConfiguration configuration,
+        LoggingOptions options)
+    {
+        if (!options.EnableOperatorTextFile)
+        {
+            return;
+        }
+
+        string operatorLogFolder = ResolveLogDirectory(options.OperatorLogDirectory);
+        Directory.CreateDirectory(operatorLogFolder);
+        string sourceContext = options.OperatorSourceContext!;
+
+        configuration.WriteTo.Logger(nested => nested
+            .Filter.ByIncludingOnly(logEvent => HasSourceContext(logEvent, sourceContext))
+            .WriteTo.File(
+                path: GetRollingFilePath(
+                    operatorLogFolder,
+                    options.OperatorFileNamePrefix,
+                    ".txt"),
+                outputTemplate: options.OperatorTextOutputTemplate,
+                shared: options.SharedFile,
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: options.RetainedFileCountLimit));
+    }
+
+    private static bool HasSourceContext(
+        LogEvent logEvent,
+        string expectedSourceContext)
+        => logEvent.Properties.TryGetValue(
+                "SourceContext",
+                out LogEventPropertyValue? value)
+            && value is ScalarValue { Value: string sourceContext }
+            && string.Equals(
+                sourceContext,
+                expectedSourceContext,
+                StringComparison.Ordinal);
 
     private static string GetRollingFilePath(string logFolder, string? fileNamePrefix, string extension)
     {

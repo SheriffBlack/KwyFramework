@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace KwyTemplate.Shell.Services;
 
 /// <summary>
-/// 将整机事件适配为操作员可见的活动摘要和开发诊断日志。
+/// 将整机事件分别投影为操作员安全摘要和开发诊断日志。
 /// </summary>
 public sealed class LogEquipmentEventSink : IEquipmentEventSink
 {
@@ -18,16 +18,20 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
     private readonly ConcurrentDictionary<string, DateTimeOffset> lastLoggedAt =
         new(StringComparer.Ordinal);
     private readonly KwyActivityLogService activityLog;
+    private readonly IOperatorActivitySink operatorActivitySink;
     private readonly ILogger<LogEquipmentEventSink> developerLog;
     private readonly StartupProgressService startupProgress;
 
     public LogEquipmentEventSink(
         KwyActivityLogService activityLog,
+        IOperatorActivitySink operatorActivitySink,
         ILogger<LogEquipmentEventSink> developerLog,
         StartupProgressService startupProgress)
     {
         this.activityLog = activityLog
             ?? throw new ArgumentNullException(nameof(activityLog));
+        this.operatorActivitySink = operatorActivitySink
+            ?? throw new ArgumentNullException(nameof(operatorActivitySink));
         this.developerLog = developerLog
             ?? throw new ArgumentNullException(nameof(developerLog));
         this.startupProgress = startupProgress
@@ -36,10 +40,11 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
 
     public IReadOnlyCollection<EquipmentEvent> Events => events.ToArray();
 
-    public Task PublishAsync(
+    public async Task PublishAsync(
         EquipmentEvent equipmentEvent,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(equipmentEvent);
         cancellationToken.ThrowIfCancellationRequested();
 
         EquipmentEvent timestamped = equipmentEvent with
@@ -48,29 +53,33 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
         };
 
         events.Enqueue(timestamped);
-        TryWriteLog(timestamped);
-        return Task.CompletedTask;
-    }
 
-    private void TryWriteLog(EquipmentEvent equipmentEvent)
-    {
-        if (!ShouldLog(equipmentEvent, out string level, out string message)
-            || IsDuplicateSuppressed(equipmentEvent, message))
+        if (!TryCreateOperatorEntry(timestamped, out OperatorActivityEntry entry)
+            || IsDuplicateSuppressed(entry))
         {
             return;
         }
 
-        activityLog.Add(level, message);
-        WriteDeveloperLog(equipmentEvent, level, message);
+        activityLog.Add(
+            ToActivityLogLevel(entry.Level),
+            $"{entry.Source}：{entry.Message}");
+
+        // 原始消息和技术上下文仅进入 Developer 日志。
+        WriteDeveloperLog(timestamped);
+
+        // Operator Sink 的输入模型不包含 Exception，只能持久化脱敏摘要。
+        await operatorActivitySink
+            .WriteAsync(entry, cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    private bool ShouldLog(
+    private bool TryCreateOperatorEntry(
         EquipmentEvent equipmentEvent,
-        out string level,
-        out string message)
+        out OperatorActivityEntry entry)
     {
-        level = MapLevel(equipmentEvent.Severity);
-        message = FormatMessage(equipmentEvent);
+        string source = GetDisplaySource(equipmentEvent);
+        DateTimeOffset timestamp = equipmentEvent.Timestamp
+            ?? DateTimeOffset.Now;
 
         if (equipmentEvent.Code == DeviceEventCodes.Operation)
         {
@@ -84,73 +93,80 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
 
             if (isSuccess)
             {
-                return string.Equals(
-                    operationKind,
-                    "ParameterWrite",
-                    StringComparison.OrdinalIgnoreCase);
+                if (!string.Equals(
+                        operationKind,
+                        "ParameterWrite",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    entry = null!;
+                    return false;
+                }
+
+                entry = new OperatorActivityEntry(
+                    timestamp,
+                    OperatorActivityLevel.Success,
+                    "DEVICE.PARAMETER_WRITE.SUCCEEDED",
+                    source,
+                    "参数写入成功。");
+                return true;
             }
 
-            return operationKind is "Read"
-                or "Write"
-                or "ParameterWrite"
-                or "Trigger";
+            string? message = operationKind switch
+            {
+                "Read" => "数据读取失败，请检查设备状态。",
+                "Write" => "数据写入失败，请重试或联系技术人员。",
+                "ParameterWrite" => "参数写入失败，请重试或联系技术人员。",
+                "Trigger" => "设备触发失败，请检查设备状态。",
+                _ => null
+            };
+
+            if (message == null)
+            {
+                entry = null!;
+                return false;
+            }
+
+            entry = new OperatorActivityEntry(
+                timestamp,
+                OperatorActivityLevel.Error,
+                $"DEVICE.{operationKind.ToUpperInvariant()}.FAILED",
+                source,
+                message);
+            return true;
         }
 
         if (equipmentEvent.Code == DeviceEventCodes.Error)
         {
+            entry = new OperatorActivityEntry(
+                timestamp,
+                OperatorActivityLevel.Error,
+                "DEVICE.ERROR",
+                source,
+                "设备发生异常，请联系技术人员。");
             return true;
         }
 
-        if (equipmentEvent.Code == DeviceEventCodes.StateChanged)
-        {
-            return ShouldLogRuntimeConnectionState(
-                equipmentEvent,
-                out level,
-                out message);
-        }
-
-        return false;
-    }
-
-    private bool ShouldLogRuntimeConnectionState(
-        EquipmentEvent equipmentEvent,
-        out string level,
-        out string message)
-    {
-        level = "Info";
-        message = FormatMessage(equipmentEvent);
-
-        // 启动阶段连接日志由 StartupProgressService 负责，这里只处理运行期重连。
-        if (!startupProgress.IsCompleted)
-        {
-            return false;
-        }
-
-        string currentState = GetProperty(
-            equipmentEvent,
-            "CurrentState");
-
-        if (!string.Equals(
-                currentState,
+        if (equipmentEvent.Code == DeviceEventCodes.StateChanged
+            && startupProgress.IsCompleted
+            && string.Equals(
+                GetProperty(equipmentEvent, "CurrentState"),
                 "Connected",
                 StringComparison.OrdinalIgnoreCase))
         {
-            return false;
+            entry = new OperatorActivityEntry(
+                timestamp,
+                OperatorActivityLevel.Information,
+                "DEVICE.CONNECTED",
+                source,
+                "设备连接成功。");
+            return true;
         }
 
-        string deviceName = GetProperty(equipmentEvent, "DeviceName");
-        string displayName = string.IsNullOrWhiteSpace(deviceName)
-            ? equipmentEvent.Source ?? "Device"
-            : deviceName;
-
-        message = $"设备连接成功：{displayName}";
-        return true;
+        entry = null!;
+        return false;
     }
 
-    private void WriteDeveloperLog(
-        EquipmentEvent equipmentEvent,
-        string level,
-        string message)
+    private void WriteDeveloperLog(EquipmentEvent equipmentEvent)
     {
         using IDisposable? scope = developerLog.BeginScope(new
         {
@@ -168,42 +184,37 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
             Protocol = GetProperty(equipmentEvent, "Protocol")
         });
 
-        if (string.Equals(
-                level,
-                "Error",
-                StringComparison.OrdinalIgnoreCase))
+        string message = FormatDeveloperMessage(equipmentEvent);
+        switch (equipmentEvent.Severity)
         {
-            developerLog.LogError("{Message}", message);
-            return;
-        }
+            case EquipmentEventSeverity.Critical:
+            case EquipmentEventSeverity.Error:
+                developerLog.LogError("{Message}", message);
+                break;
 
-        if (string.Equals(
-                level,
-                "Warn",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            developerLog.LogWarning("{Message}", message);
-            return;
-        }
+            case EquipmentEventSeverity.Warning:
+                developerLog.LogWarning("{Message}", message);
+                break;
 
-        developerLog.LogInformation("{Message}", message);
+            default:
+                developerLog.LogInformation("{Message}", message);
+                break;
+        }
     }
 
-    private bool IsDuplicateSuppressed(
-        EquipmentEvent equipmentEvent,
-        string message)
+    private bool IsDuplicateSuppressed(OperatorActivityEntry entry)
     {
-        if (equipmentEvent.Severity < EquipmentEventSeverity.Error)
+        if (entry.Level != OperatorActivityLevel.Error)
         {
             return false;
         }
 
         string key = string.Concat(
-            equipmentEvent.Code,
+            entry.EventCode,
             "|",
-            equipmentEvent.Source,
+            entry.Source,
             "|",
-            message);
+            entry.Message);
         DateTimeOffset now = DateTimeOffset.Now;
 
         if (lastLoggedAt.TryGetValue(key, out DateTimeOffset last)
@@ -216,24 +227,28 @@ public sealed class LogEquipmentEventSink : IEquipmentEventSink
         return false;
     }
 
-    private static string FormatMessage(EquipmentEvent equipmentEvent)
+    private static string GetDisplaySource(EquipmentEvent equipmentEvent)
     {
         string deviceName = GetProperty(equipmentEvent, "DeviceName");
-        string prefix = string.IsNullOrWhiteSpace(deviceName)
-            ? equipmentEvent.Source ?? "Device"
+        return string.IsNullOrWhiteSpace(deviceName)
+            ? equipmentEvent.Source ?? "设备"
             : deviceName;
-
-        return string.IsNullOrWhiteSpace(equipmentEvent.Message)
-            ? prefix
-            : $"{prefix}: {equipmentEvent.Message}";
     }
 
-    private static string MapLevel(EquipmentEventSeverity severity)
-        => severity switch
+    private static string FormatDeveloperMessage(EquipmentEvent equipmentEvent)
+    {
+        string source = equipmentEvent.Source ?? "Device";
+        return string.IsNullOrWhiteSpace(equipmentEvent.Message)
+            ? source
+            : $"{source}: {equipmentEvent.Message}";
+    }
+
+    private static string ToActivityLogLevel(OperatorActivityLevel level)
+        => level switch
         {
-            EquipmentEventSeverity.Critical or EquipmentEventSeverity.Error
-                => "Error",
-            EquipmentEventSeverity.Warning => "Warn",
+            OperatorActivityLevel.Success => "Success",
+            OperatorActivityLevel.Warning => "Warn",
+            OperatorActivityLevel.Error => "Error",
             _ => "Info"
         };
 

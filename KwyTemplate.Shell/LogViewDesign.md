@@ -249,7 +249,8 @@ UI 层只负责展示
 
 ```text
 用户活动摘要 -> KwyActivityLogService -> LogView
-开发者完整日志 -> ILogger<T> / Serilog -> 文件
+用户活动摘要 -> IOperatorActivitySink -> Serilog Operator Sink -> 文件
+开发者完整日志 -> ILogger<T> / Serilog Developer Sink -> 文件
 ```
 
 建议规则：
@@ -266,11 +267,12 @@ UI 层只负责展示
 当前落地文件路径：
 
 ```text
+Logs/Operator/yyyyMMdd.txt
 Logs/Developer/yyyyMMdd.txt
 Logs/Developer/yyyyMMdd.json
 ```
 
-LogView 面向用户和现场人员，仅保存有上限的内存活动摘要；`Logs/Developer/yyyyMMdd.txt` 和 `.json` 面向开发者，负责长期追溯。原始异常在仍持有 `Exception` 的发生源通过 `ILogger<T>` 写入，EquipmentEvent 继续保持可序列化。
+LogView 和 `Logs/Operator` 面向用户及现场人员，只接收脱敏后的活动摘要；`Logs/Developer/yyyyMMdd.txt` 和 `.json` 面向开发者，负责完整诊断追溯。原始异常在仍持有 `Exception` 的发生源通过 `ILogger<T>` 写入，EquipmentEvent 继续保持可序列化。
 
 ## 11. 开发注意事项
 
@@ -300,7 +302,9 @@ Shell 层通过 LogEquipmentEventSink 统一筛选和格式化日志。
 ## 13. 当前落地配置
 
 - Shell 通过 AddSerilogLogging 把 Serilog 注册为 Microsoft.Extensions.Logging Provider。
+- 操作员活动日志：Logs/Operator/yyyyMMdd.txt，只记录脱敏摘要。
 - 开发者日志：Logs/Developer/yyyyMMdd.txt 与 Logs/Developer/yyyyMMdd.json。
+- 操作员活动日志和开发者日志都保留 31 个滚动文件。
 - 开发者日志保留文件数量：31。
 - 设备原始异常由 DeviceEventForwarder 在发生源通过 ILogger 写入 Serilog；EquipmentEvent 中的异常文本只作为可序列化上下文。
 - App.xaml.cs 已记录 UI 未处理异常、未观察 Task 异常、AppDomain 未处理异常。

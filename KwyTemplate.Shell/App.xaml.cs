@@ -113,6 +113,7 @@ public partial class App : Kwy.MVVM.WPF.Application
 
         var startupProgress = serviceProvider.GetRequiredService<StartupProgressService>();
         var activityLog = serviceProvider.GetRequiredService<KwyActivityLogService>();
+        var operatorActivitySink = serviceProvider.GetRequiredService<IOperatorActivitySink>();
         var developerLog = serviceProvider.GetRequiredService<ILogger<App>>();
         startupProgress.ProgressChanged += (_, args) =>
         {
@@ -128,6 +129,21 @@ public partial class App : Kwy.MVVM.WPF.Application
             }
 
             activityLog.AddStartupProgress(level, message, args.ProgressValue);
+            OperatorActivityLevel operatorLevel = level switch
+            {
+                "Success" => OperatorActivityLevel.Success,
+                "Error" => OperatorActivityLevel.Error,
+                _ => OperatorActivityLevel.Information
+            };
+            ObserveOperatorActivityWrite(
+                operatorActivitySink.WriteAsync(
+                    new OperatorActivityEntry(
+                        DateTimeOffset.Now,
+                        operatorLevel,
+                        "APPLICATION.STARTUP",
+                        "Application",
+                        message)),
+                developerLog);
             WriteStartupDeveloperLog(developerLog, level, message);
         };
         startupProgressLogWired = true;
@@ -142,6 +158,20 @@ public partial class App : Kwy.MVVM.WPF.Application
         }
 
         developerLog.LogInformation("{Message}", message);
+    }
+
+    private static void ObserveOperatorActivityWrite(
+        Task writeTask,
+        ILogger developerLog)
+    {
+        _ = writeTask.ContinueWith(
+            completed => developerLog.LogError(
+                completed.Exception?.GetBaseException(),
+                "Failed to persist operator activity."),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted
+                | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     protected override Window CreateShell()
@@ -161,10 +191,15 @@ public partial class App : Kwy.MVVM.WPF.Application
             options.RetainedFileCountLimit = 31;
             options.MinimumLevel = LogLevel.Information;
             options.ApplicationName = "KwyTemplate";
+            options.EnableOperatorTextFile = true;
+            options.OperatorLogDirectory = Path.Combine("Logs", "Operator");
+            options.OperatorFileNamePrefix = string.Empty;
+            options.OperatorSourceContext = typeof(OperatorActivityLogSink).FullName;
         });
         services.AddSingleton<ProgramSettingsStore>();
         services.AddSingleton<ILocalizationService, ResourceDictionaryLocalizationService>();
         services.AddSingleton<StartupProgressService>();
+        services.AddSingleton<IOperatorActivitySink, OperatorActivityLogSink>();
         services.AddSingleton<IEquipmentEventSink, LogEquipmentEventSink>();
 
         services.AddSingleton(new SecuritySessionOptions
@@ -222,27 +257,20 @@ public partial class App : Kwy.MVVM.WPF.Application
         cacheManager.DefaultCacheExpiration = TimeSpan.FromHours(4);
         cacheManager.CleanupInterval = TimeSpan.FromHours(1);
 
-        var activityLog = serviceProvider.GetRequiredService<KwyActivityLogService>();
         var developerLog = serviceProvider.GetRequiredService<ILogger<App>>();
 
         cacheManager.ViewCached += item =>
         {
-            string message = string.Concat("[Cache] ", item.ViewName);
-            activityLog.Info(message);
             developerLog.LogInformation("[Cache] View cached: {View}", item.ViewName);
         };
 
         cacheManager.ViewRestored += item =>
         {
-            string message = string.Concat("[Cache] ", item.ViewName);
-            activityLog.Info(message);
             developerLog.LogInformation("[Cache] View restored: {View}", item.ViewName);
         };
 
         cacheManager.ViewDestroyed += item =>
         {
-            string message = string.Concat("[Cache] ", item.ViewName);
-            activityLog.Warn(message);
             developerLog.LogWarning("[Cache] View destroyed: {View}", item.ViewName);
         };
 

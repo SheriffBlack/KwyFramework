@@ -715,7 +715,7 @@ Cyntec 当前行为：
 现场不符合预期时怎么改：
 
 - 设备读取频繁刷日志：不要在读取成功时发事件；只记录读取失败、写入失败、参数写入成功/失败等约定事件。
-- 用户活动摘要和开发者日志分离：用户摘要只进入 LogView 内存缓冲，开发者异常进入 `Logs/Developer/yyyyMMdd.txt` 和 `.json`。
+- 用户活动摘要和开发者日志分离：脱敏摘要进入 LogView 和 `Logs/Operator/yyyyMMdd.txt`，开发者异常进入 `Logs/Developer/yyyyMMdd.txt` 和 `.json`。
 
 ## 上机验证不符合预期时的修改路径
 

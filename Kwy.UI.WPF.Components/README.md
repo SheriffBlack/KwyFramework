@@ -360,6 +360,8 @@ toast.Clear("MachineToast");
 `KwyActivityLogService` 是面向操作员界面的轻量内存缓冲区，`KwyActivityLogListView` 负责显示活动摘要。
 
 它适合显示用户和现场人员需要看到的运行摘要，不负责替代 `Microsoft.Extensions.Logging`、Serilog 或文件日志。
+如果业务需要在程序重启后保留操作员历史，应由应用层把同一份脱敏活动记录
+写入独立的持久化 Sink；组件库本身不负责文件存储。
 
 ### 6.1 添加日志
 

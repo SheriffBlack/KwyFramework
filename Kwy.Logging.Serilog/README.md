@@ -30,10 +30,28 @@ services.AddSerilogLogging(options =>
     options.RetainedFileCountLimit = 31;
     options.MinimumLevel = LogLevel.Information;
     options.ApplicationName = "KwyTemplate";
+
+    // 可选：把指定 ILogger 类别的脱敏消息单独写入操作员日志。
+    options.EnableOperatorTextFile = true;
+    options.OperatorLogDirectory = Path.Combine("Logs", "Operator");
+    options.OperatorSourceContext = typeof(OperatorActivityLogSink).FullName;
 });
 ```
 
 注册后，DI 容器可直接解析 `ILogger<T>` 和 `ILoggerFactory`。
+
+### 操作员日志 Sink
+
+操作员日志是可选的过滤 Sink。它只接收 `OperatorSourceContext` 指定的
+`ILogger<T>` 类别，并输出不含异常字段的文本日志：
+
+```text
+Logs/Operator/yyyyMMdd.txt
+```
+
+调用方必须在进入该类别前完成脱敏。不要通过该类别记录 `Exception`、堆栈、
+连接字符串、原始报文或其他开发诊断信息。其他 `ILogger<T>` 类别不会进入
+Operator 文件，但仍按常规规则写入 Developer 文本和 JSON 日志。
 
 ## 常规使用
 
