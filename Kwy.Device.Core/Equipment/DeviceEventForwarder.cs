@@ -125,6 +125,12 @@ public sealed class DeviceEventForwarder : IDeviceEventForwarder, IDisposable
 
     private async Task PublishDeviceErrorAsync(IDevice device, ErrorOccurredEventArgs args)
     {
+        logger.LogError(
+            args.Exception,
+            "Device {DeviceId} reported an error: {Message}",
+            device.DeviceId,
+            args.Message);
+
         var properties = new Dictionary<string, string>
         {
             ["DeviceName"] = device.DeviceName,
@@ -168,6 +174,13 @@ public sealed class DeviceEventForwarder : IDeviceEventForwarder, IDisposable
 
         if (args.Exception != null)
         {
+            logger.LogError(
+                args.Exception,
+                "Device {DeviceId} operation {OperationName} ({OperationKind}) failed",
+                device.DeviceId,
+                args.OperationName,
+                args.Kind);
+
             properties["ExceptionType"] = args.Exception.GetType().FullName ?? args.Exception.GetType().Name;
             properties["Exception"] = args.Exception.ToString();
         }
