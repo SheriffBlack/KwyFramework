@@ -1,6 +1,6 @@
 using Kwy.MVVM.Modularity;
 using Kwy.MVVM.WPF.Mvvm;
-using Kwy.UI.WPF.Components.Logging;
+using Kwy.UI.WPF.Components.ActivityLog;
 using KwyTemplate.App.Input;
 using KwyTemplate.App.Dialogs;
 using KwyTemplate.App.Models;
@@ -91,10 +91,10 @@ public class AppModule : IModule
     {
         services.AddKeyedTransient<FrameworkElement>(ViewNames.LogView, static (provider, _) =>
         {
-            var logService = provider.GetRequiredService<KwyLogService>();
-            return new KwyLogListView
+            var activityLog = provider.GetRequiredService<KwyActivityLogService>();
+            return new KwyActivityLogListView
             {
-                ItemsSource = logService.Entries,
+                ItemsSource = activityLog.Entries,
                 AutoScroll = true,
                 ShowTime = true,
                 ShowLevel = true

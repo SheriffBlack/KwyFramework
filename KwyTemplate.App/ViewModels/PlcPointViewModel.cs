@@ -4,7 +4,7 @@ using System.Windows.Threading;
 using Kwy.Device.Abstractions;
 using Kwy.MVVM.Core;
 using Kwy.UI.DataGrids;
-using Kwy.UI.WPF.Components.Logging;
+using Kwy.UI.WPF.Components.ActivityLog;
 using Kwy.UI.WPF.Controls.Helpers;
 using KwyTemplate.App.Models;
 using KwyTemplate.App.Services;
@@ -24,7 +24,7 @@ public sealed class PlcPointViewModel : BindableBase
     private readonly IDeviceRegistry? deviceRegistry;
     private readonly IInputDialogService? inputDialogService;
     private readonly IAppNotificationService? notificationService;
-    private readonly KwyLogService? logService;
+    private readonly KwyActivityLogService? activityLog;
     private readonly MachineBase machine;
     private readonly ILocalizationService? localizationService;
     private readonly DispatcherTimer refreshTimer;
@@ -38,14 +38,14 @@ public sealed class PlcPointViewModel : BindableBase
         IDeviceRegistry? deviceRegistry = null,
         IInputDialogService? inputDialogService = null,
         IAppNotificationService? notificationService = null,
-        KwyLogService? logService = null,
+        KwyActivityLogService? activityLog = null,
         ILocalizationService? localizationService = null)
     {
         this.machine = machine ?? throw new ArgumentNullException(nameof(machine));
         this.deviceRegistry = deviceRegistry;
         this.inputDialogService = inputDialogService;
         this.notificationService = notificationService;
-        this.logService = logService;
+        this.activityLog = activityLog;
         this.localizationService = localizationService;
         statusMessage = localizationService?.T("PlcPoint.Status.Waiting", "等待 PLC 点位刷新") ?? "等待 PLC 点位刷新";
         SyncColumns();
@@ -434,7 +434,7 @@ public sealed class PlcPointViewModel : BindableBase
     private void AddManualPlcWriteLog(PlcPointModel point, string writeValue, string plcName)
     {
         string pointName = FormatPointName(point);
-        logService?.Info(localizationService?.TF("PlcPoint.Log.ManualWriteSuccess", "{0}: 手动写入 {1} = {2} 成功。", plcName, pointName, writeValue) ?? string.Format(CultureInfo.CurrentCulture, "{0}: 手动写入 {1} = {2} 成功。", plcName, pointName, writeValue));
+        activityLog?.Info(localizationService?.TF("PlcPoint.Log.ManualWriteSuccess", "{0}: 手动写入 {1} = {2} 成功。", plcName, pointName, writeValue) ?? string.Format(CultureInfo.CurrentCulture, "{0}: 手动写入 {1} = {2} 成功。", plcName, pointName, writeValue));
     }
 
     private string GetPlcDisplayName()

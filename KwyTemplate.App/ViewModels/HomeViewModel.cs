@@ -2,7 +2,7 @@ using Kwy.MVVM.Core;
 using Kwy.MVVM.Messaging;
 using Kwy.Device.Instrument.Abstractions;
 using Kwy.UI.DataGrids;
-using Kwy.UI.WPF.Components.Logging;
+using Kwy.UI.WPF.Components.ActivityLog;
 using Kwy.UI.WPF.Components.Toasts;
 using Kwy.UI.WPF.Components.Dialogs;
 using Kwy.UI.WPF.Controls.Helpers;
@@ -53,7 +53,7 @@ public sealed class HomeViewModel : BindableBase
     private readonly IInputDialogService inputDialogService;
     private readonly ISecurityKeyChecker securityKeyChecker;
     private readonly ICameraStartupOptionsDialogService cameraStartupOptionsDialogService;
-    private readonly KwyLogService? logService;
+    private readonly KwyActivityLogService? activityLog;
     private readonly IMesTrackService mesTrackService;
     private readonly IMesWorkOrderService mesWorkOrderService;
     private readonly BraidOptionsStore braidOptionsStore;
@@ -114,7 +114,7 @@ public sealed class HomeViewModel : BindableBase
         IInputDialogService inputDialogService,
         ISecurityKeyChecker securityKeyChecker,
         ICameraStartupOptionsDialogService cameraStartupOptionsDialogService,
-        KwyLogService? logService,
+        KwyActivityLogService? activityLog,
         IMesTrackService mesTrackService,
         IMesWorkOrderService mesWorkOrderService,
         BraidOptionsStore braidOptionsStore,
@@ -146,7 +146,7 @@ public sealed class HomeViewModel : BindableBase
         this.inputDialogService = inputDialogService ?? throw new ArgumentNullException(nameof(inputDialogService));
         this.securityKeyChecker = securityKeyChecker ?? throw new ArgumentNullException(nameof(securityKeyChecker));
         this.cameraStartupOptionsDialogService = cameraStartupOptionsDialogService ?? throw new ArgumentNullException(nameof(cameraStartupOptionsDialogService));
-        this.logService = logService;
+        this.activityLog = activityLog;
         this.mesTrackService = mesTrackService ?? throw new ArgumentNullException(nameof(mesTrackService));
         this.mesWorkOrderService = mesWorkOrderService ?? throw new ArgumentNullException(nameof(mesWorkOrderService));
         this.braidOptionsStore = braidOptionsStore ?? throw new ArgumentNullException(nameof(braidOptionsStore));
@@ -661,7 +661,7 @@ public sealed class HomeViewModel : BindableBase
 
             if (!moved)
             {
-                logService?.Warn(localizationService.TF(
+                activityLog?.Warn(localizationService.TF(
                     "Home.Log.RuntimeDataFileMissing",
                     "Production runtime data file was not found: {0}",
                     Path.Combine(ProductionRecordPathHelper.RuntimeDirectory, fileName)));
@@ -705,7 +705,7 @@ public sealed class HomeViewModel : BindableBase
             await machine.SetStationEnabledAsync(cameraBStation, options.IsCameraBEnabled, DestroyToken).ConfigureAwait(false);
         }
 
-        logService?.Info(localizationService.TF(
+        activityLog?.Info(localizationService.TF(
             "Home.Log.CameraStartupOptions",
             "Camera startup options applied. A={0}, B={1}",
             options.IsCameraAEnabled,
@@ -807,7 +807,7 @@ public sealed class HomeViewModel : BindableBase
         // 弹窗中的输入只能由弹窗自身处理，不能再被误当成主页盲扫。
         if (HasActiveDialog())
         {
-            logService?.Info(localizationService.TF(
+            activityLog?.Info(localizationService.TF(
                 "Home.Log.BlindScanIgnoredDialogActive",
                 "Blind scan ignored because a dialog is active: {0}",
                 value));
@@ -816,7 +816,7 @@ public sealed class HomeViewModel : BindableBase
 
         if (!string.Equals(primaryNavigationState.CurrentView, ViewNames.HomeView, StringComparison.OrdinalIgnoreCase))
         {
-            logService?.Info(localizationService.TF(
+            activityLog?.Info(localizationService.TF(
                 "Home.Log.BlindScanIgnoredNonHome",
                 "Blind scan ignored because the current page is {0}: {1}",
                 primaryNavigationState.CurrentView,
@@ -824,7 +824,7 @@ public sealed class HomeViewModel : BindableBase
             return;
         }
 
-        logService?.Info(localizationService.TF("Home.Log.BlindScanContent", "Blind scan content: {0}", value));
+        activityLog?.Info(localizationService.TF("Home.Log.BlindScanContent", "Blind scan content: {0}", value));
 
         try
         {
@@ -894,7 +894,7 @@ public sealed class HomeViewModel : BindableBase
                     offlineWorkOrderRescanRequired = false;
                     // 离线时固定为“工单 → 机种”的扫码顺序：工单号只作为本次生产记录，
                     // 等机种条码到达后才按机种加载本地 JSON 并下发参数。
-                    logService?.Info(localizationService.T(
+                    activityLog?.Info(localizationService.T(
                         "Home.Message.OfflineMachineTypeScanRequired",
                         "工单已扫描，请继续扫描机种以加载本地参数。"));
                 }
@@ -965,7 +965,7 @@ public sealed class HomeViewModel : BindableBase
         }
         catch (Exception ex)
         {
-            logService?.Warn(localizationService.TF(
+            activityLog?.Warn(localizationService.TF(
                 "Home.Log.CounterResetFailed",
                 "Production counter reset failed while scanning new work order: {0}",
                 ex.Message));
@@ -1044,7 +1044,7 @@ public sealed class HomeViewModel : BindableBase
         string machineType = LocalWorkOrderRecipeStore.NormalizeMachineType(machineTypeOverride ?? MachineType);
         if (string.IsNullOrWhiteSpace(machineType))
         {
-            logService?.Info(localizationService.T(
+            activityLog?.Info(localizationService.T(
                 "Home.Message.OfflineMachineTypeScanRequired",
                 "工单已扫描，请继续扫描机种以加载本地参数。"));
             return;
@@ -1424,7 +1424,7 @@ public sealed class HomeViewModel : BindableBase
             return;
         }
 
-        logService?.Info(localizationService.TF(
+        activityLog?.Info(localizationService.TF(
             "Home.Log.TrailingXMachineType",
             "Trailing-X machine type detected. DisplayedMachineType={0}, ParsedMachineType={1}",
             displayedMachineType,
@@ -2116,7 +2116,7 @@ public sealed class HomeViewModel : BindableBase
         }, DispatcherPriority.Render);
 
     private void OnStationResultProcessingFailed(object? sender, StationResultProcessingFailedEventArgs e)
-        => logService?.Error(localizationService.TF(
+        => activityLog?.Error(localizationService.TF(
             "Home.Log.StationResultProcessingFailed",
             "生产结果处理失败。工位：{0}，错误：{1}",
             e.Station.StationName,
