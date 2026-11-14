@@ -11,12 +11,9 @@ internal sealed class ChamberInterlockEvaluator
     private readonly string chamberId;
     private readonly IChamberInterlockSource source;
 
-    public ChamberInterlockEvaluator(
-        string chamberId,
-        IChamberInterlockSource source)
+    public ChamberInterlockEvaluator(string chamberId, IChamberInterlockSource source)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(
-            chamberId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(chamberId);
 
         ArgumentNullException.ThrowIfNull(source);
 
@@ -24,8 +21,7 @@ internal sealed class ChamberInterlockEvaluator
         this.source = source;
     }
 
-    public bool TryValidateGasPreparation(
-        out CommandResult failure)
+    public bool TryValidateGasPreparation(out CommandResult failure)
     {
         var snapshot = source.Snapshot;
 

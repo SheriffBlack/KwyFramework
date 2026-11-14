@@ -5,7 +5,5 @@
 /// </summary>
 public interface IEquipmentEventPublisher
 {
-    Task PublishAsync(
-        EquipmentEvent equipmentEvent,
-        CancellationToken cancellationToken = default);
+    Task PublishAsync(EquipmentEvent equipmentEvent, CancellationToken cancellationToken = default);
 }
