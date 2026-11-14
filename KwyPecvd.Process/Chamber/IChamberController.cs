@@ -1,6 +1,6 @@
-﻿using KwyPecvd.Device;
+using KwyPecvd.Device;
 using KwyPecvd.Process.Chamber.Gas;
-using KwyPecvd.Process.Equipment;
+using KwyPecvd.Process.Modules;
 
 namespace KwyPecvd.Process.Chamber;
 
