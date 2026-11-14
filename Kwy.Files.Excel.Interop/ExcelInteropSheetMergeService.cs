@@ -69,7 +69,7 @@ public sealed class ExcelInteropSheetMergeService : IExcelSheetMergeService
             catch (Exception ex)
             {
                 result.Success = false;
-                result.ErrorMessage = ex.Message;
+                result.ErrorMessage = ex.ToString();
             }
             finally
             {
@@ -201,7 +201,9 @@ public sealed class ExcelInteropSheetMergeService : IExcelSheetMergeService
         foreach (OfficeExcel.Worksheet worksheet in workbook.Worksheets)
         {
             names.Add(worksheet.Name);
-            ComObject.Release(worksheet);
+            // 不在这里 FinalRelease。后续 MergeData 还会从同一个 Workbook
+            // 重新取得这些工作表，提前彻底释放 RCW 会导致
+            // “COM object ... separated from its underlying RCW”。
         }
 
         return names;
@@ -218,7 +220,7 @@ public sealed class ExcelInteropSheetMergeService : IExcelSheetMergeService
                 return worksheet;
             }
 
-            ComObject.Release(worksheet);
+            // 非目标工作表稍后仍会参与合并，不能在枚举阶段 FinalRelease RCW。
         }
 
         var created = (OfficeExcel.Worksheet)workbook.Worksheets.Add(Before: workbook.Worksheets[1]);
