@@ -41,6 +41,18 @@ public enum GemRemoteCommandCompletionStatus
 
 public sealed record GemRemoteCommandParameterDefinition(string Name, SecsFormat Format, bool Required = true);
 
+/// <summary>命令说明书 </summary>
+/// <remarks>
+/// 静态配置，应该在启动阶段加载一次，之后不再修改
+/// 如：
+///     GemRemoteCommandDefinition
+///     {
+///         Name = "START",
+///         Parameters = [PPID, LOTID],
+///         AllowedControlStates = [OnlineRemote],
+///         HandlerKey = "machine.start"
+///     }
+/// </remarks>
 public sealed record GemRemoteCommandDefinition(
     string Name,
     IReadOnlyList<GemRemoteCommandParameterDefinition> Parameters,
@@ -54,7 +66,8 @@ public sealed record GemRemoteCommandDefinition(
     public string EffectiveHandlerKey => string.IsNullOrWhiteSpace(HandlerKey) ? Name : HandlerKey;
 }
 
-public sealed record GemRemoteCommand(string CommandName, IReadOnlyDictionary<string, Item> Parameters)
+/// <summary>Host 发来的本次命令 </summary>
+public sealed record GemRemoteCommandRequest(string CommandName, IReadOnlyDictionary<string, Item> Parameters)
 {
     public bool TryGetParameter(string name, out Item value)
     {
@@ -76,6 +89,7 @@ public sealed record GemRemoteCommand(string CommandName, IReadOnlyDictionary<st
             : throw new KeyNotFoundException($"Remote command parameter '{name}' is missing.");
 }
 
+/// <summary>执行结果 </summary>
 public sealed record GemRemoteCommandResult(
     GemHostCommandAckCode AckCode,
     string? Message = null,

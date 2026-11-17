@@ -14,7 +14,7 @@ public static class GemRemoteCommandValidator
 {
     public static GemRemoteCommandValidationResult Validate(
         GemRemoteCommandDefinition definition,
-        GemRemoteCommand command,
+        GemRemoteCommandRequest command,
         GemControlState controlState)
     {
         ArgumentNullException.ThrowIfNull(definition);
