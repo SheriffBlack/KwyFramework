@@ -66,6 +66,10 @@ builder.Services.AddSingleton<
     IEquipmentCommandCompletionObserver,
     EquipmentCommandCompletionObserver>();
 
+builder.Services.AddSingleton<
+    IEquipmentCommandResultStore,
+    InMemoryEquipmentCommandResultStore>();
+
 //
 // 2. 注册RT后台周期服务
 //
@@ -978,6 +982,27 @@ app.MapPost(
         return result.Succeeded
             ? Results.Ok(result)
             : Results.BadRequest(result);
+    });
+
+app.MapGet(
+    "/equipment/commands/{requestId}",
+    (
+        string requestId,
+        IEquipmentCommandResultStore resultStore) =>
+    {
+        if (!resultStore.TryGet(
+                requestId,
+                out var result))
+        {
+            return Results.NotFound(
+                new
+                {
+                    RequestId = requestId,
+                    Message = "Equipment command was not found."
+                });
+        }
+
+        return Results.Ok(result);
     });
 
 await app.RunAsync();
