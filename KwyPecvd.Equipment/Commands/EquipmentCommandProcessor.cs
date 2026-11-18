@@ -12,14 +12,20 @@ public sealed class EquipmentCommandProcessor : IEquipmentCommandProcessor
 
     private readonly IPendingEquipmentCommandStore pendingCommandStore;
 
-    public EquipmentCommandProcessor(IEquipmentModuleRegistry moduleRegistry, IPendingEquipmentCommandStore pendingCommandStore)
+    private readonly IEquipmentCommandResultStore commandResultStore;
+
+    public EquipmentCommandProcessor(
+        IEquipmentModuleRegistry moduleRegistry,
+        IPendingEquipmentCommandStore pendingCommandStore, 
+        IEquipmentCommandResultStore commandResultStore)
     {
         ArgumentNullException.ThrowIfNull(moduleRegistry);
-
         ArgumentNullException.ThrowIfNull(pendingCommandStore);
+        ArgumentNullException.ThrowIfNull(commandResultStore);
 
         this.moduleRegistry = moduleRegistry;
         this.pendingCommandStore = pendingCommandStore;
+        this.commandResultStore = commandResultStore;
     }
 
     public Task<EquipmentCommandResult> ExecuteAsync(EquipmentCommandEnvelope envelope, CancellationToken cancellationToken = default)
@@ -140,7 +146,21 @@ public sealed class EquipmentCommandProcessor : IEquipmentCommandProcessor
 
         try
         {
-            var result = await chamber!.StopProcessAsync(cancellationToken);
+            var accepted =
+                new EquipmentCommandResult(
+                    envelope.Context.RequestId,
+                    EquipmentCommandStatus.Accepted,
+                    EquipmentCommandResultCodes.Accepted,
+                    $"Stop process command for equipment module " +
+                    $"'{command.EquipmentModuleId}' is being submitted.");
+
+            SetStopProcessResult(
+                command.EquipmentModuleId,
+                accepted);
+
+            var result =
+                await chamber!.StopProcessAsync(
+                    cancellationToken);
 
             if (!result.Succeeded)
             {
@@ -149,28 +169,80 @@ public sealed class EquipmentCommandProcessor : IEquipmentCommandProcessor
                     EquipmentCommandTypeCodes.StopProcess,
                     envelope.Context.RequestId);
 
-                return ToEquipmentCommandResult(
+                var rejected = ToEquipmentCommandResult(
                     envelope.Context.RequestId,
                     result.Succeeded,
                     result.Code,
                     result.Message);
+
+                SetStopProcessResult(
+                    command.EquipmentModuleId,
+                    rejected);
+
+                return rejected;
             }
 
-            return new EquipmentCommandResult(
-                envelope.Context.RequestId,
-                EquipmentCommandStatus.Accepted,
-                EquipmentCommandResultCodes.Accepted,
-                result.Message);
+            var acceptedResult = accepted with
+            {
+                Message = result.Message
+            };
+
+            SetStopProcessResult(
+                command.EquipmentModuleId,
+                acceptedResult);
+
+            return acceptedResult;
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             pendingCommandStore.TryRemove(
                 command.EquipmentModuleId,
                 EquipmentCommandTypeCodes.StopProcess,
                 envelope.Context.RequestId);
 
+            SetStopProcessResult(
+                command.EquipmentModuleId,
+                new EquipmentCommandResult(
+                    envelope.Context.RequestId,
+                    EquipmentCommandStatus.Rejected,
+                    EquipmentCommandResultCodes.Canceled,
+                    "Stop process command was canceled " +
+                    "before it was accepted by the process module."));
+
             throw;
         }
+        catch (Exception exception)
+        {
+            pendingCommandStore.TryRemove(
+                command.EquipmentModuleId,
+                EquipmentCommandTypeCodes.StopProcess,
+                envelope.Context.RequestId);
+
+            SetStopProcessResult(
+                command.EquipmentModuleId,
+                new EquipmentCommandResult(
+                    envelope.Context.RequestId,
+                    EquipmentCommandStatus.Failed,
+                    EquipmentCommandResultCodes.ExecutionFailed,
+                    exception.Message));
+
+            throw;
+        }
+    }
+
+    private void SetStopProcessResult(
+        string equipmentModuleId,
+        EquipmentCommandResult result)
+    {
+        commandResultStore.Set(
+            new EquipmentCommandResultSnapshot(
+                RequestId: result.RequestId,
+                CommandTypeCode: EquipmentCommandTypeCodes.StopProcess,
+                EquipmentModuleId: equipmentModuleId,
+                Status: result.Status,
+                Code: result.Code,
+                Message: result.Message,
+                UpdatedAt: DateTimeOffset.UtcNow));
     }
 
     private EquipmentCommandResult? TryResolveChamber(

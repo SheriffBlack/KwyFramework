@@ -11,16 +11,20 @@ public sealed class EquipmentCommandCompletionObserver : IEquipmentCommandComple
 {
     private readonly IPendingEquipmentCommandStore pendingCommandStore;
     private readonly IEquipmentEventPublisher eventPublisher;
+    private readonly IEquipmentCommandResultStore commandResultStore;
 
     public EquipmentCommandCompletionObserver(
         IPendingEquipmentCommandStore pendingCommandStore,
+        IEquipmentCommandResultStore commandResultStore,
         IEquipmentEventPublisher eventPublisher)
     {
         ArgumentNullException.ThrowIfNull(pendingCommandStore);
         ArgumentNullException.ThrowIfNull(eventPublisher);
+        ArgumentNullException.ThrowIfNull(commandResultStore);
 
         this.pendingCommandStore = pendingCommandStore;
         this.eventPublisher = eventPublisher;
+        this.commandResultStore = commandResultStore;
     }
 
     public Task ObserveAsync(IEquipmentModuleController module, CancellationToken cancellationToken = default)
@@ -101,12 +105,30 @@ public sealed class EquipmentCommandCompletionObserver : IEquipmentCommandComple
                     ResultCode: resultCode,
                     Message: message);
 
-            await eventPublisher.PublishAsync(equipmentEvent, cancellationToken);
+            // 这里就是“构造最终快照”的位置。
+            var finalResult =
+                new EquipmentCommandResultSnapshot(
+                    RequestId: pending.RequestId,
+                    CommandTypeCode: pending.CommandTypeCode,
+                    EquipmentModuleId: pending.EquipmentModuleId,
+                    Status: status,
+                    Code: resultCode,
+                    Message: message,
+                    UpdatedAt: DateTimeOffset.UtcNow);
+
+            await eventPublisher.PublishAsync(
+                equipmentEvent,
+                cancellationToken);
+
+            commandResultStore.Set(
+                finalResult);
         }
         catch
         {
-            // 发布失败时恢复 Pending，允许下个 RT 周期重试。
-            pendingCommandStore.TryAdd(pending!);
+            // 事件发布失败，恢复 Pending，等待下个周期重试。
+            pendingCommandStore.TryAdd(
+                pending!);
+
             throw;
         }
     }
