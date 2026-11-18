@@ -34,21 +34,21 @@ public sealed class InMemoryGemSpoolStore : IGemSpoolStore
         return messages.Dequeue();
     }
 
-    public void Purge()
+    public void Clear()
     {
         ObjectDisposedException.ThrowIf(disposed, this);
-        PurgeCore();
+        ClearCore();
     }
 
     public void Dispose()
     {
         if (disposed)
             return;
-        PurgeCore();
+        ClearCore();
         disposed = true;
     }
 
-    private void PurgeCore()
+    private void ClearCore()
     {
         while (messages.Count > 0)
             messages.Dequeue().Message.Dispose();

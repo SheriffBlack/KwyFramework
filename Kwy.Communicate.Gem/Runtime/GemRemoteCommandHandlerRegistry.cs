@@ -3,14 +3,14 @@ using System.Collections.Concurrent;
 namespace Kwy.Communicate.Gem;
 
 /// <summary>
-/// 处理一条已通过接口合同校验的 Remote Command。
+/// 命令执行者，处理一条已通过接口合同校验的 Remote Command。
 /// </summary>
 /// <remarks>
 /// 该委托的完成时间直接影响 S2F42 回复时间，实现必须在 Host T3 内返回。
 /// 耗时设备动作应转换为应用层自有的命令快照并入队，不应长期持有收到的 SECS Item。
 /// </remarks>
 public delegate Task<GemRemoteCommandResult> GemRemoteCommandHandler(
-    GemRemoteCommand command,
+    GemRemoteCommandRequest command,
     CancellationToken cancellationToken);
 
 /// <summary>
@@ -19,7 +19,7 @@ public delegate Task<GemRemoteCommandResult> GemRemoteCommandHandler(
 /// 设备软件启动时加载命令定义并注册处理器；
 /// 运行期间只执行已确认、已注册的命令，不应临时接受未知命令。
 /// </summary>
-public sealed class GemCommandRegistry
+public sealed class GemRemoteCommandHandlerRegistry
 {
     private readonly object syncRoot = new();
     private readonly ConcurrentDictionary<string, GemRemoteCommandHandler> handlers =

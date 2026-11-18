@@ -1,6 +1,15 @@
 namespace Kwy.Communicate.Gem;
 
 /// <summary>为设备侧会话一次注册当前已实现的标准 Primary Message Handler。</summary>
+/// <remarks>
+/// 协议 Handler 表
+/// ─────────────────────────────
+///     S1F3  → S1F3Handler
+///     S1F13 → S1F13Handler
+///     S2F41 → S2F41Handler
+///     S5F3  → S5F3Handler
+///     S7F3  → S7F3Handler
+/// </remarks>
 public static class GemStandardHandlerSet
 {
     public static GemPrimaryMessageRouter RegisterEquipmentHandlers(

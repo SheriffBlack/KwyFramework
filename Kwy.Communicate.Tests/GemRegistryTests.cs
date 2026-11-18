@@ -189,7 +189,7 @@ public sealed class GemRegistryTests
 
         using Item commandValue = Item.A("PP-001");
         using (SecsMessage message = GemMessageFactory.RemoteCommand(
-                   new GemRemoteCommand("START", new Dictionary<string, Item> { ["PPID"] = commandValue })))
+                   new GemRemoteCommandRequest("START", new Dictionary<string, Item> { ["PPID"] = commandValue })))
         {
         }
 
@@ -231,19 +231,19 @@ public sealed class GemRegistryTests
 
         GemRemoteCommandValidationResult invalidState = GemRemoteCommandValidator.Validate(
             definition,
-            new GemRemoteCommand("START", new Dictionary<string, Item> { ["PPID"] = Item.A("RCP-01") }),
+            new GemRemoteCommandRequest("START", new Dictionary<string, Item> { ["PPID"] = Item.A("RCP-01") }),
             GemControlState.OnlineLocal);
         GemRemoteCommandValidationResult missingParameter = GemRemoteCommandValidator.Validate(
             definition,
-            new GemRemoteCommand("START", new Dictionary<string, Item>()),
+            new GemRemoteCommandRequest("START", new Dictionary<string, Item>()),
             GemControlState.OnlineRemote);
         GemRemoteCommandValidationResult invalidFormat = GemRemoteCommandValidator.Validate(
             definition,
-            new GemRemoteCommand("START", new Dictionary<string, Item> { ["PPID"] = Item.U4(1) }),
+            new GemRemoteCommandRequest("START", new Dictionary<string, Item> { ["PPID"] = Item.U4(1) }),
             GemControlState.OnlineRemote);
         GemRemoteCommandValidationResult valid = GemRemoteCommandValidator.Validate(
             definition,
-            new GemRemoteCommand("START", new Dictionary<string, Item> { ["ppid"] = Item.A("RCP-01") }),
+            new GemRemoteCommandRequest("START", new Dictionary<string, Item> { ["ppid"] = Item.A("RCP-01") }),
             GemControlState.OnlineRemote);
 
         Assert.Equal(GemHostCommandAckCode.CannotPerformNow, invalidState.AckCode);

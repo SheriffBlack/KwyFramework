@@ -14,7 +14,7 @@ public sealed class GemRoutingTests
             SecsItem = L(A("START"), L(L(A("PPID"), A("RCP-01"))))
         };
 
-        GemParseResult<GemRemoteCommand> result = new S2F41Parser().Parse(message);
+        GemParseResult<GemRemoteCommandRequest> result = new S2F41Parser().Parse(message);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("START", result.Value?.CommandName);

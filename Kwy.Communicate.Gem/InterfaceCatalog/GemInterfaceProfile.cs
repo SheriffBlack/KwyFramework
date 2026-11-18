@@ -125,6 +125,8 @@ public sealed record GemJsonRemoteCommandParameterDefinition(
     SecsFormat Format,
     bool Required = true);
 
+/// <summary> </summary>
+/// <remarks> </remarks>
 public sealed record GemJsonRemoteCommandDefinition(
     string Name,
     IReadOnlyList<GemJsonRemoteCommandParameterDefinition> Parameters,

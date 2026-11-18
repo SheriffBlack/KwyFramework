@@ -55,7 +55,7 @@ public static class GemAcceptanceSteps
     }
 
     public static GemAcceptanceStep ExecuteRemoteCommand(
-        GemRemoteCommand command,
+        GemRemoteCommandRequest command,
         string name = "Execute remote command")
         => SendAndExpect(name,
             () => GemMessageFactory.RemoteCommand(command),

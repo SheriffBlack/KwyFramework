@@ -3,7 +3,7 @@ namespace Kwy.Communicate.Gem;
 public sealed partial class GemEquipmentSession
 {
     public async Task<GemRemoteCommandResult> ExecuteRemoteCommandAsync(
-        GemRemoteCommand command,
+        GemRemoteCommandRequest command,
         CancellationToken cancellationToken = default)
     {
         if (!registry.Catalog.RemoteCommands.TryGetValue(command.CommandName, out GemRemoteCommandDefinition? definition))

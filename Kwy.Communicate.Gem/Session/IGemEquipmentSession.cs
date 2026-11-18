@@ -81,7 +81,7 @@ public interface IGemEquipmentSession : IDisposable
     /// 耗时动作应由设备应用层先生成自有命令快照并完成入队，再返回 Accepted。
     /// </remarks>
     Task<GemRemoteCommandResult> ExecuteRemoteCommandAsync(
-        GemRemoteCommand command,
+        GemRemoteCommandRequest command,
         CancellationToken cancellationToken = default);
 
     /// <summary>

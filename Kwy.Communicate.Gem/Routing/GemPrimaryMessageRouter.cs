@@ -3,6 +3,7 @@ using Secs4Net;
 namespace Kwy.Communicate.Gem;
 
 /// <summary>按 S/F 分发 Host Primary Message，并保证每条消息最多回复一次。</summary>
+/// <remarks>根据 S/F 分发到 Handler</remarks>
 public sealed class GemPrimaryMessageRouter
 {
     private readonly Dictionary<SecsMessageId, IGemPrimaryMessageHandler> handlers = new();

@@ -45,7 +45,7 @@
                     ↑ 业务回调与扩展接口
 ┌───────────────────────────────────────────────────────┐
 │ GemEquipmentSession                                  │  GEM 行为编排
-│ GemRegistry = Catalog + Data + Commands              │  合同与运行时数据
+│ GemRegistry = Catalog + Data + CommandHandlers       │  合同与运行时数据
 ├───────────────────────────────────────────────────────┤
 │ GemPrimaryMessageRouter + Parser/Validator/Handler   │  入站消息处理
 │ GemMessageDefinitions + GemMessageFactory            │  出站消息构造
@@ -85,7 +85,7 @@ Equipment.Tests / Host Simulator 项目 ─→ Kwy.Communicate.Gem.Testing ─�
 |---|---|---|
 | `Transport` | 配置和管理 Secs4Net、接入 `Kwy.Communicate` 客户端生命周期 | `ISecsGemClient`、`SecsGemClientFactory` |
 | `InterfaceCatalog` | 定义并校验 VID、ECID、RPTID、CEID、ALID 和 RCMD | `GemInterfaceCatalogBuilder`、`IGemInterfaceProfile` |
-| `Runtime` | 组合静态合同、运行时快照和命令 Handler | `GemRegistry`、`GemDataSnapshot`、`GemCommandRegistry` |
+| `Runtime` | 组合静态合同、运行时快照和命令 Handler | `GemRegistry`、`GemDataSnapshot`、`GemRemoteCommandHandlerRegistry` |
 | `Session` | 编排 Communication/Control State 及 Equipment 侧常用行为 | `IGemEquipmentSession`、`GemEquipmentSession` |
 | `Protocol/Common` | 定义 S/F 值对象、解析合同和 `Item` 复制等协议基础能力 | `SecsMessageId`、`IGemMessageParser<T>` |
 | `Protocol/Messages` | 集中定义 SxFy 语义并构造报文 | `GemMessageDefinitions`、`GemMessageFactory` |
@@ -113,7 +113,7 @@ Equipment.Tests / Host Simulator 项目 ─→ Kwy.Communicate.Gem.Testing ─�
 |---|---|---|
 | `Catalog` | 客户接口合同：VID/ECID/RPTID/CEID/ALID/RCMD 定义 | 启动阶段构建，生成后不可变 |
 | `Data` | 构造报文所需的当前值和报警快照 | 运行期由设备应用更新 |
-| `Commands` | RCMD Handler Key 与编译后 C# Handler 的绑定 | 启动阶段注册，封闭后不可变 |
+| `CommandHandlers` | RCMD Handler Key 与编译后 C# Handler 的绑定 | 启动阶段注册，封闭后不可变 |
 
 推荐的启动顺序：
 
@@ -471,6 +471,7 @@ Repository 的 `Saved` 只表示 PP 已被 Recipe Service 可靠接收；不表�
 - 默认只缓存明确未连接时产生的 S6F11 和 S5F1；Trace、Terminal 和“发送结果不确定”的异常默认不缓存。
 - 队列满时默认拒绝最新消息并向调用方暴露失败，不静默丢弃旧事件；可显式选择 `DropOldest`。
 - `InMemoryGemSpoolStore` 不支持断电恢复；生产项目可实现 `IGemSpoolStore` 接入数据库或可靠文件存储。
+- `GemSpoolingService.Purge()` 是清除 Spool 的领域操作；Store 实现通过 `IGemSpoolStore.Clear()` 清空存储并释放其拥有的报文。
 
 ```csharp
 using var spool = new GemSpoolingService(

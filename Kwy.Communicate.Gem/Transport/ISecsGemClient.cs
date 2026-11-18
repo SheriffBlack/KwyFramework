@@ -3,9 +3,8 @@ using Secs4Net;
 
 namespace Kwy.Communicate.Gem;
 
-/// <summary>
-/// 管理 HSMS/SECS 通信与 Primary/Secondary 消息。
-/// </summary>
+/// <summary> 管理 HSMS/SECS 通信与 Primary/Secondary 消息。</summary>
+/// <remarks>收发 SxFy</remarks>
 public interface ISecsGemClient : IProtocolClient
 {
     ConnectionState HsmsState { get; }

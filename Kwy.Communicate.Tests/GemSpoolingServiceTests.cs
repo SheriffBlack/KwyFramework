@@ -9,9 +9,9 @@ public sealed class GemSpoolingServiceTests
     public void TryEnqueue_UsesSafeMessageEligibilityDefaults()
     {
         using var spool = new GemSpoolingService(new GemSpoolingOptions(Enabled: true));
-        using var collectionEvent = CreateMessage(6, 11, "event");
-        using var remoteCommand = CreateMessage(2, 41, "command");
-        using var trace = CreateMessage(6, 1, "trace");
+        using var collectionEvent = CreateMessage(GemMessageDefinitions.EventReportSend, "event");
+        using var remoteCommand = CreateMessage(GemMessageDefinitions.HostCommandSend, "command");
+        using var trace = CreateMessage(GemMessageDefinitions.TraceDataSend, "trace");
 
         Assert.True(spool.TryEnqueue(collectionEvent));
         Assert.False(spool.TryEnqueue(remoteCommand));
@@ -23,7 +23,7 @@ public sealed class GemSpoolingServiceTests
     public void TryEnqueue_AmbiguousFailureIsDisabledByDefault()
     {
         using var spool = new GemSpoolingService(new GemSpoolingOptions(Enabled: true));
-        using var message = CreateMessage(6, 11, "event");
+        using var message = CreateMessage(GemMessageDefinitions.EventReportSend, "event");
 
         bool queued = spool.TryEnqueue(message, ambiguousSendFailure: true);
 
@@ -35,8 +35,8 @@ public sealed class GemSpoolingServiceTests
     public async Task ReplayAsync_RemovesOnlySuccessfullySentMessages()
     {
         using var spool = new GemSpoolingService(new GemSpoolingOptions(Enabled: true));
-        using var first = CreateMessage(6, 11, "first");
-        using var second = CreateMessage(6, 11, "second");
+        using var first = CreateMessage(GemMessageDefinitions.EventReportSend, "first");
+        using var second = CreateMessage(GemMessageDefinitions.EventReportSend, "second");
         spool.Enqueue(first);
         spool.Enqueue(second);
         int calls = 0;
@@ -64,9 +64,9 @@ public sealed class GemSpoolingServiceTests
             Enabled: true,
             MaximumMessages: 2,
             OverflowPolicy: GemSpoolOverflowPolicy.DropOldest));
-        using var first = CreateMessage(6, 11, "first");
-        using var second = CreateMessage(6, 11, "second");
-        using var third = CreateMessage(6, 11, "third");
+        using var first = CreateMessage(GemMessageDefinitions.EventReportSend, "first");
+        using var second = CreateMessage(GemMessageDefinitions.EventReportSend, "second");
+        using var third = CreateMessage(GemMessageDefinitions.EventReportSend, "third");
         spool.Enqueue(first);
         spool.Enqueue(second);
         spool.Enqueue(third);
@@ -85,17 +85,18 @@ public sealed class GemSpoolingServiceTests
         using var spool = new GemSpoolingService(new GemSpoolingOptions(
             Enabled: true,
             MaximumMessages: 1));
-        using var first = CreateMessage(6, 11, "first");
-        using var second = CreateMessage(6, 11, "second");
+        using var first = CreateMessage(GemMessageDefinitions.EventReportSend, "first");
+        using var second = CreateMessage(GemMessageDefinitions.EventReportSend, "second");
 
         Assert.True(spool.TryEnqueue(first));
         Assert.False(spool.TryEnqueue(second));
         Assert.Equal("first", spool.Messages.Single().Message.SecsItem!.GetString());
     }
 
-    private static SecsMessage CreateMessage(byte stream, byte function, string value)
-        => new(stream, function, replyExpected: true)
+    private static SecsMessage CreateMessage(SecsMessageDefinition definition, string value)
+        => new(definition.Id.Stream, definition.Id.Function, definition.ReplyExpected)
         {
+            Name = definition.Name,
             SecsItem = Item.A(value)
         };
 }

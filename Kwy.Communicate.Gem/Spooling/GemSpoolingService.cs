@@ -72,7 +72,7 @@ public sealed class GemSpoolingService : IDisposable
         {
             if (!Options.Enabled ||
                 ambiguousSendFailure && !Options.SpoolOnAmbiguousSendFailure ||
-                !IsEligibleUnsafe(message))
+                !IsEligibleForSpoolingUnsafe(message))
                 return false;
 
             if (store.Count >= Options.MaximumMessages)
@@ -199,15 +199,20 @@ public sealed class GemSpoolingService : IDisposable
         }
     }
 
-    private bool IsEligibleUnsafe(SecsMessage message)
-        => (message.S, message.F) switch
-        {
-            (6, 11) => true,
-            (5, 1) => Options.IncludeAlarms,
-            (6, 1) => Options.IncludeTraceData,
-            (10, 1) => Options.IncludeTerminalMessages,
-            _ => false
-        };
+    private bool IsEligibleForSpoolingUnsafe(SecsMessage message)
+    {
+        var messageId = new SecsMessageId(message.S, message.F);
+
+        if (messageId == GemMessageDefinitions.EventReportSend.Id)
+            return true;
+        if (messageId == GemMessageDefinitions.AlarmReportSend.Id)
+            return Options.IncludeAlarms;
+        if (messageId == GemMessageDefinitions.TraceDataSend.Id)
+            return Options.IncludeTraceData;
+        if (messageId == GemMessageDefinitions.TerminalRequest.Id)
+            return Options.IncludeTerminalMessages;
+        return false;
+    }
 
     private static SecsMessage CloneMessage(SecsMessage message)
         => new(message.S, message.F, message.ReplyExpected)
@@ -225,7 +230,7 @@ public sealed class GemSpoolingService : IDisposable
 
     private void PurgeUnsafe()
     {
-        store.Purge();
+        store.Clear();
     }
 
     private void UpdateIdleStateUnsafe()

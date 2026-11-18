@@ -327,7 +327,7 @@ public sealed class GemSessionStateMachineTests
         public Task<GemProcessProgramDeleteResult> DeleteProcessProgramAsync(string ppid, CancellationToken cancellationToken = default) => repository.DeleteAsync(ppid, cancellationToken);
         public Task<GemTraceSample> CaptureTraceAsync(uint traceId, uint sampleNumber, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<GemTraceRunResult> RunTraceAsync(uint traceId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<GemRemoteCommandResult> ExecuteRemoteCommandAsync(GemRemoteCommand command, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<GemRemoteCommandResult> ExecuteRemoteCommandAsync(GemRemoteCommandRequest command, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> ReportRemoteCommandStatusAsync(string commandName, GemRemoteCommandCompletionStatus status, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<GemSpoolReplayResult> ReplaySpooledMessagesAsync(int maximumMessages = int.MaxValue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<GemSpoolReplayResult> RecoverCommunicationAsync(int maximumMessages = int.MaxValue, CancellationToken cancellationToken = default) => throw new NotSupportedException();

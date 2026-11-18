@@ -7,7 +7,7 @@ namespace Kwy.Communicate.Gem;
 /// </summary>
 /// <remarks>
 /// <see cref="Catalog"/> 描述设备支持什么；<see cref="Data"/> 保存报文构造所需的当前值；
-/// <see cref="Commands"/> 描述 Host 可以调用什么。本类型不是数据库，也不是设备业务状态源。
+/// <see cref="CommandHandlers"/> 保存 Remote Command 与业务执行者的绑定。本类型不是数据库，也不是设备业务状态源。
 /// </remarks>
 public sealed class GemRegistry
 {
@@ -21,12 +21,12 @@ public sealed class GemRegistry
     public GemRegistry(
         GemInterfaceCatalog? catalog = null,
         GemDataSnapshot? data = null,
-        GemCommandRegistry? commands = null,
+        GemRemoteCommandHandlerRegistry? commandHandlers = null,
         GemRegistryOptions? options = null)
     {
         Catalog = catalog ?? GemInterfaceCatalog.Empty;
         Data = data ?? new GemDataSnapshot();
-        Commands = commands ?? new GemCommandRegistry();
+        CommandHandlers = commandHandlers ?? new GemRemoteCommandHandlerRegistry();
         this.options = options ?? new GemRegistryOptions();
         ValidateOptions(this.options);
     }
@@ -35,10 +35,10 @@ public sealed class GemRegistry
 
     public GemDataSnapshot Data { get; }
 
-    public GemCommandRegistry Commands { get; }
+    public GemRemoteCommandHandlerRegistry CommandHandlers { get; }
 
     /// <summary>指示启动配置是否已校验并封闭。</summary>
-    public bool IsConfigurationSealed => Commands.IsSealed;
+    public bool IsConfigurationSealed => CommandHandlers.IsSealed;
 
     /// <summary>当前已应用的客户接口合同身份，用于发布审计和现场问题追溯。</summary>
     public GemInterfaceProfileDescriptor? AppliedProfile { get; private set; }
@@ -117,7 +117,7 @@ public sealed class GemRegistry
     /// </remarks>
     public void SealConfiguration()
     {
-        GemCatalogValidationResult result = Commands.ValidateBindingsAndSeal(Catalog.RemoteCommands);
+        GemCatalogValidationResult result = CommandHandlers.ValidateBindingsAndSeal(Catalog.RemoteCommands);
         if (!result.IsValid)
             throw new GemCatalogValidationException(result);
     }
@@ -163,10 +163,10 @@ public sealed class GemRegistry
     }
 
     public void RegisterCommand(string commandName, GemRemoteCommandHandler handler)
-        => Commands.Register(commandName, handler);
+        => CommandHandlers.Register(commandName, handler);
 
     public bool TryGetCommand(string commandName, out GemRemoteCommandHandler handler)
-        => Commands.TryGet(commandName, out handler);
+        => CommandHandlers.TryGet(commandName, out handler);
 
     public void RecordProcessProgramChange(
         string ppid,
