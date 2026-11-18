@@ -30,4 +30,6 @@ public static class EquipmentCommandResultCodes
     public const string Completed = "EQUIPMENT_COMMAND_COMPLETED";
 
     public const string ExecutionFailed = "EQUIPMENT_COMMAND_EXECUTION_FAILED";
+
+    public const string Canceled = "EQUIPMENT_COMMAND_CANCELED";
 }
