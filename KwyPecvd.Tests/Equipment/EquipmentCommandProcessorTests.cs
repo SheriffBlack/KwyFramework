@@ -613,6 +613,87 @@ public sealed class EquipmentCommandProcessorTests
                 CreatePendingStop("stop-002")));
     }
 
+    [Fact]
+    public void ResultStore_RemovesExpiredTerminalResults()
+    {
+        var store =
+            new InMemoryEquipmentCommandResultStore();
+
+        var cutoff =
+            DateTimeOffset.UtcNow;
+
+        store.Set(
+            CreateResultSnapshot(
+                "completed-old",
+                EquipmentCommandStatus.Completed,
+                cutoff.AddMinutes(-1)));
+
+        var removedCount =
+            store.RemoveTerminalResultsOlderThan(
+                cutoff);
+
+        Assert.Equal(1, removedCount);
+
+        Assert.False(
+            store.TryGet(
+                "completed-old",
+                out _));
+    }
+
+    [Fact]
+    public void ResultStore_DoesNotRemoveExpiredAcceptedResult()
+    {
+        var store =
+            new InMemoryEquipmentCommandResultStore();
+
+        var cutoff =
+            DateTimeOffset.UtcNow;
+
+        store.Set(
+            CreateResultSnapshot(
+                "accepted-old",
+                EquipmentCommandStatus.Accepted,
+                cutoff.AddDays(-2)));
+
+        var removedCount =
+            store.RemoveTerminalResultsOlderThan(
+                cutoff);
+
+        Assert.Equal(0, removedCount);
+
+        Assert.True(
+            store.TryGet(
+                "accepted-old",
+                out _));
+    }
+
+    [Fact]
+    public void ResultStore_KeepsRecentTerminalResult()
+    {
+        var store =
+            new InMemoryEquipmentCommandResultStore();
+
+        var cutoff =
+            DateTimeOffset.UtcNow;
+
+        store.Set(
+            CreateResultSnapshot(
+                "completed-new",
+                EquipmentCommandStatus.Completed,
+                cutoff.AddMinutes(1)));
+
+        var removedCount =
+            store.RemoveTerminalResultsOlderThan(
+                cutoff);
+
+        Assert.Equal(0, removedCount);
+
+        Assert.True(
+            store.TryGet(
+                "completed-new",
+                out _));
+    }
+
     private static PendingEquipmentCommand CreatePendingStop(string requestId)
     {
         return new PendingEquipmentCommand(
@@ -628,6 +709,22 @@ public sealed class EquipmentCommandProcessorTests
                 "PM1",
             TrackedAt:
                 DateTimeOffset.UtcNow);
+    }
+
+    private static EquipmentCommandResultSnapshot CreateResultSnapshot(
+        string requestId,
+        EquipmentCommandStatus status,
+        DateTimeOffset updatedAt)
+    {
+        return new EquipmentCommandResultSnapshot(
+            RequestId: requestId,
+            CommandTypeCode:
+                EquipmentCommandTypeCodes.StopProcess,
+            EquipmentModuleId: "PM1",
+            Status: status,
+            Code: status.ToString(),
+            Message: status.ToString(),
+            UpdatedAt: updatedAt);
     }
 
     private static EquipmentCommandProcessor CreateProcessor(

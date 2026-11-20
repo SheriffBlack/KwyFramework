@@ -70,6 +70,25 @@ builder.Services.AddSingleton<
     IEquipmentCommandResultStore,
     InMemoryEquipmentCommandResultStore>();
 
+builder.Services
+    .AddOptions<EquipmentCommandResultRetentionOptions>()
+    .BindConfiguration(
+        EquipmentCommandResultRetentionOptions.SectionName)
+    .Validate(
+        options =>
+            options.RetentionPeriod >
+            TimeSpan.Zero,
+        "RetentionPeriod must be greater than zero.")
+    .Validate(
+        options =>
+            options.CleanupInterval >
+            TimeSpan.Zero,
+        "CleanupInterval must be greater than zero.")
+    .ValidateOnStart();
+
+builder.Services.AddHostedService<
+    EquipmentCommandResultRetentionService>();
+
 //
 // 2. 注册RT后台周期服务
 //

@@ -7,9 +7,7 @@ namespace KwyPecvd.Equipment.Commands;
 /// </summary>
 public sealed class InMemoryEquipmentCommandResultStore : IEquipmentCommandResultStore
 {
-    private readonly ConcurrentDictionary<
-        string,
-        EquipmentCommandResultSnapshot> results =
+    private readonly ConcurrentDictionary<string, EquipmentCommandResultSnapshot> results =
             new(StringComparer.Ordinal);
 
     public void Set(EquipmentCommandResultSnapshot result)
@@ -33,18 +31,54 @@ public sealed class InMemoryEquipmentCommandResultStore : IEquipmentCommandResul
             out result);
     }
 
-    private static bool CanReplace(
-        EquipmentCommandResultSnapshot current,
-        EquipmentCommandResultSnapshot next)
+    public int RemoveTerminalResultsOlderThan(DateTimeOffset cutoff)
     {
-        if (current.Status is
-            EquipmentCommandStatus.Completed or
-            EquipmentCommandStatus.Failed or
-            EquipmentCommandStatus.Rejected)
+        var removedCount = 0;
+
+        foreach (var pair in results)
+        {
+            var result = pair.Value;
+
+            if (!IsTerminal(result.Status))
+            {
+                continue;
+            }
+
+            if (result.UpdatedAt >= cutoff)
+            {
+                continue;
+            }
+
+            // 只有字典中的值仍然是我刚才检查过的那个快照时，才删除。
+            if (results.TryRemove(
+                    new KeyValuePair<
+                        string,
+                        EquipmentCommandResultSnapshot>(
+                        pair.Key,
+                        result)))
+            {
+                removedCount++;
+            }
+        }
+
+        return removedCount;
+    }
+
+    private static bool CanReplace(EquipmentCommandResultSnapshot current, EquipmentCommandResultSnapshot next)
+    {
+        if (IsTerminal(current.Status))
         {
             return false;
         }
 
         return next.UpdatedAt >= current.UpdatedAt;
+    }
+
+    private static bool IsTerminal(EquipmentCommandStatus status)
+    {
+        return status is
+            EquipmentCommandStatus.Completed or
+            EquipmentCommandStatus.Rejected or
+            EquipmentCommandStatus.Failed;
     }
 }
